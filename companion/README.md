@@ -1,10 +1,10 @@
-# Modul O · Orte – mobiler Prototyp
+# Karte · Koordinaten-Sammlung – mobiler Prototyp
 
-Koordinaten-Sammlung für die Minecraft Companion PWA nach dem minimalen Datenmodell
+Koordinaten-Sammlung für das Modul **Karte** (vormals Live-Karte) der Minecraft Companion PWA, nach dem minimalen Datenmodell
 (`World → Dimension → FeatureInstance → FeatureType → FeatureCategory`).
 Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte.html`.
 
-**Ausprobieren:** `modul-orte.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt.
+**Ausprobieren:** `modul-karte-koordinaten.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt.
 
 ## Was drin ist
 
@@ -16,7 +16,8 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 - **Welt**: Welten per Seed anlegen und wechseln
 - **Standort** (nur lokal): Entfernung + Himmelsrichtung, Nether/Oberwelt umgerechnet
 - Nether↔Oberwelt-Umrechnung, `/execute in … run tp`-Befehl zum Kopieren
-- **Sidebar** aus einer Bereichs-Registry (`BEREICHE`) – Vorbereitung für Dashboard-Widgets
+- **Sidebar** aus einer Bereichs-Registry (`BEREICHE`) – Vorbereitung für Dashboard-Widgets:
+  Karte · Sammelobjekte · Portal-Verwaltung · Handbuch · Baupläne
 
 ## Regeln (Server muss sie genauso prüfen – siehe `instanzPruefen()`)
 
@@ -41,12 +42,14 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 
 Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`server/src/erkennung.js`) – sie muss nur auf dieses Antwortformat umgestellt und um die Biom-Liste erweitert werden.
 
-## Einbau in die Hauptdatei
+## Einbau ins Modul Karte (modul-a-live-karte.html)
 
-- CSS-Abschnitt „MODUL O · ORTE“ übernehmen (Basis ist identisch)
-- `<section class="module" data-module="orte">` in den Module-Stack, Nav-Eintrag in die Sidebar
+- CSS-Abschnitt „KARTE · KOORDINATEN-SAMMLUNG“ übernehmen (Basis ist identisch)
+- Die Liste wird ein zweiter Bereich neben dem Karten-Canvas (Umschalter Karte | Liste)
+- Marker und Biom-Flächen werden in den bestehenden Renderer der Live-Karte gezeichnet,
+  statt im eigenen Canvas – Spieler-Positionen und Sammlung auf einer Karte
 - JS-Abschnitte 2–9 übernehmen; `api()`, `esc()`, `THEMES` gibt es dort schon
-- In `switchModule()` beim Aktivieren `weltenLaden()` aufrufen, beim Verlassen `alleSchliessen()`
+- Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne)
 
 ## Offen
 
