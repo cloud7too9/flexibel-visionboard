@@ -17,7 +17,22 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 - **Standort** (nur lokal): Entfernung + Himmelsrichtung, Nether/Oberwelt umgerechnet
 - Nether↔Oberwelt-Umrechnung, `/execute in … run tp`-Befehl zum Kopieren
 - **Sidebar** aus einer Bereichs-Registry (`BEREICHE`) – Vorbereitung für Dashboard-Widgets:
-  Karte · Sammelobjekte · Portal-Verwaltung · Handbuch · Baupläne
+  Karte · Sammelobjekte · Portal-Verwaltung · Handbuch · Baupläne · Banner · Rüstung
+
+## Bereiche (Rahmen)
+
+| Bereich | Stand | Inhalt |
+|---|---|---|
+| Karte | umgesetzt | Live-Karte + Koordinaten-Sammlung |
+| Sammelobjekte | umgesetzt | Rüstungsbesätze abhaken, Fundorte |
+| Portal-Verwaltung | geplant | – |
+| Handbuch | geplant | – |
+| Baupläne | geplant | – |
+| Banner | geplant | Baupläne für Banner |
+| Rüstung | geplant | Rüstungs-Sets |
+
+Neue Bereiche: Eintrag in `BEREICHE` + Icon in `ICON`. Ohne `mount()` zeigt die Sidebar den Bereich als „geplant“.
+Die Details jedes Bereichs werden einzeln festgelegt. Für Banner und Rüstung liegt ein erster Code-Entwurf in `entwuerfe/banner-ruestung.js` (nicht eingebaut).
 
 ## Sammelobjekte
 
@@ -60,10 +75,11 @@ Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`server
 - Marker und Biom-Flächen werden in den bestehenden Renderer der Live-Karte gezeichnet,
   statt im eigenen Canvas – Spieler-Positionen und Sammlung auf einer Karte
 - JS-Abschnitte 2–9 übernehmen; `api()`, `esc()`, `THEMES` gibt es dort schon
-- Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne)
+- Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung)
 
 ## Offen
 
 - Datenhaltung: Companion-Server (Hetzner) oder Board im Heimnetz
 - Beispiel-Screenshot vom Biom-Popup, um die Erkennung darauf abzustimmen
 - Widget-Ansicht fürs Dashboard (Modul-Vertrag `mount/unmount` ist vorbereitet)
+- Inhalte der geplanten Bereiche (werden einzeln durchgegangen)
