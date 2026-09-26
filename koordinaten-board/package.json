@@ -1,0 +1,14 @@
+{
+  "name": "koordinaten-board",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lokales Minecraft-Koordinaten-Board: Anzeige im Raum, Eingabe per Handy, Seed-Map-Screenshots per OCR",
+  "scripts": {
+    "installieren": "npm --prefix server install && npm --prefix client install",
+    "build": "npm --prefix client run build",
+    "start": "npm --prefix server start",
+    "test": "npm --prefix server test",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev"
+  }
+}
