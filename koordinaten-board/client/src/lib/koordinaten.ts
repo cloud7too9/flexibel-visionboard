@@ -56,6 +56,7 @@ export const entfernungText = (meter: number) =>
  *  - Java F3+C:  /execute in minecraft:the_nether run tp @s 123.45 64.00 -678.90 12.3 45.6
  *  - /tp @s 100 64 -200
  *  - Bedrock:    Position: 12, 64, -300
+ *  - Seed Map:   X: -1,884 Z: -524   (Tausender-Komma, Y optional)
  *  - frei:       x 100 y 64 z -200   oder   100 -200 (nur X/Z)
  */
 export function koordinatenErkennen(text: string): Partial<Position> | null {
@@ -64,6 +65,20 @@ export function koordinatenErkennen(text: string): Partial<Position> | null {
   if (/the_nether|\bnether\b/i.test(text)) dimension = 'nether';
   else if (/the_end|\bende?\b/i.test(text)) dimension = 'ende';
   else if (/overworld|oberwelt/i.test(text)) dimension = 'oberwelt';
+
+  // Beschriftete Form „X: … (Y: …) Z: …“ – hier sind Tausender-Trennzeichen erlaubt
+  const normal = text.replace(/[—–−]/g, '-');
+  const beschriftet = normal.match(
+    /X\s*[:=]?\s*(-?\s?\d[\d,.' ]*)\s*(?:Y\s*[:=]?\s*(-?\s?\d[\d,.' ]*)\s*)?Z\s*[:=]?\s*(-?\s?\d[\d,.' ]*)/i,
+  );
+  if (beschriftet) {
+    const lesen = (roh?: string) => {
+      if (!roh || !/\d/.test(roh)) return null;
+      const wert = Number(roh.replace(/\D/g, ''));
+      return roh.trim().startsWith('-') ? -wert : wert;
+    };
+    return { x: lesen(beschriftet[1])!, y: lesen(beschriftet[2]), z: lesen(beschriftet[3])!, ...(dimension && { dimension }) };
+  }
 
   // Bei tp-Befehlen nur den Teil danach auswerten (Rotation am Ende ignorieren)
   const tp = text.match(/tp\s+@\w+\s+(.*)$/i);

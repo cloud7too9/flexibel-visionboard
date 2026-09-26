@@ -73,3 +73,17 @@ test('Aliase landen auf dem Typ aus der Feature-Liste', () => {
   assert.equal(seedMapAuswerten(zeilen('Buried Treasure', 'X: 1 Z: 2')).typ, 'Treasure');
   assert.equal(seedMapAuswerten(zeilen('Woodland Mansion', 'X: 1 Z: 2')).name, 'Woodland Mansion');
 });
+
+test('Dropdown „The Nether“ / „The End“ setzt die Dimension', () => {
+  assert.equal(seedMapAuswerten(zeilen('Dimension: | The Nether ¢', 'Ruined Portal', 'X: -40 Z: 12')).dimension, 'nether');
+  assert.equal(seedMapAuswerten(zeilen('Dimension: The End', 'Ruined Portal', 'X: 1 Z: 2')).dimension, 'ende');
+  assert.equal(seedMapAuswerten(zeilen('Dimension: Overworld', 'Ruined Portal', 'X: 1 Z: 2')).dimension, 'oberwelt');
+});
+
+test('Nether-Features aus der Feature-Liste', () => {
+  const f = seedMapAuswerten(zeilen('Nether Fossil', 'X: 1 Z: 2'));
+  assert.deepEqual([f.typ, f.kategorie, f.dimension], ['Nether Fossil', 'ressource', 'nether']);
+  assert.equal(seedMapAuswerten(zeilen('Fortress', 'X: 1 Z: 2')).typ, 'Nether Fortress');
+  const e = seedMapAuswerten(zeilen('End Gateway', 'X: 1 Z: 2'));
+  assert.deepEqual([e.typ, e.kategorie, e.dimension], ['End Gateway', 'portal', 'ende']);
+});

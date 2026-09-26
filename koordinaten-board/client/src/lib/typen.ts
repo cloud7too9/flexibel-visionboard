@@ -9,6 +9,8 @@ export interface Ort {
   z: number;
   dimension: Dimension;
   kategorie: Kategorie;
+  /** Feature-Typ der Seed Map, z. B. „Stronghold“ (leer = eigener Ort) */
+  typ: string;
   notiz: string;
   datei: string;
   angeheftet: boolean;
@@ -28,7 +30,7 @@ export interface BoardZustand {
   version: number;
 }
 
-export type OrtEingabe = Pick<Ort, 'name' | 'x' | 'y' | 'z' | 'dimension' | 'kategorie' | 'notiz' | 'datei' | 'angeheftet'>;
+export type OrtEingabe = Pick<Ort, 'name' | 'x' | 'y' | 'z' | 'dimension' | 'kategorie' | 'typ' | 'notiz' | 'datei' | 'angeheftet'>;
 
 export type Operation =
   | { art: 'hinzufuegen'; ort: OrtEingabe }
@@ -54,3 +56,21 @@ export const KATEGORIEN: { wert: Kategorie; label: string }[] = [
 
 export const dimensionLabel = (d: Dimension) => DIMENSIONEN.find((x) => x.wert === d)?.label ?? d;
 export const kategorieLabel = (k: Kategorie) => KATEGORIEN.find((x) => x.wert === k)?.label ?? k;
+
+export interface FeatureTyp {
+  typ: string;
+  kategorie: Kategorie;
+  dimension: Dimension | null;
+}
+
+/** Ergebnis der Screenshot-Erkennung vom Server */
+export interface Erkannt {
+  name: string;
+  typ: string;
+  x: number;
+  y: number | null;
+  z: number;
+  dimension: Dimension;
+  kategorie: Kategorie;
+  box: { x0: number; y0: number; x1: number; y1: number } | null;
+}

@@ -75,7 +75,8 @@ export const FEATURES = [
   ['Trail Ruins', 'struktur'],
   ['Trial Chamber', 'struktur', null, ['Trial Chambers']],
   ['Camp', 'struktur'],
-  ['Fortress', 'struktur', 'nether', ['Nether Fortress']],
+  ['Nether Fortress', 'struktur', 'nether', ['Fortress']],
+  ['Nether Fossil', 'ressource', 'nether'],
   ['Bastion', 'struktur', 'nether', ['Bastion Remnant']],
   ['End City', 'struktur', 'ende'],
   ['End Gateway', 'portal', 'ende'],
@@ -129,7 +130,7 @@ export function kategorieRaten(name) {
 export function dimensionFinden(zeilen, feature) {
   if (feature?.dimension) return feature.dimension;
   for (const z of zeilen) {
-    const treffer = normalisieren(z.text).match(/Dimension\W*(Overworld|Nether|End)\b/i);
+    const treffer = normalisieren(z.text).match(/Dimension\W*(?:The\s+)?(Overworld|Nether|End)\b/i);
     if (treffer) return { overworld: 'oberwelt', nether: 'nether', end: 'ende' }[treffer[1].toLowerCase()];
   }
   return 'oberwelt';
