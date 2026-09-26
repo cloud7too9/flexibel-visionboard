@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0d0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Modul O · Orte</title>
+<style>
+/* ---- Basis: 1:1 aus modul-a-live-karte.html ---------------------------- */
+/* ============================================================================
+   PROTOTYP · Minecraft Companion PWA · Modul A (Live-Karte)
+   ----------------------------------------------------------------------------
+   Aufbau dieser Datei (zum Springen):
+     CSS  :  Tokens (per JS gesetzt) → Shell-Layout → Komponenten → Karte
+     JS   :  0 Konfig · 1 THEMES · 2 Welt · 3 Spieler · 4 State · 5 Theme
+             6 Renderer · 7 Simulation · 8 UI/Input · 9 Init
+   Bewusst eine Datei, keine Build-Tools: direkt am Handy im Browser lauffähig.
+   ========================================================================== */
+
+/* ---- Reset ---------------------------------------------------------------- */
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body { height:100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  background:#000; color:var(--text);
+  display:flex; align-items:center; justify-content:center;
+  overscroll-behavior:none;
+}
+/* Monospace nur für Telemetrie/Koordinaten (HUD-Charakter, wie "Glance-UI"). */
+.mono { font-family: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace; font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+
+/* ---- Geräte-Rahmen (nur Vorschau am Desktop; am Handy Vollbild) ----------- */
+.device {
+  position:relative; width:100%; max-width:430px; height:100dvh; max-height:932px;
+  background:var(--bg); overflow:hidden; display:flex; flex-direction:column;
+  box-shadow:0 0 0 1px #000, 0 30px 80px rgba(0,0,0,.6);
+  transition: background .45s ease;
+}
+@media (min-width:520px){ .device{ border-radius:42px; box-shadow:0 0 0 10px #16181d, 0 0 0 12px #2a2d34, 0 40px 90px rgba(0,0,0,.7);} }
+
+/* ---- Status-Strip (kosmetisch, Prototyp-Chrome – beim Einbetten entfernbar) */
+.statusbar { display:flex; justify-content:space-between; align-items:center;
+  padding:10px 22px 2px; font-size:13px; font-weight:600; color:var(--text);
+  padding-top: max(10px, env(safe-area-inset-top)); flex:0 0 auto; }
+.statusbar .glyphs { display:flex; gap:6px; align-items:center; opacity:.95; }
+.statusbar .batt { width:22px; height:11px; border:1.5px solid var(--text); border-radius:3px; position:relative; opacity:.9; }
+.statusbar .batt::after{ content:""; position:absolute; inset:1.5px; right:7px; background:var(--text); border-radius:1px;}
+.statusbar .batt::before{ content:""; position:absolute; right:-3px; top:3px; width:2px; height:5px; background:var(--text); border-radius:1px;}
+
+/* ===========================================================================
+   EBENE-übergreifende Shell
+   ======================================================================== */
+
+/* ---- Header --------------------------------------------------------------- */
+.header { position:relative; flex:0 0 auto; padding:6px 16px 12px; display:flex; align-items:center; justify-content:center; }
+.icon-btn { position:absolute; left:14px; top:50%; transform:translateY(-50%);
+  width:40px; height:40px; display:grid; place-items:center; border-radius:12px;
+  background:transparent; border:none; color:var(--text); cursor:pointer; transition:background .2s; }
+.icon-btn:active { background:var(--surface-2); }
+.burger { width:20px; height:14px; position:relative; }
+.burger span, .burger::before, .burger::after { content:""; position:absolute; left:0; right:0; height:2px; background:var(--text); border-radius:2px; }
+.burger span { top:6px; } .burger::before{ top:0;} .burger::after{ bottom:0;}
+.title-block { text-align:center; line-height:1.15; }
+.title-row { display:flex; align-items:center; gap:8px; justify-content:center; }
+.title-row .compass { color:var(--accent); display:flex; transition:color .45s ease; }
+.title-row h1 { font-size:21px; font-weight:700; letter-spacing:.2px; }
+.subtitle { font-size:12.5px; color:var(--text-dim); margin-top:1px; }
+.subtitle b { color:var(--accent); font-weight:600; transition:color .45s ease; }
+
+/* ---- Module-Stack  ·  Container für umschaltbare Bereiche -----------------
+   Alle Module liegen im DOM, aber nur das aktive (.is-active) ist sichtbar.
+   Inaktive Module sind display:none → keine Render-Schleife, keine Listener
+   feuern; das ist die akkuschonende Kernidee dieses Skeletts.
+   Jedes Modul ist eine Flex-Column und liefert seine eigene Top Bar
+   (oder lässt den Slot leer), seine Bühne und seine eigene Bottom Bar.
+   ----------------------------------------------------------------------- */
+.module-stack { flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+.module { flex:1 1 auto; display:none; flex-direction:column; min-height:0; }
+.module.is-active { display:flex; }
+
+/* Platzhalter für noch leere Module (Toolbox/Erfolge/Backups in dieser Phase). */
+.module-empty { flex:1 1 auto; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:10px; padding:24px;
+  text-align:center; color:var(--text-dim); }
+.module-empty .me-ico { width:54px; height:54px; border-radius:18px;
+  background:var(--surface-2); border:1px solid var(--border-soft);
+  display:grid; place-items:center; color:var(--accent);
+  transition:background .45s ease, border-color .45s ease, color .45s ease; }
+.module-empty .me-title { font-size:17px; font-weight:700; color:var(--text); margin-top:4px; }
+.module-empty .me-sub { font-size:13px; max-width:280px; line-height:1.45; }
+
+/* Bottom-Bar-Platzhalter für Module ohne eigene Aktionen (vorerst leer).
+   Hält die gleiche Höhe wie .bb-item, damit das Layout beim Modul-Wechsel
+   nicht springt. Die Safe-Area-Polsterung sitzt am .bottombar-Parent. */
+.bb-placeholder { flex:1; display:flex; align-items:center; justify-content:center;
+  min-height:62px; padding:11px 4px 14px;
+  color:var(--text-faint); font-size:11.5px; }
+
+/* ---- Toolbox-Werkzeuge  ·  generische Tool-Patterns ----------------------
+   Die Toolbox enthält mehrere Werkzeuge unter Tabs. Gleiche „Stack"-Idee
+   wie der Module-Stack, nur eine Ebene tiefer: alle Tools liegen im DOM,
+   nur das aktive (.is-active) ist sichtbar.
+   ----------------------------------------------------------------------- */
+.tool-stage { flex:1 1 auto; min-height:0; overflow-y:auto;
+  padding:14px 16px 22px; }
+.tool { display:none; flex-direction:column; gap:18px; }
+.tool.is-active { display:flex; }
+.tool-head h2 { font-size:18px; font-weight:800; }
+.tool-head p  { font-size:12.5px; color:var(--text-dim); margin-top:4px; line-height:1.45; }
+
+/* Segment-Buttons (z. B. Richtung beim Portal-Linker). */
+.tool-segment { display:flex; gap:4px; background:var(--surface-2);
+  border:1px solid var(--border-soft); border-radius:14px; padding:4px;
+  transition:background .45s ease, border-color .45s ease; }
+.seg-btn { flex:1; border:none; background:transparent; color:var(--text-dim);
+  padding:10px 4px; border-radius:11px; font-size:13px; font-weight:700;
+  cursor:pointer; transition:color .2s, background .25s ease, box-shadow .25s; }
+.seg-btn.active { background:var(--accent); color:var(--accent-ink);
+  box-shadow:0 4px 12px var(--accent-soft); }
+
+/* Gruppen + Inputs. Mobile-First: große Touch-Targets, Monospace für Zahlen. */
+.field-group { display:flex; flex-direction:column; gap:8px; }
+.field-group-label { font-size:10.5px; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--text-faint); padding-left:2px; }
+.field-grid    { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.field-grid.g3 { grid-template-columns:1fr 1fr 1fr; }
+.field { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.field-label { font-size:10px; font-weight:700; letter-spacing:.14em;
+  color:var(--text-faint); padding-left:4px; }
+.field input { font-family:ui-monospace,"SF Mono","Roboto Mono",Menlo,monospace;
+  font-variant-numeric:tabular-nums; font-size:16px; font-weight:600;
+  padding:12px 12px; border-radius:12px;
+  background:var(--surface-2); border:1px solid var(--border-soft);
+  color:var(--text); width:100%; box-sizing:border-box;
+  transition:border-color .2s, background .45s ease;
+  /* iOS: kein Zoom beim Fokus, Anhebung des Inputs unterdrücken */
+  -webkit-appearance:none; appearance:none; }
+.field input:focus { outline:none; border-color:var(--accent); }
+/* Spinner-Pfeile auf Desktop verstecken – am Handy gibt’s sie sowieso nicht. */
+.field input::-webkit-outer-spin-button,
+.field input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.field input[type=number] { -moz-appearance:textfield; }
+
+/* Ergebnis-Karten. */
+.result-card { background:var(--surface-2); border:1px solid var(--border-soft);
+  border-radius:16px; padding:14px 16px; display:flex; flex-direction:column;
+  gap:10px; transition:background .45s ease, border-color .45s ease; }
+.result-label { font-size:10.5px; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--text-faint); }
+.result-label b { color:var(--accent); font-weight:700; transition:color .45s ease; }
+.result-coords { display:flex; gap:22px; font-size:19px; font-weight:600; }
+.result-coords .lbl { color:var(--text-faint); margin-right:4px; font-weight:700; font-size:11px; letter-spacing:.12em; text-transform:uppercase; }
+.result-coords b { color:var(--accent); transition:color .45s ease; }
+.result-row { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+.result-row .rname { font-size:13px; color:var(--text-dim); }
+.result-row .rval  { font-size:22px; font-weight:700; color:var(--accent); transition:color .45s ease; }
+.result-row .runit { font-size:13px; color:var(--text-faint); margin-left:4px; font-weight:600; }
+.result-hint { font-size:12px; color:var(--text-faint); line-height:1.45; }
+
+/* Ampel-Status (Ideal / Grenzwertig / Zu nah / Zu weit). Festfarben –
+   bleiben auch bei Theme-Wechsel intuitiv lesbar. */
+.result-status { font-size:12.5px; font-weight:700; padding:6px 11px;
+  border-radius:10px; display:inline-block; align-self:flex-start;
+  letter-spacing:.02em; }
+.result-status.ok   { background:rgba(58,209,122,.16); color:#5fe09a; }
+.result-status.warn { background:rgba(232,180,68,.16); color:#f0c468; }
+.result-status.bad  { background:rgba(232,68,60,.16);  color:#ff8278; }
+
+/* ---- Welt-Verwaltung  ·  Backups + Restore-Tickets ----------------------
+   Eigene Klassen-Familie, weil das Backups-Modul ein eigenes Sub-Tab-System
+   bekommt (Backups | Tickets) und Listen mit Aktionen rendert. Die Stack-
+   Idee ist dieselbe wie bei den Toolbox-Werkzeugen: alle Panes im DOM, nur
+   das aktive ist sichtbar.
+   ----------------------------------------------------------------------- */
+.bk-stage { flex:1 1 auto; min-height:0; overflow-y:auto; padding:14px 16px 22px; }
+.bk-pane  { display:none; flex-direction:column; gap:14px; }
+.bk-pane.is-active { display:flex; }
+
+/* Erstellen-Zeile (Label-Input + Button) */
+.create-row    { display:flex; flex-direction:column; gap:8px; }
+.create-row .input-line { display:flex; gap:8px; align-items:stretch; }
+.create-row input { flex:1 1 auto; min-width:0;
+  font-family:ui-monospace,"SF Mono","Roboto Mono",Menlo,monospace;
+  font-size:15px; padding:11px 12px; border-radius:12px;
+  background:var(--surface-2); border:1px solid var(--border-soft);
+  color:var(--text); -webkit-appearance:none; appearance:none;
+  transition:border-color .2s, background .45s ease; }
+.create-row input:focus { outline:none; border-color:var(--accent); }
+
+/* Buttons – einheitliche Familie. */
+.btn-primary, .btn-secondary, .btn-danger {
+  border:none; border-radius:12px; font-weight:700; font-size:13.5px;
+  cursor:pointer; padding:11px 14px; flex:0 0 auto;
+  transition:opacity .2s, transform .1s, background .25s ease, color .25s ease; }
+.btn-primary { background:var(--accent); color:var(--accent-ink);
+  box-shadow:0 3px 10px var(--accent-soft); }
+.btn-secondary { background:var(--surface-2); color:var(--text);
+  border:1px solid var(--border-soft); font-weight:600; padding:10px 13px; border-radius:11px; }
+.btn-danger { background:rgba(232,68,60,.16); color:#ff8278; font-weight:700; padding:10px 13px; border-radius:11px; }
+.btn-primary:active, .btn-secondary:active, .btn-danger:active { transform:translateY(1px); }
+.btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled {
+  opacity:.55; cursor:not-allowed; box-shadow:none; }
+
+/* Status-Banner (Inline-Feedback). Festfarben für klare Ampel-Lesbarkeit. */
+.banner { padding:10px 13px; border-radius:12px; font-size:12.5px; line-height:1.45; }
+.banner[hidden] { display:none; }
+.banner.ok   { background:rgba(58,209,122,.14); color:#5fe09a; }
+.banner.warn { background:rgba(232,180,68,.14); color:#f0c468; }
+.banner.bad  { background:rgba(232,68,60,.14);  color:#ff8278; }
+.banner.info { background:var(--surface-2); color:var(--text-dim); border:1px solid var(--border-soft); }
+
+/* Listen-Karten (Backups + Tickets teilen sich die Basis). */
+.list-stack { display:flex; flex-direction:column; gap:10px; }
+.card { background:var(--surface-2); border:1px solid var(--border-soft);
+  border-radius:14px; padding:13px 14px; display:flex; flex-direction:column; gap:8px;
+  transition:background .45s ease, border-color .45s ease; }
+.card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.card-title { font-size:14.5px; font-weight:700; word-break:break-word; line-height:1.3; }
+.card-meta  { font-size:11.5px; color:var(--text-faint); font-weight:600; margin-top:2px; }
+.card-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.card-quote { font-size:13px; color:var(--text-dim); padding:6px 10px;
+  border-left:3px solid var(--border-soft); line-height:1.4; word-break:break-word; }
+
+/* Restore-Eingabeformular klappt unter der Backup-Karte auf. */
+.restore-form { display:none; flex-direction:column; gap:8px;
+  padding-top:10px; border-top:1px solid var(--border-soft); margin-top:2px; }
+.card.expanded .restore-form { display:flex; }
+.restore-form textarea { width:100%; min-height:64px; resize:vertical;
+  font-family:inherit; font-size:14px; padding:10px 12px; border-radius:11px;
+  background:var(--bg); border:1px solid var(--border-soft); color:var(--text);
+  box-sizing:border-box; transition:border-color .2s; }
+.restore-form textarea:focus { outline:none; border-color:var(--accent); }
+.restore-form .row { display:flex; gap:8px; justify-content:flex-end; }
+
+/* Ticket-Status-Pille. */
+.tk-pill { font-size:10.5px; font-weight:800; padding:4px 9px; border-radius:8px;
+  text-transform:uppercase; letter-spacing:.1em; flex:0 0 auto; align-self:flex-start; }
+.tk-pill.open     { background:rgba(232,180,68,.18); color:#f0c468; }
+.tk-pill.approved { background:rgba(58,209,122,.18); color:#5fe09a; }
+.tk-pill.rejected { background:rgba(232,68,60,.18);  color:#ff8278; }
+
+/* Leere Listen */
+.empty-list { padding:32px 16px; text-align:center; color:var(--text-faint);
+  font-size:13px; line-height:1.5; }
+
+/* ---- Zugänge  ·  Admin-only Rollen-Verwaltung ----------------------------
+   Liste der bekannten User aus users.json + Rollen-Selektor pro Reihe.
+   Rolle wird per POST /admin/users/:id/role gesetzt und überschreibt die
+   Anfangsrolle aus users.json (Override liegt in data/store.json).
+   ----------------------------------------------------------------------- */
+.ax-stage { flex:1 1 auto; min-height:0; overflow-y:auto; padding:14px 16px 22px; }
+.ax-pane  { display:none; flex-direction:column; gap:10px; }
+.ax-pane.is-active { display:flex; }
+
+.ax-row { background:var(--surface-2); border:1px solid var(--border-soft);
+  border-radius:14px; padding:12px 14px; display:flex; flex-direction:column;
+  gap:10px; transition:background .45s ease, border-color .45s ease; }
+.ax-row.is-self { border-color:var(--accent); }
+.ax-row .ax-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+.ax-row .ax-name { font-size:15px; font-weight:700; color:var(--text); }
+.ax-row .ax-id   { font-size:11px; color:var(--text-faint);
+  font-family:ui-monospace,"SF Mono","Roboto Mono",Menlo,monospace; }
+.ax-row .ax-base { margin-left:auto; font-size:11px; color:var(--text-faint); }
+.ax-row .ax-base b { color:var(--text-dim); font-weight:600; }
+
+/* Vier-Wege-Segment für die Rollen-Wahl (kompakt, Daumen-freundlich). */
+.ax-roles { display:grid; grid-template-columns:repeat(4, 1fr); gap:4px;
+  background:var(--surface-3); border:1px solid var(--border-soft);
+  border-radius:11px; padding:4px;
+  transition:background .45s ease, border-color .45s ease; }
+.ax-role { border:none; background:transparent; color:var(--text-dim);
+  font-size:12px; font-weight:700; padding:8px 4px; border-radius:8px;
+  cursor:pointer; transition:color .2s, background .25s ease; }
+.ax-role:hover:not(.active):not(:disabled) { color:var(--text); }
+.ax-role.active { background:var(--accent); color:var(--accent-ink); }
+.ax-role:disabled { opacity:.4; cursor:not-allowed; }
+
+.ax-row .ax-foot { display:flex; align-items:center; gap:10px;
+  font-size:11.5px; color:var(--text-faint); min-height:14px; }
+.ax-row .ax-foot .ax-reset {
+  margin-left:auto; border:none; background:transparent; color:var(--text-dim);
+  font-size:11.5px; font-weight:600; cursor:pointer; padding:2px 4px; }
+.ax-row .ax-foot .ax-reset:hover { color:var(--accent); }
+.ax-row.is-overridden .ax-foot::before { content:"●"; color:var(--accent); }
+
+/* Audit-Log */
+.ax-log-item { padding:9px 12px; background:var(--surface-2);
+  border:1px solid var(--border-soft); border-radius:11px;
+  display:flex; flex-direction:column; gap:4px;
+  transition:background .45s ease, border-color .45s ease; }
+.ax-log-when { font-size:10.5px; color:var(--text-faint);
+  font-family:ui-monospace,"SF Mono",monospace; }
+.ax-log-text { font-size:12.5px; color:var(--text-dim); line-height:1.4; }
+.ax-log-text b { color:var(--text); font-weight:700; }
+.ax-log-text .ax-arrow { color:var(--accent); margin:0 4px; }
+
+/* ---- EBENE 2 · Top-Bar (Dimensions-Reiter als Segment-Pills) -------------- */
+.tabs-wrap { flex:0 0 auto; padding:2px 16px 12px; }
+.tabs { display:flex; gap:4px; background:var(--surface-2); border:1px solid var(--border-soft);
+  border-radius:16px; padding:5px; transition:background .45s ease, border-color .45s ease; }
+.tab { flex:1; border:none; background:transparent; color:var(--text-dim);
+  font-size:15px; font-weight:700; padding:11px 6px; border-radius:12px; cursor:pointer;
+  transition:color .2s, background .25s ease, box-shadow .25s; }
+.tab.active { background:var(--accent); color:var(--accent-ink); box-shadow:0 4px 14px var(--accent-soft); }
+
+/* ---- Karten-Bühne (Canvas füllt den Inhaltsbereich) ---------------------- */
+.stage { position:relative; flex:1 1 auto; min-height:0; overflow:hidden; }
+#map { display:block; width:100%; height:100%; touch-action:none; }
+/* Sanfte Vignette für Tiefe; rein dekorativ, blockiert keine Eingaben. */
+.vignette { position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(120% 80% at 50% 42%, transparent 55%, rgba(0,0,0,.42) 100%); }
+
+/* ---- HUD-Chips (Layout-Sprache aus dem Screenshot: Karten/Badges) -------- */
+.hud { position:absolute; inset:0; pointer-events:none; padding:14px; }
+.chip { display:inline-flex; align-items:center; gap:8px; pointer-events:auto;
+  background:var(--surface); border:1px solid var(--border); border-radius:14px;
+  padding:9px 12px; box-shadow:0 6px 18px rgba(0,0,0,.35);
+  transition:background .45s ease, border-color .45s ease; }
+.hud-tl { position:absolute; top:14px; left:14px; display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+.coord { font-size:13px; }
+.coord .lbl { color:var(--text-faint); font-weight:700; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; margin-right:2px; }
+.coord .v { color:var(--text); font-weight:600; }
+.coord .v + .lbl { margin-left:8px; }
+.portal-chip .pico { color:var(--accent); transition:color .45s ease; }
+.portal-chip { font-size:12.5px; color:var(--text-dim); }
+.portal-chip b { color:var(--text); }
+
+.hint { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  background:var(--surface); border:1px solid var(--border); border-radius:16px;
+  padding:14px 18px; max-width:78%; text-align:center; font-size:13.5px; color:var(--text-dim);
+  box-shadow:0 10px 30px rgba(0,0,0,.45); display:none; }
+.hint.show { display:block; }
+.hint b { color:var(--accent); }
+
+.recenter { position:absolute; right:14px; bottom:14px; pointer-events:auto;
+  display:none; align-items:center; gap:7px; cursor:pointer;
+  background:var(--accent); color:var(--accent-ink); border:none; border-radius:14px;
+  padding:11px 14px; font-weight:700; font-size:13px; box-shadow:0 6px 20px var(--accent-soft); }
+.recenter.show { display:inline-flex; }
+
+/* Struktur-Tooltip ·  beim Tap auf einen Strukturen-Marker auf der Karte.
+   Position wird per JS gesetzt; verschwindet bei Re-Tap oder nach 2s. */
+.struct-tip { position:absolute; pointer-events:auto;
+  background:var(--surface); border:1px solid var(--border); border-radius:11px;
+  padding:7px 11px; font-size:12px; color:var(--text); font-weight:600;
+  white-space:nowrap; transform:translate(-50%, -120%); display:none;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);
+  transition:background .45s ease, border-color .45s ease; }
+.struct-tip.show { display:inline-flex; align-items:center; gap:7px; }
+.struct-tip .stype { color:var(--accent); font-weight:700; }
+.struct-tip .scoord { color:var(--text-faint); font-family:ui-monospace,"SF Mono",monospace; }
+
+/* ---- EBENE 3 · Bottom-Bar (App-Globals) ---------------------------------- */
+.bottombar { flex:0 0 auto; display:flex; background:var(--surface);
+  border-top:1px solid var(--border-soft); transition:background .45s ease, border-color .45s ease;
+  padding-bottom: env(safe-area-inset-bottom); position:relative; z-index:5; }
+.bb-item { flex:1; border:none; background:transparent; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:4px; padding:11px 4px 14px;
+  color:var(--text-faint); position:relative; transition:color .2s; }
+.bb-item .ico { display:flex; }
+.bb-item .lab { font-size:11px; font-weight:600; }
+.bb-item.active { color:var(--accent); }
+.bb-item.active::before { content:""; position:absolute; top:0; left:22%; right:22%; height:2px;
+  background:var(--accent); border-radius:2px; box-shadow:0 0 10px 1px var(--accent); }
+.status-dot { width:7px; height:7px; border-radius:50%; background:#3ad17a; box-shadow:0 0 8px #3ad17a; }
+.status-dot.off { background:#e0413c; box-shadow:0 0 8px #e0413c; }
+
+/* ---- EBENE 1 · Sidebar (Haupt-Bereiche) ---------------------------------- */
+.scrim { position:absolute; inset:0; background:rgba(0,0,0,.5); opacity:0; visibility:hidden;
+  transition:opacity .28s ease, visibility .28s; z-index:20; }
+.scrim.show { opacity:1; visibility:visible; }
+.sidebar { position:absolute; top:0; bottom:0; left:0; width:78%; max-width:320px; z-index:21;
+  background:var(--surface); border-right:1px solid var(--border); transform:translateX(-103%);
+  transition:transform .3s cubic-bezier(.22,.61,.36,1), background .45s ease;
+  display:flex; flex-direction:column; padding-top: env(safe-area-inset-top); }
+.sidebar.open { transform:translateX(0); box-shadow:24px 0 60px rgba(0,0,0,.5); }
+.sb-head { padding:24px 22px 18px; border-bottom:1px solid var(--border-soft); }
+.sb-head .kicker { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--text-faint); font-weight:700; }
+.sb-head .name { font-size:19px; font-weight:800; margin-top:3px; }
+.sb-nav { padding:12px; display:flex; flex-direction:column; gap:4px; }
+.nav-item { display:flex; align-items:center; gap:13px; padding:14px 14px; border-radius:14px;
+  background:transparent; border:none; color:var(--text-dim); cursor:pointer; text-align:left; font-size:15.5px; font-weight:600; }
+.nav-item .ico { color:var(--text-faint); display:flex; }
+.nav-item.active { background:var(--surface-2); color:var(--text); }
+.nav-item.active .ico { color:var(--accent); }
+.nav-item.soon { opacity:.5; cursor:default; }
+.nav-item .soon-tag { margin-left:auto; font-size:10px; font-weight:700; letter-spacing:.08em;
+  background:var(--surface-3); color:var(--text-dim); padding:3px 7px; border-radius:7px; }
+
+/* ---- Bottom-Sheets (Spieler & Optionen) ---------------------------------- */
+.sheet { position:absolute; left:0; right:0; bottom:0; z-index:21;
+  background:var(--surface); border-top:1px solid var(--border);
+  border-radius:22px 22px 0 0; transform:translateY(103%);
+  transition:transform .3s cubic-bezier(.22,.61,.36,1), background .45s ease;
+  padding:8px 18px max(20px, env(safe-area-inset-bottom)); max-height:74%; overflow-y:auto; }
+.sheet.open { transform:translateY(0); box-shadow:0 -20px 60px rgba(0,0,0,.5); }
+.sheet .grabber { width:38px; height:4px; border-radius:3px; background:var(--border); margin:8px auto 14px; }
+.sheet h2 { font-size:17px; font-weight:800; margin-bottom:2px; }
+.sheet .sub { font-size:12.5px; color:var(--text-dim); margin-bottom:14px; }
+
+/* Spieler-Reihe */
+.prow { display:flex; align-items:center; gap:12px; padding:13px 12px; border-radius:14px;
+  background:var(--surface-2); border:1px solid transparent; margin-bottom:8px; cursor:pointer; }
+.prow.tracked { border-color:var(--accent); }
+.pdot { width:11px; height:11px; border-radius:50%; flex:0 0 auto; box-shadow:0 0 8px currentColor; }
+.prow .pname { font-weight:700; font-size:15px; }
+.prow .pmeta { font-size:11.5px; color:var(--text-dim); margin-top:1px; }
+.prow .dim-chip { margin-left:auto; font-size:11px; font-weight:700; padding:5px 9px; border-radius:9px;
+  background:var(--surface-3); color:var(--text-dim); white-space:nowrap; }
+.prow .pcoord { font-size:11.5px; color:var(--text-faint); }
+
+/* Optionen-Schalter */
+.opt { display:flex; align-items:center; gap:12px; padding:14px 4px; border-bottom:1px solid var(--border-soft); }
+.opt:last-child { border-bottom:none; }
+.opt .otext { flex:1; }
+.opt .oname { font-size:15px; font-weight:600; }
+.opt .odesc { font-size:11.5px; color:var(--text-faint); margin-top:2px; }
+.switch { width:46px; height:28px; border-radius:16px; background:var(--surface-3);
+  border:1px solid var(--border); position:relative; cursor:pointer; flex:0 0 auto; transition:background .2s; }
+.switch::after { content:""; position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%;
+  background:var(--text-dim); transition:transform .2s, background .2s; }
+.switch.on { background:var(--accent-soft); border-color:var(--accent); }
+.switch.on::after { transform:translateX(18px); background:var(--accent); }
+
+/* ---- Portal-/Morph-Schleier ---------------------------------------------- */
+.veil { position:absolute; inset:0; z-index:30; pointer-events:none; opacity:0; }
+
+/* ============================================================================
+   ERFOLGE  ·  Xbox-Live-Matrix pro Spieler
+   ----------------------------------------------------------------------------
+   Header-Meter (errungen / Gamerscore / Prozent), Fortschritts-Balken,
+   Filter-Pillen, Kategorien-Akkordion mit Achievement-Reihen.
+   ========================================================================== */
+.ach-stage { flex:1 1 auto; min-height:0; overflow-y:auto; padding:14px 14px 4px;
+  display:flex; flex-direction:column; gap:14px; }
+
+/* Spieler-Reiter (horizontal scrollbar bei vielen Spielern) */
+.tabs.scroll { overflow-x:auto; scroll-snap-type:x mandatory; flex-wrap:nowrap; }
+.tabs.scroll::-webkit-scrollbar { display:none; }
+.tabs.scroll .tab { flex:0 0 auto; padding:11px 14px; scroll-snap-align:start;
+  font-size:14px; white-space:nowrap; }
+.tabs.scroll .tab .pdot { width:8px; height:8px; border-radius:50%; display:inline-block;
+  margin-right:7px; vertical-align:middle; }
+
+/* Header mit drei Zahlen-Metern */
+.ach-header { background:var(--surface); border:1px solid var(--border-soft);
+  border-radius:16px; padding:14px 14px 12px; }
+.ach-header-row { display:flex; justify-content:space-between; align-items:flex-end;
+  gap:10px; margin-bottom:12px; }
+.ach-meter { text-align:center; flex:1; }
+.ach-meter-num { font-size:13px; color:var(--text-dim); font-weight:600; }
+.ach-meter-num b { font-size:26px; color:var(--text); font-weight:800; line-height:1; letter-spacing:-.02em; }
+.ach-meter-num span { margin-left:2px; }
+.ach-meter-lbl { font-size:10.5px; color:var(--text-faint); text-transform:uppercase;
+  letter-spacing:.12em; font-weight:700; margin-top:4px; }
+.ach-bar { height:6px; background:var(--surface-3); border-radius:3px; overflow:hidden; }
+.ach-bar span { display:block; height:100%; background:var(--accent);
+  border-radius:3px; transition:width .4s ease, background .45s ease;
+  box-shadow:0 0 12px var(--accent-soft); }
+
+/* Filter-Pillen (gleiche Optik wie das Toolbox-Segment) */
+.ach-filter { display:flex; gap:6px; background:var(--surface-2);
+  border:1px solid var(--border-soft); border-radius:14px; padding:4px; }
+.ach-filter .seg-btn { flex:1; border:none; background:transparent; color:var(--text-dim);
+  font-size:13px; font-weight:700; padding:9px 4px; border-radius:10px; cursor:pointer;
+  transition:background .2s, color .2s; }
+.ach-filter .seg-btn.active { background:var(--accent); color:var(--accent-ink); }
+
+/* Achievement-Liste – Kategorien als Akkordion */
+.ach-list { display:flex; flex-direction:column; gap:10px; padding-bottom:14px; }
+.ach-cat { background:var(--surface-2); border:1px solid var(--border-soft);
+  border-radius:14px; overflow:hidden; }
+.ach-cat-head { display:flex; align-items:center; gap:10px; padding:12px 14px;
+  cursor:pointer; user-select:none; }
+.ach-cat-icon { width:30px; height:30px; border-radius:9px;
+  display:grid; place-items:center; background:var(--surface-3); font-size:16px; flex:0 0 auto; }
+.ach-cat-name { flex:1; font-size:14.5px; font-weight:700; }
+.ach-cat-count { font-size:12px; color:var(--text-dim); font-weight:700; font-variant-numeric:tabular-nums; margin-right:6px; }
+.ach-cat-chevron { color:var(--text-faint); transition:transform .25s; display:flex; }
+.ach-cat.open .ach-cat-chevron { transform:rotate(180deg); }
+.ach-cat-items { display:none; border-top:1px solid var(--border-soft); }
+.ach-cat.open .ach-cat-items { display:block; }
+
+/* Einzelnes Achievement */
+.ach-item { display:flex; gap:11px; padding:11px 14px;
+  border-top:1px solid var(--border-soft); align-items:flex-start; }
+.ach-item:first-child { border-top:none; }
+.ach-item .ach-icon { width:34px; height:34px; border-radius:9px; flex:0 0 auto;
+  display:grid; place-items:center; font-size:17px;
+  background:var(--surface-3); color:var(--text-faint);
+  border:1px solid var(--border-soft); }
+.ach-item.earned .ach-icon { background:var(--accent-soft); color:var(--accent);
+  border-color:var(--accent); }
+.ach-item .ach-body { flex:1; min-width:0; }
+.ach-item .ach-name { font-size:14px; font-weight:700; color:var(--text-dim);
+  line-height:1.3; }
+.ach-item.earned .ach-name { color:var(--text); }
+.ach-item .ach-desc { font-size:12px; color:var(--text-faint); line-height:1.4; margin-top:2px; }
+.ach-item .ach-foot { display:flex; align-items:center; gap:8px; margin-top:5px;
+  font-size:11px; color:var(--text-faint); }
+.ach-item .ach-score { font-weight:800; font-family:ui-monospace, monospace;
+  color:var(--text-dim); }
+.ach-item.earned .ach-score { color:var(--accent); }
+.ach-item .ach-date { font-variant-numeric:tabular-nums; }
+
+/* ============================================================================
+   MODUL O · ORTE  ·  eigene Klassen (alles andere kommt aus der Basis oben)
+   ----------------------------------------------------------------------------
+   Aufbau:  Umschalter Liste/Karte → Bühne (Liste) → Karte → Kategorie-
+            Akkordion → Sheets (Detail, Eintragen, Import, Welt, Standort)
+   ========================================================================== */
+
+/* ---- Umschalter Liste | Karte (unter den Dimensions-Reitern) ------------ */
+.ansicht-wrap { flex:0 0 auto; padding:0 16px 12px; display:flex; gap:8px; align-items:center; }
+.ansicht-wrap .tool-segment { flex:1; }
+.ansicht-wrap .seg-btn { padding:8px 4px; display:flex; align-items:center; justify-content:center; gap:6px; }
+
+/* ---- Bühne: Liste ---------------------------------------------------------- */
+.orte-stage { flex:1 1 auto; min-height:0; overflow-y:auto; padding:0 16px 22px;
+  display:flex; flex-direction:column; gap:12px; }
+.orte-stage > * { flex-shrink:0; }
+.orte-stage[hidden], .karte-stage[hidden] { display:none; }
+
+.orte-hud { display:flex; flex-wrap:wrap; gap:8px; }
+.orte-hud .chip { cursor:pointer; box-shadow:none; background:var(--surface-2); border-color:var(--border-soft); }
+.chip.leer { border-style:dashed; color:var(--text-dim); font-size:12.5px; font-weight:600; }
+.chip.leer svg { color:var(--accent); }
+
+.orte-suche { position:relative; }
+.orte-suche svg { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--text-faint); pointer-events:none; }
+.orte-eingabe { width:100%; font:inherit; font-size:16px; padding:12px; border-radius:12px;
+  background:var(--surface-2); border:1px solid var(--border-soft); color:var(--text);
+  -webkit-appearance:none; appearance:none; outline:none;
+  transition:border-color .2s, background .45s ease; }
+.orte-eingabe:focus { border-color:var(--accent); }
+.orte-eingabe::placeholder { color:var(--text-faint); }
+.orte-suche .orte-eingabe { padding-left:40px; }
+select.orte-eingabe { padding-right:34px;
+  background-image:linear-gradient(45deg, transparent 50%, var(--text-dim) 50%), linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position:calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size:5px 5px; background-repeat:no-repeat; }
+.orte-eingabe.mono { font-family:ui-monospace,"SF Mono","Roboto Mono",Menlo,monospace; font-size:14px; }
+
+.orte-filter { overflow-x:auto; scrollbar-width:none; }
+.orte-filter::-webkit-scrollbar { display:none; }
+.orte-filter .seg-btn { flex:0 0 auto; padding:9px 12px; white-space:nowrap; }
+.orte-filter .zahl { font-family:ui-monospace,monospace; font-size:11px; opacity:.7; margin-left:4px; }
+.tab .zahl { font-family:ui-monospace,monospace; font-size:12px; opacity:.7; margin-left:6px; }
+
+/* ---- Kategorie-Akkordion (Muster wie .ach-cat im Erfolge-Modul) ---------- */
+.orte-liste { display:flex; flex-direction:column; gap:10px; }
+.ort-kat { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; overflow:hidden;
+  transition:background .45s ease, border-color .45s ease; }
+.ort-kat-head { display:flex; align-items:center; gap:10px; padding:12px 14px; cursor:pointer; user-select:none; }
+.ort-kat-icon { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; flex:0 0 auto;
+  background:var(--accent-soft); color:var(--accent); font-family:ui-monospace,monospace; font-weight:700; font-size:15px;
+  transition:background .45s ease, color .45s ease; }
+.ort-kat-name { flex:1; font-size:14.5px; font-weight:700; }
+.ort-kat-count { font-size:12px; color:var(--text-dim); font-weight:700; font-variant-numeric:tabular-nums; margin-right:6px; }
+.ort-kat-chevron { color:var(--text-faint); transition:transform .25s; display:flex; }
+.ort-kat.open .ort-kat-chevron { transform:rotate(180deg); }
+.ort-kat-items { display:none; border-top:1px solid var(--border-soft); }
+.ort-kat.open .ort-kat-items { display:block; }
+.ort-typ { padding:10px 14px 2px; font-size:10.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); }
+.ort-typ ~ .ort-typ { border-top:1px solid var(--border-soft); margin-top:4px; }
+.ort-zeile { display:grid; grid-template-columns:1fr auto; gap:3px 10px; width:100%; text-align:left;
+  padding:10px 14px; background:transparent; border:none; color:var(--text); cursor:pointer; font:inherit; }
+.ort-zeile + .ort-zeile { border-top:1px solid var(--border-soft); }
+.ort-zeile:active { background:var(--surface-3); }
+.ort-zeile .coord { font-size:13px; }
+.ort-zeile .ort-portal { font-size:11px; color:var(--text-faint); }
+.ort-zeile .ort-portal .pico { color:var(--accent); }
+.ort-weg { grid-row:1 / 3; grid-column:2; text-align:right; align-self:center; }
+.ort-weg b { display:block; color:var(--accent); font-size:14px; font-family:ui-monospace,monospace; transition:color .45s ease; }
+.ort-weg span { font-size:11px; color:var(--text-faint); font-weight:700; }
+
+/* ---- Karte ----------------------------------------------------------------- */
+.karte-stage { position:relative; flex:1 1 auto; min-height:0; overflow:hidden; }
+#ortKarte { display:block; width:100%; height:100%; touch-action:none; }
+.karte-knoepfe { position:absolute; right:14px; bottom:14px; display:flex; flex-direction:column; gap:8px; }
+.karte-knoepfe button { width:44px; height:44px; border-radius:14px; border:1px solid var(--border);
+  background:var(--surface); color:var(--text); font-size:20px; font-weight:700; display:grid; place-items:center;
+  box-shadow:0 6px 18px rgba(0,0,0,.35); cursor:pointer; }
+.karte-legende { position:absolute; left:14px; bottom:14px; right:74px; display:flex; flex-wrap:wrap; gap:6px; pointer-events:none; }
+.karte-legende .chip { padding:6px 9px; font-size:11px; font-weight:600; gap:6px; box-shadow:none; }
+.karte-legende i { width:10px; height:10px; border-radius:3px; display:inline-block; }
+.karte-hinweis { position:absolute; left:14px; top:14px; right:14px; pointer-events:none; }
+.karte-hinweis .chip { font-size:12px; color:var(--text-dim); box-shadow:none; }
+
+/* ---- Sheets ---------------------------------------------------------------- */
+.orte-sheet { max-height:88%; padding-bottom:0; color:var(--text); }
+.sheet-kopf { display:flex; align-items:flex-start; gap:10px; margin-bottom:14px; }
+.sheet-kopf .titel { flex:1; min-width:0; }
+.sheet-kopf h2 { margin-bottom:2px; word-break:break-word; }
+.sheet-kopf .sub { margin-bottom:0; }
+.sheet-kopf .icon-btn { position:static; transform:none; margin:-8px -10px 0 0; }
+.orte-inhalt { display:flex; flex-direction:column; gap:16px; padding-bottom:16px; }
+.sheet-fuss { position:sticky; bottom:0; display:flex; gap:8px; align-items:stretch;
+  padding:12px 0 max(16px, env(safe-area-inset-bottom)); background:var(--surface);
+  border-top:1px solid var(--border-soft); transition:background .45s ease; }
+.sheet-fuss .btn-primary { flex:1; }
+.knopf-raster { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.knopf-raster button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; }
+.btn-primary, .btn-secondary, .btn-danger { min-height:44px; }
+
+/* Koordinaten-Eingabe mit ±-Taste (iOS-Zifferntastatur hat kein Minus) */
+.koord-in { position:relative; display:block; }
+.field .koord-in input { padding-right:36px; }
+.koord-in .vz { position:absolute; right:4px; top:50%; transform:translateY(-50%); width:28px; height:34px;
+  border:none; border-radius:9px; background:var(--surface-3); color:var(--text-dim);
+  font-family:ui-monospace,monospace; font-weight:700; font-size:15px; cursor:pointer; }
+.koord-in .vz:active { color:var(--accent); }
+.card .field input, .card .orte-eingabe, .card .tool-segment { background:var(--surface); }
+.card .koord-in .vz { background:var(--surface-2); }
+
+/* Screenshot-Prüfliste */
+.card.aus { opacity:.55; }
+.imp-kopf { display:flex; gap:11px; align-items:center; }
+.imp-kopf img { width:52px; height:52px; border-radius:10px; object-fit:cover; background:var(--surface-3);
+  border:1px solid var(--border-soft); flex:0 0 auto; }
+.imp-kopf .text { flex:1; min-width:0; }
+.imp-kopf .card-meta { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:4px; }
+.pill { font-size:10px; font-weight:800; padding:3px 8px; border-radius:7px; text-transform:uppercase; letter-spacing:.1em;
+  background:var(--accent-soft); color:var(--accent); }
+.dreher { width:14px; height:14px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%;
+  animation:drehen .8s linear infinite; display:inline-block; vertical-align:-2px; margin-right:6px; }
+@keyframes drehen { to { transform:rotate(360deg); } }
+button.switch { padding:0; }
+
+/* Welt-Auswahl */
+.welt-zeile { display:flex; align-items:center; gap:12px; width:100%; text-align:left; cursor:pointer; font:inherit; color:var(--text); }
+.welt-zeile.aktiv { border-color:var(--accent); }
+.welt-zeile .seed { font-family:ui-monospace,monospace; font-size:13.5px; font-weight:600; word-break:break-all; }
+
+/* Toast */
+.orte-toast { position:absolute; left:50%; bottom:calc(86px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+  z-index:30; font-size:13px; font-weight:600; white-space:nowrap; max-width:calc(100% - 32px); overflow:hidden; text-overflow:ellipsis; }
+.orte-toast[hidden] { display:none; }
+.orte-toast.fehler { color:#ff8278; border-color:rgba(232,68,60,.5); }
+</style>
+</head>
+<body>
+<div class="device" id="device">
+
+  <!-- Prototyp-Chrome: kosmetische Status-Leiste -->
+  <div class="statusbar">
+    <span class="mono" id="uhr">14:32</span>
+    <span class="glyphs"><span style="font-size:11px">●●●○</span><span class="batt"></span></span>
+  </div>
+
+  <!-- Header: Hamburger + zentrierter Titel -->
+  <header class="header">
+    <button class="icon-btn" id="burgerBtn" aria-label="Bereiche"><span class="burger"><span></span></span></button>
+    <div class="title-block">
+      <div class="title-row">
+        <span class="compass">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+        </span>
+        <h1>Orte</h1>
+      </div>
+      <div class="subtitle" id="orteSub">Welt · <b>Oberwelt</b></div>
+    </div>
+  </header>
+
+  <main class="module-stack">
+    <!-- === Modul O: Orte ==================================================== -->
+    <section class="module is-active" data-module="orte" id="moduleOrte">
+
+      <!-- EBENE 2 · Dimensions-Reiter -->
+      <div class="tabs-wrap">
+        <div class="tabs" id="orteTabs">
+          <button class="tab active" data-dim="overworld">Oberwelt<span class="zahl"></span></button>
+          <button class="tab" data-dim="nether">Nether<span class="zahl"></span></button>
+          <button class="tab" data-dim="end">End<span class="zahl"></span></button>
+        </div>
+      </div>
+
+      <!-- Ansicht: Liste | Karte -->
+      <div class="ansicht-wrap">
+        <div class="tool-segment" id="orteAnsicht">
+          <button class="seg-btn active" data-ansicht="liste">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Liste</button>
+          <button class="seg-btn" data-ansicht="karte">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Karte</button>
+        </div>
+      </div>
+
+      <!-- Bühne: Liste -->
+      <div class="orte-stage" id="orteStage">
+        <div class="orte-hud" id="orteHud"></div>
+        <div class="orte-suche">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input class="orte-eingabe" id="orteSuche" type="search" placeholder="Suchen …" autocomplete="off">
+        </div>
+        <div class="ach-filter orte-filter" id="orteFilter"></div>
+        <div class="orte-liste" id="orteListe"></div>
+      </div>
+
+      <!-- Bühne: Karte – nur bekannte Biome werden als Fläche gezeichnet -->
+      <div class="karte-stage" id="karteStage" hidden>
+        <canvas id="ortKarte"></canvas>
+        <div class="vignette"></div>
+        <div class="karte-hinweis" id="karteHinweis"></div>
+        <div class="karte-legende" id="karteLegende"></div>
+        <div class="karte-knoepfe">
+          <button id="karteZoomIn" aria-label="Hineinzoomen">+</button>
+          <button id="karteZoomOut" aria-label="Herauszoomen">−</button>
+          <button id="karteFit" aria-label="Alles zeigen">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- EBENE 3 · Bottom Bar -->
+      <nav class="bottombar">
+        <button class="bb-item" id="orteStatusBtn">
+          <span class="ico"><span class="status-dot" id="orteStatusDot"></span></span>
+          <span class="lab" id="orteStatusLab">Verbunden</span>
+        </button>
+        <button class="bb-item active" id="orteScreenshotBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+          <span class="lab">Screenshot</span>
+        </button>
+        <button class="bb-item" id="orteEintragenBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="lab">Eintragen</span>
+        </button>
+        <button class="bb-item" id="orteWeltBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+          <span class="lab">Welt</span>
+        </button>
+      </nav>
+      <input type="file" id="orteDatei" accept="image/*" multiple hidden>
+    </section>
+  </main>
+
+  <!-- EBENE 1 · Sidebar (im Prototyp nur Orte aktiv) -->
+  <div class="scrim" id="scrim"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <div class="kicker">Minecraft</div>
+      <div class="name">Companion</div>
+    </div>
+    <nav class="sb-nav" id="sbNav"></nav>
+  </aside>
+
+  <!-- Ein Sheet für alle Ansichten des Moduls – Inhalt wird je nach Aufgabe gerendert -->
+  <section class="sheet orte-sheet" id="orteSheet" role="dialog" aria-modal="true">
+    <div class="grabber"></div>
+    <div id="orteSheetInhalt"></div>
+  </section>
+
+  <div class="orte-toast chip" id="orteToast" hidden></div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   MODUL O · ORTE  ·  Koordinaten-Sammlung nach dem minimalen Datenmodell
+   ----------------------------------------------------------------------------
+   DATABASE                         STATIC CONFIG
+   ├── World  (id, seed)            ├── FeatureCategory  (je Dimension)
+   ├── Dimension (id, worldId,type) ├── FeatureType      (Kategorie + Variante)
+   └── FeatureInstance              ├── Biome            (Name, Gruppe, Dimension)
+       (id, dimensionId,            └── Group
+        featureTypeId, x, y?, z)
+
+   Regeln (Server prüft, Mock bildet sie nach):
+   · „Eigene Orte“ ist eine zusätzliche Kategorie – dort legt man Typen selbst an
+     (z. B. „Hauptbasis“), in allen anderen Kategorien entstehen Typen nur aus
+     Screenshots (Variante aus dem Popup, z. B. Stronghold → „Stairway“).
+   · Biome entstehen ausschließlich per Screenshot. Das Biom ist der Typ,
+     die Dimension ergibt sich aus der Biom-Liste.
+   · Die Karte zeigt Biome nur rund um bekannte Punkte – unbekannte Fläche bleibt leer.
+
+   Abschnitte: 0 Konfig · 1 Themes · 2 Stammdaten · 3 Koordinaten · 4 API-Vertrag
+               + DEMO-Mock · 5 State · 6 Theme · 7 Liste · 8 Karte · 9 Sheets
+               · 10 Init
+   ========================================================================== */
+
+/* ============================================================================
+   0 · KONFIG
+   ========================================================================== */
+const CONFIG = Object.freeze({
+  duplikatRadius: 3,     // Blöcke – gleicher Typ so nah beieinander gilt als Duplikat
+  biomRadius: 48,        // Blöcke – Fläche, die um einen bekannten Biom-Punkt gezeichnet wird
+  zoomMin: 0.02,         // Pixel pro Block
+  zoomMax: 4,
+  toastMs: 2600,
+  weltGrenze: 30000000,  // Minecraft-Weltgrenze ±30 Mio.
+});
+
+/* ============================================================================
+   1 · THEMES  ·  UI-Tokens der drei Dimensionen (1:1 aus Modul A)
+   ========================================================================== */
+const THEMES = Object.freeze({
+  overworld: { label:"Oberwelt", ui:{
+    "--bg":"#0d0f13", "--surface":"#161a21", "--surface-2":"#1d222b", "--surface-3":"#252b36",
+    "--border":"#2b313d", "--border-soft":"#20252f",
+    "--text":"#eef1f6", "--text-dim":"#828b9b", "--text-faint":"#565e6c",
+    "--accent":"#2ed47e", "--accent-ink":"#04160b", "--accent-soft":"rgba(46,212,126,.16)" } },
+  nether: { label:"Nether", ui:{
+    "--bg":"#110a0a", "--surface":"#1c1212", "--surface-2":"#251616", "--surface-3":"#2f1b1a",
+    "--border":"#3a2422", "--border-soft":"#2a1918",
+    "--text":"#f6eded", "--text-dim":"#a98c8a", "--text-faint":"#6f5250",
+    "--accent":"#e8443c", "--accent-ink":"#1c0605", "--accent-soft":"rgba(232,68,60,.16)" } },
+  end: { label:"End", ui:{
+    "--bg":"#0c0a13", "--surface":"#15121f", "--surface-2":"#1c1829", "--surface-3":"#241f33",
+    "--border":"#2e2742", "--border-soft":"#221c30",
+    "--text":"#f1eef8", "--text-dim":"#948aab", "--text-faint":"#5f5775",
+    "--accent":"#b274e6", "--accent-ink":"#160a20", "--accent-soft":"rgba(178,116,230,.16)" } },
+});
+const DIM_ORDER = Object.freeze(["overworld", "nether", "end"]);
+const dimLabel = (d) => THEMES[d]?.label ?? d;
+const inDim = (d) => (d === "overworld" ? "in der Oberwelt" : `im ${dimLabel(d)}`);
+
+/* ============================================================================
+   2 · STAMMDATEN  ·  aus „Minecraft Tool – Minimales Datenmodell“
+   ========================================================================== */
+const EIGENE_ORTE = "Eigene Orte";
+const BIOMES = "Biomes";
+
+// FeatureCategory je Dimension (Reihenfolge wie in der Seed Map)
+const FEATURE_KATEGORIEN = Object.freeze({
+  overworld: ["Biomes", "Slime Chunk", "Spawn Point", "Village", "Ancient City", "Dungeon", "Stronghold",
+    "Mansion", "Monument", "Mineshaft", "Outpost", "Ruined Portal", "Jungle Temple", "Desert Temple",
+    "Witch Hut", "Shipwreck", "Ocean Ruins", "Cave", "Lava Pool", "Treasure", "Igloo", "Fossil", "Ravine",
+    "Geode", "Apple", "Ore Veins", "Desert Well", "Trail Ruins", "Trial Chamber", "Camp"],
+  nether: ["Biomes", "Nether Fortress", "Bastion", "Ruined Portal", "Nether Fossil"],
+  end: ["Biomes", "End City", "End Gateway"],
+});
+
+// Biome nach Kategorie-Gruppe; Nether/End bestimmen die Dimension
+const BIOM_GRUPPEN = Object.freeze({
+  Plains: ["Plains", "Snowy Plains", "Mushroom Fields", "Savanna", "Sunflower Plains", "Ice Spikes"],
+  Woodlands: ["Forest", "Taiga", "Jungle", "Sparse Jungle", "Birch Forest", "Dark Forest", "Snowy Taiga",
+    "Old Growth Pine Taiga", "Flower Forest", "Old Growth Birch Forest", "Old Growth Spruce Taiga",
+    "Bamboo Jungle", "Grove", "Cherry Grove", "Pale Garden", "Dappled Forest"],
+  Caves: ["Dripstone Caves", "Lush Caves", "Deep Dark", "Sulfur Caves"],
+  Mountains: ["Windswept Hills", "Windswept Forest", "Stony Shore", "Savanna Plateau", "Windswept Gravelly Hills",
+    "Windswept Savanna", "Meadow", "Snowy Slopes", "Frozen Peaks", "Jagged Peaks", "Stony Peaks"],
+  Swamps: ["Swamp", "Mangrove Swamp"],
+  Sandy: ["Desert", "Beach", "Snowy Beach", "Badlands", "Wooded Badlands", "Eroded Badlands"],
+  Water: ["Ocean", "River", "Frozen Ocean", "Frozen River", "Deep Ocean", "Warm Ocean", "Lukewarm Ocean",
+    "Cold Ocean", "Deep Lukewarm Ocean", "Deep Cold Ocean", "Deep Frozen Ocean"],
+  Nether: ["Nether Wastes", "Soul Sand Valley", "Crimson Forest", "Warped Forest", "Basalt Deltas"],
+  End: ["The End", "Small End Islands", "End Midlands", "End Highlands", "End Barrens"],
+});
+const BIOME = Object.freeze(Object.entries(BIOM_GRUPPEN).flatMap(([gruppe, namen]) =>
+  namen.map((name) => Object.freeze({
+    name, gruppe, dimension: gruppe === "Nether" ? "nether" : gruppe === "End" ? "end" : "overworld",
+  }))));
+const biomFinden = (name) => BIOME.find((b) => b.name.toLowerCase() === String(name || "").trim().toLowerCase()) || null;
+
+// Kartenfarben – reine Darstellung, keine Spieldaten
+const GRUPPEN_FARBE = Object.freeze({
+  Plains:"#8fbf5a", Woodlands:"#3f8a3c", Caves:"#8a6e5c", Mountains:"#9aa0a6", Swamps:"#5b7a45",
+  Sandy:"#d9bd6a", Water:"#3a6cb3",
+});
+const BIOM_FARBE = Object.freeze({
+  "Nether Wastes":"#7a2620", "Soul Sand Valley":"#6b5540", "Crimson Forest":"#a3243b",
+  "Warped Forest":"#1f8a80", "Basalt Deltas":"#5a5a63",
+  "The End":"#d6d0a0", "Small End Islands":"#b8b28a", "End Midlands":"#cdc796", "End Highlands":"#e0da9f", "End Barrens":"#a8a283",
+});
+const biomFarbe = (b) => BIOM_FARBE[b.name] || GRUPPEN_FARBE[b.gruppe] || "#777";
+
+// Symbol je Kategorie (Liste + Karten-Marker) – bewusst reduziert wie STRUCT_ICONS in Modul A
+const SYMBOL = Object.freeze({
+  "Eigene Orte":"♜", "Biomes":"◍", "Slime Chunk":"▦", "Spawn Point":"✚", "Village":"■", "Ancient City":"◭",
+  "Dungeon":"▣", "Stronghold":"★", "Mansion":"⌂", "Monument":"◈", "Mineshaft":"╫", "Outpost":"▲",
+  "Ruined Portal":"◌", "Jungle Temple":"◆", "Desert Temple":"◆", "Witch Hut":"⌂", "Shipwreck":"⊥",
+  "Ocean Ruins":"≋", "Cave":"◖", "Lava Pool":"◉", "Treasure":"✕", "Igloo":"●", "Fossil":"⌇", "Ravine":"⋁",
+  "Geode":"◇", "Apple":"●", "Ore Veins":"⋯", "Desert Well":"◎", "Trail Ruins":"⌗", "Trial Chamber":"⊞",
+  "Camp":"△", "Nether Fortress":"▮", "Bastion":"▼", "Nether Fossil":"⌇", "End City":"✦", "End Gateway":"◎",
+});
+const symbol = (kat) => SYMBOL[kat] || "•";
+
+/** Kategorien, die man in dieser Dimension von Hand eintragen darf (Biome nur per Screenshot). */
+const kategorienManuell = (dim) => [EIGENE_ORTE, ...FEATURE_KATEGORIEN[dim].filter((k) => k !== BIOMES)];
+
+/* ============================================================================
+   3 · KOORDINATEN  ·  Formatierung, Umrechnung, Entfernung, Einfügen
+   ========================================================================== */
+/** −1 884 – schmales Leerzeichen statt Punkt/Komma (sähe nach Kommazahl aus) */
+function zahl(n){
+  return `${n < 0 ? "−" : ""}${String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`;
+}
+/** Oberwelt ↔ Nether (÷ 8 / × 8). Für das End gibt es keine Umrechnung. */
+function umrechnen(x, z, dim){
+  if(dim === "overworld") return { x:Math.floor(x/8), z:Math.floor(z/8), dim:"nether" };
+  if(dim === "nether")    return { x:x*8, z:z*8, dim:"overworld" };
+  return null;
+}
+const RICHTUNGEN = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
+/** Entfernung + Himmelsrichtung (Norden = −Z). Oberwelt/Nether werden umgerechnet. */
+function entfernung(von, x, z, dim){
+  if(!von) return null;
+  let zx = x, zz = z;
+  if(von.dim !== dim){
+    const u = umrechnen(x, z, dim);
+    if(!u || u.dim !== von.dim) return null;
+    zx = u.x; zz = u.z;
+  }
+  const dx = zx - von.x, dz = zz - von.z;
+  const winkel = (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360;
+  return { meter:Math.round(Math.hypot(dx, dz)), richtung:RICHTUNGEN[Math.round(winkel/45) % 8], umgerechnet:von.dim !== dim };
+}
+const entfernungText = (m) => m >= 1000 ? `${(m/1000).toLocaleString("de-DE", { maximumFractionDigits:1 })} km` : `${m} m`;
+
+/** Bedrock: /execute in <dim> run tp @s x y z */
+function tpBefehl(x, y, z, dim){
+  const welt = { overworld:"overworld", nether:"nether", end:"the_end" }[dim];
+  return `/execute in ${welt} run tp @s ${x} ${y ?? "~"} ${z}`;
+}
+
+/** Erkennt Koordinaten in eingefügtem Text: „X: -1,884 Z: -524“, /tp-Befehle, „100 64 -200“ … */
+function koordinatenErkennen(text){
+  if(!text || !text.trim()) return null;
+  let dim = null;
+  if(/the_nether|\bnether\b/i.test(text)) dim = "nether";
+  else if(/the_end|\bend\b/i.test(text)) dim = "end";
+  else if(/overworld|oberwelt/i.test(text)) dim = "overworld";
+  const normal = text.replace(/[—–−]/g, "-");
+  const b = normal.match(/X\s*[:=]?\s*(-?\s?\d[\d,.' ]*)\s*(?:Y\s*[:=]?\s*(-?\s?\d[\d,.' ]*)\s*)?Z\s*[:=]?\s*(-?\s?\d[\d,.' ]*)/i);
+  if(b){
+    const lesen = (roh) => {
+      if(!roh || !/\d/.test(roh)) return null;
+      const w = Number(roh.replace(/\D/g, ""));
+      return roh.trim().startsWith("-") ? -w : w;
+    };
+    return { x:lesen(b[1]), y:lesen(b[2]), z:lesen(b[3]), dim };
+  }
+  const tp = normal.match(/tp\s+@\w+\s+(.*)$/i);
+  const zahlen = [...(tp ? tp[1] : normal).matchAll(/-?\d+(?:\.\d+)?/g)].map((m) => Math.floor(Number(m[0])));
+  if(zahlen.length >= 3) return { x:zahlen[0], y:zahlen[1], z:zahlen[2], dim };
+  if(zahlen.length === 2) return { x:zahlen[0], y:null, z:zahlen[1], dim };
+  return null;
+}
+
+/* ============================================================================
+   4 · API-VERTRAG  ·  + DEMO-Mock
+   ----------------------------------------------------------------------------
+   GET    /orte/welten                → { welten:[{ id, seed, anzahl }] }
+   POST   /orte/welten   { seed }     → { welt }            (legt 3 Dimensionen an)
+   GET    /orte/welten/:id            → { welt, dimensionen, typen, instanzen }
+   POST   /orte/instanzen             { dimensionId, kategorie, variante|null, x, y|null, z,
+                                        quelle:"screenshot"|"manuell" }
+                                      → { instanz, typ }   (Typ wird gefunden oder angelegt)
+   PATCH  /orte/instanzen/:id  { x, y, z }   → { instanz }  (Biome: 403)
+   DELETE /orte/instanzen/:id                → { ok:true }
+   POST   /orte/auslesen  (multipart „datei“) → { erkannt:{ titel, kategorie, variante, dimension,
+                                                  x, y|null, z } | null }
+   Typen:  typ = { id, kategorie, variante|null }   instanz = { id, dimensionId, featureTypeId, x, y, z }
+   ========================================================================== */
+const DEMO = {
+  // Wie Modul A: ohne Backend (file://) oder ohne ?live=1 läuft der Mock
+  enabled: !location.protocol.startsWith("http") || new URLSearchParams(location.search).get("live") !== "1",
+};
+
+/** Regeln für neue Instanzen – identisch im Server umzusetzen. Gibt Fehlertext oder null zurück. */
+function instanzPruefen(e, dimType, typVorhanden){
+  const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= CONFIG.weltGrenze;
+  if(!ganz(e.x) || !ganz(e.z) || (e.y != null && !ganz(e.y))) return "Ungültige Koordinaten";
+  if(e.kategorie !== EIGENE_ORTE && !FEATURE_KATEGORIEN[dimType].includes(e.kategorie))
+    return `„${e.kategorie}“ gibt es ${inDim(dimType)} nicht`;
+  if(e.kategorie === BIOMES){
+    if(e.quelle !== "screenshot") return "Biome können nur per Screenshot hinzugefügt werden";
+    const b = biomFinden(e.variante);
+    if(!b) return `„${e.variante}“ steht nicht in der Biom-Liste`;
+    if(b.dimension !== dimType) return `${b.name} liegt ${inDim(b.dimension)}`;
+  }
+  if(e.kategorie === EIGENE_ORTE && !String(e.variante || "").trim()) return "Eigene Orte brauchen einen Namen";
+  // Neue Varianten nur aus Screenshots – außer bei „Eigene Orte“
+  if(!typVorhanden && e.variante && e.quelle !== "screenshot" && e.kategorie !== EIGENE_ORTE)
+    return "Neue Varianten entstehen nur aus Screenshots";
+  return null;
+}
+
+const MOCK = (() => {
+  let naechste = 100;
+  const neueId = (p) => `${p}_${++naechste}`;
+  const welten = [
+    { id:"w_1", seed:"6889192652397090698" },
+    { id:"w_2", seed:"-4719278516927443210" },
+  ];
+  const dimensionen = welten.flatMap((w) => DIM_ORDER.map((type) => ({ id:`d_${w.id}_${type}`, worldId:w.id, type })));
+  const typen = [];
+  const instanzen = [];
+  const typFinden = (kat, variante) => typen.find((t) => t.kategorie === kat && (t.variante || null) === (variante || null));
+  const anlegen = (weltId, dim, kat, variante, x, y, z) => {
+    let t = typFinden(kat, variante);
+    if(!t){ t = { id:neueId("t"), kategorie:kat, variante:variante || null }; typen.push(t); }
+    instanzen.push({ id:neueId("i"), dimensionId:`d_${weltId}_${dim}`, featureTypeId:t.id, x, y, z });
+  };
+  // Beispielwelt (Seed aus dem Screenshot)
+  [
+    ["overworld", EIGENE_ORTE, "Hauptbasis", 212, 71, -388],
+    ["overworld", EIGENE_ORTE, "Eisenfarm", 260, 80, -420],
+    ["overworld", "Stronghold", "Stairway", -1884, null, -524],
+    ["overworld", "Village", null, 640, null, -1120],
+    ["overworld", "Village", null, -1296, null, 352],
+    ["overworld", "Ancient City", null, -824, -51, 1560],
+    ["overworld", "Ruined Portal", null, -312, null, -904],
+    ["overworld", "Trial Chamber", null, 1488, -20, 96],
+    ["overworld", BIOMES, "Cherry Grove", -600, null, 780],
+    ["overworld", BIOMES, "Cherry Grove", -520, null, 860],
+    ["overworld", BIOMES, "Savanna", 420, null, -300],
+    ["overworld", BIOMES, "Plains", 180, null, -520],
+    ["overworld", BIOMES, "River", 330, null, -760],
+    ["nether", EIGENE_ORTE, "Portal zur Basis", 26, 64, -49],
+    ["nether", "Nether Fortress", null, -120, null, 248],
+    ["nether", "Bastion", null, 344, null, -96],
+    ["nether", BIOMES, "Soul Sand Valley", 90, null, -300],
+    ["nether", BIOMES, "Crimson Forest", -60, null, 120],
+    ["end", "End City", null, 1320, null, -760],
+    ["end", "End Gateway", null, 96, 75, 0],
+  ].forEach(([dim, kat, v, x, y, z]) => anlegen("w_1", dim, kat, v, x, y, z));
+
+  // Simulierte Texterkennung: rotiert durch typische Fälle
+  const auslesen = [
+    { titel:"Stronghold (Stairway)", kategorie:"Stronghold", variante:"Stairway", dimension:"overworld", x:-1884, y:null, z:-524 },
+    { titel:"Cherry Grove", kategorie:BIOMES, variante:"Cherry Grove", dimension:"overworld", x:-1432, y:null, z:960 },
+    null,
+    { titel:"Soul Sand Valley", kategorie:BIOMES, variante:"Soul Sand Valley", dimension:"overworld", x:-40, y:null, z:210 },
+    { titel:"Bastion", kategorie:"Bastion", variante:null, dimension:"nether", x:-488, y:null, z:1016 },
+    { titel:"Village", kategorie:"Village", variante:null, dimension:"overworld", x:1808, y:null, z:-2240 },
+  ];
+  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0 };
+})();
+
+function mockApi(path, opts){
+  opts = opts || {};
+  const method = (opts.method || "GET").toUpperCase();
+  const body = typeof opts.body === "string" ? JSON.parse(opts.body) : null;
+  const ok = (data, status) => ({ ok:true, status:status || 200, data });
+  const fehler = (status, message) => ({ ok:false, status, data:{ error:"fehler", message } });
+  const anzahl = (weltId) => MOCK.instanzen.filter((i) => i.dimensionId.startsWith(`d_${weltId}_`)).length;
+  let m;
+
+  if(method === "GET" && path === "/orte/welten")
+    return ok({ welten:MOCK.welten.map((w) => ({ ...w, anzahl:anzahl(w.id) })) });
+
+  if(method === "POST" && path === "/orte/welten"){
+    const seed = String(body?.seed ?? "").trim();
+    if(!/^-?\d{1,20}$/.test(seed)) return fehler(400, "Seed muss eine Zahl sein");
+    if(MOCK.welten.some((w) => w.seed === seed)) return fehler(409, "Diese Welt gibt es schon");
+    const welt = { id:MOCK.neueId("w"), seed };
+    MOCK.welten.push(welt);
+    DIM_ORDER.forEach((type) => MOCK.dimensionen.push({ id:`d_${welt.id}_${type}`, worldId:welt.id, type }));
+    return ok({ welt }, 201);
+  }
+
+  if(method === "GET" && (m = path.match(/^\/orte\/welten\/([\w-]+)$/))){
+    const welt = MOCK.welten.find((w) => w.id === m[1]);
+    if(!welt) return fehler(404, "Welt nicht gefunden");
+    const dimensionen = MOCK.dimensionen.filter((d) => d.worldId === welt.id);
+    const dimIds = new Set(dimensionen.map((d) => d.id));
+    const instanzen = MOCK.instanzen.filter((i) => dimIds.has(i.dimensionId));
+    const typIds = new Set(instanzen.map((i) => i.featureTypeId));
+    // Alle Typen liefern (sie sind welt-übergreifend), damit Varianten wiederverwendbar sind
+    return ok({ welt, dimensionen, typen:MOCK.typen.slice(), instanzen:instanzen.map((i) => ({ ...i })), _benutzt:typIds.size });
+  }
+
+  if(method === "POST" && path === "/orte/instanzen"){
+    const d = MOCK.dimensionen.find((x) => x.id === body?.dimensionId);
+    if(!d) return fehler(400, "Dimension unbekannt");
+    const variante = body.variante ? String(body.variante).trim().slice(0, 60) : null;
+    const vorhanden = MOCK.typFinden(body.kategorie, variante);
+    const e = { ...body, variante };
+    const problem = instanzPruefen(e, d.type, Boolean(vorhanden));
+    if(problem) return fehler(422, problem);
+    let typ = vorhanden;
+    if(!typ){ typ = { id:MOCK.neueId("t"), kategorie:body.kategorie, variante }; MOCK.typen.push(typ); }
+    const instanz = { id:MOCK.neueId("i"), dimensionId:d.id, featureTypeId:typ.id, x:body.x, y:body.y ?? null, z:body.z };
+    MOCK.instanzen.push(instanz);
+    return ok({ instanz:{ ...instanz }, typ }, 201);
+  }
+
+  if((m = path.match(/^\/orte\/instanzen\/([\w-]+)$/))){
+    const i = MOCK.instanzen.find((x) => x.id === m[1]);
+    if(!i) return fehler(404, "Ort nicht gefunden");
+    if(method === "DELETE"){
+      MOCK.instanzen.splice(MOCK.instanzen.indexOf(i), 1);
+      return ok({ ok:true });
+    }
+    if(method === "PATCH"){
+      const t = MOCK.typen.find((x) => x.id === i.featureTypeId);
+      if(t.kategorie === BIOMES) return fehler(403, "Biome stammen aus Screenshots und sind fest");
+      const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= CONFIG.weltGrenze;
+      if(!ganz(body.x) || !ganz(body.z) || (body.y != null && !ganz(body.y))) return fehler(400, "Ungültige Koordinaten");
+      Object.assign(i, { x:body.x, y:body.y ?? null, z:body.z });
+      return ok({ instanz:{ ...i } });
+    }
+  }
+
+  if(method === "POST" && path === "/orte/auslesen"){
+    const erkannt = MOCK.auslesen[MOCK.ocr++ % MOCK.auslesen.length];
+    return ok({ erkannt:erkannt ? { ...erkannt } : null });
+  }
+  return fehler(404, "Unbekannter Pfad");
+}
+
+// --- Auth + fetch-Wrapper (gleiches Muster wie Modul A) --------------------
+function authHeaders(){
+  const t = new URLSearchParams(location.search).get("token");
+  return t ? { "Authorization":"Bearer " + t } : {};
+}
+async function api(path, opts){
+  opts = opts || {};
+  if(DEMO.enabled){
+    // Texterkennung dauert real 1–3 s, alles andere ist schnell
+    await new Promise((r) => setTimeout(r, path === "/orte/auslesen" ? 900 + Math.random()*700 : 80 + Math.random()*120));
+    return mockApi(path, opts);
+  }
+  const istFormular = opts.body instanceof FormData;
+  const headers = Object.assign(istFormular ? {} : { "Content-Type":"application/json" }, authHeaders(), opts.headers || {});
+  let res;
+  try { res = await fetch(path, Object.assign({}, opts, { headers })); }
+  catch(e){ return { ok:false, status:0, data:{ error:"network", message:"Keine Verbindung" } }; }
+  let data = null;
+  try { data = await res.json(); } catch {}
+  return { ok:res.ok, status:res.status, data };
+}
+const meldungAus = (r) => r?.data?.message || (r?.status === 0 ? "Keine Verbindung" : `Fehler ${r?.status}`);
+
+// --- Kleine Helfer ---------------------------------------------------------
+function esc(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
+}
+function lsLesen(k){ try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function lsSchreiben(k, v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+async function kopieren(text){
+  if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); return; }
+  // Im LAN ohne HTTPS gibt es keine Clipboard-API → klassischer Weg
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+  const ok = document.execCommand("copy"); ta.remove();
+  if(!ok) throw new Error("Kopieren nicht möglich");
+}
+const kurzSeed = (s) => s.length > 12 ? `${s.slice(0, 5)}…${s.slice(-4)}` : s;
+
+/* ============================================================================
+   5 · STATE
+   ========================================================================== */
+const st = {
+  welten: [],
+  weltId: lsLesen("orte.welt"),
+  welt: null,
+  dimensionen: [],
+  typen: [],
+  instanzen: [],
+  dim: lsLesen("orte.dim") || "overworld",
+  ansicht: lsLesen("orte.ansicht") || "liste",
+  filter: null,          // Kategorie oder null
+  suche: "",
+  zu: new Set(),         // zugeklappte Kategorien (Schlüssel dim:kategorie)
+  standort: lsLesen("orte.standort"),  // { x, y, z, dim } – nur auf diesem Gerät
+  importe: [],           // Screenshot-Prüfliste
+  sheet: null,           // welches Sheet offen ist
+};
+
+const typVon = (i) => st.typen.find((t) => t.id === i.featureTypeId);
+const dimTypeVon = (dimensionId) => st.dimensionen.find((d) => d.id === dimensionId)?.type;
+const dimIdVon = (type) => st.dimensionen.find((d) => d.type === type)?.id;
+const typLabel = (t) => t.variante ? `${t.kategorie} · ${t.variante}` : t.kategorie;
+const anzahlIn = (dim) => st.instanzen.filter((i) => i.dimensionId === dimIdVon(dim)).length;
+
+/** Instanzen der aktuellen Dimension mit Typ – gefiltert nach Kategorie + Suche */
+function sichtbareInstanzen(){
+  const dimId = dimIdVon(st.dim);
+  const q = st.suche.trim().toLowerCase();
+  return st.instanzen
+    .filter((i) => i.dimensionId === dimId)
+    .map((i) => ({ i, t:typVon(i) }))
+    .filter(({ i, t }) => t && (!st.filter || t.kategorie === st.filter)
+      && (!q || `${t.kategorie} ${t.variante || ""} ${i.x} ${i.z}`.toLowerCase().includes(q)));
+}
+
+/** Gleicher Typ (bzw. gleiches Biom) auf fast gleicher Stelle? */
+function duplikat(dim, kategorie, variante, x, z, ohneId){
+  const dimId = dimIdVon(dim);
+  return st.instanzen.find((i) => {
+    if(i.id === ohneId || i.dimensionId !== dimId) return false;
+    const t = typVon(i);
+    return t && t.kategorie === kategorie && (kategorie !== BIOMES || t.variante === variante)
+      && Math.abs(i.x - x) <= CONFIG.duplikatRadius && Math.abs(i.z - z) <= CONFIG.duplikatRadius;
+  }) || null;
+}
+
+/* ============================================================================
+   6 · THEME  ·  Dimension färbt die komplette Oberfläche (wie applyTheme in Modul A)
+   ========================================================================== */
+const $device = document.getElementById("device");
+function themaSetzen(el, dim){
+  for(const [k, v] of Object.entries(THEMES[dim].ui)) el.style.setProperty(k, v);
+}
+function applyTheme(dim){
+  // An :root, damit auch body/Header die Farben erben (color wird am body aufgelöst)
+  themaSetzen(document.documentElement, dim);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEMES[dim].ui["--bg"]);
+}
+
+/* ============================================================================
+   7 · LISTE  ·  Kopf, Reiter, HUD, Filter, Kategorie-Akkordion
+   ========================================================================== */
+const $sub = document.getElementById("orteSub");
+const $tabs = document.getElementById("orteTabs");
+const $hud = document.getElementById("orteHud");
+const $filter = document.getElementById("orteFilter");
+const $liste = document.getElementById("orteListe");
+const $suche = document.getElementById("orteSuche");
+
+const CHEVRON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+const ZIEL = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>';
+
+function coordHtml(x, y, z){
+  return `<span class="coord mono"><span class="lbl">X</span><span class="v">${zahl(x)}</span>`
+    + (y != null ? `<span class="lbl">Y</span><span class="v">${zahl(y)}</span>` : "")
+    + `<span class="lbl">Z</span><span class="v">${zahl(z)}</span></span>`;
+}
+function portalHtml(x, z, dim, klasse){
+  const u = umrechnen(x, z, dim);
+  if(!u) return "";
+  return `<span class="${klasse}"><span class="pico">⟷</span> ${dimLabel(u.dim)} <b>${zahl(u.x)} / ${zahl(u.z)}</b></span>`;
+}
+
+function renderKopf(){
+  const seed = st.welt ? `<span class="mono">${esc(kurzSeed(st.welt.seed))}</span>` : "…";
+  $sub.innerHTML = `Welt ${seed} · <b>${dimLabel(st.dim)}</b>`;
+  $tabs.querySelectorAll(".tab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.dim === st.dim);
+    b.querySelector(".zahl").textContent = anzahlIn(b.dataset.dim) || "";
+  });
+}
+
+function renderHud(){
+  const s = st.standort;
+  if(!s){
+    $hud.innerHTML = `<span class="chip leer" data-aktion="standort">${ZIEL} Standort setzen – sortiert nach Entfernung</span>`;
+    return;
+  }
+  $hud.innerHTML = `<span class="chip" data-aktion="standort">${coordHtml(s.x, s.y, s.z)}</span>`
+    + (umrechnen(s.x, s.z, s.dim) ? `<span class="chip portal-chip mono" data-aktion="standort">${portalHtml(s.x, s.z, s.dim, "").replace(/^<span class="">|<\/span>$/g, "")}</span>` : "")
+    + (s.dim !== st.dim ? `<span class="chip portal-chip" data-aktion="standort">Du bist ${inDim(s.dim)}</span>` : "");
+}
+
+function renderFilter(){
+  const dimId = dimIdVon(st.dim);
+  const zaehler = new Map();
+  for(const i of st.instanzen) if(i.dimensionId === dimId){
+    const k = typVon(i)?.kategorie; if(k) zaehler.set(k, (zaehler.get(k) || 0) + 1);
+  }
+  if(st.filter && !zaehler.has(st.filter)) st.filter = null;
+  const reihenfolge = [EIGENE_ORTE, ...FEATURE_KATEGORIEN[st.dim]].filter((k) => zaehler.has(k));
+  $filter.hidden = reihenfolge.length < 2;
+  $filter.innerHTML = `<button class="seg-btn ${st.filter ? "" : "active"}" data-filter="">Alle</button>`
+    + reihenfolge.map((k) => `<button class="seg-btn ${st.filter === k ? "active" : ""}" data-filter="${esc(k)}">${esc(k)}<span class="zahl">${zaehler.get(k)}</span></button>`).join("");
+}
+
+function renderListe(){
+  const eintraege = sichtbareInstanzen();
+  if(!eintraege.length){
+    const leer = anzahlIn(st.dim) === 0;
+    $liste.innerHTML = `<div class="module-empty" style="padding:40px 12px">
+      <div class="me-ico">${ZIEL}</div>
+      <div class="me-title">${leer ? `${inDim(st.dim).replace(/^i/, "I")} ist noch nichts erfasst` : "Nichts gefunden"}</div>
+      <div class="me-sub">${leer ? "Screenshot vom Seed-Map-Popup machen und unten auf „Screenshot“ tippen." : "Suche oder Filter anpassen."}</div>
+    </div>`;
+    return;
+  }
+  // Gruppieren: Kategorie → Variante → Instanzen (Datenmodell-Hierarchie)
+  const gruppen = new Map();
+  for(const e of eintraege){
+    if(!gruppen.has(e.t.kategorie)) gruppen.set(e.t.kategorie, new Map());
+    const g = gruppen.get(e.t.kategorie);
+    const v = e.t.variante || "";
+    if(!g.has(v)) g.set(v, []);
+    g.get(v).push(e);
+  }
+  const reihenfolge = [EIGENE_ORTE, ...FEATURE_KATEGORIEN[st.dim]].filter((k) => gruppen.has(k));
+  const weg = (i) => entfernung(st.standort, i.x, i.z, st.dim);
+  const sortieren = (a, b) => {
+    const wa = weg(a.i), wb = weg(b.i);
+    if(wa && wb) return wa.meter - wb.meter;
+    return st.instanzen.indexOf(b.i) - st.instanzen.indexOf(a.i);   // neueste zuerst
+  };
+
+  $liste.innerHTML = reihenfolge.map((kat) => {
+    const g = gruppen.get(kat);
+    const summe = [...g.values()].reduce((n, l) => n + l.length, 0);
+    const offen = !st.zu.has(`${st.dim}:${kat}`);
+    const varianten = [...g.keys()].sort((a, b) => (a === "" ? -1 : b === "" ? 1 : a.localeCompare(b, "de")));
+    const items = varianten.map((v) => {
+      const zeilen = g.get(v).sort(sortieren).map(({ i }) => {
+        const w = weg(i);
+        return `<button class="ort-zeile" data-id="${i.id}">
+          ${coordHtml(i.x, i.y, i.z)}
+          ${portalHtml(i.x, i.z, st.dim, "ort-portal mono")}
+          <span class="ort-weg">${w ? `<b>${entfernungText(w.meter)}</b><span>${w.richtung}${w.umgerechnet ? " ⟷" : ""}</span>` : ""}</span>
+        </button>`;
+      }).join("");
+      return (v ? `<div class="ort-typ">${esc(v)}</div>` : "") + zeilen;
+    }).join("");
+    return `<div class="ort-kat ${offen ? "open" : ""}" data-kat="${esc(kat)}">
+      <div class="ort-kat-head">
+        <span class="ort-kat-icon">${symbol(kat)}</span>
+        <span class="ort-kat-name">${esc(kat)}</span>
+        <span class="ort-kat-count">${summe}</span>
+        <span class="ort-kat-chevron">${CHEVRON}</span>
+      </div>
+      <div class="ort-kat-items">${items}</div>
+    </div>`;
+  }).join("");
+}
+
+function render(){
+  renderKopf();
+  if(st.ansicht === "liste"){ renderHud(); renderFilter(); renderListe(); }
+  else karte.zeichnen();
+  renderStatus();
+}
+
+/* ============================================================================
+   8 · KARTE  ·  Canvas; Biome nur rund um bekannte Punkte, Rest bleibt leer
+   ========================================================================== */
+const karte = (() => {
+  const canvas = document.getElementById("ortKarte");
+  const ctx = canvas.getContext("2d");
+  const $hinweis = document.getElementById("karteHinweis");
+  const $legende = document.getElementById("karteLegende");
+  const sicht = { cx:0, cz:0, zoom:0.25 };   // Mittelpunkt in Blöcken, Pixel pro Block
+  const zeiger = new Map();
+  let ziehen = null, pinch = null, bewegt = false, angepasst = null, dpr = 1;
+  let marker = [];   // für Tap-Erkennung
+
+  function groesse(){
+    const r = canvas.getBoundingClientRect();
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.round(r.width * dpr));
+    canvas.height = Math.max(1, Math.round(r.height * dpr));
+  }
+  const var_ = (n) => getComputedStyle($device).getPropertyValue(n).trim();
+  const zuBild = (x, z) => [(x - sicht.cx) * sicht.zoom + canvas.width / dpr / 2, (z - sicht.cz) * sicht.zoom + canvas.height / dpr / 2];
+  const zuWelt = (px, py) => [(px - canvas.width / dpr / 2) / sicht.zoom + sicht.cx, (py - canvas.height / dpr / 2) / sicht.zoom + sicht.cz];
+
+  /** Ausschnitt so wählen, dass alle Orte der Dimension (plus Standort) passen */
+  function alles(){
+    const punkte = sichtbareInstanzen().map(({ i }) => [i.x, i.z]);
+    if(st.standort){
+      const s = st.standort.dim === st.dim ? st.standort : null;
+      const u = !s && umrechnen(st.standort.x, st.standort.z, st.standort.dim);
+      if(s) punkte.push([s.x, s.z]); else if(u && u.dim === st.dim) punkte.push([u.x, u.z]);
+    }
+    if(!punkte.length){ Object.assign(sicht, { cx:0, cz:0, zoom:0.25 }); return; }
+    const xs = punkte.map((p) => p[0]), zs = punkte.map((p) => p[1]);
+    const [minX, maxX, minZ, maxZ] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
+    const w = canvas.width / dpr, h = canvas.height / dpr;
+    sicht.cx = (minX + maxX) / 2; sicht.cz = (minZ + maxZ) / 2;
+    const noetig = Math.min((w - 90) / Math.max(1, maxX - minX + CONFIG.biomRadius * 2), (h - 120) / Math.max(1, maxZ - minZ + CONFIG.biomRadius * 2));
+    sicht.zoom = Math.max(CONFIG.zoomMin, Math.min(1, noetig));
+  }
+
+  /** Rasterweite passend zum Zoom: 16 (Chunk), 128, 1024 … Blöcke */
+  function rasterweite(){
+    for(const s of [16, 64, 128, 512, 1024, 4096, 16384]) if(s * sicht.zoom >= 38) return s;
+    return 65536;
+  }
+
+  function zeichnen(){
+    if(st.ansicht !== "karte") return;
+    if(angepasst !== `${st.welt?.id}:${st.dim}`){ groesse(); alles(); angepasst = `${st.welt?.id}:${st.dim}`; }
+    const w = canvas.width / dpr, h = canvas.height / dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = var_("--bg"); ctx.fillRect(0, 0, w, h);
+
+    // Raster (unbekannte Fläche bleibt genau so: leer)
+    const r = rasterweite();
+    const [x0, z0] = zuWelt(0, 0), [x1, z1] = zuWelt(w, h);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255,255,255,.05)";
+    ctx.beginPath();
+    for(let x = Math.floor(x0 / r) * r; x <= x1; x += r){ const [px] = zuBild(x, 0); ctx.moveTo(Math.round(px) + .5, 0); ctx.lineTo(Math.round(px) + .5, h); }
+    for(let z = Math.floor(z0 / r) * r; z <= z1; z += r){ const [, py] = zuBild(0, z); ctx.moveTo(0, Math.round(py) + .5); ctx.lineTo(w, Math.round(py) + .5); }
+    ctx.stroke();
+    // Achsen X=0 / Z=0
+    ctx.strokeStyle = "rgba(255,255,255,.14)";
+    ctx.beginPath();
+    const [ax, az] = zuBild(0, 0);
+    ctx.moveTo(Math.round(ax) + .5, 0); ctx.lineTo(Math.round(ax) + .5, h);
+    ctx.moveTo(0, Math.round(az) + .5); ctx.lineTo(w, Math.round(az) + .5);
+    ctx.stroke();
+
+    const eintraege = sichtbareInstanzen();
+    marker = [];
+    const belegt = [];   // bereits gezeichnete Beschriftungen – keine Überlappung
+    const frei = (x, y, w, h) => {
+      if(belegt.some((r) => x < r.x + r.w && x + w > r.x && y < r.y + r.h && y + h > r.y)) return false;
+      belegt.push({ x, y, w, h }); return true;
+    };
+
+    // 1) Biome: Fläche nur um bekannte Punkte
+    const biome = eintraege.filter((e) => e.t.kategorie === BIOMES);
+    const legende = new Map();
+    for(const { i, t } of biome){
+      const b = biomFinden(t.variante); if(!b) continue;
+      const farbe = biomFarbe(b);
+      legende.set(b.name, farbe);
+      const [px, py] = zuBild(i.x, i.z);
+      const rad = Math.max(3, CONFIG.biomRadius * sicht.zoom);
+      ctx.beginPath(); ctx.arc(px, py, rad, 0, Math.PI * 2);
+      ctx.fillStyle = farbe + "8c"; ctx.fill();
+      ctx.strokeStyle = farbe; ctx.lineWidth = 1.5; ctx.stroke();
+      marker.push({ id:i.id, px, py, r:Math.max(rad, 14) });
+      if(rad > 26 && frei(px - 40, py - 8, 80, 16)){
+        ctx.fillStyle = "rgba(255,255,255,.9)";
+        ctx.font = "600 11px -apple-system, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(b.name, px, py);
+      }
+    }
+
+    // 2) Features + eigene Orte als Marker (Stil wie drawStructure in Modul A)
+    const akzent = var_("--accent");
+    const punkte = eintraege.filter((e) => e.t.kategorie !== BIOMES)
+      .sort((a, b) => (a.t.kategorie === EIGENE_ORTE) - (b.t.kategorie === EIGENE_ORTE));
+    for(const { i, t } of punkte){
+      const [px, py] = zuBild(i.x, i.z);
+      if(px < -20 || py < -20 || px > w + 20 || py > h + 20) continue;
+      const eigen = t.kategorie === EIGENE_ORTE;
+      ctx.beginPath(); ctx.arc(px, py, 11, 0, Math.PI * 2);
+      ctx.fillStyle = eigen ? akzent : "rgba(0,0,0,.6)"; ctx.fill();
+      ctx.strokeStyle = akzent; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = eigen ? var_("--accent-ink") : akzent;
+      ctx.font = "700 12px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(symbol(t.kategorie), px, py + 1);
+      if(sicht.zoom >= 0.12 || eigen){
+        const text = t.variante || t.kategorie;
+        ctx.font = "600 11px -apple-system, system-ui, sans-serif";
+        const tw = ctx.measureText(text).width;
+        if(frei(px - tw / 2 - 5, py + 14, tw + 10, 17)){
+          ctx.fillStyle = "rgba(0,0,0,.55)";
+          ctx.fillRect(px - tw / 2 - 5, py + 14, tw + 10, 17);
+          ctx.fillStyle = "#fff"; ctx.fillText(text, px, py + 23);
+        }
+      }
+      marker.push({ id:i.id, px, py, r:16 });
+    }
+
+    // 3) Eigener Standort
+    if(st.standort){
+      let s = st.standort.dim === st.dim ? st.standort : null;
+      if(!s){ const u = umrechnen(st.standort.x, st.standort.z, st.standort.dim); if(u && u.dim === st.dim) s = u; }
+      if(s){
+        const [px, py] = zuBild(s.x, s.z);
+        ctx.beginPath(); ctx.arc(px, py, 16, 0, Math.PI * 2); ctx.strokeStyle = akzent; ctx.globalAlpha = .45; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.fillStyle = akzent; ctx.fill();
+        ctx.font = "700 11px ui-monospace, monospace"; ctx.fillStyle = "#fff"; ctx.textAlign = "center";
+        ctx.fillText("Du", px, py - 24);
+      }
+    }
+
+    // Hinweis + Legende
+    const bekannt = biome.length;
+    $hinweis.innerHTML = `<span class="chip mono">${rasterweite()} Blöcke · ${bekannt ? `${bekannt} Biom-Punkte` : "keine Biome bekannt"}</span>`;
+    $legende.innerHTML = [...legende].slice(0, 6).map(([n, f]) => `<span class="chip"><i style="background:${f}"></i>${esc(n)}</span>`).join("");
+  }
+
+  function zoomen(faktor, px, py){
+    const w = canvas.width / dpr, h = canvas.height / dpr;
+    px = px ?? w / 2; py = py ?? h / 2;
+    const [wx, wz] = zuWelt(px, py);
+    sicht.zoom = Math.max(CONFIG.zoomMin, Math.min(CONFIG.zoomMax, sicht.zoom * faktor));
+    // Punkt unter dem Finger bleibt stehen
+    sicht.cx = wx - (px - w / 2) / sicht.zoom;
+    sicht.cz = wz - (py - h / 2) / sicht.zoom;
+    zeichnen();
+  }
+
+  const lokal = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  canvas.addEventListener("pointerdown", (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    zeiger.set(e.pointerId, lokal(e));
+    bewegt = false;
+    if(zeiger.size === 1){ const [px, py] = lokal(e); ziehen = { px, py, cx:sicht.cx, cz:sicht.cz }; }
+    if(zeiger.size === 2){
+      const [a, b] = [...zeiger.values()];
+      pinch = { abstand:Math.hypot(a[0] - b[0], a[1] - b[1]), zoom:sicht.zoom };
+      ziehen = null;
+    }
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if(!zeiger.has(e.pointerId)) return;
+    zeiger.set(e.pointerId, lokal(e));
+    if(pinch && zeiger.size === 2){
+      const [a, b] = [...zeiger.values()];
+      const faktor = Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch.abstand;
+      const ziel = Math.max(CONFIG.zoomMin, Math.min(CONFIG.zoomMax, pinch.zoom * faktor));
+      zoomen(ziel / sicht.zoom, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+      bewegt = true;
+      return;
+    }
+    if(ziehen){
+      const [px, py] = lokal(e);
+      if(Math.hypot(px - ziehen.px, py - ziehen.py) > 5) bewegt = true;
+      sicht.cx = ziehen.cx - (px - ziehen.px) / sicht.zoom;
+      sicht.cz = ziehen.cz - (py - ziehen.py) / sicht.zoom;
+      zeichnen();
+    }
+  });
+  const loslassen = (e) => {
+    const [px, py] = lokal(e);
+    zeiger.delete(e.pointerId);
+    if(zeiger.size < 2) pinch = null;
+    if(zeiger.size === 0){
+      if(!bewegt){
+        // Tap: nächsten Marker suchen (Features vor Biomen, weil später gezeichnet)
+        const treffer = marker.slice().reverse().find((m) => Math.hypot(m.px - px, m.py - py) <= m.r);
+        if(treffer) detailOeffnen(treffer.id);
+      }
+      ziehen = null;
+    }
+  };
+  canvas.addEventListener("pointerup", loslassen);
+  canvas.addEventListener("pointercancel", (e) => { zeiger.delete(e.pointerId); ziehen = null; pinch = null; });
+  canvas.addEventListener("wheel", (e) => { e.preventDefault(); const [px, py] = lokal(e); zoomen(e.deltaY < 0 ? 1.15 : 1 / 1.15, px, py); }, { passive:false });
+  document.getElementById("karteZoomIn").addEventListener("click", () => zoomen(1.6));
+  document.getElementById("karteZoomOut").addEventListener("click", () => zoomen(1 / 1.6));
+  document.getElementById("karteFit").addEventListener("click", () => { alles(); zeichnen(); });
+  window.addEventListener("resize", () => { if(st.ansicht === "karte"){ groesse(); zeichnen(); } });
+
+  return { zeichnen, neuAnpassen(){ angepasst = null; } };
+})();
+
+/* ============================================================================
+   9 · SHEETS  ·  Detail, Eintragen, Screenshot-Prüfliste, Welt, Standort
+   ========================================================================== */
+const $sheet = document.getElementById("orteSheet");
+const $sheetInhalt = document.getElementById("orteSheetInhalt");
+const $scrim = document.getElementById("scrim");
+const $sidebar = document.getElementById("sidebar");
+const X_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+
+function sheetOeffnen(art, html, dim){
+  st.sheet = art;
+  $sheetInhalt.innerHTML = html;
+  // Sheet in der Farbe „seiner“ Dimension (z. B. Detail eines Nether-Orts)
+  themaSetzen($sheet, dim || st.dim);
+  $sheet.scrollTop = 0;
+  $sheet.classList.add("open");
+  $scrim.classList.add("show");
+}
+function alleSchliessen(){
+  st.sheet = null;
+  $sheet.classList.remove("open");
+  $sidebar.classList.remove("open");
+  $scrim.classList.remove("show");
+}
+const kopfHtml = (titel, sub) => `<div class="sheet-kopf"><div class="titel"><h2>${titel}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
+  <button class="icon-btn" data-aktion="schliessen" aria-label="Schließen">${X_ICON}</button></div>`;
+
+function koordFelder(prefix, x, y, z){
+  const feld = (achse, wert, optional) => `<label class="field"><span class="field-label">${achse}</span>
+    <span class="koord-in"><input type="text" inputmode="numeric" autocomplete="off" data-koord="${prefix}${achse}"
+      value="${wert ?? ""}" placeholder="${optional ? "—" : "0"}" aria-label="${achse}-Koordinate">
+    <button type="button" class="vz" data-vz="${prefix}${achse}" aria-label="Vorzeichen ${achse}">±</button></span></label>`;
+  return `<div class="field-grid g3">${feld("X", x)}${feld("Y", y, true)}${feld("Z", z)}</div>`;
+}
+function koordLesen(prefix){
+  const lies = (a) => {
+    const v = $sheet.querySelector(`[data-koord="${prefix}${a}"]`)?.value.trim() ?? "";
+    if(v === "" || v === "-") return null;
+    const n = Number(v); return Number.isInteger(n) ? n : NaN;
+  };
+  return { x:lies("X"), y:lies("Y"), z:lies("Z") };
+}
+const koordGueltig = (k) => Number.isInteger(k.x) && Number.isInteger(k.z) && (k.y === null || Number.isInteger(k.y));
+
+// --- Detail ------------------------------------------------------------------
+function detailOeffnen(id, loeschenFragen){
+  const i = st.instanzen.find((x) => x.id === id); if(!i) return;
+  const t = typVon(i), dim = dimTypeVon(i.dimensionId);
+  const w = entfernung(st.standort, i.x, i.z, dim);
+  const biom = t.kategorie === BIOMES ? biomFinden(t.variante) : null;
+  const titel = esc(t.variante || t.kategorie);
+  const sub = `${t.variante ? `${esc(t.kategorie)} · ` : ""}${dimLabel(dim)}${biom ? ` · ${esc(biom.gruppe)}` : ""}`;
+  const html = kopfHtml(titel, sub) + `<div class="orte-inhalt">
+    <div class="result-card">
+      <div class="result-label">Koordinaten</div>
+      <div class="result-coords mono">
+        <span><span class="lbl">X</span><b>${zahl(i.x)}</b></span>
+        <span><span class="lbl">Y</span><b>${i.y != null ? zahl(i.y) : "—"}</b></span>
+        <span><span class="lbl">Z</span><b>${zahl(i.z)}</b></span>
+      </div>
+      ${umrechnen(i.x, i.z, dim) ? `<div class="result-row"><span class="rname">${portalHtml(i.x, i.z, dim, "mono")}</span></div>` : ""}
+      ${w ? `<div class="result-row"><span class="rname">Von deinem Standort</span><span><b class="rval mono">${entfernungText(w.meter)}</b><span class="runit">${w.richtung}</span></span></div>` : ""}
+    </div>
+    ${biom ? `<div class="banner info">Biome stammen aus Screenshots – die Koordinaten sind fest. Falsch erfasst? Löschen und neu auslesen.</div>` : ""}
+    <div class="knopf-raster">
+      <button class="btn-secondary" data-aktion="kopieren" data-text="${i.x} ${i.y ?? "~"} ${i.z}">Koordinaten</button>
+      <button class="btn-secondary" data-aktion="kopieren" data-text="${esc(tpBefehl(i.x, i.y, i.z, dim))}">/tp-Befehl</button>
+    </div>
+    ${loeschenFragen
+      ? `<div class="knopf-raster"><button class="btn-secondary" data-aktion="detail" data-id="${i.id}">Abbrechen</button><button class="btn-danger" data-aktion="loeschen" data-id="${i.id}">Wirklich löschen</button></div>`
+      : `<div class="knopf-raster">
+          ${biom ? "" : `<button class="btn-primary" data-aktion="bearbeiten" data-id="${i.id}">Bearbeiten</button>`}
+          <button class="btn-danger" data-aktion="loeschen-fragen" data-id="${i.id}" ${biom ? 'style="grid-column:1/-1"' : ""}>Löschen</button>
+        </div>`}
+  </div>`;
+  sheetOeffnen("detail", html, dim);
+}
+
+function bearbeitenOeffnen(id){
+  const i = st.instanzen.find((x) => x.id === id); if(!i) return;
+  const t = typVon(i), dim = dimTypeVon(i.dimensionId);
+  const html = kopfHtml("Koordinaten ändern", `${esc(typLabel(t))} · ${dimLabel(dim)}`) + `<div class="orte-inhalt">
+    <div class="field-group"><div class="field-group-label">Position</div>${koordFelder("b", i.x, i.y, i.z)}</div>
+    <div class="banner" id="bearbeitenBanner" hidden></div>
+    <div class="sheet-fuss"><button class="btn-secondary" data-aktion="detail" data-id="${i.id}">Zurück</button>
+      <button class="btn-primary" data-aktion="bearbeiten-speichern" data-id="${i.id}">Speichern</button></div>
+  </div>`;
+  sheetOeffnen("bearbeiten", html, dim);
+}
+
+// --- Eintragen (manuell) ---------------------------------------------------
+const form = { dim:"overworld", kategorie:EIGENE_ORTE, variante:"", neu:"" };
+function formularOeffnen(){
+  Object.assign(form, { dim:st.dim, kategorie:EIGENE_ORTE, variante:"", neu:"" });
+  formularRendern();
+}
+function formularRendern(behalten){
+  const alt = behalten ? koordLesen("f") : { x:null, y:null, z:null };
+  const kats = kategorienManuell(form.dim);
+  if(!kats.includes(form.kategorie)) form.kategorie = EIGENE_ORTE;
+  const vorhandene = st.typen.filter((t) => t.kategorie === form.kategorie && t.variante).map((t) => t.variante)
+    .filter((v, n, a) => a.indexOf(v) === n).sort((a, b) => a.localeCompare(b, "de"));
+  const eigen = form.kategorie === EIGENE_ORTE;
+  if(eigen && !vorhandene.includes(form.variante)) form.variante = "__neu__";
+  const typFeld = eigen
+    ? `<select class="orte-eingabe" id="formTyp">
+        <option value="__neu__" ${form.variante === "__neu__" ? "selected" : ""}>Neuer Ort …</option>
+        ${vorhandene.map((v) => `<option ${form.variante === v ? "selected" : ""}>${esc(v)}</option>`).join("")}
+      </select>
+      ${form.variante === "__neu__" ? `<input class="orte-eingabe" id="formNeu" maxlength="60" placeholder="z. B. Hauptbasis" value="${esc(form.neu)}">` : ""}`
+    : `<select class="orte-eingabe" id="formTyp">
+        <option value="" ${!form.variante ? "selected" : ""}>Ohne Variante</option>
+        ${vorhandene.map((v) => `<option ${form.variante === v ? "selected" : ""}>${esc(v)}</option>`).join("")}
+      </select>
+      <div class="result-hint">Neue Varianten (z. B. „Stairway“) entstehen nur aus Screenshots.</div>`;
+
+  const html = kopfHtml("Ort eintragen", "Von Hand – Biome nur per Screenshot") + `<div class="orte-inhalt">
+    <div class="field-group"><div class="field-group-label">Dimension</div>
+      <div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${form.dim === d ? "active" : ""}" data-form-dim="${d}">${dimLabel(d)}</button>`).join("")}</div></div>
+    <div class="field-group"><div class="field-group-label">Kategorie</div>
+      <select class="orte-eingabe" id="formKategorie">${kats.map((k) => `<option ${form.kategorie === k ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
+    <div class="field-group"><div class="field-group-label">${eigen ? "Ort" : "Variante"}</div>${typFeld}</div>
+    <div class="field-group"><div class="field-group-label">Koordinaten</div>
+      <input class="orte-eingabe mono" id="formEinfuegen" placeholder="Einfügen: „X: -1,884 Z: -524“ oder /tp …" autocomplete="off">
+      ${koordFelder("f", alt.x, alt.y, alt.z)}</div>
+    <div class="banner" id="formBanner" hidden></div>
+    <div class="sheet-fuss"><button class="btn-secondary" data-aktion="schliessen">Abbrechen</button>
+      <button class="btn-primary" data-aktion="formular-speichern">Speichern</button></div>
+  </div>`;
+  const scroll = $sheet.scrollTop;
+  sheetOeffnen("formular", html, form.dim);
+  if(behalten) $sheet.scrollTop = scroll;
+}
+
+async function formularSpeichern(){
+  const $b = document.getElementById("formBanner");
+  const k = koordLesen("f");
+  const eigen = form.kategorie === EIGENE_ORTE;
+  const variante = eigen ? (form.variante === "__neu__" ? (document.getElementById("formNeu")?.value || "").trim() : form.variante) : (form.variante || null);
+  if(!koordGueltig(k)) return banner($b, "bad", "Bitte X und Z als ganze Zahlen eintragen.");
+  if(eigen && !variante) return banner($b, "bad", "Wie heißt der Ort?");
+  const d = duplikat(form.dim, form.kategorie, variante, k.x, k.z);
+  if(d && !$b.dataset.trotzdem){
+    $b.dataset.trotzdem = "1";
+    return banner($b, "warn", `Hier gibt es schon „${typLabel(typVon(d))}“. Nochmal tippen, um trotzdem zu speichern.`);
+  }
+  const r = await api("/orte/instanzen", { method:"POST", body:JSON.stringify({
+    dimensionId:dimIdVon(form.dim), kategorie:form.kategorie, variante, x:k.x, y:k.y, z:k.z, quelle:"manuell" }) });
+  if(!r.ok) return banner($b, "bad", meldungAus(r));
+  uebernehmen(r.data);
+  alleSchliessen();
+  if(st.dim !== form.dim) dimWechseln(form.dim);
+  toast(`„${variante || form.kategorie}“ gespeichert`);
+  render();
+}
+
+// --- Screenshot-Prüfliste ------------------------------------------------------
+let importLaeuft = false;
+function importStarten(dateien){
+  for(const datei of dateien){
+    st.importe.push({ id:Math.random().toString(36).slice(2), url:URL.createObjectURL(datei), datei,
+      status:"wartet", erkannt:null, dim:"overworld", x:"", y:"", z:"", an:false, meldungen:[] });
+  }
+  importRendern();
+  importAbarbeiten();
+}
+async function importAbarbeiten(){
+  if(importLaeuft) return;
+  importLaeuft = true;
+  let e;
+  while((e = st.importe.find((x) => x.status === "wartet"))){
+    e.status = "lese"; importRendern();
+    const fd = new FormData(); fd.append("datei", e.datei);
+    const r = await api("/orte/auslesen", { method:"POST", body:fd });
+    if(!r.ok){ e.status = "fehler"; e.meldungen = [["bad", meldungAus(r)]]; importRendern(); continue; }
+    const k = r.data?.erkannt;
+    if(!k){ e.status = "leer"; e.meldungen = [["warn", "Kein Popup gefunden – ist die Karte aufgeklappt?"]]; importRendern(); continue; }
+    Object.assign(e, { status:"fertig", erkannt:k, dim:k.dimension, x:String(k.x), y:k.y != null ? String(k.y) : "", z:String(k.z), an:true, meldungen:[] });
+    if(k.kategorie === BIOMES){
+      const b = biomFinden(k.variante);
+      if(!b){ e.an = false; e.meldungen.push(["bad", `„${k.variante}“ steht nicht in der Biom-Liste`]); }
+      else if(b.dimension !== k.dimension){
+        e.dim = b.dimension;
+        e.meldungen.push(["warn", `Das Dropdown zeigte ${dimLabel(k.dimension)}, ${b.name} liegt aber ${inDim(b.dimension)} – dort übernommen.`]);
+      }
+    } else if(!FEATURE_KATEGORIEN[e.dim].includes(k.kategorie)){
+      e.an = false; e.meldungen.push(["bad", `„${k.kategorie}“ gibt es ${inDim(e.dim)} nicht`]);
+    }
+    const d = duplikat(e.dim, k.kategorie, k.variante, k.x, k.z);
+    const imStapel = st.importe.find((o) => o !== e && o.status === "fertig" && o.dim === e.dim && o.erkannt.kategorie === k.kategorie
+      && Math.abs(Number(o.x) - k.x) <= CONFIG.duplikatRadius && Math.abs(Number(o.z) - k.z) <= CONFIG.duplikatRadius);
+    if(d){ e.an = false; e.meldungen.push(["warn", `Schon erfasst als „${typLabel(typVon(d))}“`]); }
+    else if(imStapel){ e.an = false; e.meldungen.push(["warn", "Doppelt in dieser Auswahl"]); }
+    importRendern();
+  }
+  importLaeuft = false;
+}
+function importFelderLesen(){
+  for(const e of st.importe){
+    if(e.status !== "fertig" || !e.an) continue;
+    // Karte war vorher noch „Lese …“ → es gibt noch keine Felder, erkannte Werte behalten
+    if(!$sheet.querySelector(`[data-koord="i${e.id}X"]`)) continue;
+    const k = koordLesen(`i${e.id}`);
+    e.x = k.x == null ? "" : String(k.x); e.y = k.y == null ? "" : String(k.y); e.z = k.z == null ? "" : String(k.z);
+  }
+}
+function importRendern(){
+  if(st.sheet && st.sheet !== "import") return;
+  const scroll = $sheet.scrollTop;
+  if(st.sheet === "import") importFelderLesen();
+  const laufend = st.importe.some((e) => e.status === "wartet" || e.status === "lese");
+  const auswahl = st.importe.filter((e) => e.status === "fertig" && e.an).length;
+  const erkannt = st.importe.filter((e) => e.erkannt).length;
+  const karten = st.importe.map((e) => {
+    const k = e.erkannt;
+    const biom = k && k.kategorie === BIOMES;
+    const titel = e.status === "wartet" ? "Wartet …"
+      : e.status === "lese" ? '<span class="dreher"></span>Lese Text …'
+      : e.status === "gespeichert" ? `${esc(k.titel)} ✓`
+      : k ? esc(k.variante ? `${k.kategorie} · ${k.variante}` : k.kategorie)
+      : "Nicht erkannt";
+    const meta = k ? `<span class="pill">${dimLabel(e.dim)}</span>${biom ? '<span class="pill">Biom</span>' : ""}` : "";
+    const bearbeitbar = e.status === "fertig";
+    return `<div class="card ${bearbeitbar && !e.an ? "aus" : ""}" style="${k ? "" : ""}" data-import="${e.id}">
+      <div class="imp-kopf">
+        <img src="${e.url}" alt="">
+        <div class="text"><div class="card-title">${titel}</div><div class="card-meta">${meta}</div></div>
+        ${bearbeitbar ? `<button class="switch ${e.an ? "on" : ""}" data-aktion="import-an" data-id="${e.id}" role="switch" aria-checked="${e.an}" aria-label="Übernehmen"></button>` : ""}
+      </div>
+      ${e.meldungen.map(([art, text]) => `<div class="banner ${art}">${esc(text)}</div>`).join("")}
+      ${bearbeitbar && e.an ? `
+        ${biom ? "" : `<div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${e.dim === d ? "active" : ""}" data-import-dim="${d}" data-id="${e.id}">${dimLabel(d)}</button>`).join("")}</div>`}
+        ${koordFelder(`i${e.id}`, e.x, e.y, e.z)}` : ""}
+    </div>`;
+  }).join("");
+  const html = kopfHtml(st.importe.length === 1 ? "Screenshot auslesen" : `${st.importe.length} Screenshots auslesen`,
+    laufend ? "Texterkennung läuft …" : `${erkannt} von ${st.importe.length} erkannt`) + `<div class="orte-inhalt">
+    ${karten}
+    <div class="sheet-fuss">
+      <button class="btn-secondary" data-aktion="import-mehr" aria-label="Weitere Screenshots">+ Mehr</button>
+      <button class="btn-primary" data-aktion="import-speichern" ${auswahl ? "" : "disabled"}>${laufend && !auswahl ? "Lese …" : auswahl === 1 ? "1 Ort speichern" : `${auswahl} Orte speichern`}</button>
+    </div>
+  </div>`;
+  sheetOeffnen("import", html);
+  $sheet.scrollTop = scroll;
+}
+async function importSpeichern(){
+  importFelderLesen();
+  const auswahl = st.importe.filter((e) => e.status === "fertig" && e.an);
+  let gespeichert = 0; const dims = new Set();
+  for(const e of auswahl){
+    const x = Number(e.x), z = Number(e.z), y = e.y === "" ? null : Number(e.y);
+    if(!Number.isInteger(x) || !Number.isInteger(z) || (y !== null && !Number.isInteger(y))){
+      e.meldungen = [["bad", "Koordinaten prüfen"]]; continue;
+    }
+    const r = await api("/orte/instanzen", { method:"POST", body:JSON.stringify({
+      dimensionId:dimIdVon(e.dim), kategorie:e.erkannt.kategorie, variante:e.erkannt.variante, x, y, z, quelle:"screenshot" }) });
+    if(r.ok){ uebernehmen(r.data); e.status = "gespeichert"; e.meldungen = []; gespeichert++; dims.add(e.dim); }
+    else e.meldungen = [["bad", meldungAus(r)]];
+  }
+  if(gespeichert === auswahl.length){
+    st.importe.forEach((e) => URL.revokeObjectURL(e.url));
+    st.importe = [];
+    alleSchliessen();
+    if(dims.size === 1) dimWechseln([...dims][0]);
+    karte.neuAnpassen();
+    toast(gespeichert === 1 ? "1 Ort gespeichert" : `${gespeichert} Orte gespeichert`);
+    render();
+  } else {
+    render(); importRendern();
+    toast(`${auswahl.length - gespeichert} nicht gespeichert`, true);
+  }
+}
+
+// --- Welt ----------------------------------------------------------------------
+function weltOeffnen(meldung){
+  const html = kopfHtml("Welt", "Jede Welt hat einen Seed und drei Dimensionen") + `<div class="orte-inhalt">
+    <div class="list-stack">${st.welten.map((w) => `
+      <button class="card welt-zeile ${w.id === st.weltId ? "aktiv" : ""}" data-aktion="welt-waehlen" data-id="${w.id}" style="flex-direction:row">
+        <span style="flex:1;min-width:0"><span class="card-meta">Seed</span><span class="seed" style="display:block">${esc(w.seed)}</span></span>
+        <span class="card-meta">${w.anzahl ?? 0} Orte</span>
+        ${w.id === st.weltId ? '<span class="pill">Aktiv</span>' : ""}
+      </button>`).join("")}</div>
+    <div class="field-group"><div class="field-group-label">Neue Welt</div>
+      <div class="create-row"><div class="input-line">
+        <input id="weltSeed" type="text" inputmode="numeric" placeholder="Seed, z. B. 6889192652397090698" autocomplete="off">
+        <button class="btn-primary" data-aktion="welt-anlegen">Anlegen</button>
+      </div></div></div>
+    <div class="banner ${meldung ? meldung[0] : ""}" id="weltBanner" ${meldung ? "" : "hidden"}>${meldung ? esc(meldung[1]) : ""}</div>
+    ${st.welt ? `<button class="btn-secondary" data-aktion="kopieren" data-text="${esc(st.welt.seed)}">Seed kopieren</button>` : ""}
+  </div>`;
+  sheetOeffnen("welt", html);
+}
+
+// --- Standort ------------------------------------------------------------------
+let standortDim = "overworld";
+function standortOeffnen(){
+  const s = st.standort;
+  standortDim = s?.dim || st.dim;
+  const html = kopfHtml("Mein Standort", "Nur auf diesem Gerät – für Entfernung und Richtung") + `<div class="orte-inhalt">
+    <div class="field-group"><div class="field-group-label">Dimension</div>
+      <div class="tool-segment" id="standortDim">${DIM_ORDER.map((d) => `<button class="seg-btn ${standortDim === d ? "active" : ""}" data-standort-dim="${d}">${dimLabel(d)}</button>`).join("")}</div></div>
+    <div class="field-group"><div class="field-group-label">Position</div>
+      <input class="orte-eingabe mono" id="standortEinfuegen" placeholder="Einfügen: F3-Text oder „X: … Z: …“" autocomplete="off">
+      ${koordFelder("s", s?.x, s?.y, s?.z)}</div>
+    <div class="sheet-fuss">
+      ${s ? '<button class="btn-secondary" data-aktion="standort-weg">Entfernen</button>' : ""}
+      <button class="btn-primary" data-aktion="standort-speichern">Übernehmen</button>
+    </div>
+  </div>`;
+  sheetOeffnen("standort", html, standortDim);
+}
+
+// --- Banner + Toast ------------------------------------------------------------
+function banner(el, art, text){
+  el.className = "banner " + art; el.textContent = text; el.hidden = false;
+  el.scrollIntoView({ block:"nearest", behavior:"smooth" });
+}
+const $toast = document.getElementById("orteToast");
+let toastTimer = null;
+function toast(text, fehler){
+  clearTimeout(toastTimer);
+  $toast.textContent = text; $toast.classList.toggle("fehler", Boolean(fehler)); $toast.hidden = false;
+  toastTimer = setTimeout(() => { $toast.hidden = true; }, CONFIG.toastMs);
+}
+
+/* ============================================================================
+   9b · BEREICHE  ·  Registry für Sidebar (und später Dashboard-Widgets)
+   ----------------------------------------------------------------------------
+   Jeder Bereich ist in sich geschlossen: eigener State, eigene API-Pfade,
+   eigenes Rendering. Modul-Vertrag für die Widget-Nutzung:
+     { key, titel, icon, mount(el), unmount() }
+   Im Prototyp ist nur „orte“ enthalten; die übrigen Einträge verweisen auf
+   die Hauptdatei (modul-a-live-karte.html) und werden dort eingehängt.
+   ========================================================================== */
+const ICON = Object.freeze({
+  map:'<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
+  toolbox:'<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.3 2.3-2-2 2.3-2.3z"/>',
+  orte:'<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  achievements:'<path d="M8 21h8M12 17v4M17 4H7v5a5 5 0 0 0 10 0V4z"/><path d="M17 6h3v3a3 3 0 0 1-3 3M7 6H4v3a3 3 0 0 0 3 3"/>',
+  backups:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/>',
+  access:'<circle cx="12" cy="7" r="3.2"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="18.5" cy="6" r="2.2"/>',
+});
+const BEREICHE = [
+  { key:"map",          titel:"Live-Karte" },
+  { key:"toolbox",      titel:"Toolbox" },
+  { key:"orte",         titel:"Orte", mount:() => {}, unmount:() => alleSchliessen() },
+  { key:"achievements", titel:"Erfolge" },
+  { key:"backups",      titel:"Backups" },
+  { key:"access",       titel:"Zugänge", nurAdmin:true },
+];
+function sidebarBauen(aktiv){
+  document.getElementById("sbNav").innerHTML = BEREICHE.map((b) => {
+    const da = typeof b.mount === "function";
+    return `<button class="nav-item ${b.key === aktiv ? "active" : ""} ${da ? "" : "soon"}" data-module="${b.key}">
+      <span class="ico"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICON[b.key]}</svg></span>
+      ${esc(b.titel)}${da ? "" : '<span class="soon-tag">Hauptdatei</span>'}
+    </button>`;
+  }).join("");
+}
+
+/* ============================================================================
+   10 · DATEN, EVENTS, INIT
+   ========================================================================== */
+function uebernehmen({ instanz, typ }){
+  if(typ && !st.typen.some((t) => t.id === typ.id)) st.typen.push(typ);
+  if(instanz){
+    const alt = st.instanzen.findIndex((i) => i.id === instanz.id);
+    if(alt >= 0) st.instanzen[alt] = instanz; else st.instanzen.push(instanz);
+    const w = st.welten.find((x) => x.id === st.weltId); if(w && alt < 0) w.anzahl = (w.anzahl || 0) + 1;
+  }
+}
+async function weltenLaden(){
+  const r = await api("/orte/welten");
+  if(!r.ok){ toast(meldungAus(r), true); return; }
+  st.welten = r.data.welten;
+  if(!st.welten.some((w) => w.id === st.weltId)) st.weltId = st.welten[0]?.id || null;
+  if(st.weltId) await weltLaden(st.weltId);
+}
+async function weltLaden(id){
+  const r = await api(`/orte/welten/${id}`);
+  if(!r.ok){ toast(meldungAus(r), true); return; }
+  Object.assign(st, { weltId:id, welt:r.data.welt, dimensionen:r.data.dimensionen, typen:r.data.typen, instanzen:r.data.instanzen, filter:null });
+  lsSchreiben("orte.welt", id);
+  karte.neuAnpassen();
+  render();
+}
+function dimWechseln(dim){
+  st.dim = dim; st.filter = null;
+  lsSchreiben("orte.dim", dim);
+  applyTheme(dim);
+  karte.neuAnpassen();
+  render();
+}
+function ansichtWechseln(a){
+  st.ansicht = a; lsSchreiben("orte.ansicht", a);
+  document.querySelectorAll("#orteAnsicht .seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.ansicht === a));
+  document.getElementById("orteStage").hidden = a !== "liste";
+  document.getElementById("karteStage").hidden = a !== "karte";
+  karte.neuAnpassen();
+  render();
+}
+function renderStatus(){
+  document.getElementById("orteStatusLab").textContent = DEMO.enabled ? "Demo" : "Verbunden";
+}
+
+// Reiter, Ansicht, Liste
+$tabs.addEventListener("click", (e) => { const b = e.target.closest(".tab"); if(b && b.dataset.dim !== st.dim) dimWechseln(b.dataset.dim); });
+document.getElementById("orteAnsicht").addEventListener("click", (e) => { const b = e.target.closest(".seg-btn"); if(b) ansichtWechseln(b.dataset.ansicht); });
+$suche.addEventListener("input", () => { st.suche = $suche.value; renderListe(); });
+$filter.addEventListener("click", (e) => { const b = e.target.closest(".seg-btn"); if(!b) return; st.filter = b.dataset.filter || null; renderFilter(); renderListe(); });
+$hud.addEventListener("click", (e) => { if(e.target.closest("[data-aktion=standort]")) standortOeffnen(); });
+$liste.addEventListener("click", (e) => {
+  const zeile = e.target.closest(".ort-zeile");
+  if(zeile) return detailOeffnen(zeile.dataset.id);
+  const kopf = e.target.closest(".ort-kat-head");
+  if(kopf){
+    const kat = kopf.parentElement.dataset.kat, key = `${st.dim}:${kat}`;
+    st.zu.has(key) ? st.zu.delete(key) : st.zu.add(key);
+    kopf.parentElement.classList.toggle("open");
+  }
+});
+
+// Bottom Bar
+const $datei = document.getElementById("orteDatei");
+document.getElementById("orteScreenshotBtn").addEventListener("click", () => $datei.click());
+$datei.addEventListener("change", () => { const d = [...$datei.files]; $datei.value = ""; if(d.length) importStarten(d); });
+document.getElementById("orteEintragenBtn").addEventListener("click", formularOeffnen);
+document.getElementById("orteWeltBtn").addEventListener("click", () => weltOeffnen());
+document.getElementById("orteStatusBtn").addEventListener("click", () =>
+  toast(DEMO.enabled ? "Demo-Modus – Daten nur in diesem Tab" : "Mit dem Companion-Server verbunden"));
+
+// Sidebar
+document.getElementById("burgerBtn").addEventListener("click", () => { $sidebar.classList.add("open"); $scrim.classList.add("show"); });
+document.getElementById("sbNav").addEventListener("click", (e) => {
+  const item = e.target.closest(".nav-item"); if(!item) return;
+  alleSchliessen();
+  const bereich = BEREICHE.find((b) => b.key === item.dataset.module);
+  if(!bereich?.mount) toast(`„${bereich?.titel}“ liegt in der Hauptdatei`);
+});
+$scrim.addEventListener("click", () => {
+  if(st.sheet === "import" && st.importe.some((e) => e.status !== "gespeichert")) importFelderLesen();
+  alleSchliessen();
+});
+
+// Sheet: Klicks
+$sheet.addEventListener("click", async (e) => {
+  const vz = e.target.closest("[data-vz]");
+  if(vz){
+    const inp = $sheet.querySelector(`[data-koord="${vz.dataset.vz}"]`);
+    inp.value = inp.value.startsWith("-") ? inp.value.slice(1) : "-" + inp.value;
+    return;
+  }
+  const fd = e.target.closest("[data-form-dim]");
+  if(fd){ form.dim = fd.dataset.formDim; return formularRendern(true); }
+  const sd = e.target.closest("[data-standort-dim]");
+  if(sd){
+    standortDim = sd.dataset.standortDim;
+    $sheet.querySelectorAll("[data-standort-dim]").forEach((b) => b.classList.toggle("active", b === sd));
+    return themaSetzen($sheet, standortDim);
+  }
+  const idim = e.target.closest("[data-import-dim]");
+  if(idim){
+    importFelderLesen();
+    const imp = st.importe.find((x) => x.id === idim.dataset.id);
+    imp.dim = idim.dataset.importDim;
+    return importRendern();
+  }
+  const a = e.target.closest("[data-aktion]"); if(!a) return;
+  const id = a.dataset.id;
+  switch(a.dataset.aktion){
+    case "schliessen": alleSchliessen(); break;
+    case "detail": detailOeffnen(id); break;
+    case "kopieren":
+      try { await kopieren(a.dataset.text); toast("Kopiert"); } catch { toast("Kopieren nicht möglich", true); }
+      break;
+    case "loeschen-fragen": detailOeffnen(id, true); break;
+    case "loeschen": {
+      const r = await api(`/orte/instanzen/${id}`, { method:"DELETE" });
+      if(!r.ok) return toast(meldungAus(r), true);
+      st.instanzen = st.instanzen.filter((i) => i.id !== id);
+      const w = st.welten.find((x) => x.id === st.weltId); if(w) w.anzahl = Math.max(0, (w.anzahl || 1) - 1);
+      alleSchliessen(); toast("Gelöscht"); render();
+      break;
+    }
+    case "bearbeiten": bearbeitenOeffnen(id); break;
+    case "bearbeiten-speichern": {
+      const k = koordLesen("b"), $b = document.getElementById("bearbeitenBanner");
+      if(!koordGueltig(k)) return banner($b, "bad", "Bitte X und Z als ganze Zahlen eintragen.");
+      const r = await api(`/orte/instanzen/${id}`, { method:"PATCH", body:JSON.stringify(k) });
+      if(!r.ok) return banner($b, "bad", meldungAus(r));
+      uebernehmen(r.data); render(); detailOeffnen(id); toast("Gespeichert");
+      break;
+    }
+    case "formular-speichern": formularSpeichern(); break;
+    case "import-an": {
+      importFelderLesen();
+      const imp = st.importe.find((x) => x.id === id); imp.an = !imp.an;
+      importRendern(); break;
+    }
+    case "import-mehr": importFelderLesen(); $datei.click(); break;
+    case "import-speichern": importSpeichern(); break;
+    case "welt-waehlen":
+      if(id !== st.weltId){ await weltLaden(id); toast("Welt gewechselt"); }
+      alleSchliessen(); break;
+    case "welt-anlegen": {
+      const seed = document.getElementById("weltSeed").value.trim();
+      const r = await api("/orte/welten", { method:"POST", body:JSON.stringify({ seed }) });
+      if(!r.ok) return weltOeffnen(["bad", meldungAus(r)]);
+      st.welten.push({ ...r.data.welt, anzahl:0 });
+      await weltLaden(r.data.welt.id);
+      alleSchliessen(); toast("Welt angelegt");
+      break;
+    }
+    case "standort-speichern": {
+      const k = koordLesen("s");
+      if(!koordGueltig(k)) return toast("X und Z als ganze Zahlen eintragen", true);
+      st.standort = { ...k, dim:standortDim }; lsSchreiben("orte.standort", st.standort);
+      alleSchliessen(); render(); break;
+    }
+    case "standort-weg":
+      st.standort = null; lsSchreiben("orte.standort", null); alleSchliessen(); render(); break;
+  }
+});
+
+// Sheet: Eingaben
+$sheet.addEventListener("input", (e) => {
+  const t = e.target;
+  if(t.dataset.koord){ t.value = t.value.replace(/[^\d-]/g, "").replace(/(?!^)-/g, ""); return; }
+  if(t.id === "formNeu"){ form.neu = t.value; return; }
+  if(t.id === "formEinfuegen" || t.id === "standortEinfuegen"){
+    const k = koordinatenErkennen(t.value); if(!k) return;
+    const p = t.id === "formEinfuegen" ? "f" : "s";
+    const setze = (a, v) => { const el = $sheet.querySelector(`[data-koord="${p}${a}"]`); if(el) el.value = v ?? ""; };
+    setze("X", k.x); setze("Y", k.y); setze("Z", k.z);
+    if(k.dim){
+      if(p === "f" && k.dim !== form.dim){ form.dim = k.dim; formularRendern(true); }
+      if(p === "s"){ standortDim = k.dim; $sheet.querySelectorAll("[data-standort-dim]").forEach((b) => b.classList.toggle("active", b.dataset.standortDim === k.dim)); themaSetzen($sheet, k.dim); }
+    }
+  }
+});
+$sheet.addEventListener("change", (e) => {
+  if(e.target.id === "formKategorie"){ form.kategorie = e.target.value; form.variante = ""; formularRendern(true); }
+  if(e.target.id === "formTyp"){ form.variante = e.target.value; formularRendern(true); }
+});
+
+// Statusleiste: echte Uhrzeit
+function uhr(){ document.getElementById("uhr").textContent = new Date().toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit" }); }
+
+function init(){
+  sidebarBauen("orte");
+  applyTheme(st.dim);
+  ansichtWechseln(st.ansicht);
+  uhr(); setInterval(uhr, 30000);
+  weltenLaden();
+}
+init();
+</script>
+</body>
+</html>
