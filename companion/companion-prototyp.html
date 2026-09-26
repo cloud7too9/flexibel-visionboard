@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0d0f13">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Karte · Koordinaten-Sammlung</title>
+<title>Companion · Prototyp (Karte + Sammelobjekte)</title>
 <style>
 /* ---- Basis: 1:1 aus modul-a-live-karte.html ---------------------------- */
 /* ============================================================================
@@ -633,6 +633,24 @@ button.switch { padding:0; }
 .welt-zeile.aktiv { border-color:var(--accent); }
 .welt-zeile .seed { font-family:ui-monospace,monospace; font-size:13.5px; font-weight:600; word-break:break-all; }
 
+/* ---- Sammelobjekte (nutzt .ach-* aus dem Erfolge-Modul) ------------------ */
+.ach-cat .ach-cat-icon { background:var(--accent-soft); color:var(--accent); font-family:ui-monospace,monospace; font-weight:700; }
+.ach-cat .ach-cat-dim { font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-left:8px; }
+.sam-item { cursor:pointer; align-items:center; }
+.sam-item:active { background:var(--surface-3); }
+.sam-item .en { font-weight:600; color:var(--text-faint); font-size:11.5px; margin-left:6px; }
+.sam-item .ach-foot .weg { color:var(--accent); font-family:ui-monospace,monospace; font-weight:700; }
+.sam-item .ach-foot .von { color:var(--text-dim); }
+.sam-check { width:34px; height:34px; border-radius:50%; border:1.5px solid var(--border); background:transparent;
+  color:transparent; display:grid; place-items:center; flex:0 0 auto; cursor:pointer; padding:0;
+  transition:background .2s, border-color .2s, color .2s; }
+.sam-check svg { width:18px; height:18px; }
+.ach-item.earned .sam-check { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+.fund-zeile { display:flex; align-items:center; gap:10px; flex-direction:row; }
+.fund-zeile .coord { flex:1; font-size:13px; }
+.fund-zeile .weg { font-family:ui-monospace,monospace; font-weight:700; color:var(--accent); font-size:13px; }
+.fund-zeile .btn-secondary { min-height:36px; padding:7px 12px; }
+
 /* Toast */
 .orte-toast { position:absolute; left:50%; bottom:calc(86px + env(safe-area-inset-bottom)); transform:translateX(-50%);
   z-index:30; font-size:13px; font-weight:600; white-space:nowrap; max-width:calc(100% - 32px); overflow:hidden; text-overflow:ellipsis; }
@@ -654,10 +672,8 @@ button.switch { padding:0; }
     <button class="icon-btn" id="burgerBtn" aria-label="Bereiche"><span class="burger"><span></span></span></button>
     <div class="title-block">
       <div class="title-row">
-        <span class="compass">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
-        </span>
-        <h1>Karte</h1>
+        <span class="compass" id="kopfIcon"></span>
+        <h1 id="kopfTitel">Karte</h1>
       </div>
       <div class="subtitle" id="orteSub">Welt · <b>Oberwelt</b></div>
     </div>
@@ -733,6 +749,38 @@ button.switch { padding:0; }
       </nav>
       <input type="file" id="orteDatei" accept="image/*" multiple hidden>
     </section>
+    <!-- === Modul: Sammelobjekte · Rüstungs-Modifikationen =================== -->
+    <section class="module" data-module="sammelobjekte" id="moduleSammel">
+      <div class="ach-stage" id="samStage">
+        <div class="ach-header">
+          <div class="ach-header-row">
+            <div class="ach-meter">
+              <div class="ach-meter-num mono"><b id="samGefunden">0</b><span>/<span id="samGesamt">0</span></span></div>
+              <div class="ach-meter-lbl">gefunden</div>
+            </div>
+            <div class="ach-meter">
+              <div class="ach-meter-num mono"><b id="samFundorte">0</b><span>/<span id="samFundorteGesamt">0</span></span></div>
+              <div class="ach-meter-lbl">Fundorte bekannt</div>
+            </div>
+            <div class="ach-meter">
+              <div class="ach-meter-num mono"><b id="samProzent">0</b><span>%</span></div>
+              <div class="ach-meter-lbl">Fortschritt</div>
+            </div>
+          </div>
+          <div class="ach-bar"><span id="samBalken"></span></div>
+        </div>
+        <div class="ach-filter" id="samFilter">
+          <button class="seg-btn active" data-filter="alle">Alle</button>
+          <button class="seg-btn" data-filter="offen">Offen</button>
+          <button class="seg-btn" data-filter="gefunden">Gefunden</button>
+        </div>
+        <div class="ach-list" id="samListe"></div>
+      </div>
+      <nav class="bottombar">
+        <div class="bb-placeholder">Gilt für die ganze Welt · alle können abhaken</div>
+      </nav>
+    </section>
+
   </main>
 
   <!-- EBENE 1 · Sidebar – wird aus BEREICHE gebaut -->
@@ -877,6 +925,37 @@ const SYMBOL = Object.freeze({
 });
 const symbol = (kat) => SYMBOL[kat] || "•";
 
+/* Sammelobjekte: Rüstungs-Modifikationen (Schmiedevorlagen). Deutsche Spielnamen laut
+   Minecraft-Wiki, Fundort = FeatureCategory der Karte → Verknüpfung zu bekannten Orten.
+   Stand: 18 Rüstungsbesätze (inkl. Fluss/Bolzen aus 1.21) + Netheritaufwertung. */
+const SAMMELOBJEKTE = Object.freeze([
+  { id:"sentry",    name:"Wachen",      en:"Sentry",    kategorie:"Outpost",         dim:"overworld", quelle:"Truhe im Plünderer-Außenposten" },
+  { id:"dune",      name:"Dünen",       en:"Dune",      kategorie:"Desert Temple",   dim:"overworld", quelle:"Truhe in der Wüstenpyramide" },
+  { id:"wild",      name:"Wildnis",     en:"Wild",      kategorie:"Jungle Temple",   dim:"overworld", quelle:"Truhe im Dschungeltempel" },
+  { id:"coast",     name:"Küsten",      en:"Coast",     kategorie:"Shipwreck",       dim:"overworld", quelle:"Schatz-, Karten- oder Vorratstruhe im Schiffswrack" },
+  { id:"wayfinder", name:"Wegfinder",   en:"Wayfinder", kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
+  { id:"raiser",    name:"Aufzieher",   en:"Raiser",    kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
+  { id:"shaper",    name:"Gestalter",   en:"Shaper",    kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
+  { id:"host",      name:"Gastwirts",   en:"Host",      kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
+  { id:"vex",       name:"Plagegeist",  en:"Vex",       kategorie:"Mansion",         dim:"overworld", quelle:"Truhe im Waldanwesen" },
+  { id:"tide",      name:"Gezeiten",    en:"Tide",      kategorie:"Monument",        dim:"overworld", quelle:"Drop vom Großen Wächter im Ozeanmonument" },
+  { id:"ward",      name:"Warthof",     en:"Ward",      kategorie:"Ancient City",    dim:"overworld", quelle:"Truhe in der Antiken Stätte" },
+  { id:"silence",   name:"Stille",      en:"Silence",   kategorie:"Ancient City",    dim:"overworld", quelle:"Truhe in der Antiken Stätte – sehr selten" },
+  { id:"bolt",      name:"Bolzen",      en:"Bolt",      kategorie:"Trial Chamber",   dim:"overworld", quelle:"Tresor in der Prüfungskammer" },
+  { id:"flow",      name:"Fluss",       en:"Flow",      kategorie:"Trial Chamber",   dim:"overworld", quelle:"Unheilvoller Tresor in der Prüfungskammer" },
+  { id:"eye",       name:"Augen",       en:"Eye",       kategorie:"Stronghold",      dim:"overworld", quelle:"Truhe am Altar oder in der Bibliothek der Festung" },
+  { id:"rib",       name:"Rippen",      en:"Rib",       kategorie:"Nether Fortress", dim:"nether",    quelle:"Truhe in der Netherfestung" },
+  { id:"snout",     name:"Schnauzen",   en:"Snout",     kategorie:"Bastion",         dim:"nether",    quelle:"Truhe in der Bastionsruine" },
+  { id:"netherite", name:"Netheritaufwertung", en:"Netherite Upgrade", kategorie:"Bastion", dim:"nether", quelle:"Truhe in der Bastionsruine, in der Schatzkammer am häufigsten", aufwertung:true },
+  { id:"spire",     name:"Turmspitzen", en:"Spire",     kategorie:"End City",        dim:"end",       quelle:"Truhe in der Endsiedlung" },
+]);
+const SAM_ZAEHLT = SAMMELOBJEKTE.filter((o) => !o.aufwertung);
+// Fundorte in fester Reihenfolge (Oberwelt → Nether → End)
+const FUNDORTE = SAMMELOBJEKTE.reduce((liste, o) => {
+  if(!liste.some((f) => f.kategorie === o.kategorie && f.dim === o.dim)) liste.push({ kategorie:o.kategorie, dim:o.dim });
+  return liste;
+}, []);
+
 /** Kategorien, die man in dieser Dimension von Hand eintragen darf (Biome nur per Screenshot). */
 const kategorienManuell = (dim) => [EIGENE_ORTE, ...FEATURE_KATEGORIEN[dim].filter((k) => k !== BIOMES)];
 
@@ -953,6 +1032,10 @@ function koordinatenErkennen(text){
    POST   /orte/auslesen  (multipart „datei“) → { erkannt:{ titel, kategorie, variante, dimension,
                                                   x, y|null, z } | null }
    Typen:  typ = { id, kategorie, variante|null }   instanz = { id, dimensionId, featureTypeId, x, y, z }
+
+   Sammelobjekte (Fortschritt je Welt, für alle gemeinsam):
+   GET    /sammelobjekte/welten/:id              → { status:{ [objektId]:{ von, am } } }
+   PUT    /sammelobjekte/welten/:id/:objektId   { gefunden:true|false } → { status }
    ========================================================================== */
 const DEMO = {
   // Wie Modul A: ohne Backend (file://) oder ohne ?live=1 läuft der Mock
@@ -1027,7 +1110,14 @@ const MOCK = (() => {
     { titel:"Bastion", kategorie:"Bastion", variante:null, dimension:"nether", x:-488, y:null, z:1016 },
     { titel:"Village", kategorie:"Village", variante:null, dimension:"overworld", x:1808, y:null, z:-2240 },
   ];
-  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0 };
+  // Bereits abgehakte Sammelobjekte der Beispielwelt
+  const sammel = {
+    w_1: {
+      sentry:{ von:"Lena", am:"2026-09-20" }, dune:{ von:"Max", am:"2026-09-21" },
+      eye:{ von:"Max", am:"2026-09-22" }, ward:{ von:"Tom", am:"2026-09-24" }, rib:{ von:"Lena", am:"2026-09-25" },
+    },
+  };
+  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, ich:"Max" };
 })();
 
 function mockApi(path, opts){
@@ -1093,6 +1183,18 @@ function mockApi(path, opts){
       Object.assign(i, { x:body.x, y:body.y ?? null, z:body.z });
       return ok({ instanz:{ ...i } });
     }
+  }
+
+  if(method === "GET" && (m = path.match(/^\/sammelobjekte\/welten\/([\w-]+)$/))){
+    if(!MOCK.welten.some((w) => w.id === m[1])) return fehler(404, "Welt nicht gefunden");
+    return ok({ status:{ ...(MOCK.sammel[m[1]] || {}) } });
+  }
+  if(method === "PUT" && (m = path.match(/^\/sammelobjekte\/welten\/([\w-]+)\/([\w-]+)$/))){
+    if(!SAMMELOBJEKTE.some((o) => o.id === m[2])) return fehler(404, "Unbekanntes Sammelobjekt");
+    const status = (MOCK.sammel[m[1]] ||= {});
+    if(body?.gefunden) status[m[2]] = { von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
+    else delete status[m[2]];
+    return ok({ status:{ ...status } });
   }
 
   if(method === "POST" && path === "/orte/auslesen"){
@@ -1230,6 +1332,10 @@ function portalHtml(x, z, dim, klasse){
 
 function renderKopf(){
   const seed = st.welt ? `<span class="mono">${esc(kurzSeed(st.welt.seed))}</span>` : "…";
+  if(aktivesModul === "sammelobjekte"){
+    $sub.innerHTML = `Welt ${seed} · <b>${samGefundenAnzahl()} / ${SAM_ZAEHLT.length} gefunden</b>`;
+    return;
+  }
   $sub.innerHTML = `Welt ${seed} · <b>${dimLabel(st.dim)}</b>`;
   $tabs.querySelectorAll(".tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.dim === st.dim);
@@ -1319,6 +1425,7 @@ function renderListe(){
 
 function render(){
   renderKopf();
+  if(aktivesModul === "sammelobjekte"){ renderSammel(); return; }
   if(st.ansicht === "liste"){ renderHud(); renderFilter(); renderListe(); }
   else karte.zeichnen();
   renderStatus();
@@ -1531,7 +1638,16 @@ const karte = (() => {
   document.getElementById("karteFit").addEventListener("click", () => { alles(); zeichnen(); });
   window.addEventListener("resize", () => { if(st.ansicht === "karte"){ groesse(); zeichnen(); } });
 
-  return { zeichnen, neuAnpassen(){ angepasst = null; } };
+  /** Auf einen Punkt springen (z. B. aus den Sammelobjekten) */
+  function zentrieren(x, z){
+    groesse();
+    const zoom = Math.max(sicht.zoom, 0.6);
+    // Punkt ins obere Drittel legen – unten öffnet sich das Detail-Sheet
+    Object.assign(sicht, { cx:x, cz:z + (canvas.height / dpr) * 0.22 / zoom, zoom });
+    angepasst = `${st.welt?.id}:${st.dim}`;
+    zeichnen();
+  }
+  return { zeichnen, zentrieren, neuAnpassen(){ angepasst = null; } };
 })();
 
 /* ============================================================================
@@ -1877,12 +1993,31 @@ const ICON = Object.freeze({
   bauplaene:'<path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18M14 14h4v4h-4z"/>',
 });
 const BEREICHE = [
-  { key:"karte",         titel:"Karte", mount:() => {}, unmount:() => alleSchliessen() },
-  { key:"sammelobjekte", titel:"Sammelobjekte" },     // Rüstungs-Modifikationen abhaken + Fundorte
+  { key:"karte",         titel:"Karte",
+    mount:() => { applyTheme(st.dim); karte.neuAnpassen(); render(); },
+    unmount:() => alleSchliessen() },
+  { key:"sammelobjekte", titel:"Sammelobjekte",       // Rüstungs-Modifikationen abhaken + Fundorte
+    mount:() => { applyTheme("overworld"); render(); samLaden(); },
+    unmount:() => alleSchliessen() },
   { key:"portale",       titel:"Portal-Verwaltung" },
   { key:"handbuch",      titel:"Handbuch" },
   { key:"bauplaene",     titel:"Baupläne" },
 ];
+let aktivesModul = "karte";
+function modulWechseln(key){
+  const bereich = BEREICHE.find((b) => b.key === key);
+  alleSchliessen();
+  if(!bereich?.mount){ toast(`„${bereich?.titel}“ ist geplant`); return; }
+  if(key === aktivesModul) return;
+  BEREICHE.find((b) => b.key === aktivesModul)?.unmount?.();
+  aktivesModul = key;
+  document.querySelectorAll(".module").forEach((el) => el.classList.toggle("is-active", el.dataset.module === key));
+  document.getElementById("kopfTitel").textContent = bereich.titel;
+  document.getElementById("kopfIcon").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[key]}</svg>`;
+  sidebarBauen(key);
+  bereich.mount();
+}
+
 function sidebarBauen(aktiv){
   document.getElementById("sbNav").innerHTML = BEREICHE.map((b) => {
     const da = typeof b.mount === "function";
@@ -1892,6 +2027,151 @@ function sidebarBauen(aktiv){
     </button>`;
   }).join("");
 }
+
+/* ============================================================================
+   9c · SAMMELOBJEKTE  ·  Rüstungs-Modifikationen abhaken, Fundorte aus der Karte
+   ========================================================================== */
+const sam = { status:{}, filter:"alle", zu:new Set(), weltId:null };
+const $samListe = document.getElementById("samListe");
+const HAKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const themaStil = (dim) => Object.entries(THEMES[dim].ui).map(([k, v]) => `${k}:${v}`).join(";");
+const samGefundenAnzahl = () => SAM_ZAEHLT.filter((o) => sam.status[o.id]).length;
+const datumKurz = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-DE", { day:"numeric", month:"numeric" }); };
+
+/** Bekannte Instanzen einer Fundort-Kategorie in der aktuellen Welt – nächste zuerst */
+function bekannteFundorte(kategorie, dim){
+  const dimId = dimIdVon(dim);
+  return st.instanzen
+    .filter((i) => i.dimensionId === dimId && typVon(i)?.kategorie === kategorie)
+    .map((i) => ({ i, w:entfernung(st.standort, i.x, i.z, dim) }))
+    .sort((a, b) => (a.w && b.w) ? a.w.meter - b.w.meter : 0);
+}
+
+async function samLaden(){
+  if(!st.weltId) return;
+  const r = await api(`/sammelobjekte/welten/${st.weltId}`);
+  if(!r.ok){ toast(meldungAus(r), true); return; }
+  sam.status = r.data.status || {};
+  sam.weltId = st.weltId;
+  if(aktivesModul === "sammelobjekte") render();
+}
+
+function renderSammel(){
+  const gefunden = samGefundenAnzahl(), gesamt = SAM_ZAEHLT.length;
+  const bekannt = FUNDORTE.filter((f) => bekannteFundorte(f.kategorie, f.dim).length).length;
+  document.getElementById("samGefunden").textContent = gefunden;
+  document.getElementById("samGesamt").textContent = gesamt;
+  document.getElementById("samFundorte").textContent = bekannt;
+  document.getElementById("samFundorteGesamt").textContent = FUNDORTE.length;
+  document.getElementById("samProzent").textContent = Math.round(gefunden / gesamt * 100);
+  document.getElementById("samBalken").style.width = `${gefunden / gesamt * 100}%`;
+  document.querySelectorAll("#samFilter .seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.filter === sam.filter));
+
+  const passt = (o) => sam.filter === "alle" || (sam.filter === "gefunden") === Boolean(sam.status[o.id]);
+  $samListe.innerHTML = FUNDORTE.map((f) => {
+    const objekte = SAMMELOBJEKTE.filter((o) => o.kategorie === f.kategorie && o.dim === f.dim);
+    const sichtbar = objekte.filter(passt);
+    if(!sichtbar.length) return "";
+    const key = `${f.dim}:${f.kategorie}`;
+    const fund = bekannteFundorte(f.kategorie, f.dim);
+    const naechster = fund[0];
+    const fundText = fund.length
+      ? `${fund.length} bekannt${naechster.w ? ` · nächste <span class="weg">${entfernungText(naechster.w.meter)}</span> ${naechster.w.richtung}` : ""}`
+      : "Noch nicht auf der Karte";
+    const zaehlbar = objekte.filter((o) => !o.aufwertung);
+    const items = sichtbar.map((o) => {
+      const s = sam.status[o.id];
+      return `<div class="ach-item sam-item ${s ? "earned" : ""}" data-sam="${o.id}">
+        <div class="ach-icon">${esc(o.name.charAt(0))}</div>
+        <div class="ach-body">
+          <div class="ach-name">${esc(o.name)}<span class="en">${esc(o.en)}</span></div>
+          <div class="ach-desc">${esc(o.quelle)}</div>
+          <div class="ach-foot">${s ? `<span class="von">✓ ${esc(s.von)} · ${datumKurz(s.am)}</span>` : `<span>${fundText}</span>`}${o.aufwertung ? '<span class="pill">Aufwertung</span>' : ""}</div>
+        </div>
+        <button class="sam-check" data-sam-haken="${o.id}" aria-label="${esc(o.name)} ${s ? "zurücksetzen" : "abhaken"}" aria-pressed="${Boolean(s)}">${HAKEN}</button>
+      </div>`;
+    }).join("");
+    return `<div class="ach-cat ${sam.zu.has(key) ? "" : "open"}" data-sam-kat="${esc(key)}" style="${themaStil(f.dim)}">
+      <div class="ach-cat-head">
+        <span class="ach-cat-icon">${symbol(f.kategorie)}</span>
+        <span class="ach-cat-name">${esc(f.kategorie)}${f.dim !== "overworld" ? `<span class="ach-cat-dim">${dimLabel(f.dim)}</span>` : ""}</span>
+        <span class="ach-cat-count">${zaehlbar.filter((o) => sam.status[o.id]).length}/${zaehlbar.length}</span>
+        <span class="ach-cat-chevron">${CHEVRON}</span>
+      </div>
+      <div class="ach-cat-items">${items}</div>
+    </div>`;
+  }).join("") || `<div class="empty-list">${sam.filter === "gefunden" ? "Noch nichts abgehakt." : "Alles gefunden – stark!"}</div>`;
+}
+
+async function samUmschalten(id){
+  const vorher = sam.status[id];
+  // Sofort umschalten, bei Fehler zurück
+  if(vorher) delete sam.status[id]; else sam.status[id] = { von:"…", am:new Date().toISOString() };
+  render();
+  const r = await api(`/sammelobjekte/welten/${st.weltId}/${id}`, { method:"PUT", body:JSON.stringify({ gefunden:!vorher }) });
+  if(!r.ok){
+    if(vorher) sam.status[id] = vorher; else delete sam.status[id];
+    toast(meldungAus(r), true);
+  } else sam.status = r.data.status;
+  render();
+  if(st.sheet === "sam") samDetailOeffnen(id);
+}
+
+function samDetailOeffnen(id){
+  const o = SAMMELOBJEKTE.find((x) => x.id === id); if(!o) return;
+  const s = sam.status[id];
+  const fund = bekannteFundorte(o.kategorie, o.dim);
+  const fundHtml = fund.length
+    ? `<div class="list-stack">${fund.slice(0, 5).map(({ i, w }) => `<div class="card fund-zeile">
+        ${coordHtml(i.x, i.y, i.z)}
+        ${w ? `<span class="weg">${entfernungText(w.meter)}</span><span class="card-meta">${w.richtung}</span>` : ""}
+        <button class="btn-secondary" data-aktion="sam-auf-karte" data-id="${i.id}">Karte</button>
+      </div>`).join("")}</div>
+      ${fund.length > 5 ? `<div class="result-hint">+ ${fund.length - 5} weitere auf der Karte</div>` : ""}`
+    : `<div class="banner info">Noch keine ${esc(o.kategorie)} ${inDim(o.dim)} erfasst. Screenshot aus der Seed Map in der Karte hinzufügen.</div>
+       <button class="btn-secondary" data-aktion="sam-zur-karte" data-dim="${o.dim}">Zur Karte</button>`;
+  const html = kopfHtml(esc(o.name), `${esc(o.en)} · ${o.aufwertung ? "Schmiedevorlage" : "Rüstungsbesatz"}`) + `<div class="orte-inhalt">
+    <div class="result-card">
+      <div class="result-label">Fundort · <b>${dimLabel(o.dim)}</b></div>
+      <div class="card-title" style="font-size:17px">${symbol(o.kategorie)} ${esc(o.kategorie)}</div>
+      <p class="result-hint">${esc(o.quelle)}</p>
+    </div>
+    ${s
+      ? `<div class="banner ok">Gefunden von ${esc(s.von)} am ${datumKurz(s.am)}</div>
+         <button class="btn-secondary" data-aktion="sam-umschalten" data-id="${o.id}">Zurücksetzen</button>`
+      : `<button class="btn-primary" data-aktion="sam-umschalten" data-id="${o.id}">Als gefunden abhaken</button>`}
+    <div class="field-group"><div class="field-group-label">Bekannte ${esc(o.kategorie)} in dieser Welt</div>${fundHtml}</div>
+  </div>`;
+  sheetOeffnen("sam", html, o.dim);
+}
+
+/** Aus den Sammelobjekten auf die Karte springen */
+function aufKarteZeigen(instanzId){
+  const i = st.instanzen.find((x) => x.id === instanzId); if(!i) return;
+  const dim = dimTypeVon(i.dimensionId);
+  modulWechseln("karte");
+  if(st.dim !== dim) dimWechseln(dim);
+  if(st.ansicht !== "karte") ansichtWechseln("karte");
+  karte.zentrieren(i.x, i.z);
+  detailOeffnen(i.id);
+}
+
+document.getElementById("samFilter").addEventListener("click", (e) => {
+  const b = e.target.closest(".seg-btn"); if(!b) return;
+  sam.filter = b.dataset.filter; render();
+});
+$samListe.addEventListener("click", (e) => {
+  const haken = e.target.closest("[data-sam-haken]");
+  if(haken) return samUmschalten(haken.dataset.samHaken);
+  const item = e.target.closest("[data-sam]");
+  if(item) return samDetailOeffnen(item.dataset.sam);
+  const kopf = e.target.closest(".ach-cat-head");
+  if(kopf){
+    const key = kopf.parentElement.dataset.samKat;
+    sam.zu.has(key) ? sam.zu.delete(key) : sam.zu.add(key);
+    kopf.parentElement.classList.toggle("open");
+  }
+});
 
 /* ============================================================================
    10 · DATEN, EVENTS, INIT
@@ -1918,6 +2198,7 @@ async function weltLaden(id){
   lsSchreiben("orte.welt", id);
   karte.neuAnpassen();
   render();
+  samLaden();
 }
 function dimWechseln(dim){
   st.dim = dim; st.filter = null;
@@ -1968,9 +2249,7 @@ document.getElementById("orteStatusBtn").addEventListener("click", () =>
 document.getElementById("burgerBtn").addEventListener("click", () => { $sidebar.classList.add("open"); $scrim.classList.add("show"); });
 document.getElementById("sbNav").addEventListener("click", (e) => {
   const item = e.target.closest(".nav-item"); if(!item) return;
-  alleSchliessen();
-  const bereich = BEREICHE.find((b) => b.key === item.dataset.module);
-  if(!bereich?.mount) toast(`„${bereich?.titel}“ ist geplant`);
+  modulWechseln(item.dataset.module);
 });
 $scrim.addEventListener("click", () => {
   if(st.sheet === "import" && st.importe.some((e) => e.status !== "gespeichert")) importFelderLesen();
@@ -2052,6 +2331,13 @@ $sheet.addEventListener("click", async (e) => {
       st.standort = { ...k, dim:standortDim }; lsSchreiben("orte.standort", st.standort);
       alleSchliessen(); render(); break;
     }
+    case "sam-umschalten": samUmschalten(id); break;
+    case "sam-auf-karte": aufKarteZeigen(id); break;
+    case "sam-zur-karte":
+      modulWechseln("karte");
+      if(st.dim !== a.dataset.dim) dimWechseln(a.dataset.dim);
+      if(st.ansicht !== "karte") ansichtWechseln("karte");
+      break;
     case "standort-weg":
       st.standort = null; lsSchreiben("orte.standort", null); alleSchliessen(); render(); break;
   }
@@ -2083,10 +2369,14 @@ function uhr(){ document.getElementById("uhr").textContent = new Date().toLocale
 
 function init(){
   sidebarBauen("karte");
+  document.getElementById("kopfIcon").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON.karte}</svg>`;
   applyTheme(st.dim);
   ansichtWechseln(st.ansicht);
   uhr(); setInterval(uhr, 30000);
-  weltenLaden();
+  weltenLaden().then(() => {
+    const start = new URLSearchParams(location.search).get("modul");
+    if(start && start !== "karte") modulWechseln(start);
+  });
 }
 init();
 </script>

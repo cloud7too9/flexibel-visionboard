@@ -1,10 +1,10 @@
-# Karte · Koordinaten-Sammlung – mobiler Prototyp
+# Companion · Prototyp – Karte + Sammelobjekte
 
 Koordinaten-Sammlung für das Modul **Karte** (vormals Live-Karte) der Minecraft Companion PWA, nach dem minimalen Datenmodell
 (`World → Dimension → FeatureInstance → FeatureType → FeatureCategory`).
 Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte.html`.
 
-**Ausprobieren:** `modul-karte-koordinaten.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt.
+**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt. Mit `?modul=sammelobjekte` startet man direkt in den Sammelobjekten.
 
 ## Was drin ist
 
@@ -18,6 +18,14 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 - Nether↔Oberwelt-Umrechnung, `/execute in … run tp`-Befehl zum Kopieren
 - **Sidebar** aus einer Bereichs-Registry (`BEREICHE`) – Vorbereitung für Dashboard-Widgets:
   Karte · Sammelobjekte · Portal-Verwaltung · Handbuch · Baupläne
+
+## Sammelobjekte
+
+- 18 Rüstungsbesätze + Netheritaufwertung (deutsche Spielnamen, englischer Name daneben), Stand inkl. Fluss/Bolzen aus 1.21
+- Gruppiert nach Fundort-Struktur, Karten nach Dimension eingefärbt; Fundort-Hinweis (Truhe, Seltsamer Kies, Tresor, Großer Wächter)
+- **Abhaken gilt für die ganze Welt** und merkt sich, wer es wann gefunden hat
+- Fortschritt: gefunden / 18, Fundorte bekannt / 13, Prozent
+- Verknüpfung zur Karte: pro Fundort die bekannten Strukturen aus der Koordinaten-Sammlung, nächste mit Entfernung; „Karte“ springt direkt hin
 
 ## Regeln (Server muss sie genauso prüfen – siehe `instanzPruefen()`)
 
@@ -37,6 +45,9 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 | PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` – 403 bei Biomen |
 | DELETE | `/orte/instanzen/:id` | – | `{ ok:true }` |
 | POST | `/orte/auslesen` | multipart `datei` | `{ erkannt:{ titel, kategorie, variante, dimension, x, y, z } \| null }` |
+
+| GET | `/sammelobjekte/welten/:id` | – | `{ status:{ [objektId]:{ von, am } } }` |
+| PUT | `/sammelobjekte/welten/:id/:objektId` | `{ gefunden }` | `{ status }` |
 
 `typ = { id, kategorie, variante|null }` · `instanz = { id, dimensionId, featureTypeId, x, y|null, z }` · `quelle = "screenshot" | "manuell"`
 
