@@ -67,9 +67,30 @@ const istLokal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.
 let netz = await besteAdresse();
 setInterval(async () => { netz = await besteAdresse(); }, 60_000).unref();
 
-function lanAdresse(ip = netz.beste) {
+// Bewährte Adresse: die IP, über die zuletzt ein Handy wirklich hereingekommen ist.
+// Die ist nachweislich erreichbar und schlägt jede Vermutung.
+const ADRESS_DATEI = path.join(DATEN, 'adresse.txt');
+let bewaehrt = (await readFile(ADRESS_DATEI, 'utf8').catch(() => '')).trim() || null;
+
+/** Adresse für QR-Code: bewährt (falls das Gerät sie noch hat), sonst beste Vermutung */
+function qrIp() {
+  if (bewaehrt && netz.kandidaten.some((k) => k.adresse === bewaehrt)) return bewaehrt;
+  return netz.beste;
+}
+
+function lanAdresse(ip = qrIp()) {
   if (process.env.OEFFENTLICHE_URL) return process.env.OEFFENTLICHE_URL.replace(/\/$/, '');
   return `http://${ip}:${PORT}`;
+}
+
+/** Merkt sich die IP, die ein anderes Gerät in der Adresszeile benutzt hat. */
+function adresseLernen(req) {
+  if (istLokal(req)) return;
+  const host = (req.headers.host ?? '').replace(/:\d+$/, '');
+  if (!host || host === bewaehrt || !netz.kandidaten.some((k) => k.adresse === host)) return;
+  bewaehrt = host;
+  writeFile(ADRESS_DATEI, host).catch(() => {});
+  console.log(`  QR-Code nutzt jetzt ${lanAdresse()} – darüber hat sich gerade ein Gerät verbunden.`);
 }
 
 // ---------- Zustand + aufräumen ----------
@@ -92,6 +113,7 @@ async function dateiLoeschen(name) {
 // ---------- Server ----------
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'warn' } });
+app.addHook('onRequest', async (req) => adresseLernen(req));
 await app.register(fastifyMultipart, { limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
 await app.register(fastifyWebsocket);
 await app.register(fastifyStatic, { root: MEDIEN, prefix: '/medien/', decorateReply: false, maxAge: '7d' });
@@ -122,7 +144,7 @@ app.get('/api/anzeige', async (req, reply) => {
     adresse: lanAdresse(),
     pin: PIN,
     // Falls der QR-Code nicht klappt: andere Adressen dieses Geräts zum Ausprobieren
-    weitere: netz.kandidaten.filter((k) => k.adresse !== netz.beste).map((k) => ({ name: k.name, url: lanAdresse(k.adresse) })),
+    weitere: netz.kandidaten.filter((k) => k.adresse !== qrIp()).map((k) => ({ name: k.name, url: lanAdresse(k.adresse) })),
   };
 });
 
@@ -255,6 +277,6 @@ console.log(`  Anzeige (dieses Gerät):  http://localhost:${PORT}/anzeige`);
 console.log(`  Handys im WLAN:          ${lanAdresse()}   PIN ${PIN}`);
 if (netz.kandidaten.length > 1) {
   console.log('\n  Weitere Adressen dieses Geräts (falls die obere vom Handy nicht erreichbar ist):');
-  for (const k of netz.kandidaten) if (k.adresse !== netz.beste) console.log(`    ${lanAdresse(k.adresse).padEnd(28)} ${k.name}`);
+  for (const k of netz.kandidaten) if (k.adresse !== qrIp()) console.log(`    ${lanAdresse(k.adresse).padEnd(28)} ${k.name}`);
 }
 console.log('');

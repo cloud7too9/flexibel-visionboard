@@ -87,14 +87,22 @@ export function Anzeige() {
   const jetzt = useJetzt();
 
   useEffect(() => {
-    fetch('/api/anzeige')
-      .then((r) => (r.status === 403 ? (setGesperrt(true), null) : r.json()))
-      .then((d: Beitritt | null) => {
-        if (!d) return;
-        setBeitritt(d);
-        QRCode.toString(d.beitrittsUrl, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' }).then(setQr);
-      })
-      .catch(() => {});
+    let letzteUrl = '';
+    const holen = () =>
+      fetch('/api/anzeige')
+        .then((r) => (r.status === 403 ? (setGesperrt(true), null) : r.json()))
+        .then((d: Beitritt | null) => {
+          if (!d) return;
+          setBeitritt(d);
+          if (d.beitrittsUrl === letzteUrl) return;
+          letzteUrl = d.beitrittsUrl;
+          QRCode.toString(d.beitrittsUrl, { type: 'svg', margin: 0, errorCorrectionLevel: 'M' }).then(setQr);
+        })
+        .catch(() => {});
+    holen();
+    // QR-Code folgt der Adresse, über die sich zuletzt ein Handy verbunden hat
+    const t = window.setInterval(holen, 10_000);
+    return () => clearInterval(t);
   }, []);
 
   const orte = zustand?.orte ?? [];

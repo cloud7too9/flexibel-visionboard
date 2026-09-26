@@ -45,7 +45,7 @@ Die Konsole zeigt dann die Adresse für die Handys und die PIN. Einfacher: den Q
 ## Handy verbindet nicht?
 
 1. **Firewall (Windows):** `firewall-freigeben.bat` ausführen (fragt einmal nach Admin-Rechten). Das Skript entfernt Blockier-Regeln für `node.exe` – die legt Windows an, wenn man die Firewall-Abfrage beim ersten Start wegklickt – und gibt den Port nur für Geräte im eigenen Netz frei. `start.bat` macht das beim ersten Start automatisch.
-2. **Richtige Adresse:** Der Server wählt die Adresse, über die der Rechner ins Netz geht. Hat der Rechner mehrere Adapter (WSL, Hyper-V, Docker, VirtualBox, VPN), zeigen Konsole und Anzeige unter „Klappt nicht? Andere Adressen“ die Alternativen. Zur Not fest einstellen: `set OEFFENTLICHE_URL=http://192.168.178.23:3000`.
+2. **Richtige Adresse:** Der Server wählt die Adresse, über die der Rechner ins Netz geht. Zeigt der QR-Code trotzdem eine falsche an: die richtige Adresse (`ipconfig` → WLAN-Adapter) einmal von Hand am Handy eingeben – das Board merkt sich die Adresse, über die ein Gerät tatsächlich hereinkam, und nutzt sie ab dann für den QR-Code (gespeichert in `server/daten/adresse.txt`). Hat der Rechner mehrere Adapter (WSL, Hyper-V, Docker, VirtualBox, VPN), zeigen Konsole und Anzeige unter „Klappt nicht? Andere Adressen“ die Alternativen. Zur Not fest einstellen: `set OEFFENTLICHE_URL=http://192.168.178.23:3000`.
 3. **Selbes Netz:** Handy im gleichen WLAN wie der Rechner – nicht im Gäste-WLAN (Geräte sind dort voneinander abgeschottet) und nicht über mobile Daten.
 4. **Adresse genau so eingeben:** `http://…:3000` – mit Port, ohne `https`.
 5. **Gegenprobe:** Die Adresse aus dem QR-Code im Browser auf dem Board-Rechner selbst öffnen. Lädt sie dort, aber nicht am Handy, liegt es an Firewall oder Netz.
