@@ -34,6 +34,18 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 Neue Bereiche: Eintrag in `BEREICHE` + Icon in `ICON`. Ohne `mount()` zeigt die Sidebar den Bereich als „geplant“.
 Die Details jedes Bereichs werden einzeln festgelegt. Für Banner und Rüstung liegt ein erster Code-Entwurf in `entwuerfe/banner-ruestung.js` (nicht eingebaut).
 
+## Dashboard-Ansichten (später)
+
+Jeder Bereich bekommt eigene Ansichten fürs Dashboard. Vorbild ist das iOS-Kontrollzentrum
+(`referenz/kontrollzentrum-galerie.png`, `referenz/kontrollzentrum-bearbeiten.png`):
+
+- **Ansichten in festen Rastergrößen**: klein 1×1, breit 2×1, groß 2×2. Das Raster hat 4 Spalten. Ein Bereich kann dieselbe Ansicht in mehreren Größen anbieten.
+- **Galerie** „Ansicht hinzufügen“: nach Bereich gruppiert, mit Suche
+- **Bearbeiten-Modus**: „−“ entfernt eine Ansicht, der Griff an der Ecke ändert die Größe
+- **Seiten**: Das Kontrollzentrum hat mehrere Seiten mit einer Icon-Leiste am Rand. Das würde zu einer Seite pro Bereich passen (noch offen).
+
+Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welche Ansichten ein Bereich bekommt, klären wir, wenn wir den Bereich durchgehen.
+
 ## Sammelobjekte
 
 - 18 Rüstungsbesätze + Netheritaufwertung (deutsche Spielnamen, englischer Name daneben), Stand inkl. Fluss/Bolzen aus 1.21
@@ -81,5 +93,5 @@ Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`server
 
 - Datenhaltung: Companion-Server (Hetzner) oder Board im Heimnetz
 - Beispiel-Screenshot vom Biom-Popup, um die Erkennung darauf abzustimmen
-- Widget-Ansicht fürs Dashboard (Modul-Vertrag `mount/unmount` ist vorbereitet)
+- Dashboard-Ansichten pro Bereich (siehe oben): Seiten pro Bereich? Wo bearbeitet man – Handy oder Anzeige?
 - Inhalte der geplanten Bereiche (werden einzeln durchgegangen)

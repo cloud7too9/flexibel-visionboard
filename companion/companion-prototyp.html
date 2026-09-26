@@ -1980,8 +1980,11 @@ function toast(text, fehler){
    9b · BEREICHE  ·  Registry für Sidebar (und später Dashboard-Widgets)
    ----------------------------------------------------------------------------
    Jeder Bereich ist in sich geschlossen: eigener State, eigene API-Pfade,
-   eigenes Rendering. Modul-Vertrag für die Widget-Nutzung:
-     { key, titel, icon, mount(el), unmount() }
+   eigenes Rendering. Modul-Vertrag:
+     { key, titel, icon, mount(el), unmount(),
+       ansichten: [{ key, titel, groessen:["1x1","2x1","2x2"], render(el, groesse) }] }
+   „ansichten“ kommt später: Dashboard-Ansichten pro Bereich, nach dem Vorbild
+   des iOS-Kontrollzentrums (siehe README → Dashboard-Ansichten).
    Bereiche: Karte (Live-Karte + Koordinaten-Sammlung), Sammelobjekte,
    Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung.
    Umgesetzt sind Karte und Sammelobjekte; Bereiche ohne mount() erscheinen
