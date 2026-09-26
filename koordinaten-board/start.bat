@@ -11,6 +11,13 @@ if not exist client\dist (
   call npm run build || goto fehler
 )
 
+rem Beim ersten Start: Firewall fuer Handys im WLAN freigeben (einmalige Admin-Abfrage)
+netsh advfirewall firewall show rule name="Koordinaten-Board" >nul 2>&1
+if errorlevel 1 (
+  echo Firewall-Regel fehlt noch - Handys koennten sonst nicht verbinden.
+  call "%~dp0firewall-freigeben.bat"
+)
+
 rem Anzeige nach kurzer Wartezeit im Vollbild oeffnen
 start "" cmd /c "timeout /t 3 >nul && start msedge --kiosk http://localhost:3000/anzeige --edge-kiosk-type=fullscreen --no-first-run"
 

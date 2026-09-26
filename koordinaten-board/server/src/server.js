@@ -7,10 +7,10 @@ import { createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 
 import { createWriteStream, existsSync } from 'node:fs';
 import { readFile, writeFile, readdir, unlink, mkdir } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
-import { networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Zustand } from './zustand.js';
+import { besteAdresse } from './netzwerk.js';
 import { FEATURES, screenshotAuslesen, erkennungBeenden } from './erkennung.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -63,14 +63,13 @@ function tokenPruefen(token) {
 
 const istLokal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 
-function lanAdresse() {
+// Netzwerkadresse für QR-Code und Konsole – regelmäßig neu bestimmen (WLAN-Wechsel)
+let netz = await besteAdresse();
+setInterval(async () => { netz = await besteAdresse(); }, 60_000).unref();
+
+function lanAdresse(ip = netz.beste) {
   if (process.env.OEFFENTLICHE_URL) return process.env.OEFFENTLICHE_URL.replace(/\/$/, '');
-  const kandidaten = Object.values(networkInterfaces())
-    .flat()
-    .filter((n) => n && n.family === 'IPv4' && !n.internal)
-    .map((n) => n.address);
-  const bevorzugt = kandidaten.find((a) => /^(192\.168|10\.|172\.(1[6-9]|2\d|3[01]))/.test(a)) ?? kandidaten[0];
-  return `http://${bevorzugt ?? 'localhost'}:${PORT}`;
+  return `http://${ip}:${PORT}`;
 }
 
 // ---------- Zustand + aufräumen ----------
@@ -118,7 +117,13 @@ app.get('/api/ich', async (req, reply) => {
 
 app.get('/api/anzeige', async (req, reply) => {
   if (!istLokal(req) && !ANZEIGE_OFFEN) return reply.code(403).send({ fehler: 'Nur auf dem Anzeigegerät' });
-  return { beitrittsUrl: `${lanAdresse()}/?pin=${PIN}`, adresse: lanAdresse(), pin: PIN };
+  return {
+    beitrittsUrl: `${lanAdresse()}/?pin=${PIN}`,
+    adresse: lanAdresse(),
+    pin: PIN,
+    // Falls der QR-Code nicht klappt: andere Adressen dieses Geräts zum Ausprobieren
+    weitere: netz.kandidaten.filter((k) => k.adresse !== netz.beste).map((k) => ({ name: k.name, url: lanAdresse(k.adresse) })),
+  };
 });
 
 app.post('/api/upload', async (req, reply) => {
@@ -247,4 +252,9 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 await app.listen({ port: PORT, host: '0.0.0.0' });
 console.log('\n  Koordinaten-Board läuft');
 console.log(`  Anzeige (dieses Gerät):  http://localhost:${PORT}/anzeige`);
-console.log(`  Handys im WLAN:          ${lanAdresse()}   PIN ${PIN}\n`);
+console.log(`  Handys im WLAN:          ${lanAdresse()}   PIN ${PIN}`);
+if (netz.kandidaten.length > 1) {
+  console.log('\n  Weitere Adressen dieses Geräts (falls die obere vom Handy nicht erreichbar ist):');
+  for (const k of netz.kandidaten) if (k.adresse !== netz.beste) console.log(`    ${lanAdresse(k.adresse).padEnd(28)} ${k.name}`);
+}
+console.log('');

@@ -145,6 +145,8 @@ function Board({ token, name, abmelden }: { token: string; name: string; abmelde
       </div>
 
       <main className="buehne">
+        {!verbunden && <VerbindungsHinweis />}
+
         <div className="hud-zeile" onClick={() => setAnsicht({ art: 'standort' })} role="button" aria-label="Standort bearbeiten">
           {standort ? (
             <>
@@ -278,5 +280,21 @@ function OrtZeile({ ort, weg, oeffnen }: { ort: Ort; weg: ReturnType<typeof entf
         )}
       </span>
     </button>
+  );
+}
+
+/** Erscheint, wenn die Live-Verbindung nach einigen Sekunden noch nicht steht. */
+function VerbindungsHinweis() {
+  const [zeigen, setZeigen] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setZeigen(true), 4000);
+    return () => clearTimeout(t);
+  }, []);
+  if (!zeigen) return <div className="banner info">Verbinde mit dem Board …</div>;
+  return (
+    <div className="banner warn">
+      Keine Live-Verbindung zum Board. Läuft der Server noch und ist das Handy im selben WLAN
+      (nicht Gäste-WLAN, nicht mobile Daten)? Die Verbindung wird automatisch neu versucht.
+    </div>
   );
 }
