@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { useBoard } from '../lib/verbindung';
-import { DIMENSIONEN, KATEGORIEN, type Ort } from '../lib/typen';
+import { DIMENSIONEN, KATEGORIEN, dimensionLabel, kategorieLabel, thema, type Ort } from '../lib/typen';
 import { umrechnen, zahl } from '../lib/koordinaten';
 import { Icon } from '../komponenten/Icon';
+import { KoordChip } from '../komponenten/Eingaben';
 
 const MAX_ANGEHEFTET = 6;
 const NEU_DAUER_MS = 90_000;
@@ -62,26 +63,15 @@ function AutoScroll({ children }: { children: React.ReactNode }) {
     rahmen = requestAnimationFrame(schritt);
     return () => cancelAnimationFrame(rahmen);
   }, []);
-  return <div className="spalte-inhalt" ref={ref}>{children}</div>;
+  return <div className="a-spalte-inhalt" ref={ref}><div className="stapel">{children}</div></div>;
 }
 
-function Koords({ ort }: { ort: Ort }) {
-  return (
-    <span className="mono">
-      {zahl(ort.x)}
-      {ort.y !== null && <span style={{ color: 'var(--text-3)' }}> / {zahl(ort.y)}</span>} / {zahl(ort.z)}
-    </span>
-  );
-}
-
-function Umrechnung({ ort }: { ort: Ort }) {
+/** „⟷ Nether 26 / −49“ */
+function PortalChip({ ort, klein }: { ort: Ort; klein?: boolean }) {
   const u = umrechnen(ort);
   if (!u) return null;
-  return (
-    <span>
-      {u.dimension === 'nether' ? 'Nether' : 'Oberwelt'}: <span className="mono">{zahl(u.x)} / {zahl(u.z)}</span>
-    </span>
-  );
+  const inhalt = <><span className="pico">⟷</span> {dimensionLabel(u.dimension)} <b>{zahl(u.x)} / {zahl(u.z)}</b></>;
+  return klein ? <span className="mono">{inhalt}</span> : <span className="chip portal-chip mono">{inhalt}</span>;
 }
 
 const kategorieIndex = (k: Ort['kategorie']) => KATEGORIEN.findIndex((x) => x.wert === k);
@@ -117,7 +107,7 @@ export function Anzeige() {
 
   if (gesperrt) {
     return (
-      <div className="anzeige-fehler">
+      <div className="a-fehler">
         Die Anzeige läuft nur direkt auf dem Board-Gerät (localhost).<br />
         Zum Eintragen bitte die Startseite öffnen.
       </div>
@@ -128,73 +118,87 @@ export function Anzeige() {
   const qrZeigen = zustand?.einstellungen.qrZeigen ?? true;
 
   return (
-    <div className="anzeige">
-      <header className="anzeige-kopf">
-        <h1>{titel}</h1>
-        <div className="zaehler">
+    <div className="anzeige thema-oberwelt">
+      <header className="a-kopf">
+        <div>
+          <div className="title-row">
+            <span className="compass"><Icon name="kompass" /></span>
+            <h1>{titel}</h1>
+          </div>
+          <div className="subtitle">Koordinaten-Board · <b>{orte.length} Orte</b></div>
+        </div>
+
+        <div className="tabs" aria-hidden="true">
           {DIMENSIONEN.map((d) => (
-            <span key={d.wert} className={`dim-${d.wert}`}>
-              <span className="punkt" /> {orte.filter((o) => o.dimension === d.wert).length} {d.label}
+            <span key={d.wert} className={`tab active ${thema(d.wert)}`}>
+              {d.label} <span className="zahl">{orte.filter((o) => o.dimension === d.wert).length}</span>
             </span>
           ))}
         </div>
-        {!verbunden && <span className="verbindung-weg">Verbindung zum Server unterbrochen …</span>}
+
+        <span className="status">
+          <span className={`status-dot ${verbunden ? '' : 'off'}`} />
+          {verbunden ? 'Verbunden' : 'Getrennt'}
+        </span>
         <span className="uhr mono">
           {new Date(jetzt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
         </span>
       </header>
 
       {orte.length === 0 ? (
-        <div className="anzeige-leer">
+        <div className="a-leer-gross">
+          <span className="me-ico"><Icon name="kompass" groesse={36} /></span>
           <strong>Noch keine Orte gespeichert</strong>
-          <span>QR-Code scannen, PIN eingeben und los geht's – oder direkt einen Seed-Map-Screenshot hochladen.</span>
+          <span>QR-Code scannen, PIN eingeben und einen Seed-Map-Screenshot hochladen.</span>
         </div>
       ) : (
-        <main className="anzeige-haupt">
+        <main className="a-haupt">
           {angeheftet.length > 0 && (
-            <section className="angeheftet">
+            <section className="a-angeheftet">
               {angeheftet.map((o) => (
-                <article key={o.id} className={`karte-gross dim-${o.dimension} ${istNeu(o) ? 'neu' : ''}`}>
+                <article key={o.id} className={`a-gross ${thema(o.dimension)} ${istNeu(o) ? 'neu' : ''}`}>
                   {o.datei && <div className="bildgrund" style={{ backgroundImage: `url(/medien/${o.datei})` }} />}
-                  <div className="titel">
-                    <Icon name={o.kategorie} groesse={26} />
-                    <span>{o.name}</span>
+                  <div className="kopfzeile">
+                    <span className="ort-icon"><Icon name={o.kategorie} groesse={24} /></span>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="name">{o.name}</div>
+                      <div className="meta">{dimensionLabel(o.dimension)} · {o.typ || kategorieLabel(o.kategorie)}</div>
+                    </div>
+                    {istNeu(o) && <span className="pill">Neu</span>}
                   </div>
-                  <div className="koords mono">
-                    <span className="achse">X</span><span className="wert">{zahl(o.x)}</span>
-                    {o.y !== null && <><span className="achse">Y</span><span className="wert">{zahl(o.y)}</span></>}
-                    <span className="achse">Z</span><span className="wert">{zahl(o.z)}</span>
+                  <KoordChip x={o.x} y={o.y} z={o.z} klein />
+                  <div className="chips">
+                    <PortalChip ort={o} />
                   </div>
-                  <div className="unterzeile"><Umrechnung ort={o} /></div>
                 </article>
               ))}
             </section>
           )}
 
-          <section className="spalten">
+          <section className="a-spalten">
             {DIMENSIONEN.map((d) => {
               const liste = orte.filter((o) => o.dimension === d.wert && !angeheftetIds.has(o.id)).sort(sortieren);
               return (
-                <div key={d.wert} className={`spalte dim-${d.wert}`}>
-                  <div className="spalte-kopf">
-                    {d.label}
+                <div key={d.wert} className={`a-spalte ${thema(d.wert)}`}>
+                  <div className="a-spalte-kopf">
+                    <span className="tab active">{d.label}</span>
                     <span className="anzahl">{liste.length}</span>
                   </div>
                   {liste.length === 0 ? (
-                    <div className="spalte-leer">Keine weiteren Orte</div>
+                    <div className="a-leer">Keine weiteren Orte</div>
                   ) : (
                     <AutoScroll>
                       {liste.map((o) => (
-                        <div key={o.id} className={`zeile ${istNeu(o) ? 'neu' : ''}`}>
-                          <Icon name={o.kategorie} groesse={22} />
+                        <div key={o.id} className={`a-zeile ${istNeu(o) ? 'neu' : ''}`}>
+                          <span className="ort-icon"><Icon name={o.kategorie} groesse={18} /></span>
                           <span className="name">
-                            {o.name}
-                            {istNeu(o) && <span className="neu-marke">NEU</span>}
+                            <span>{o.name}</span>
+                            {istNeu(o) && <span className="pill">Neu</span>}
                           </span>
-                          <span className="koords"><Koords ort={o} /></span>
-                          <span className="neben">
-                            <span>{o.typ || KATEGORIEN.find((k) => k.wert === o.kategorie)?.label}</span>
-                            <Umrechnung ort={o} />
+                          <KoordChip x={o.x} y={o.y} z={o.z} klein />
+                          <span className="unten">
+                            <span>{o.typ || kategorieLabel(o.kategorie)}</span>
+                            <PortalChip ort={o} klein />
                           </span>
                         </div>
                       ))}
@@ -207,29 +211,34 @@ export function Anzeige() {
         </main>
       )}
 
-      <aside className="seitenleiste">
+      <aside className="a-seite">
         {qrZeigen && beitritt && (
-          <div className="beitritt">
+          <div className="a-karte a-beitritt">
+            <div className="kicker">Mit dem Handy beitreten</div>
             <div className="qr" dangerouslySetInnerHTML={{ __html: qr }} />
-            <div className="hinweis">Mit dem Handy scannen</div>
             <div className="adresse mono">{beitritt.adresse}</div>
-            <div className="pin mono">{beitritt.pin}</div>
+            <div className="kicker">PIN</div>
+            <div className="pin">{beitritt.pin}</div>
           </div>
         )}
-        <div className="verlauf">
+        <div className="a-karte a-verlauf">
           {teilnehmer.length > 0 && (
-            <div className="teilnehmer">
-              {teilnehmer.map((n) => <span key={n} className="chip-klein">{n}</span>)}
-            </div>
+            <>
+              <div className="kicker">Spieler · {teilnehmer.length}</div>
+              <div className="a-spieler">
+                {teilnehmer.map((n) => <span key={n} className="chip"><span className="status-dot" /> {n}</span>)}
+              </div>
+            </>
           )}
-          <h2>Zuletzt gespeichert</h2>
-          <ul>
+          <div className="kicker">Zuletzt gespeichert</div>
+          <div className="a-log">
             {neueste.map((o) => (
-              <li key={o.id}>
-                {o.name} <span className="wer">· {o.erstelltVon} · {vorZeit(o.erstelltAm, jetzt)}</span>
-              </li>
+              <div key={o.id} className={`a-log-item ${thema(o.dimension)}`}>
+                <div className="wann">{vorZeit(o.erstelltAm, jetzt)}</div>
+                <div className="was"><b>{o.erstelltVon}</b><span className="pfeil">→</span>{o.name}</div>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       </aside>
     </div>

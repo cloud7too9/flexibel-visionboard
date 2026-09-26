@@ -6,6 +6,8 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 
 ## Funktionen
 
+**Optik:** angelehnt an die Live-Karte der Minecraft Companion PWA – jede Dimension färbt die Oberfläche ein (Oberwelt grün, Nether rot, End violett).
+
 **Anzeige** (`/anzeige`, nur auf dem Board-Gerät selbst)
 - Angeheftete Orte groß oben (bis zu 6), alle anderen in drei Spalten: Oberwelt, Nether, Ende
 - Automatische Umrechnung Oberwelt ↔ Nether (÷ 8 / × 8) bei jedem Ort

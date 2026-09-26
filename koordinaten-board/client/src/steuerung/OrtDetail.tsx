@@ -3,7 +3,7 @@ import { Sheet } from '../komponenten/Sheet';
 import { Icon } from '../komponenten/Icon';
 import { entfernung, entfernungText, tpBefehl, umrechnen, zahl, type Position } from '../lib/koordinaten';
 import { kopieren } from '../lib/upload';
-import { dimensionLabel, kategorieLabel, type Ort } from '../lib/typen';
+import { dimensionLabel, kategorieLabel, thema, type Ort } from '../lib/typen';
 import type { Werkzeuge } from './werkzeuge';
 
 interface Props extends Pick<Werkzeuge, 'senden' | 'meldung'> {
@@ -43,57 +43,63 @@ export function OrtDetail({ ort, standort, bearbeiten, schliessen, senden, meldu
       .catch((err) => meldung(String(err), true));
 
   return (
-    <Sheet titel={ort.name} schliessen={schliessen}>
-      <div className="detail-koords">
-        <div><small>X</small><strong>{zahl(ort.x)}</strong></div>
-        <div><small>Y</small><strong>{ort.y !== null ? zahl(ort.y) : '—'}</strong></div>
-        <div><small>Z</small><strong>{zahl(ort.z)}</strong></div>
+    <Sheet
+      titel={ort.name}
+      sub={<>{dimensionLabel(ort.dimension)} · {ort.typ || kategorieLabel(ort.kategorie)}</>}
+      thema={thema(ort.dimension)}
+      schliessen={schliessen}
+    >
+      <div className="result-coords">
+        <div><span className="lbl">X</span><b>{zahl(ort.x)}</b></div>
+        <div><span className="lbl">Y</span><b>{ort.y !== null ? zahl(ort.y) : '—'}</b></div>
+        <div><span className="lbl">Z</span><b>{zahl(ort.z)}</b></div>
       </div>
 
-      <div className="detail-info">
-        <div>{dimensionLabel(ort.dimension)} · {ort.typ || kategorieLabel(ort.kategorie)}</div>
+      <div className="hud-zeile">
         {u && (
-          <div>
-            Im {u.dimension === 'nether' ? 'Nether' : 'der Oberwelt'}: <span className="mono">X {zahl(u.x)} · Z {zahl(u.z)}</span>
-          </div>
+          <span className="chip portal-chip mono">
+            <span className="pico">⟷</span> {dimensionLabel(u.dimension)} <b>{zahl(u.x)} / {zahl(u.z)}</b>
+          </span>
         )}
         {weg && (
-          <div>
-            Von deinem Standort: <span className="mono">{entfernungText(weg.meter)} Richtung {weg.richtung}</span>
-            {weg.umgerechnet && ' (umgerechnet)'}
-          </div>
+          <span className="chip portal-chip mono">
+            <span className="pico">➤</span> <b>{entfernungText(weg.meter)}</b> {weg.richtung}{weg.umgerechnet ? ' (umgerechnet)' : ''}
+          </span>
         )}
-        <div>Eingetragen von {ort.erstelltVon} am {new Date(ort.erstelltAm).toLocaleDateString('de-DE')}</div>
       </div>
 
-      {ort.notiz && <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{ort.notiz}</div>}
-      {ort.datei && <img className="detail-bild" src={`/medien/${ort.datei}`} alt={`Bild zu ${ort.name}`} />}
+      {ort.notiz && <div className="card" style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5, fontSize: 14 }}>{ort.notiz}</div>}
+      {ort.datei && <img className="bild" src={`/medien/${ort.datei}`} alt={`Bild zu ${ort.name}`} />}
 
       <div className="knopf-raster">
-        <button className="knopf" onClick={() => kopiere(`${ort.x} ${ort.y ?? '~'} ${ort.z}`, 'Koordinaten')}>
-          <Icon name="kopieren" /> Koordinaten
+        <button className="btn-secondary" onClick={() => kopiere(`${ort.x} ${ort.y ?? '~'} ${ort.z}`, 'Koordinaten')}>
+          <Icon name="kopieren" groesse={18} /> Koordinaten
         </button>
-        <button className="knopf" onClick={() => kopiere(tpBefehl(ort), 'Teleport-Befehl')}>
-          <Icon name="kopieren" /> /tp-Befehl
+        <button className="btn-secondary" onClick={() => kopiere(tpBefehl(ort), 'Teleport-Befehl')}>
+          <Icon name="kopieren" groesse={18} /> /tp-Befehl
         </button>
-        <button className="knopf" onClick={anheften}>
-          <Icon name="pin" /> {ort.angeheftet ? 'Lösen' : 'Anheften'}
+        <button className="btn-secondary" onClick={anheften}>
+          <Icon name="pin" groesse={18} /> {ort.angeheftet ? 'Lösen' : 'Anheften'}
         </button>
-        <button className="knopf" onClick={bearbeiten}>
-          <Icon name="stift" /> Bearbeiten
+        <button className="btn-primary" onClick={bearbeiten}>
+          <Icon name="stift" groesse={18} /> Bearbeiten
         </button>
       </div>
 
       {loeschenBestaetigen ? (
         <div className="knopf-raster">
-          <button className="knopf" onClick={() => setLoeschenBestaetigen(false)}>Abbrechen</button>
-          <button className="knopf gefahr" onClick={loeschen}>Wirklich löschen</button>
+          <button className="btn-secondary" onClick={() => setLoeschenBestaetigen(false)}>Abbrechen</button>
+          <button className="btn-danger" onClick={loeschen}>Wirklich löschen</button>
         </div>
       ) : (
-        <button className="knopf gefahr" onClick={() => setLoeschenBestaetigen(true)}>
-          <Icon name="muell" /> Löschen
+        <button className="btn-danger" onClick={() => setLoeschenBestaetigen(true)}>
+          <Icon name="muell" groesse={18} /> Löschen
         </button>
       )}
+
+      <div className="kicker" style={{ textAlign: 'center' }}>
+        Eingetragen von {ort.erstelltVon} · {new Date(ort.erstelltAm).toLocaleDateString('de-DE')}
+      </div>
     </Sheet>
   );
 }

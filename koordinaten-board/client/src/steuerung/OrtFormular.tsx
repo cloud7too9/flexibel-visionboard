@@ -1,24 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Sheet } from '../komponenten/Sheet';
 import { Icon } from '../komponenten/Icon';
-import { alsZahl, DimensionWahl, KategorieWahl, KoordFeld } from '../komponenten/Eingaben';
+import { alsZahl, DimensionWahl, Gruppe, KategorieWahl, KoordFeld, Option } from '../komponenten/Eingaben';
 import { koordinatenErkennen } from '../lib/koordinaten';
 import { bildHochladen, fotoVerkleinern } from '../lib/upload';
-import type { Dimension, Kategorie, Ort } from '../lib/typen';
+import { thema, type Dimension, type Kategorie, type Ort } from '../lib/typen';
 import { duplikatFinden, type Werkzeuge } from './werkzeuge';
 
 interface Props extends Werkzeuge {
   ort?: Ort;
+  startDimension?: Dimension;
   schliessen: () => void;
 }
 
-export function OrtFormular({ ort, schliessen, token, orte, typen, senden, meldung }: Props) {
+export function OrtFormular({ ort, startDimension, schliessen, token, orte, typen, senden, meldung }: Props) {
   const [name, setName] = useState(ort?.name ?? '');
   const [typ, setTyp] = useState(ort?.typ ?? '');
   const [x, setX] = useState(ort ? String(ort.x) : '');
   const [y, setY] = useState(ort?.y != null ? String(ort.y) : '');
   const [z, setZ] = useState(ort ? String(ort.z) : '');
-  const [dimension, setDimension] = useState<Dimension>(ort?.dimension ?? 'oberwelt');
+  const [dimension, setDimension] = useState<Dimension>(ort?.dimension ?? startDimension ?? 'oberwelt');
   const [kategorie, setKategorie] = useState<Kategorie>(ort?.kategorie ?? 'basis');
   const [notiz, setNotiz] = useState(ort?.notiz ?? '');
   const [angeheftet, setAngeheftet] = useState(ort?.angeheftet ?? false);
@@ -77,86 +78,80 @@ export function OrtFormular({ ort, schliessen, token, orte, typen, senden, meldu
   return (
     <Sheet
       titel={ort ? 'Ort bearbeiten' : 'Ort eintragen'}
+      sub={ort ? `Eingetragen von ${ort.erstelltVon}` : 'Von Hand oder per eingefügtem Text'}
+      thema={thema(dimension)}
       schliessen={schliessen}
       fuss={
         <>
-          <button className="knopf" onClick={schliessen}>Abbrechen</button>
-          <button className="knopf primaer breit" disabled={!gueltig || speichert} onClick={speichern}>
+          <button className="btn-secondary" onClick={schliessen}>Abbrechen</button>
+          <button className="btn-primary breit" disabled={!gueltig || speichert} onClick={speichern}>
             {speichert ? (fortschritt !== null ? `Lade Bild … ${Math.round(fortschritt * 100)} %` : 'Speichere …') : 'Speichern'}
           </button>
         </>
       }
     >
       {!ort && (
-        <label className="feld">
-          <span>Koordinaten einfügen (F3+C, /tp, „X: … Z: …“) – optional</span>
+        <Gruppe label="Text einfügen (optional)">
           <input
             className="eingabe mono"
-            placeholder="Text hier einfügen"
+            placeholder="F3+C, /tp oder „X: … Z: …“"
             value={einfuegen}
             onChange={(e) => eingefuegt(e.target.value)}
           />
-        </label>
+        </Gruppe>
       )}
 
-      <label className="feld">
-        <span>Name</span>
-        <input className="eingabe" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="z. B. Hauptbasis" />
-      </label>
+      <Gruppe label="Dimension">
+        <DimensionWahl wert={dimension} setzen={setDimension} />
+      </Gruppe>
 
-      <div className="feld">
-        <span>Koordinaten (Y optional)</span>
+      <Gruppe label="Koordinaten">
         <div className="koord-reihe">
           <KoordFeld achse="X" wert={x} setzen={setX} />
           <KoordFeld achse="Y" wert={y} setzen={setY} optional />
           <KoordFeld achse="Z" wert={z} setzen={setZ} />
         </div>
-        {doppelt && <span className="fehlertext" style={{ color: '#ffd23f' }}>Hier gibt es schon „{doppelt.name}“.</span>}
-      </div>
+        {doppelt && <div className="banner warn">Hier gibt es schon „{doppelt.name}“.</div>}
+      </Gruppe>
 
-      <div className="feld">
-        <span>Dimension</span>
-        <DimensionWahl wert={dimension} setzen={setDimension} />
-      </div>
+      <Gruppe label="Name">
+        <input className="eingabe" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="z. B. Hauptbasis" />
+      </Gruppe>
 
-      <label className="feld">
-        <span>Typ aus der Seed Map</span>
+      <Gruppe label="Typ aus der Seed Map">
         <select className="eingabe" value={typ} onChange={(e) => typWaehlen(e.target.value)}>
           <option value="">— eigener Ort —</option>
           {typen.map((t) => <option key={t.typ} value={t.typ}>{t.typ}</option>)}
         </select>
-      </label>
+      </Gruppe>
 
-      <div className="feld">
-        <span>Kategorie</span>
+      <Gruppe label="Kategorie">
         <KategorieWahl wert={kategorie} setzen={setKategorie} />
-      </div>
+      </Gruppe>
 
-      <label className="feld">
-        <span>Notiz</span>
+      <Gruppe label="Notiz">
         <textarea className="eingabe" value={notiz} maxLength={1000} onChange={(e) => setNotiz(e.target.value)} placeholder="z. B. Portal steht am Fluss" />
-      </label>
+      </Gruppe>
 
-      <div className="feld">
-        <span>Bild</span>
-        {(neuesBild || datei) && (
-          <img className="detail-bild" src={vorschau || `/medien/${datei}`} alt="" />
-        )}
+      <Gruppe label="Bild">
+        {(neuesBild || datei) && <img className="bild" src={vorschau || `/medien/${datei}`} alt="" />}
         <div className="knopf-raster">
-          <label className="knopf">
+          <label className="btn-secondary">
             <Icon name="bild" /> {datei || neuesBild ? 'Ersetzen' : 'Bild wählen'}
             <input type="file" accept="image/*" hidden onChange={(e) => setNeuesBild(e.target.files?.[0] ?? null)} />
           </label>
           {(datei || neuesBild) && (
-            <button className="knopf" onClick={() => { setDatei(''); setNeuesBild(null); }}>Entfernen</button>
+            <button className="btn-secondary" onClick={() => { setDatei(''); setNeuesBild(null); }}>Entfernen</button>
           )}
         </div>
-      </div>
+      </Gruppe>
 
-      <label className="schalter">
-        <span>Auf der Anzeige groß anheften</span>
-        <input type="checkbox" checked={angeheftet} onChange={(e) => setAngeheftet(e.target.checked)} />
-      </label>
+      <Option
+        name="Auf der Anzeige anheften"
+        beschreibung="Erscheint groß oben auf dem Bildschirm im Raum"
+        an={angeheftet}
+        setzen={setAngeheftet}
+      />
     </Sheet>
   );
 }

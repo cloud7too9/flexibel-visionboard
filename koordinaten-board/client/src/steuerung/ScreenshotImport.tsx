@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Sheet } from '../komponenten/Sheet';
 import { Icon } from '../komponenten/Icon';
-import { alsZahl, KoordFeld } from '../komponenten/Eingaben';
+import { alsZahl, DimensionWahl, KoordFeld, Option } from '../komponenten/Eingaben';
 import { bildHochladen, bildVorbereiten, kartenausschnitt, screenshotAuslesen } from '../lib/upload';
-import { DIMENSIONEN, KATEGORIEN, type Dimension, type Erkannt, type Kategorie } from '../lib/typen';
+import { KATEGORIEN, dimensionLabel, thema, type Dimension, type Erkannt, type Kategorie } from '../lib/typen';
 import { duplikatFinden, type Werkzeuge } from './werkzeuge';
 
 type Status = 'wartet' | 'lese' | 'fertig' | 'nicht-erkannt' | 'fehler' | 'gespeichert';
@@ -41,9 +41,11 @@ const neuerEintrag = (datei: File): Eintrag => ({
 interface Props extends Werkzeuge {
   dateien: File[];
   schliessen: () => void;
+  /** Nach dem Speichern auf die Dimension der neuen Orte umschalten */
+  dimensionWechseln: (d: Dimension) => void;
 }
 
-export function ScreenshotImport({ dateien, schliessen, token, orte, typen, senden, meldung }: Props) {
+export function ScreenshotImport({ dateien, schliessen, dimensionWechseln, token, orte, typen, senden, meldung }: Props) {
   const [eintraege, setEintraege] = useState<Eintrag[]>(() => dateien.map(neuerEintrag));
   const [speichert, setSpeichert] = useState<string | null>(null);
   const laeuft = useRef(false);
@@ -132,6 +134,8 @@ export function ScreenshotImport({ dateien, schliessen, token, orte, typen, send
     }
     setSpeichert(null);
     if (fertig === auswahl.length) {
+      const dims = new Set(auswahl.map((e) => e.dimension));
+      if (dims.size === 1) dimensionWechseln([...dims][0]);
       meldung(fertig === 1 ? '1 Ort gespeichert' : `${fertig} Orte gespeichert`);
       schliessen();
     } else {
@@ -143,17 +147,20 @@ export function ScreenshotImport({ dateien, schliessen, token, orte, typen, send
     if (liste?.length) setEintraege((alle) => [...alle, ...Array.from(liste).map(neuerEintrag)]);
   };
 
+  const erkannt = eintraege.filter((e) => e.status === 'fertig' || e.status === 'gespeichert').length;
+
   return (
     <Sheet
       titel={eintraege.length === 1 ? 'Screenshot auslesen' : `${eintraege.length} Screenshots auslesen`}
+      sub={nochAmLesen ? 'Texterkennung läuft auf dem Board …' : `${erkannt} von ${eintraege.length} erkannt`}
       schliessen={schliessen}
       fuss={
         <>
-          <label className="knopf" aria-label="Weitere Screenshots">
+          <label className="btn-secondary" aria-label="Weitere Screenshots">
             <Icon name="plus" />
             <input type="file" accept="image/*" multiple hidden onChange={(e) => { hinzufuegen(e.target.files); e.target.value = ''; }} />
           </label>
-          <button className="knopf primaer breit" disabled={auswahl.length === 0 || speichert !== null} onClick={alleSpeichern}>
+          <button className="btn-primary breit" disabled={auswahl.length === 0 || speichert !== null} onClick={alleSpeichern}>
             {speichert ?? (nochAmLesen && auswahl.length === 0
               ? 'Lese …'
               : auswahl.length === 1 ? '1 Ort speichern' : `${auswahl.length} Orte speichern`)}
@@ -163,75 +170,76 @@ export function ScreenshotImport({ dateien, schliessen, token, orte, typen, send
     >
       {eintraege.map((e) => {
         const bearbeitbar = e.status === 'fertig' || e.status === 'nicht-erkannt';
+        const bannerArt = e.status === 'fehler' ? 'bad' : e.status === 'gespeichert' ? 'ok' : 'warn';
         return (
-          <div key={e.id} className={`import-karte ${bearbeitbar && !e.uebernehmen ? 'aus' : ''}`}>
-            <div className="kopf">
+          <div key={e.id} className={`card import-karte ${thema(e.dimension)} ${bearbeitbar && !e.uebernehmen ? 'aus' : ''}`}>
+            <div className="import-kopf">
               <img className="vorschau" src={e.vorschau} alt="" />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {e.status === 'wartet' && <div className="status">Wartet …</div>}
-                {e.status === 'lese' && (
-                  <div className="status" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span className="laden-dreher" /> Lese Text …
-                  </div>
-                )}
-                {e.status === 'fertig' && (
-                  <div>
-                    <strong>{e.name}</strong>
-                    <div className="status mono">
-                      {DIMENSIONEN.find((d) => d.wert === e.dimension)?.label} · {e.x} / {e.y || '—'} / {e.z}
+              <div className="text">
+                {e.status === 'wartet' && <div className="card-meta">Wartet …</div>}
+                {e.status === 'lese' && <div className="card-meta"><span className="dreher" /> Lese Text …</div>}
+                {(e.status === 'fertig' || e.status === 'gespeichert') && (
+                  <>
+                    <div className="card-title">{e.name}</div>
+                    <div className="card-meta">
+                      <span className="pill">{dimensionLabel(e.dimension)}</span>
+                      <span className="coord mono">
+                        <span className="lbl">X</span><span className="v">{e.x}</span>
+                        {e.y && <><span className="lbl">Y</span><span className="v">{e.y}</span></>}
+                        <span className="lbl">Z</span><span className="v">{e.z}</span>
+                      </span>
                     </div>
-                  </div>
+                  </>
                 )}
-                {e.meldung && (
-                  <div className={`status ${e.status === 'fehler' ? 'fehler' : e.status === 'gespeichert' ? '' : 'warnung'}`}>
-                    {e.meldung}
-                  </div>
-                )}
+                {e.status === 'nicht-erkannt' && <div className="card-title">Nicht erkannt</div>}
+                {e.status === 'fehler' && <div className="card-title">Fehler</div>}
               </div>
               {bearbeitbar && (
-                <label className="schalter" style={{ minHeight: 0 }}>
-                  <input
-                    type="checkbox"
-                    aria-label="Übernehmen"
-                    checked={e.uebernehmen}
-                    onChange={(ev) => aendern(e.id, { uebernehmen: ev.target.checked })}
-                  />
-                </label>
+                <input
+                  type="checkbox"
+                  className="switch"
+                  aria-label="Übernehmen"
+                  checked={e.uebernehmen}
+                  onChange={(ev) => aendern(e.id, { uebernehmen: ev.target.checked })}
+                />
               )}
             </div>
+
+            {e.meldung && <div className={`banner ${bannerArt}`}>{e.meldung}</div>}
 
             {bearbeitbar && e.uebernehmen && (
               <>
                 <input className="eingabe" value={e.name} placeholder="Name" onChange={(ev) => aendern(e.id, { name: ev.target.value })} />
+                <DimensionWahl wert={e.dimension} setzen={(d) => aendern(e.id, { dimension: d })} />
                 <div className="koord-reihe">
                   <KoordFeld achse="X" wert={e.x} setzen={(v) => aendern(e.id, { x: v })} />
                   <KoordFeld achse="Y" wert={e.y} setzen={(v) => aendern(e.id, { y: v })} optional />
                   <KoordFeld achse="Z" wert={e.z} setzen={(v) => aendern(e.id, { z: v })} />
                 </div>
                 <div className="zwei-spalten">
-                  <select className="eingabe" value={e.dimension} onChange={(ev) => aendern(e.id, { dimension: ev.target.value as Dimension })}>
-                    {DIMENSIONEN.map((d) => <option key={d.wert} value={d.wert}>{d.label}</option>)}
+                  <select
+                    className="eingabe"
+                    value={e.typ}
+                    aria-label="Typ"
+                    onChange={(ev) => {
+                      const f = typen.find((t) => t.typ === ev.target.value);
+                      aendern(e.id, { typ: ev.target.value, ...(f && { kategorie: f.kategorie }), ...(f?.dimension && { dimension: f.dimension }) });
+                    }}
+                  >
+                    <option value="">— eigener Ort —</option>
+                    {typen.map((t) => <option key={t.typ} value={t.typ}>{t.typ}</option>)}
                   </select>
-                  <select className="eingabe" value={e.kategorie} onChange={(ev) => aendern(e.id, { kategorie: ev.target.value as Kategorie })}>
+                  <select className="eingabe" aria-label="Kategorie" value={e.kategorie} onChange={(ev) => aendern(e.id, { kategorie: ev.target.value as Kategorie })}>
                     {KATEGORIEN.map((k) => <option key={k.wert} value={k.wert}>{k.label}</option>)}
                   </select>
                 </div>
-                <select
-                  className="eingabe"
-                  value={e.typ}
-                  onChange={(ev) => {
-                    const f = typen.find((t) => t.typ === ev.target.value);
-                    aendern(e.id, { typ: ev.target.value, ...(f && { kategorie: f.kategorie }), ...(f?.dimension && { dimension: f.dimension }) });
-                  }}
-                >
-                  <option value="">— eigener Ort —</option>
-                  {typen.map((t) => <option key={t.typ} value={t.typ}>{t.typ}</option>)}
-                </select>
                 {e.box && (
-                  <label className="schalter">
-                    <span>Kartenausschnitt als Bild speichern</span>
-                    <input type="checkbox" checked={e.ausschnitt} onChange={(ev) => aendern(e.id, { ausschnitt: ev.target.checked })} />
-                  </label>
+                  <Option
+                    name="Kartenausschnitt speichern"
+                    beschreibung="Popup + Marker als Bild zum Ort"
+                    an={e.ausschnitt}
+                    setzen={(an) => aendern(e.id, { ausschnitt: an })}
+                  />
                 )}
               </>
             )}

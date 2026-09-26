@@ -41,7 +41,7 @@ export type Operation =
 export const DIMENSIONEN: { wert: Dimension; label: string }[] = [
   { wert: 'oberwelt', label: 'Oberwelt' },
   { wert: 'nether', label: 'Nether' },
-  { wert: 'ende', label: 'Ende' },
+  { wert: 'ende', label: 'End' },
 ];
 
 export const KATEGORIEN: { wert: Kategorie; label: string }[] = [
@@ -74,3 +74,9 @@ export interface Erkannt {
   kategorie: Kategorie;
   box: { x0: number; y0: number; x1: number; y1: number } | null;
 }
+
+/** CSS-Klasse, die die komplette Oberfläche in die Farben der Dimension taucht */
+export const thema = (d: Dimension) => `thema-${d}`;
+
+/** „in der Oberwelt“ / „im Nether“ / „im End“ */
+export const inDimension = (d: Dimension) => (d === 'oberwelt' ? 'in der Oberwelt' : `im ${dimensionLabel(d)}`);

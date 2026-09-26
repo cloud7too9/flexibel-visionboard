@@ -3,29 +3,32 @@ import { Icon } from './Icon';
 
 interface Props {
   titel: string;
+  sub?: ReactNode;
+  /** Dimensions-Theme für das Sheet, z. B. „thema-nether“ – sonst erbt es das App-Theme */
+  thema?: string;
   schliessen: () => void;
   children: ReactNode;
   fuss?: ReactNode;
 }
 
-export function Sheet({ titel, schliessen, children, fuss }: Props) {
+/** Bottom-Sheet mit Griff, wie „Spieler“/„Optionen“ in der Live-Karte. */
+export function Sheet({ titel, sub, thema, schliessen, children, fuss }: Props) {
   useEffect(() => {
-    const vorher = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
     const taste = (e: KeyboardEvent) => e.key === 'Escape' && schliessen();
     window.addEventListener('keydown', taste);
-    return () => {
-      document.body.style.overflow = vorher;
-      window.removeEventListener('keydown', taste);
-    };
+    return () => window.removeEventListener('keydown', taste);
   }, [schliessen]);
 
   return (
-    <div className="sheet-hintergrund" onClick={(e) => e.target === e.currentTarget && schliessen()}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={titel}>
+    <div className="scrim" onClick={(e) => e.target === e.currentTarget && schliessen()}>
+      <div className={`sheet ${thema ?? ''}`} role="dialog" aria-modal="true" aria-label={titel}>
+        <div className="grabber" />
         <div className="sheet-kopf">
-          <h2>{titel}</h2>
-          <button className="knopf-icon" onClick={schliessen} aria-label="Schließen">
+          <div className="titel">
+            <h2>{titel}</h2>
+            {sub && <div className="sub">{sub}</div>}
+          </div>
+          <button className="icon-btn" onClick={schliessen} aria-label="Schließen">
             <Icon name="schliessen" />
           </button>
         </div>

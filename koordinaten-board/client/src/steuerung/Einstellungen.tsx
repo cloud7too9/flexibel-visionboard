@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Sheet } from '../komponenten/Sheet';
-import { alsZahl, DimensionWahl, KoordFeld } from '../komponenten/Eingaben';
+import { alsZahl, DimensionWahl, Gruppe, KoordFeld, Option } from '../komponenten/Eingaben';
 import { koordinatenErkennen, type Position } from '../lib/koordinaten';
-import type { BoardZustand, Dimension } from '../lib/typen';
+import { thema, type BoardZustand, type Dimension } from '../lib/typen';
 import type { Werkzeuge } from './werkzeuge';
 
 /** Eigener Standort – bleibt nur auf diesem Handy, sortiert die Liste nach Entfernung. */
@@ -29,12 +29,14 @@ export function StandortSheet({ standort, setzen, schliessen }: {
   return (
     <Sheet
       titel="Mein Standort"
+      sub="Nur auf diesem Handy – zeigt Entfernung und Richtung zu jedem Ort"
+      thema={thema(dimension)}
       schliessen={schliessen}
       fuss={
         <>
-          {standort && <button className="knopf" onClick={() => { setzen(null); schliessen(); }}>Entfernen</button>}
+          {standort && <button className="btn-secondary" onClick={() => { setzen(null); schliessen(); }}>Entfernen</button>}
           <button
-            className="knopf primaer breit"
+            className="btn-primary breit"
             disabled={!gueltig}
             onClick={() => { setzen({ x: alsZahl(x)!, y: alsZahl(y), z: alsZahl(z)!, dimension }); schliessen(); }}
           >
@@ -43,16 +45,19 @@ export function StandortSheet({ standort, setzen, schliessen }: {
         </>
       }
     >
-      <p style={{ margin: 0, color: 'var(--text-2)', lineHeight: 1.5 }}>
-        Trag ein, wo du gerade im Spiel stehst. Die Liste zeigt dann Entfernung und Richtung zu jedem Ort. Nur auf deinem Handy.
-      </p>
-      <input className="eingabe mono" placeholder="Koordinaten einfügen (optional)" onChange={(e) => eingefuegt(e.target.value)} />
-      <div className="koord-reihe">
-        <KoordFeld achse="X" wert={x} setzen={setX} />
-        <KoordFeld achse="Y" wert={y} setzen={setY} optional />
-        <KoordFeld achse="Z" wert={z} setzen={setZ} />
-      </div>
-      <DimensionWahl wert={dimension} setzen={setDimension} />
+      <Gruppe label="Dimension">
+        <DimensionWahl wert={dimension} setzen={setDimension} />
+      </Gruppe>
+      <Gruppe label="Position">
+        <div className="koord-reihe">
+          <KoordFeld achse="X" wert={x} setzen={setX} />
+          <KoordFeld achse="Y" wert={y} setzen={setY} optional />
+          <KoordFeld achse="Z" wert={z} setzen={setZ} />
+        </div>
+      </Gruppe>
+      <Gruppe label="Text einfügen (optional)">
+        <input className="eingabe mono" placeholder="F3+C, /tp oder „X: … Z: …“" onChange={(e) => eingefuegt(e.target.value)} />
+      </Gruppe>
     </Sheet>
   );
 }
@@ -78,23 +83,29 @@ export function EinstellungenSheet({ zustand, name, abmelden, schliessen, senden
   };
 
   return (
-    <Sheet titel="Einstellungen" schliessen={schliessen}>
-      <label className="feld">
-        <span>Name der Welt (steht oben auf der Anzeige)</span>
+    <Sheet titel="Optionen" sub={`Angemeldet als ${name}`} schliessen={schliessen}>
+      <Gruppe label="Name der Welt">
         <div style={{ display: 'flex', gap: 8 }}>
           <input className="eingabe" value={titel} maxLength={60} onChange={(e) => setTitel(e.target.value)} />
-          <button className="knopf" disabled={!titel.trim() || titel === zustand.einstellungen.titel} onClick={() => speichern({ titel })}>
+          <button className="btn-primary" disabled={!titel.trim() || titel === zustand.einstellungen.titel} onClick={() => speichern({ titel })}>
             OK
           </button>
         </div>
-      </label>
-      <label className="schalter">
-        <span>QR-Code und PIN auf der Anzeige zeigen</span>
-        <input type="checkbox" checked={zustand.einstellungen.qrZeigen} onChange={(e) => speichern({ qrZeigen: e.target.checked })} />
-      </label>
-      <button className="knopf" onClick={exportieren}>Alle Orte als JSON exportieren</button>
-      <div className="detail-info">Angemeldet als <strong>{name}</strong></div>
-      <button className="knopf" onClick={abmelden}>Name ändern / abmelden</button>
+      </Gruppe>
+      <div>
+        <Option
+          name="QR-Code auf der Anzeige"
+          beschreibung="Zeigt Adresse und PIN zum Beitreten"
+          an={zustand.einstellungen.qrZeigen}
+          setzen={(an) => speichern({ qrZeigen: an })}
+        />
+      </div>
+      <Gruppe label="Daten">
+        <button className="btn-secondary" onClick={exportieren}>Alle {zustand.orte.length} Orte als JSON exportieren</button>
+      </Gruppe>
+      <Gruppe label="Konto">
+        <button className="btn-secondary" onClick={abmelden}>Name ändern / abmelden</button>
+      </Gruppe>
     </Sheet>
   );
 }

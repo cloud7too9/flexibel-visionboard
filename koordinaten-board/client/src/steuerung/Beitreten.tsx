@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Icon } from '../komponenten/Icon';
+import { Gruppe } from '../komponenten/Eingaben';
 
 export function Beitreten({ fertig }: { fertig: (token: string, name: string) => void }) {
   const parameter = new URLSearchParams(location.search);
@@ -31,10 +33,12 @@ export function Beitreten({ fertig }: { fertig: (token: string, name: string) =>
 
   return (
     <form className="beitreten" onSubmit={absenden}>
-      <h1>Koordinaten-Board</h1>
+      <div className="title-row">
+        <span className="compass"><Icon name="kompass" groesse={26} /></span>
+        <h1>Koordinaten-Board</h1>
+      </div>
       <p>Gib die PIN von der Anzeige ein und wie du heißen willst – dein Name steht dann bei deinen Einträgen.</p>
-      <label className="feld">
-        <span>PIN</span>
+      <Gruppe label="PIN">
         <input
           className="eingabe pin-eingabe"
           inputMode="numeric"
@@ -43,9 +47,8 @@ export function Beitreten({ fertig }: { fertig: (token: string, name: string) =>
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
         />
-      </label>
-      <label className="feld">
-        <span>Dein Name</span>
+      </Gruppe>
+      <Gruppe label="Dein Name">
         <input
           className="eingabe"
           maxLength={24}
@@ -55,9 +58,9 @@ export function Beitreten({ fertig }: { fertig: (token: string, name: string) =>
           onChange={(e) => setName(e.target.value)}
           autoFocus={pin.length === 4}
         />
-      </label>
-      {fehler && <div className="fehlertext">{fehler}</div>}
-      <button className="knopf primaer" disabled={laeuft || pin.length !== 4 || !name.trim()}>
+      </Gruppe>
+      {fehler && <div className="banner bad">{fehler}</div>}
+      <button className="btn-primary" disabled={laeuft || pin.length !== 4 || !name.trim()}>
         {laeuft ? 'Verbinde …' : 'Beitreten'}
       </button>
     </form>
