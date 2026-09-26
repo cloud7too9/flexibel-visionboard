@@ -11,6 +11,7 @@ import { networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Zustand } from './zustand.js';
+import { FEATURES, screenshotAuslesen, erkennungBeenden } from './erkennung.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -139,6 +140,28 @@ app.post('/api/upload', async (req, reply) => {
   return { datei: name };
 });
 
+// Seed-Map-Screenshot auslesen – wird NICHT gespeichert, nur ausgewertet
+app.post('/api/auslesen', async (req, reply) => {
+  if (!nutzerAusAnfrage(req)) return reply.code(401).send({ fehler: 'Nicht angemeldet' });
+  const teil = await req.file();
+  if (!teil) return reply.code(400).send({ fehler: 'Keine Datei' });
+  if (!ERLAUBTE_BILDER[teil.mimetype]) {
+    teil.file.resume();
+    return reply.code(415).send({ fehler: 'Nur Bilder (JPG, PNG, WebP)' });
+  }
+  const bild = await teil.toBuffer();
+  try {
+    return await screenshotAuslesen(bild);
+  } catch (fehler) {
+    req.log.error(fehler);
+    return reply.code(500).send({ fehler: 'Texterkennung fehlgeschlagen' });
+  }
+});
+
+// Feature-Typen der Seed Map (für Auswahl und Filter auf dem Handy)
+const TYPEN = [...new Map(FEATURES.map((f) => [f.typ, { typ: f.typ, kategorie: f.kategorie, dimension: f.dimension }])).values()];
+app.get('/api/typen', async () => TYPEN);
+
 // ---------- Echtzeit-Sync ----------
 
 const verbindungen = new Set(); // { socket, rolle, nutzer }
@@ -216,6 +239,7 @@ if (existsSync(CLIENT_DIST)) {
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => {
     await zustand.speichern().catch(() => {});
+    await erkennungBeenden().catch(() => {});
     process.exit(0);
   });
 }

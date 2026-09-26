@@ -52,6 +52,7 @@ export function ortBereinigen(eingabe, basis = {}) {
     if (!KATEGORIEN.includes(eingabe.kategorie)) return null;
     o.kategorie = eingabe.kategorie;
   }
+  if ('typ' in eingabe) o.typ = text(eingabe.typ, 40);
   if ('notiz' in eingabe) o.notiz = text(eingabe.notiz, 1000);
   if ('datei' in eingabe) {
     if (eingabe.datei && !DATEI_MUSTER.test(eingabe.datei)) return null;
@@ -104,7 +105,7 @@ export class Zustand {
     switch (op.art) {
       case 'hinzufuegen': {
         const ort = ortBereinigen(op.ort ?? {}, {
-          y: null, dimension: 'oberwelt', kategorie: 'sonstiges',
+          y: null, dimension: 'oberwelt', kategorie: 'sonstiges', typ: '',
           notiz: '', datei: '', angeheftet: false,
         });
         if (!ort) return { geaendert: false, entfernteDateien, fehler: 'Ungültiger Ort' };

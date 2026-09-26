@@ -1,0 +1,9 @@
+{
+  "name": "Koordinaten-Board",
+  "short_name": "Koordinaten",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060709",
+  "theme_color": "#060709",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
