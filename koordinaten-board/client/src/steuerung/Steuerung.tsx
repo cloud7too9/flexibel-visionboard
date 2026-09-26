@@ -183,7 +183,7 @@ function Board({ token, name, abmelden }: { token: string; name: string; abmelde
           <Icon name="plus" /> Manuell
         </button>
         <button className="knopf primaer breit" onClick={() => dateiWahl.current?.click()}>
-          <Icon name="bild" /> Screenshot auslesen
+          <Icon name="bild" /> Screenshot
         </button>
         <input
           ref={dateiWahl}

@@ -39,7 +39,7 @@ export async function kartenausschnitt(canvas: HTMLCanvasElement, box: NonNullab
   const boxB = box.x1 - box.x0;
   const boxH = box.y1 - box.y0;
   const breite = Math.min(W, Math.max(boxB * 1.9, W * 0.8));
-  const hoehe = Math.min(H, breite * 0.62);
+  const hoehe = Math.min(H, breite * 0.52); // niedrig genug, dass Werbe-Overlays unten draußen bleiben
   const links = Math.min(Math.max(0, (box.x0 + box.x1) / 2 - breite / 2), W - breite);
   const oben = Math.min(Math.max(0, box.y0 - boxH * 0.5), H - hoehe);
 

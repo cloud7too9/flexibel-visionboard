@@ -7,9 +7,12 @@ export interface Position {
   dimension: Dimension;
 }
 
-const formatierer = new Intl.NumberFormat('de-DE');
-/** Zahl mit Tausenderpunkt, echtes Minuszeichen für bessere Lesbarkeit auf dem Bildschirm */
-export const zahl = (n: number) => formatierer.format(n).replace('-', '−');
+/**
+ * Zahl mit schmalem Leerzeichen als Tausendertrenner („−1 884“).
+ * Kein Punkt/Komma – das würde bei Koordinaten wie eine Kommazahl aussehen.
+ */
+export const zahl = (n: number) =>
+  `${n < 0 ? '−' : ''}${String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202F')}`;
 
 /** Oberwelt ↔ Nether (Faktor 8). Ende hat kein Gegenstück. */
 export function umrechnen(p: Pick<Position, 'x' | 'z' | 'dimension'>): { x: number; z: number; dimension: Dimension } | null {
