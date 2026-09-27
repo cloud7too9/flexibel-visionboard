@@ -9,7 +9,7 @@ export function AddPanelModal() {
 
   return (
     <Modal open={open} title="Panel hinzufügen" onClose={closeAddPanel}>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
         {PANEL_TYPEN.map((typ) => {
           const def = PANEL_REGISTRY[typ];
           return (
@@ -17,7 +17,7 @@ export function AddPanelModal() {
               key={typ}
               type="button"
               onClick={() => addItem(typ)}
-              className="flex flex-col gap-1 rounded-md border border-border bg-surface px-3 py-3 text-left transition-colors hover:border-accent hover:bg-surface-raised"
+              className="flex min-h-[44px] flex-col gap-1 rounded-md border border-border bg-surface px-3 py-2.5 text-left transition-colors hover:border-accent hover:bg-surface-raised sm:py-3"
             >
               <span className="text-sm font-medium">{def.standardTitel}</span>
               <span className="text-xs text-text-muted">

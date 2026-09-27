@@ -21,3 +21,24 @@ npm run typecheck    # TS-Check
 - `src/tests/` – Unit-Tests
 
 Siehe Plan-Datei für Designregeln (12-Spalten-Grid, feste Größenstufen, getrennter Bearbeitungsmodus).
+
+## Bildschirmgrößen
+
+Das Layout wird immer im kanonischen Desktop-Raster (12 Spalten) gespeichert.
+Für kleinere Bildschirme wird daraus zur Laufzeit ein Layout mit weniger
+Spalten abgeleitet (`src/features/workspace/lib/responsive-layout.ts`):
+Breiten werden proportional skaliert, Panels in Lesereihenfolge ohne
+Überlappung neu angeordnet.
+
+| Breakpoint | Viewport-Breite | Spalten | Abstand | Zeilenhöhe | Verschieben/Skalieren |
+|------------|-----------------|---------|---------|------------|------------------------|
+| Mobil      | < 640px         | 2       | 8px     | 72px       | nein (automatisch)     |
+| Tablet     | 640–1023px      | 6       | 10px    | 80px       | nein (automatisch)     |
+| Desktop    | ≥ 1024px        | 12      | 12px    | 80px       | ja                     |
+
+Die Grenzen entsprechen den Tailwind-Breakpoints `sm` und `lg`. Definiert sind
+sie in `src/features/workspace/model/breakpoints.ts`; der aktive Breakpoint
+kommt aus dem Hook `useBreakpoint()` (`src/shared/hooks/useBreakpoint.ts`) und
+wird im Header als Badge angezeigt. Hinzufügen, Duplizieren und Entfernen von
+Panels funktionieren in jeder Größe; Drag & Drop und Resize nur auf Desktop,
+damit Änderungen 1:1 im gespeicherten Raster landen.

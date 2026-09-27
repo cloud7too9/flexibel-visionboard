@@ -14,8 +14,10 @@ export function WorkspacePage() {
   return (
     <div className="flex min-h-screen flex-col bg-surface text-text">
       <WorkspaceHeader />
-      <main className="flex-1 px-4 py-4">
-        <WorkspaceGrid />
+      <main className="flex-1 px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5">
+        <div className="mx-auto w-full max-w-screen-2xl">
+          <WorkspaceGrid />
+        </div>
       </main>
       <AddPanelModal />
     </div>
