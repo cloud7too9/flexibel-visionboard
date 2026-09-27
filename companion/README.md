@@ -1,10 +1,10 @@
-# Companion · Prototyp – Karte, Sammelobjekte, Banner
+# Companion · Prototyp – Karte, Sammelobjekte, Portale, Banner
 
 Koordinaten-Sammlung für das Modul **Karte** (vormals Live-Karte) der Minecraft Companion PWA, nach dem minimalen Datenmodell
 (`World → Dimension → FeatureInstance → FeatureType → FeatureCategory`).
 Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte.html`.
 
-**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt. Mit `?modul=sammelobjekte` oder `?modul=banner` startet man direkt im jeweiligen Bereich.
+**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt. Mit `?modul=sammelobjekte`, `?modul=portale` oder `?modul=banner` startet man direkt im jeweiligen Bereich.
 
 ## Was drin ist
 
@@ -25,14 +25,14 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 |---|---|---|
 | Karte | umgesetzt | Live-Karte + Koordinaten-Sammlung |
 | Sammelobjekte | umgesetzt | Rüstungsbesätze abhaken, Fundorte |
-| Portal-Verwaltung | geplant | – |
+| Portal-Verwaltung | umgesetzt | Umrechnen, Verbindungen erfassen und prüfen, Infokarte |
 | Handbuch | geplant | – |
 | Baupläne | geplant | – |
 | Banner | umgesetzt | Baupläne für Banner mit Anleitung |
 | Rüstung | geplant | Rüstungs-Sets |
 
 Neue Bereiche: Eintrag in `BEREICHE` + Icon in `ICON`. Ohne `mount()` zeigt die Sidebar den Bereich als „geplant“.
-Die Details jedes Bereichs werden einzeln festgelegt. Reihenfolge: Banner ✓ → Portal-Verwaltung → Rüstung, Handbuch, Baupläne.
+Die Details jedes Bereichs werden einzeln festgelegt. Reihenfolge: Banner ✓ → Portal-Verwaltung ✓ → Rüstung, Handbuch, Baupläne.
 Für Rüstung liegt ein erster Code-Entwurf in `entwuerfe/banner-ruestung.js` (nicht eingebaut; der Banner-Teil darin ist überholt).
 
 ## Dashboard-Ansichten (später)
@@ -55,6 +55,21 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 - Fortschritt: gefunden / 18, Fundorte bekannt / 13, Prozent
 - Verknüpfung zur Karte: pro Fundort die bekannten Strukturen aus der Koordinaten-Sammlung, nächste mit Entfernung; „Karte“ springt direkt hin
 
+## Portal-Verwaltung
+
+- **Umrechnen**: Oberwelt → Nether oder zurück, X/Y/Z mit ±-Taste, „Mein Standort“ übernehmen. Zeigt das Gegenportal (Oberwelt ÷ 8 abgerundet, Nether × 8 mit dem Bereich, den ein Nether-Block abdeckt) und **wo man mit den erfassten Portalen ankommen würde**. Kopieren, TP-Befehl, direkt „Als Verbindung anlegen“
+- **Verbindungen** je Welt (für alle gemeinsam): Name + Oberwelt-Portal + Nether-Portal. Jede Karte zeigt den Status:
+  - **Verbunden**: beide Richtungen landen am eigenen Gegenportal
+  - **Einseitig** / **Falsch verknüpft**: eine oder beide Richtungen landen bei einem anderen Portal
+  - **Neues Portal**: im Suchbereich liegt kein Portal, das Spiel würde ein neues bauen
+- **Detail**: beide Portale mit Kopieren/TP-Befehl, Prüfung beider Richtungen, Abstand zum Idealpunkt und ein konkreter Vorschlag (z. B. „Nether-Portal genau bei X 37 · Y 80 · Z −53 bauen“). Der Vorschlag wird vorher durchgerechnet
+- **Editor**: „Aus Oberwelt berechnen (÷ 8)“ / „Aus Nether berechnen (× 8)“, **Live-Prüfung** beim Tippen
+- **Infokarte** (über „Info“ in der Bottom-Bar ein-/ausblendbar): 8 Punkte zum gezielten Verknüpfen, umschaltbar **Bedrock / Java**. Der Schalter legt auch die Regeln der Prüfung fest (Einstellung auf dem Gerät, Standard Bedrock)
+
+**Prüf-Logik** (nach minecraft.wiki, „Portal search“): Position umrechnen → im quadratischen Suchbereich um den Zielpunkt nach Portalen suchen (**Bedrock ±128 in beiden Dimensionen**, **Java ±16 im Nether / ±128 in der Oberwelt**) → das nächste nach 3D-Abstand gewinnt (Y zählt mit), keins gefunden → neues Portal. Geprüft wird nur mit den erfassten Portalen; nicht erfasste (vom Spiel erzeugte, alte) können trotzdem stören.
+
+> Hinweis zu `modul-a-live-karte.html`: Der Text im alten Portal-Linker („Bedrock sucht im Nether … ±16 Blöcken“) stimmt nur für Java. Bedrock sucht auch im Nether ±128.
+
 ## Banner
 
 - **Baupläne gelten für alle Welten** (ein Banner hängt nicht am Seed), alle im Raum sehen und bearbeiten dieselben
@@ -71,7 +86,8 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 2. In allen anderen Kategorien entstehen neue Typen nur aus Screenshots (Variante aus dem Popup, z. B. Stronghold → „Stairway“).
 3. Biome nur per Screenshot. Das Biom ist der Typ, es muss in der Biom-Liste stehen, die Dimension ergibt sich aus der Liste.
 4. Biom-Instanzen sind fest (nur löschen, nicht bearbeiten).
-5. Banner (`bannerPruefen()`): Name 1–60 Zeichen, Grundfarbe und Farben aus den 16 Farbstoffen, Muster aus der Musterliste, höchstens 6 Ebenen.
+5. Portal-Verbindungen (`verbindungRegelPruefen()`): Name 1–60 Zeichen, X/Z ganze Zahlen innerhalb der Welt (Nether: Weltgrenze ÷ 8), Y leer oder Oberwelt −64…320 / Nether 0…256.
+6. Banner (`bannerPruefen()`): Name 1–60 Zeichen, Grundfarbe und Farben aus den 16 Farbstoffen, Muster aus der Musterliste, höchstens 6 Ebenen.
 
 ## API-Vertrag
 
@@ -86,10 +102,16 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 | POST | `/orte/auslesen` | multipart `datei` | `{ erkannt:{ titel, kategorie, variante, dimension, x, y, z } \| null }` |
 | GET | `/sammelobjekte/welten/:id` | – | `{ status:{ [objektId]:{ von, am } } }` |
 | PUT | `/sammelobjekte/welten/:id/:objektId` | `{ gefunden }` | `{ status }` |
+| GET | `/portale/welten/:id` | – | `{ verbindungen:[verbindung] }` |
+| POST | `/portale/welten/:id` | `{ name, oberwelt, nether }` | `{ verbindung }` – `von`/`am` setzt der Server |
+| PUT | `/portale/:id` | `{ name, oberwelt, nether }` | `{ verbindung }` |
+| DELETE | `/portale/:id` | – | `{ ok:true }` |
 | GET | `/banner` | – | `{ liste:[banner] }` |
 | POST | `/banner` | `{ name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
 | PUT | `/banner/:id` | `{ name, basis, ebenen }` | `{ banner }` |
 | DELETE | `/banner/:id` | – | `{ ok:true }` |
+
+`verbindung = { id, name, oberwelt:{ x, y|null, z }, nether:{ x, y|null, z }, von, am }`
 
 `banner = { id, name, basis, ebenen:[{ muster, farbe }], von, am }` (Farb- und Muster-IDs wie im Spiel, z. B. `light_blue`, `stripe_bottom`)
 

@@ -724,6 +724,60 @@ button.switch { padding:0; }
 .muster-feld img { width:20px; height:40px; image-rendering:pixelated; display:block; }
 .muster-feld.aktiv { border-color:var(--accent); background:var(--accent-soft); }
 
+/* ---- Portal-Verwaltung  ·  Umrechner, Verbindungen, Infokarte ------------- */
+.portal-stage { padding-top:2px; }
+.rechner { gap:12px; }
+.rechner-kopf { display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:30px; }
+.chip-knopf { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border-soft); background:var(--surface-3);
+  color:var(--text-dim); border-radius:10px; padding:6px 10px; font:inherit; font-size:12px; font-weight:700; cursor:pointer; }
+.chip-knopf svg { color:var(--accent); }
+.rechner .tool-segment { background:var(--surface); }
+.rechner .seg-btn { font-size:12.5px; padding:9px 4px; }
+.rechner .field input { background:var(--surface); }
+.rechner .koord-in .vz { background:var(--surface-2); }
+.rechner-ziel { display:flex; flex-direction:column; gap:6px; padding:12px 14px; border-radius:12px;
+  background:var(--surface); border:1px solid var(--border-soft); transition:background .45s ease; }
+.rechner-ziel .result-label b, .rechner-ziel .result-coords b { color:var(--ziel); }
+.rechner-ziel .result-coords { flex-wrap:wrap; gap:4px 18px; font-size:21px; }
+.rechner-ergebnis { display:flex; flex-direction:column; gap:10px; }
+.rechner-knoepfe { display:flex; gap:8px; flex-wrap:wrap; }
+.rechner .btn-secondary, .seite-karte .btn-secondary { background:var(--surface); border-color:var(--border); }
+.rechner-knoepfe .btn-secondary { flex:1; }
+.rechner-knoepfe .btn-primary { flex:1 1 100%; }
+.pruef-zeile { display:flex; gap:9px; align-items:flex-start; font-size:13px; line-height:1.45; color:var(--text-dim); }
+.pruef-zeile b { color:var(--text); }
+.pruef-zeile .ico { flex:0 0 auto; width:20px; height:20px; margin-top:1px; border-radius:50%; display:grid; place-items:center;
+  font-size:11px; font-weight:800; background:var(--surface-3); color:var(--text-dim); }
+.pruef-zeile.ok .ico   { background:rgba(58,209,122,.16); color:#5fe09a; }
+.pruef-zeile.warn .ico { background:rgba(232,180,68,.16); color:#f0c468; }
+.pruef-zeile.bad .ico  { background:rgba(232,68,60,.18); color:#ff8278; }
+.pill.ok   { background:rgba(58,209,122,.16); color:#5fe09a; }
+.pill.warn { background:rgba(232,180,68,.16); color:#f0c468; }
+.pill.bad  { background:rgba(232,68,60,.18); color:#ff8278; }
+.verbindung { text-align:left; font:inherit; color:var(--text); cursor:pointer; gap:6px; }
+.verbindung:active { background:var(--surface-3); }
+.verbindung .card-head { align-items:center; margin-bottom:2px; }
+.verbindung .pill { flex:0 0 auto; }
+.seite { display:flex; align-items:baseline; gap:10px; }
+.seite-dim { flex:0 0 66px; font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+.card-meta.warn { color:#f0c468; }
+.card-meta.bad { color:#ff8278; }
+.seite-karte { gap:8px; }
+.seite-karte .coord { font-size:16px; }
+.seite-karte .card-actions .btn-secondary { flex:1; }
+.info-karte { background:var(--surface-2); border:1px solid var(--accent); border-radius:16px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:12px; box-shadow:0 0 0 3px var(--accent-soft); }
+.info-kopf { display:flex; align-items:center; gap:10px; }
+.info-kopf h2 { flex:1; font-size:16px; font-weight:800; }
+.info-kopf .icon-btn { position:static; transform:none; width:34px; height:34px; margin:-6px -8px -6px 0; color:var(--text-dim); }
+.info-karte .tool-segment { background:var(--surface); }
+.info-liste { list-style:none; counter-reset:info; display:flex; flex-direction:column; gap:11px; padding:0; margin:0; }
+.info-liste li { counter-increment:info; display:grid; grid-template-columns:22px 1fr; gap:9px;
+  font-size:13px; line-height:1.5; color:var(--text-dim); }
+.info-liste li::before { content:counter(info); width:22px; height:22px; border-radius:50%; margin-top:1px;
+  background:var(--accent-soft); color:var(--accent); font:800 11px/22px ui-monospace,monospace; text-align:center; }
+.info-liste b { color:var(--text); }
+
 /* Toast */
 .orte-toast { position:absolute; left:50%; bottom:calc(86px + env(safe-area-inset-bottom)); transform:translateX(-50%);
   z-index:30; font-size:13px; font-weight:600; white-space:nowrap; max-width:calc(100% - 32px); overflow:hidden; text-overflow:ellipsis; }
@@ -851,6 +905,25 @@ button.switch { padding:0; }
       </div>
       <nav class="bottombar">
         <div class="bb-placeholder">Gilt für die ganze Welt · alle können abhaken</div>
+      </nav>
+    </section>
+
+    <!-- === Modul: Portal-Verwaltung · Umrechnen + Verbindungen ============== -->
+    <section class="module" data-module="portale" id="modulePortale">
+      <div class="orte-stage portal-stage" id="portalStage"></div>
+      <nav class="bottombar">
+        <button class="bb-item" id="portalInfoBtn" aria-pressed="false">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></span>
+          <span class="lab">Info</span>
+        </button>
+        <button class="bb-item" id="portalNeuBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="lab">Neue Verbindung</span>
+        </button>
+        <button class="bb-item" id="portalWeltBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+          <span class="lab">Welt</span>
+        </button>
       </nav>
     </section>
 
@@ -1134,6 +1207,13 @@ function koordinatenErkennen(text){
    PUT    /banner/:id   { name, basis, ebenen }  → { banner }
    DELETE /banner/:id                         → { ok:true }
    banner = { id, name, basis, ebenen:[{ muster, farbe }], von, am }
+
+   Portal-Verbindungen (je Welt, für alle gemeinsam, Regeln siehe verbindungRegelPruefen()):
+   GET    /portale/welten/:id                                  → { verbindungen:[verbindung] }
+   POST   /portale/welten/:id   { name, oberwelt, nether }     → { verbindung }
+   PUT    /portale/:id          { name, oberwelt, nether }     → { verbindung }
+   DELETE /portale/:id                                         → { ok:true }
+   verbindung = { id, name, oberwelt:{ x, y|null, z }, nether:{ x, y|null, z }, von, am }
    ========================================================================== */
 const DEMO = {
   // Wie Modul A: ohne Backend (file://) oder ohne ?live=1 läuft der Mock
@@ -1190,7 +1270,7 @@ const MOCK = (() => {
     ["overworld", BIOMES, "Savanna", 420, null, -300],
     ["overworld", BIOMES, "Plains", 180, null, -520],
     ["overworld", BIOMES, "River", 330, null, -760],
-    ["nether", EIGENE_ORTE, "Portal zur Basis", 26, 64, -49],
+    ["nether", EIGENE_ORTE, "Portal zur Basis", 26, 71, -49],
     ["nether", "Nether Fortress", null, -120, null, 248],
     ["nether", "Bastion", null, 344, null, -96],
     ["nether", BIOMES, "Soul Sand Valley", 90, null, -300],
@@ -1224,7 +1304,15 @@ const MOCK = (() => {
         { muster:"gradient", farbe:"black" }, { muster:"rhombus", farbe:"magenta" }, { muster:"stripe_center", farbe:"purple" }, { muster:"border", farbe:"black" }], von:"Max", am:"2026-09-23" },
     { id:"b_4", name:"Prüfungskammer", basis:"cyan", ebenen:[{ muster:"bricks", farbe:"gray" }, { muster:"flow", farbe:"white" }, { muster:"border", farbe:"black" }], von:"Tom", am:"2026-09-25" },
   ];
-  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, banner, ich:"Max" };
+  // Portal-Verbindungen der Beispielwelt: passt · einseitig · Nether-Portal zu weit weg
+  const portale = {
+    w_1: [
+      { id:"p_1", name:"Hauptbasis", oberwelt:{ x:212, y:71, z:-388 }, nether:{ x:26, y:71, z:-49 }, von:"Max", am:"2026-09-19" },
+      { id:"p_2", name:"Eisenfarm", oberwelt:{ x:300, y:80, z:-420 }, nether:{ x:29, y:70, z:-51 }, von:"Tom", am:"2026-09-22" },
+      { id:"p_3", name:"Dorf", oberwelt:{ x:640, y:64, z:-1120 }, nether:{ x:100, y:70, z:-150 }, von:"Lena", am:"2026-09-24" },
+    ],
+  };
+  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, banner, portale, ich:"Max" };
 })();
 
 function mockApi(path, opts){
@@ -1302,6 +1390,29 @@ function mockApi(path, opts){
     if(body?.gefunden) status[m[2]] = { von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
     else delete status[m[2]];
     return ok({ status:{ ...status } });
+  }
+
+  if((m = path.match(/^\/portale\/welten\/([\w-]+)$/))){
+    if(!MOCK.welten.some((w) => w.id === m[1])) return fehler(404, "Welt nicht gefunden");
+    const liste = (MOCK.portale[m[1]] ||= []);
+    if(method === "GET") return ok({ verbindungen:structuredClone(liste) });
+    if(method === "POST"){
+      const problem = verbindungRegelPruefen(body); if(problem) return fehler(422, problem);
+      const v = { id:MOCK.neueId("p"), ...verbindungSauber(body), von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
+      liste.push(v);
+      return ok({ verbindung:structuredClone(v) }, 201);
+    }
+  }
+  if((m = path.match(/^\/portale\/([\w-]+)$/))){
+    const liste = Object.values(MOCK.portale).find((l) => l.some((v) => v.id === m[1]));
+    const v = liste?.find((x) => x.id === m[1]);
+    if(!v) return fehler(404, "Verbindung nicht gefunden");
+    if(method === "DELETE"){ liste.splice(liste.indexOf(v), 1); return ok({ ok:true }); }
+    if(method === "PUT"){
+      const problem = verbindungRegelPruefen(body); if(problem) return fehler(422, problem);
+      Object.assign(v, verbindungSauber(body));
+      return ok({ verbindung:structuredClone(v) });
+    }
   }
 
   if(path === "/banner"){
@@ -1463,6 +1574,10 @@ function renderKopf(){
     $sub.innerHTML = `Welt ${seed} · <b>${samGefundenAnzahl()} / ${SAM_ZAEHLT.length} gefunden</b>`;
     return;
   }
+  if(aktivesModul === "portale"){
+    $sub.innerHTML = `Welt ${seed} · <b>${pt.liste.length} ${pt.liste.length === 1 ? "Verbindung" : "Verbindungen"}</b>`;
+    return;
+  }
   if(aktivesModul === "banner"){
     $sub.innerHTML = `<b>${bn.liste.length} ${bn.liste.length === 1 ? "Bauplan" : "Baupläne"}</b> · für alle Welten`;
     return;
@@ -1558,6 +1673,7 @@ function render(){
   renderKopf();
   if(aktivesModul === "sammelobjekte"){ renderSammel(); return; }
   if(aktivesModul === "banner"){ renderBanner(); return; }
+  if(aktivesModul === "portale"){ renderPortale(); return; }
   if(st.ansicht === "liste"){ renderHud(); renderFilter(); renderListe(); }
   else karte.zeichnen();
   renderStatus();
@@ -2119,8 +2235,8 @@ function toast(text, fehler){
    des iOS-Kontrollzentrums (siehe README → Dashboard-Ansichten).
    Bereiche: Karte (Live-Karte + Koordinaten-Sammlung), Sammelobjekte,
    Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung.
-   Umgesetzt sind Karte, Sammelobjekte und Banner; Bereiche ohne mount() erscheinen
-   in der Sidebar als „geplant“.
+   Umgesetzt sind Karte, Sammelobjekte, Portal-Verwaltung und Banner; ohne mount()
+   erscheint ein Bereich in der Sidebar als „geplant“.
    ========================================================================== */
 const ICON = Object.freeze({
   karte:'<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>',
@@ -2138,7 +2254,9 @@ const BEREICHE = [
   { key:"sammelobjekte", titel:"Sammelobjekte",       // Rüstungs-Modifikationen abhaken + Fundorte
     mount:() => { applyTheme("overworld"); render(); samLaden(); },
     unmount:() => alleSchliessen() },
-  { key:"portale",       titel:"Portal-Verwaltung" },
+  { key:"portale",       titel:"Portal-Verwaltung",   // Umrechnen, Verbindungen erfassen + prüfen
+    mount:() => { applyTheme("nether"); render(); portaleLaden(); },
+    unmount:() => alleSchliessen() },
   { key:"handbuch",      titel:"Handbuch" },
   { key:"bauplaene",     titel:"Baupläne" },
   { key:"banner",        titel:"Banner",              // Baupläne für Banner (Grundfarbe + Muster-Ebenen)
@@ -2692,6 +2810,386 @@ $bannerListe.addEventListener("click", (e) => { const k = e.target.closest("[dat
 document.getElementById("bannerNeuBtn").addEventListener("click", () => bannerEditorOeffnen(null));
 
 /* ============================================================================
+   9e · PORTAL-VERWALTUNG  ·  Umrechnen, Verbindungen erfassen + prüfen, Infokarte
+   ----------------------------------------------------------------------------
+   Verbindung = zwei Portale (Oberwelt + Nether) einer Welt, für alle gemeinsam.
+   Die Prüfung spielt nach, was das Spiel beim Durchgehen macht – aber nur mit
+   den hier erfassten Portalen:
+     1. Position umrechnen: Oberwelt → Nether ÷ 8 (abgerundet), zurück × 8, Y bleibt
+     2. Im Suchbereich (Quadrat) um diesen Zielpunkt nach Portalen suchen:
+        Bedrock ±128 in beiden Dimensionen · Java ±16 im Nether, ±128 in der Oberwelt
+     3. Das nächste gewinnt – 3D-Abstand, Y zählt mit. Keins gefunden → neues Portal.
+   Quelle: minecraft.wiki/w/Nether_portal („Portal search“)
+   Die Edition (Bedrock/Java) ist eine Einstellung auf dem Gerät, Standard Bedrock.
+   ========================================================================== */
+const PORTAL_REGELN = Object.freeze({
+  bedrock: { label:"Bedrock", radius:{ overworld:128, nether:128 } },
+  java:    { label:"Java",    radius:{ overworld:128, nether:16 } },
+});
+const pt = {
+  liste: [],
+  edition: lsLesen("portale.edition") === "java" ? "java" : "bedrock",
+  info: Boolean(lsLesen("portale.info")),
+  rechner: Object.assign({ von:"overworld", x:"", y:"", z:"" }, lsLesen("portale.rechner") || {}),
+  entwurfId: null,   // Verbindung im Editor (null = neu)
+};
+const $portalStage = document.getElementById("portalStage");
+const andereDim = (d) => d === "overworld" ? "nether" : "overworld";
+const dimFarbe = (d) => THEMES[d].ui["--accent"];
+const kurzKoord = (p) => `X ${zahl(p.x)}${p.y != null ? ` · Y ${zahl(p.y)}` : ""} · Z ${zahl(p.z)}`;
+const regelLabel = () => PORTAL_REGELN[pt.edition].label;
+
+/** Beide Portale jeder Verbindung als flache Liste */
+function portaleAlle(liste){
+  return liste.flatMap((v) => [
+    { vid:v.id, name:v.name, dim:"overworld", ...v.oberwelt },
+    { vid:v.id, name:v.name, dim:"nether", ...v.nether },
+  ]);
+}
+
+/** Was passiert, wenn man an Punkt p (Dimension „von“) durchs Portal geht? */
+function zielSuchen(von, p, portale){
+  const u = umrechnen(p.x, p.z, von);
+  const ziel = { x:u.x, y:p.y ?? null, z:u.z, dim:u.dim };
+  const radius = PORTAL_REGELN[pt.edition].radius[u.dim];
+  let treffer = null;
+  for(const q of portale){
+    if(q.dim !== u.dim || Math.abs(q.x - ziel.x) > radius || Math.abs(q.z - ziel.z) > radius) continue;
+    const dy = q.y != null && ziel.y != null ? q.y - ziel.y : 0;
+    const abstand = Math.hypot(q.x - ziel.x, dy, q.z - ziel.z);
+    if(!treffer || abstand < treffer.abstand) treffer = { portal:q, abstand };
+  }
+  return { ziel, radius, treffer };
+}
+
+/** Prüft beide Richtungen einer Verbindung gegen alle erfassten Portale der Welt */
+function verbindungPruefen(v, liste){
+  const portale = portaleAlle([...liste.filter((x) => x.id !== v.id), v]);
+  const hin = zielSuchen("overworld", v.oberwelt, portale);
+  const rueck = zielSuchen("nether", v.nether, portale);
+  const art = (s) => !s.treffer ? "neu" : s.treffer.portal.vid === v.id ? "ok" : "anders";
+  const artHin = art(hin), artRueck = art(rueck);
+  const ideal = { x:hin.ziel.x, y:v.oberwelt.y ?? v.nether.y ?? null, z:hin.ziel.z };
+  let gesamt = "ok", label = "Verbunden";
+  if(artHin === "neu" || artRueck === "neu"){ gesamt = "bad"; label = "Neues Portal"; }
+  else if(artHin === "anders" && artRueck === "anders"){ gesamt = "warn"; label = "Falsch verknüpft"; }
+  else if(artHin === "anders" || artRueck === "anders"){ gesamt = "warn"; label = "Einseitig"; }
+  return { hin, rueck, artHin, artRueck, gesamt, label, ideal,
+    abweichung:Math.round(Math.hypot(v.nether.x - ideal.x, v.nether.z - ideal.z)) };
+}
+
+/** Konkreter Vorschlag, wenn eine Verbindung nicht passt */
+function portalEmpfehlung(v, p, liste){
+  if(p.gesamt === "ok") return null;
+  const versetzt = { ...v, nether:{ ...p.ideal } };
+  const schonIdeal = p.abweichung === 0 && (v.nether.y ?? null) === p.ideal.y;
+  if(!schonIdeal && verbindungPruefen(versetzt, liste).gesamt === "ok")
+    return { art:"info", text:`Nether-Portal genau bei ${kurzKoord(p.ideal)} bauen – dann passt es in beide Richtungen. Das alte Nether-Portal danach ausschalten.` };
+  return { art:"warn", text:"Auch am Idealpunkt klappt es nicht: Ein anderes Portal liegt zu nah. Die Portale weiter auseinander bauen oder das störende entfernen." };
+}
+
+function richtungText(s, art){
+  if(art === "ok") return `kommt am eigenen Portal an${s.treffer.abstand >= 1 ? ` (${Math.round(s.treffer.abstand)} Blöcke vom Zielpunkt)` : ""}`;
+  if(art === "anders") return `landet bei <b>„${esc(s.treffer.portal.name)}“</b> – das liegt näher am Zielpunkt ${zahl(s.ziel.x)} / ${zahl(s.ziel.z)}`;
+  return `kein Portal im Suchbereich (±${s.radius}) – das Spiel baut ein neues bei ${zahl(s.ziel.x)} / ${zahl(s.ziel.z)}`;
+}
+const pruefZeile = (von, s, art) => `<div class="pruef-zeile ${art === "ok" ? "ok" : art === "anders" ? "warn" : "bad"}">
+  <span class="ico">${art === "ok" ? "✓" : "!"}</span>
+  <span><b>${dimLabel(von)} → ${dimLabel(andereDim(von))}:</b> ${richtungText(s, art)}</span></div>`;
+const pruefZeilen = (p) => pruefZeile("overworld", p.hin, p.artHin) + pruefZeile("nether", p.rueck, p.artRueck);
+
+/** Regeln für eine Verbindung – identisch im Server umzusetzen. Gibt Fehlertext oder null zurück. */
+function verbindungRegelPruefen(v){
+  const name = String(v?.name ?? "").trim();
+  if(!name) return "Bitte einen Namen eingeben";
+  if(name.length > 60) return "Name ist zu lang (max. 60 Zeichen)";
+  const seite = (s, dim) => {
+    const grenze = dim === "overworld" ? CONFIG.weltGrenze : CONFIG.weltGrenze / 8;
+    const [ymin, ymax] = dim === "overworld" ? [-64, 320] : [0, 256];
+    if(!s || !Number.isInteger(s.x) || !Number.isInteger(s.z)) return `${dimLabel(dim)}: X und Z als ganze Zahlen eintragen`;
+    if(Math.abs(s.x) > grenze || Math.abs(s.z) > grenze) return `${dimLabel(dim)}: Koordinaten liegen außerhalb der Welt`;
+    if(s.y != null && (!Number.isInteger(s.y) || s.y < ymin || s.y > ymax)) return `${dimLabel(dim)}: Y muss zwischen ${ymin} und ${ymax} liegen`;
+    return null;
+  };
+  return seite(v.oberwelt, "overworld") || seite(v.nether, "nether");
+}
+const verbindungSauber = (v) => ({
+  name:String(v.name).trim(),
+  oberwelt:{ x:v.oberwelt.x, y:v.oberwelt.y ?? null, z:v.oberwelt.z },
+  nether:{ x:v.nether.x, y:v.nether.y ?? null, z:v.nether.z },
+});
+
+async function portaleLaden(){
+  if(!st.weltId) return;
+  const r = await api(`/portale/welten/${st.weltId}`);
+  if(!r.ok) return toast(meldungAus(r), true);
+  pt.liste = r.data.verbindungen;
+  if(aktivesModul === "portale") render();
+}
+
+// --- Bühne: Infokarte, Umrechner, Verbindungen ------------------------------
+function infoKarteHtml(){
+  const bedrock = pt.edition === "bedrock";
+  return `<section class="info-karte" aria-label="Tipps zum Verknüpfen">
+    <div class="info-kopf"><h2>Portale gezielt verknüpfen</h2>
+      <button class="icon-btn" data-raktion="info-zu" aria-label="Infokarte ausblenden">${X_ICON}</button></div>
+    <div class="tool-segment" role="group" aria-label="Regeln für">
+      ${Object.entries(PORTAL_REGELN).map(([k, e]) => `<button class="seg-btn ${k === pt.edition ? "active" : ""}" data-edition="${k}">${e.label}</button>`).join("")}
+    </div>
+    <ol class="info-liste">
+      <li><span><b>Umrechnen:</b> Nether = Oberwelt ÷ 8 (X und Z, abgerundet), zurück × 8. Die Höhe Y bleibt gleich.</span></li>
+      <li><span><b>So sucht das Spiel:</b> Beim Durchgehen rechnet es deine Position um und sucht dort nach einem entzündeten Portal – ${bedrock ? "in ±128 Blöcken, in beiden Dimensionen" : "im Nether in ±16, in der Oberwelt in ±128 Blöcken"}. Das nächste gewinnt, gemessen in 3D: Y zählt mit.</span></li>
+      <li><span><b>Nichts gefunden?</b> Dann baut das Spiel selbst ein Portal in der Nähe – gern über Lava oder mitten in einer Wand.</span></li>
+      <li><span><b>Reihenfolge:</b> Oberwelt-Portal bauen und hier eintragen. Dann im Nether genau am umgerechneten Punkt (gleiches Y) selbst ein Portal bauen und anzünden – erst danach durchgehen.</span></li>
+      ${bedrock
+        ? "<li><span><b>Bedrock-Falle:</b> Im Nether wird in ±128 Blöcken gesucht – das sind 1 024 Oberwelt-Blöcke. Ein neues Oberwelt-Portal landet deshalb meist in einem vorhandenen Nether-Portal, wenn du die Nether-Seite nicht vorher selbst baust.</span></li>"
+        : "<li><span><b>Java:</b> Im Nether wird nur ±16 Blöcke gesucht. Steht das Nether-Portal weiter weg vom umgerechneten Punkt, entsteht ein neues.</span></li>"}
+      <li><span><b>Einseitige Verbindung:</b> Hin kommst du richtig an, zurück landest du woanders – weil auf dem Rückweg ein anderes Portal näher liegt. Meist hilft es, das Nether-Portal genau auf den Idealpunkt zu setzen.</span></li>
+      <li><span><b>Aufräumen:</b> Vom Spiel erzeugte Fehl-Portale ausschalten (einen Obsidianblock abbauen), sonst funken sie dazwischen. Nicht entzündete Rahmen wie Portalruinen zählen nicht.</span></li>
+      <li><span><b>Koordinaten ablesen:</b> ${bedrock ? "In den Welteinstellungen „Koordinaten anzeigen“ einschalten" : "F3 drücken"} und den Block eintragen, in dem du im Portal stehst.</span></li>
+    </ol>
+    <p class="result-hint">Bedrock/Java legt fest, nach welchen Regeln hier geprüft wird (gilt für dieses Gerät). Die Prüfung kennt nur die hier erfassten Portale.</p>
+  </section>`;
+}
+
+function rechnerWerte(){
+  const n = (v) => (v === "" || v === "-" ? null : Number(v));
+  const x = n(pt.rechner.x), y = n(pt.rechner.y), z = n(pt.rechner.z);
+  if(!Number.isInteger(x) || !Number.isInteger(z) || (y !== null && !Number.isInteger(y))) return null;
+  return { x, y, z };
+}
+function rechnerZiel(){
+  const p = rechnerWerte(); if(!p) return null;
+  return { p, s:zielSuchen(pt.rechner.von, p, portaleAlle(pt.liste)) };
+}
+function rechnerErgebnisHtml(){
+  const e = rechnerZiel(), nach = andereDim(pt.rechner.von);
+  if(!e) return '<p class="result-hint">X und Z eingeben – Y ist freiwillig, zählt beim Suchen aber mit.</p>';
+  const { p, s } = e, z = s.ziel;
+  const ankunft = s.treffer
+    ? `<div class="pruef-zeile ${s.treffer.abstand <= 8 ? "ok" : "warn"}"><span class="ico">→</span><span>Beim Durchgehen kommst du bei <b>„${esc(s.treffer.portal.name)}“</b> an – ${Math.round(s.treffer.abstand)} Blöcke vom Zielpunkt.</span></div>`
+    : `<div class="pruef-zeile"><span class="ico">＋</span><span>Kein erfasstes Portal im Suchbereich (±${s.radius}) – hier würde ein neues entstehen.</span></div>`;
+  const bereich = nach === "overworld" ? `<p class="result-hint">Ein Nether-Block entspricht 8 Oberwelt-Blöcken: X ${zahl(z.x)} bis ${zahl(z.x + 7)}, Z ${zahl(z.z)} bis ${zahl(z.z + 7)}.</p>` : "";
+  const decke = nach === "nether" && z.y != null && z.y > 122 ? '<p class="result-hint">Die Netherdecke liegt bei Y 127 – dort muss das Portal tiefer stehen. Die Y-Abweichung zählt beim Suchen mit.</p>' : "";
+  return `<div class="rechner-ziel" style="--ziel:${dimFarbe(nach)}">
+      <div class="result-label">Gegenportal <b>${inDim(nach)}</b></div>
+      <div class="result-coords mono"><span><span class="lbl">X</span><b>${zahl(z.x)}</b></span>${z.y != null ? `<span><span class="lbl">Y</span><b>${zahl(z.y)}</b></span>` : ""}<span><span class="lbl">Z</span><b>${zahl(z.z)}</b></span></div>
+      ${bereich}
+    </div>
+    ${ankunft}${decke}
+    <div class="rechner-knoepfe">
+      <button class="btn-secondary" data-raktion="kopieren">Kopieren</button>
+      <button class="btn-secondary" data-raktion="tp">TP-Befehl</button>
+      <button class="btn-primary" data-raktion="verbindung">Als Verbindung anlegen</button>
+    </div>
+    <p class="result-hint">Suchbereich ±${s.radius} Blöcke · ${regelLabel()}-Regeln${p.y == null ? " · ohne Y nur grob" : ""}</p>`;
+}
+function rechnerHtml(){
+  const r = pt.rechner;
+  const feld = (achse, optional) => { const k = achse.toLowerCase(); return `<label class="field"><span class="field-label">${achse}</span>
+    <span class="koord-in"><input type="text" inputmode="numeric" autocomplete="off" data-rkoord="${k}" value="${esc(r[k])}"
+      placeholder="${optional ? "—" : "0"}" aria-label="${achse}-Koordinate ${inDim(r.von)}">
+    <button type="button" class="vz" data-rvz="${k}" aria-label="Vorzeichen ${achse}">±</button></span></label>`; };
+  const standort = st.standort && st.standort.dim !== "end";
+  return `<div class="result-card rechner">
+    <div class="rechner-kopf"><div class="result-label">Umrechnen</div>
+      ${standort ? `<button class="chip-knopf" data-raktion="standort">${ZIEL} Mein Standort</button>` : ""}</div>
+    <div class="tool-segment">
+      <button class="seg-btn ${r.von === "overworld" ? "active" : ""}" data-rvon="overworld">Oberwelt → Nether</button>
+      <button class="seg-btn ${r.von === "nether" ? "active" : ""}" data-rvon="nether">Nether → Oberwelt</button>
+    </div>
+    <div class="field-grid g3">${feld("X")}${feld("Y", true)}${feld("Z")}</div>
+    <div class="rechner-ergebnis" id="rechnerErgebnis">${rechnerErgebnisHtml()}</div>
+  </div>`;
+}
+
+const seiteHtml = (dim, s) => `<span class="seite"><span class="seite-dim" style="color:${dimFarbe(dim)}">${dimLabel(dim)}</span>${coordHtml(s.x, s.y, s.z)}</span>`;
+function verbindungKarte(v){
+  const p = verbindungPruefen(v, pt.liste);
+  let meta = "";
+  if(p.gesamt !== "ok"){
+    const [von, s, art] = p.artHin !== "ok" ? ["overworld", p.hin, p.artHin] : ["nether", p.rueck, p.artRueck];
+    const nach = dimLabel(andereDim(von));
+    meta = `<span class="card-meta ${p.gesamt}">${dimLabel(von)} → ${nach}: ${art === "neu" ? "neues Portal entsteht" : `führt zu „${esc(s.treffer.portal.name)}“`}</span>`;
+  } else if(p.abweichung) meta = `<span class="card-meta">Nether-Portal ${p.abweichung} ${p.abweichung === 1 ? "Block" : "Blöcke"} neben dem Idealpunkt</span>`;
+  return `<button class="card verbindung" data-verbindung="${v.id}">
+    <span class="card-head"><span class="card-title">${esc(v.name)}</span><span class="pill ${p.gesamt}">${p.label}</span></span>
+    ${seiteHtml("overworld", v.oberwelt)}${seiteHtml("nether", v.nether)}${meta}
+  </button>`;
+}
+
+function renderPortale(){
+  const $info = document.getElementById("portalInfoBtn");
+  $info.classList.toggle("active", pt.info); $info.setAttribute("aria-pressed", String(pt.info));
+  const liste = [...pt.liste].sort((a, b) => a.name.localeCompare(b.name, "de"));
+  const probleme = pt.liste.filter((v) => verbindungPruefen(v, pt.liste).gesamt !== "ok").length;
+  $portalStage.innerHTML = (pt.info ? infoKarteHtml() : "") + rechnerHtml() + `
+    <div class="field-group">
+      <div class="field-group-label">Verbindungen · ${pt.liste.length}${probleme ? ` · ${probleme} mit Problem` : ""}</div>
+      ${liste.length ? `<div class="list-stack">${liste.map(verbindungKarte).join("")}</div>`
+        : '<div class="empty-list">Noch keine Portal-Verbindungen in dieser Welt.<br>Unten „Neue Verbindung“ antippen.</div>'}
+    </div>`;
+}
+
+// --- Detail + Editor (Sheet) -------------------------------------------------
+function portalDetailOeffnen(id){
+  const v = pt.liste.find((x) => x.id === id); if(!v) return;
+  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  const seite = (dim, s) => `<div class="result-card seite-karte">
+      <div class="result-label" style="color:${dimFarbe(dim)}">${dimLabel(dim)}-Portal</div>
+      ${coordHtml(s.x, s.y, s.z)}
+      <div class="card-actions">
+        <button class="btn-secondary" data-aktion="kopieren" data-text="${s.x} ${s.y ?? "~"} ${s.z}">Kopieren</button>
+        <button class="btn-secondary" data-aktion="kopieren" data-text="${esc(tpBefehl(s.x, s.y, s.z, dim))}">TP-Befehl</button>
+      </div></div>`;
+  const html = kopfHtml(esc(v.name), `Portal-Verbindung${v.von ? ` · von ${esc(v.von)}` : ""}`) + `<div class="orte-inhalt">
+    ${seite("overworld", v.oberwelt)}${seite("nether", v.nether)}
+    <div class="result-card">
+      <div class="result-label">Prüfung · <b>${regelLabel()}</b></div>
+      ${pruefZeilen(p)}
+      <p class="result-hint">${p.abweichung ? `Idealpunkt im Nether: ${kurzKoord(p.ideal)} – das Portal steht ${p.abweichung} ${p.abweichung === 1 ? "Block" : "Blöcke"} daneben.` : "Das Nether-Portal steht genau auf dem Idealpunkt."}</p>
+      ${e ? `<div class="banner ${e.art}">${esc(e.text)}</div>` : ""}
+      <p class="result-hint">Geprüft wird nur mit den hier erfassten Portalen.</p>
+    </div>
+    <div class="knopf-raster">
+      <button class="btn-primary" data-aktion="portal-bearbeiten" data-id="${v.id}">Bearbeiten</button>
+      <button class="btn-danger" data-aktion="portal-loeschen" data-id="${v.id}">Löschen</button>
+    </div>
+  </div>`;
+  sheetOeffnen("portal", html, "nether");
+}
+
+function portalEditorOeffnen(id, vorlage){
+  const v = id ? pt.liste.find((x) => x.id === id) : null;
+  const leer = { x:null, y:null, z:null };
+  const e = v ? structuredClone(v) : { id:null, name:"", oberwelt:{ ...leer }, nether:{ ...leer }, ...(vorlage || {}) };
+  pt.entwurfId = e.id;
+  const html = kopfHtml(e.id ? "Verbindung bearbeiten" : "Neue Verbindung", "Beide Portale mit Koordinaten eintragen") + `<div class="orte-inhalt">
+    <div class="field-group"><div class="field-group-label">Name</div>
+      <input class="orte-eingabe" id="portalName" maxlength="60" placeholder="z. B. Hauptbasis" value="${esc(e.name)}" autocomplete="off"></div>
+    <div class="field-group"><div class="field-group-label" style="color:${dimFarbe("overworld")}">Oberwelt-Portal</div>
+      ${koordFelder("o", e.oberwelt.x, e.oberwelt.y, e.oberwelt.z)}
+      <button class="btn-secondary" data-aktion="portal-aus-nether">Aus Nether berechnen (× 8)</button></div>
+    <div class="field-group"><div class="field-group-label" style="color:${dimFarbe("nether")}">Nether-Portal</div>
+      ${koordFelder("n", e.nether.x, e.nether.y, e.nether.z)}
+      <button class="btn-secondary" data-aktion="portal-aus-oberwelt">Aus Oberwelt berechnen (÷ 8)</button></div>
+    <div id="portalPruefung"></div>
+    <div class="banner" id="portalMeldung" hidden></div>
+    <div class="sheet-fuss"><button class="btn-secondary" data-aktion="portal-abbrechen">Abbrechen</button>
+      <button class="btn-primary" data-aktion="portal-speichern">Speichern</button></div>
+  </div>`;
+  sheetOeffnen("portal-editor", html, "nether");
+  portalEditorPruefen();
+}
+const portalEditorWerte = () => ({
+  name:document.getElementById("portalName")?.value.trim() ?? "",
+  oberwelt:koordLesen("o"), nether:koordLesen("n"),
+});
+/** Live-Prüfung im Editor, während getippt wird */
+function portalEditorPruefen(){
+  const $p = document.getElementById("portalPruefung"); if(!$p) return;
+  const w = portalEditorWerte();
+  if(!koordGueltig(w.oberwelt) || !koordGueltig(w.nether)){
+    $p.innerHTML = '<div class="banner info">Sobald beide Portale eingetragen sind, siehst du hier, ob die Verbindung in beide Richtungen klappt.</div>';
+    return;
+  }
+  const v = { id:pt.entwurfId || "__neu", ...w, name:w.name || "diese Verbindung" };
+  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  $p.innerHTML = `<div class="result-card"><div class="result-label">Prüfung · <b>${regelLabel()}</b> · <span class="pill ${p.gesamt}">${p.label}</span></div>
+    ${pruefZeilen(p)}${e ? `<div class="banner ${e.art}">${esc(e.text)}</div>` : ""}</div>`;
+}
+/** Eine Seite aus der anderen berechnen und in die Felder schreiben */
+function portalBerechnen(ziel){
+  const quelle = ziel === "n" ? "o" : "n";
+  const k = koordLesen(quelle);
+  if(!Number.isInteger(k.x) || !Number.isInteger(k.z))
+    return toast(`Erst ${quelle === "o" ? "Oberwelt" : "Nether"} X und Z eintragen`, true);
+  const u = umrechnen(k.x, k.z, quelle === "o" ? "overworld" : "nether");
+  const setze = (a, wert) => { $sheet.querySelector(`[data-koord="${ziel}${a}"]`).value = wert ?? ""; };
+  setze("X", u.x); setze("Y", Number.isInteger(k.y) ? k.y : null); setze("Z", u.z);
+  portalEditorPruefen();
+}
+async function portalSpeichern(){
+  const w = portalEditorWerte(), $m = document.getElementById("portalMeldung");
+  const problem = verbindungRegelPruefen(w);
+  if(problem) return banner($m, "bad", problem + ".");
+  const body = JSON.stringify(verbindungSauber(w));
+  const r = pt.entwurfId
+    ? await api(`/portale/${pt.entwurfId}`, { method:"PUT", body })
+    : await api(`/portale/welten/${st.weltId}`, { method:"POST", body });
+  if(!r.ok) return banner($m, "bad", meldungAus(r));
+  const neu = r.data.verbindung;
+  const i = pt.liste.findIndex((x) => x.id === neu.id);
+  if(i >= 0) pt.liste[i] = neu; else pt.liste.push(neu);
+  pt.entwurfId = null;
+  render(); portalDetailOeffnen(neu.id); toast("Verbindung gespeichert");
+}
+async function portalLoeschen(id){
+  const r = await api(`/portale/${id}`, { method:"DELETE" });
+  if(!r.ok) return toast(meldungAus(r), true);
+  pt.liste = pt.liste.filter((v) => v.id !== id);
+  alleSchliessen(); render(); toast("Verbindung gelöscht");
+}
+
+// --- Events der Bühne ----------------------------------------------------------
+$portalStage.addEventListener("input", (e) => {
+  const achse = e.target.dataset.rkoord; if(!achse) return;
+  e.target.value = e.target.value.replace(/[^\d-]/g, "").replace(/(?!^)-/g, "");
+  pt.rechner[achse] = e.target.value;
+  lsSchreiben("portale.rechner", pt.rechner);
+  document.getElementById("rechnerErgebnis").innerHTML = rechnerErgebnisHtml();
+});
+$portalStage.addEventListener("click", async (e) => {
+  const t = e.target;
+  const vz = t.closest("[data-rvz]");
+  if(vz){
+    const inp = $portalStage.querySelector(`[data-rkoord="${vz.dataset.rvz}"]`);
+    inp.value = inp.value.startsWith("-") ? inp.value.slice(1) : "-" + inp.value;
+    inp.dispatchEvent(new Event("input", { bubbles:true }));
+    return;
+  }
+  const von = t.closest("[data-rvon]");
+  if(von){
+    pt.rechner.von = von.dataset.rvon; lsSchreiben("portale.rechner", pt.rechner);
+    return renderPortale();
+  }
+  const ed = t.closest("[data-edition]");
+  if(ed){ pt.edition = ed.dataset.edition; lsSchreiben("portale.edition", pt.edition); return render(); }
+  const karte = t.closest("[data-verbindung]");
+  if(karte) return portalDetailOeffnen(karte.dataset.verbindung);
+  const a = t.closest("[data-raktion]"); if(!a) return;
+  const ergebnis = rechnerZiel();
+  switch(a.dataset.raktion){
+    case "info-zu": pt.info = false; lsSchreiben("portale.info", null); renderPortale(); break;
+    case "standort": {
+      const s = st.standort;
+      Object.assign(pt.rechner, { von:s.dim, x:String(s.x), y:s.y == null ? "" : String(s.y), z:String(s.z) });
+      lsSchreiben("portale.rechner", pt.rechner); renderPortale(); break;
+    }
+    case "kopieren": case "tp": {
+      if(!ergebnis) return;
+      const z = ergebnis.s.ziel;
+      const text = a.dataset.raktion === "tp" ? tpBefehl(z.x, z.y, z.z, z.dim) : `${z.x} ${z.y ?? "~"} ${z.z}`;
+      try { await kopieren(text); toast("Kopiert"); } catch { toast("Kopieren nicht möglich", true); }
+      break;
+    }
+    case "verbindung": {
+      if(!ergebnis) return toast("Erst X und Z eintragen", true);
+      const { p, s } = ergebnis, gegen = { x:s.ziel.x, y:p.y, z:s.ziel.z };
+      portalEditorOeffnen(null, pt.rechner.von === "overworld" ? { oberwelt:{ ...p }, nether:gegen } : { nether:{ ...p }, oberwelt:gegen });
+      break;
+    }
+  }
+});
+document.getElementById("portalInfoBtn").addEventListener("click", () => {
+  pt.info = !pt.info; lsSchreiben("portale.info", pt.info || null);
+  renderPortale();
+  if(pt.info) $portalStage.scrollTo({ top:0, behavior:"smooth" });
+});
+document.getElementById("portalNeuBtn").addEventListener("click", () => portalEditorOeffnen(null));
+document.getElementById("portalWeltBtn").addEventListener("click", () => weltOeffnen());
+
+/* ============================================================================
    10 · DATEN, EVENTS, INIT
    ========================================================================== */
 function uebernehmen({ instanz, typ }){
@@ -2717,6 +3215,7 @@ async function weltLaden(id){
   karte.neuAnpassen();
   render();
   samLaden();
+  portaleLaden();
 }
 function dimWechseln(dim){
   st.dim = dim; st.filter = null;
@@ -2780,6 +3279,7 @@ $sheet.addEventListener("click", async (e) => {
   if(vz){
     const inp = $sheet.querySelector(`[data-koord="${vz.dataset.vz}"]`);
     inp.value = inp.value.startsWith("-") ? inp.value.slice(1) : "-" + inp.value;
+    if(st.sheet === "portal-editor") portalEditorPruefen();
     return;
   }
   const fd = e.target.closest("[data-form-dim]");
@@ -2859,6 +3359,19 @@ $sheet.addEventListener("click", async (e) => {
       break;
     case "standort-weg":
       st.standort = null; lsSchreiben("orte.standort", null); alleSchliessen(); render(); break;
+    // Portal-Verwaltung
+    case "portal-bearbeiten": portalEditorOeffnen(id); break;
+    case "portal-aus-oberwelt": portalBerechnen("n"); break;
+    case "portal-aus-nether": portalBerechnen("o"); break;
+    case "portal-speichern": portalSpeichern(); break;
+    case "portal-abbrechen": {
+      const zurueck = pt.entwurfId; pt.entwurfId = null;
+      zurueck ? portalDetailOeffnen(zurueck) : alleSchliessen();
+      break;
+    }
+    case "portal-loeschen":
+      if(a.dataset.sicher !== "1"){ a.dataset.sicher = "1"; a.textContent = "Wirklich löschen?"; return; }
+      portalLoeschen(id); break;
     // Banner
     case "banner-schritt": bannerSchrittUmschalten(id, Number(a.dataset.n)); break;
     case "banner-schritte-weg": lsSchreiben(`banner.schritte.${id}`, null); bannerDetailOeffnen(id); break;
@@ -2879,7 +3392,11 @@ $sheet.addEventListener("click", async (e) => {
 // Sheet: Eingaben
 $sheet.addEventListener("input", (e) => {
   const t = e.target;
-  if(t.dataset.koord){ t.value = t.value.replace(/[^\d-]/g, "").replace(/(?!^)-/g, ""); return; }
+  if(t.dataset.koord){
+    t.value = t.value.replace(/[^\d-]/g, "").replace(/(?!^)-/g, "");
+    if(st.sheet === "portal-editor") portalEditorPruefen();
+    return;
+  }
   if(t.id === "formNeu"){ form.neu = t.value; return; }
   if(t.id === "formEinfuegen" || t.id === "standortEinfuegen"){
     const k = koordinatenErkennen(t.value); if(!k) return;
