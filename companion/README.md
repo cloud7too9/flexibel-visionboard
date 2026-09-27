@@ -4,6 +4,8 @@ Koordinaten-Sammlung für das Modul **Karte** (vormals Live-Karte) der Minecraft
 (`World → Dimension → FeatureInstance → FeatureType → FeatureCategory`).
 Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte.html`.
 
+**Neuer Chat / Weitermachen:** zuerst `UEBERGABE.md` lesen – Stand, Entscheidungen, offene Punkte.
+
 **Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt. Mit `?modul=sammelobjekte`, `?modul=portale` oder `?modul=banner` startet man direkt im jeweiligen Bereich.
 
 ## Was drin ist
@@ -38,7 +40,7 @@ Für Rüstung liegt ein erster Code-Entwurf in `entwuerfe/banner-ruestung.js` (n
 ## Dashboard-Ansichten (später)
 
 Jeder Bereich bekommt eigene Ansichten fürs Dashboard. Vorbild ist das iOS-Kontrollzentrum
-(`referenz/kontrollzentrum-galerie.png`, `referenz/kontrollzentrum-bearbeiten.png`):
+(`referenz/dashboard/kontrollzentrum-galerie.png`, `referenz/dashboard/kontrollzentrum-bearbeiten.png`):
 
 - **Ansichten in festen Rastergrößen**: klein 1×1, breit 2×1, groß 2×2. Das Raster hat 4 Spalten. Ein Bereich kann dieselbe Ansicht in mehreren Größen anbieten.
 - **Galerie** „Ansicht hinzufügen“: nach Bereich gruppiert, mit Suche
@@ -127,6 +129,14 @@ Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`server
   statt im eigenen Canvas – Spieler-Positionen und Sammlung auf einer Karte
 - JS-Abschnitte 2–9 übernehmen; `api()`, `esc()`, `THEMES` gibt es dort schon
 - Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung)
+
+## Tests
+
+`tests/` enthält Playwright-Tests für Banner und Portal-Verwaltung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
+
+## Referenz
+
+`referenz/` enthält das Datenmodell und die Bilder, auf denen die Bereiche beruhen (Seed-Map, Fundorte, Banner-Editor, Rüstungs-Sets und Verzauberungen, Kontrollzentrum als Dashboard-Vorbild).
 
 ## Offen
 
