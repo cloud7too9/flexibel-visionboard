@@ -1,10 +1,10 @@
-# Companion · Prototyp – Karte + Sammelobjekte
+# Companion · Prototyp – Karte, Sammelobjekte, Banner
 
 Koordinaten-Sammlung für das Modul **Karte** (vormals Live-Karte) der Minecraft Companion PWA, nach dem minimalen Datenmodell
 (`World → Dimension → FeatureInstance → FeatureType → FeatureCategory`).
 Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte.html`.
 
-**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt. Mit `?modul=sammelobjekte` startet man direkt in den Sammelobjekten.
+**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt. Mit `?modul=sammelobjekte` oder `?modul=banner` startet man direkt im jeweiligen Bereich.
 
 ## Was drin ist
 
@@ -28,11 +28,12 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 | Portal-Verwaltung | geplant | – |
 | Handbuch | geplant | – |
 | Baupläne | geplant | – |
-| Banner | geplant | Baupläne für Banner |
+| Banner | umgesetzt | Baupläne für Banner mit Anleitung |
 | Rüstung | geplant | Rüstungs-Sets |
 
 Neue Bereiche: Eintrag in `BEREICHE` + Icon in `ICON`. Ohne `mount()` zeigt die Sidebar den Bereich als „geplant“.
-Die Details jedes Bereichs werden einzeln festgelegt. Für Banner und Rüstung liegt ein erster Code-Entwurf in `entwuerfe/banner-ruestung.js` (nicht eingebaut).
+Die Details jedes Bereichs werden einzeln festgelegt. Reihenfolge: Banner ✓ → Portal-Verwaltung → Rüstung, Handbuch, Baupläne.
+Für Rüstung liegt ein erster Code-Entwurf in `entwuerfe/banner-ruestung.js` (nicht eingebaut; der Banner-Teil darin ist überholt).
 
 ## Dashboard-Ansichten (später)
 
@@ -54,12 +55,23 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 - Fortschritt: gefunden / 18, Fundorte bekannt / 13, Prozent
 - Verknüpfung zur Karte: pro Fundort die bekannten Strukturen aus der Koordinaten-Sammlung, nächste mit Entfernung; „Karte“ springt direkt hin
 
+## Banner
+
+- **Baupläne gelten für alle Welten** (ein Banner hängt nicht am Seed), alle im Raum sehen und bearbeiten dieselben
+- **Liste** als Raster mit Vorschau; Suche nach Name oder Musternamen
+- **Detail**: Material (Wolle, Stock, Farbstoffe gezählt), nötige Bannervorlagen mit Herkunft, **Anleitung Schritt für Schritt** – jeder Schritt zeigt, wie das Banner danach aussieht; abhaken (nur auf diesem Gerät, wird zurückgesetzt, wenn sich das Muster ändert)
+- **Editor**: Grundfarbe (16), bis zu 6 Ebenen; pro Ebene Farbe + Muster aus einem Raster mit Vorschaubildern (wie am Webstuhl), Ebenen verschieben/entfernen; Vorschau bleibt oben stehen
+- Alle 42 Muster mit **deutschen Spielnamen**, englischer Name klein daneben; 10 davon brauchen eine Bannervorlage (Java seit 1.21.2 wie Bedrock)
+- Löschen mit zweitem Tippen („Wirklich löschen?“), weil ein Bauplan für alle weg ist
+- Vorschau ist vereinfacht (Pixel-Masken, keine Original-Texturen)
+
 ## Regeln (Server muss sie genauso prüfen – siehe `instanzPruefen()`)
 
 1. „Eigene Orte“ ist eine zusätzliche Kategorie; dort legt man Typen (Ortsnamen) selbst an.
 2. In allen anderen Kategorien entstehen neue Typen nur aus Screenshots (Variante aus dem Popup, z. B. Stronghold → „Stairway“).
 3. Biome nur per Screenshot. Das Biom ist der Typ, es muss in der Biom-Liste stehen, die Dimension ergibt sich aus der Liste.
 4. Biom-Instanzen sind fest (nur löschen, nicht bearbeiten).
+5. Banner (`bannerPruefen()`): Name 1–60 Zeichen, Grundfarbe und Farben aus den 16 Farbstoffen, Muster aus der Musterliste, höchstens 6 Ebenen.
 
 ## API-Vertrag
 
@@ -72,9 +84,14 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 | PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` – 403 bei Biomen |
 | DELETE | `/orte/instanzen/:id` | – | `{ ok:true }` |
 | POST | `/orte/auslesen` | multipart `datei` | `{ erkannt:{ titel, kategorie, variante, dimension, x, y, z } \| null }` |
-
 | GET | `/sammelobjekte/welten/:id` | – | `{ status:{ [objektId]:{ von, am } } }` |
 | PUT | `/sammelobjekte/welten/:id/:objektId` | `{ gefunden }` | `{ status }` |
+| GET | `/banner` | – | `{ liste:[banner] }` |
+| POST | `/banner` | `{ name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
+| PUT | `/banner/:id` | `{ name, basis, ebenen }` | `{ banner }` |
+| DELETE | `/banner/:id` | – | `{ ok:true }` |
+
+`banner = { id, name, basis, ebenen:[{ muster, farbe }], von, am }` (Farb- und Muster-IDs wie im Spiel, z. B. `light_blue`, `stripe_bottom`)
 
 `typ = { id, kategorie, variante|null }` · `instanz = { id, dimensionId, featureTypeId, x, y|null, z }` · `quelle = "screenshot" | "manuell"`
 

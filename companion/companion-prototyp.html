@@ -651,6 +651,79 @@ button.switch { padding:0; }
 .fund-zeile .weg { font-family:ui-monospace,monospace; font-weight:700; color:var(--accent); font-size:13px; }
 .fund-zeile .btn-secondary { min-height:36px; padding:7px 12px; }
 
+/* ---- Banner  ·  Baupläne (Liste, Detail, Editor) -------------------------- */
+.banner-stage { padding-top:2px; }
+.banner-raster { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px; }
+.banner-karte { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px;
+  padding:10px 12px 12px; display:flex; flex-direction:column; gap:2px; align-items:stretch; text-align:left;
+  cursor:pointer; font:inherit; color:var(--text); transition:background .45s ease, border-color .45s ease; }
+.banner-karte:active { background:var(--surface-3); }
+.banner-karte .card-meta { margin-top:0; }
+.banner-karte .pill { align-self:flex-start; margin-top:6px; }
+/* Banner hängt an einer Querstange – wie im Spiel an der Wand */
+.banner-rahmen { align-self:center; display:flex; flex-direction:column; align-items:center; padding:6px 0 10px; }
+.banner-rahmen::before { content:""; width:60px; height:4px; border-radius:2px; background:#7a5a3a;
+  box-shadow:0 1px 0 rgba(0,0,0,.4); margin-bottom:-1px; position:relative; z-index:1; }
+.banner-bild { display:block; width:48px; height:96px; image-rendering:pixelated; image-rendering:crisp-edges;
+  box-shadow:0 8px 18px rgba(0,0,0,.4); }
+.banner-rahmen.gross .banner-bild { width:72px; height:144px; }
+.banner-rahmen.gross::before { width:88px; height:5px; }
+.banner-rahmen.mittel { padding:2px 0 4px; }
+.banner-rahmen.mittel .banner-bild { width:52px; height:104px; }
+.banner-rahmen.mittel::before { width:66px; }
+.banner-bild.mini { width:18px; height:36px; box-shadow:none; border-radius:2px; flex:0 0 auto; }
+
+.banner-detail-kopf { display:flex; gap:14px; align-items:flex-start; }
+.banner-detail-kopf .result-card { flex:1; min-width:0; gap:8px; }
+.mat { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim); }
+.mat b { color:var(--text); font-weight:700; font-variant-numeric:tabular-nums; }
+.farbpunkt { width:14px; height:14px; border-radius:4px; flex:0 0 auto; display:inline-block;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.35); }
+.vorlage-zeile { display:flex; flex-direction:column; gap:1px; padding-top:8px; border-top:1px solid var(--border-soft); }
+.vorlage-zeile:first-of-type { border-top:none; padding-top:0; }
+.vorlage-zeile b { font-size:13.5px; }
+.vorlage-zeile span { font-size:12px; color:var(--text-faint); }
+
+/* Anleitung: jeder Schritt zeigt, wie das Banner danach aussieht */
+.schritt { flex-direction:row; align-items:center; gap:12px; text-align:left; cursor:pointer; font:inherit; color:var(--text); padding:10px 12px; }
+.schritt:active { background:var(--surface-3); }
+.schritt-nr { width:26px; height:26px; border-radius:50%; flex:0 0 auto; display:grid; place-items:center;
+  background:var(--surface-3); color:var(--text-dim); font-size:12px; font-weight:800; font-family:ui-monospace,monospace; }
+.schritt.erledigt .schritt-nr { background:var(--accent); color:var(--accent-ink); }
+.schritt.erledigt .schritt-text { opacity:.55; }
+.schritt-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.schritt-text b { font-size:14px; }
+.schritt-text small { font-size:12px; color:var(--text-faint); line-height:1.35; }
+.schritt-text .en, .ebene-text .en { font-weight:600; color:var(--text-faint); font-size:11px; margin-left:5px; }
+
+/* Editor */
+.banner-editor-kopf { position:sticky; top:-1px; z-index:2; display:flex; gap:14px; align-items:center;
+  background:var(--surface); padding:4px 0 10px; margin-bottom:-6px; border-bottom:1px solid var(--border-soft);
+  transition:background .45s ease; }
+.banner-editor-kopf .field-group { flex:1; min-width:0; }
+.farbraster { display:grid; grid-template-columns:repeat(8, 1fr); gap:6px; }
+.farbfeld { aspect-ratio:1; border-radius:10px; border:2px solid transparent; cursor:pointer; padding:0;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.35); transition:transform .1s, border-color .2s; }
+.farbfeld.aktiv { border-color:var(--text); transform:scale(1.08); box-shadow:0 0 0 2px var(--accent), inset 0 0 0 1px rgba(0,0,0,.35); }
+.ebene { padding:0; gap:0; overflow:hidden; }
+.ebene.offen { border-color:var(--accent); }
+.ebene-zeile { display:flex; align-items:center; gap:4px; padding:6px 6px 6px 10px; }
+.ebene-kopf { flex:1; min-width:0; display:flex; align-items:center; gap:10px; background:none; border:none;
+  color:var(--text); font:inherit; text-align:left; cursor:pointer; padding:4px 0; }
+.ebene-text { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.ebene-text b { font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ebene-text small { font-size:12px; color:var(--text-faint); display:flex; align-items:center; gap:6px; }
+.ebene-knoepfe { display:flex; gap:2px; flex:0 0 auto; }
+.ebene-knoepfe .icon-btn { position:static; transform:none; width:36px; height:36px; color:var(--text-dim); font-size:16px; }
+.ebene-knoepfe .icon-btn:disabled { opacity:.3; cursor:default; }
+.ebene-wahl { display:flex; flex-direction:column; gap:8px; padding:10px 12px 14px; border-top:1px solid var(--border-soft); background:var(--surface); }
+.ebene-wahl .field-group-label { margin-top:4px; }
+.muster-raster { display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; }
+.muster-feld { background:var(--surface-2); border:1.5px solid var(--border-soft); border-radius:10px; padding:6px 0;
+  display:grid; place-items:center; cursor:pointer; transition:border-color .2s, background .2s; }
+.muster-feld img { width:20px; height:40px; image-rendering:pixelated; display:block; }
+.muster-feld.aktiv { border-color:var(--accent); background:var(--accent-soft); }
+
 /* Toast */
 .orte-toast { position:absolute; left:50%; bottom:calc(86px + env(safe-area-inset-bottom)); transform:translateX(-50%);
   z-index:30; font-size:13px; font-weight:600; white-space:nowrap; max-width:calc(100% - 32px); overflow:hidden; text-overflow:ellipsis; }
@@ -778,6 +851,24 @@ button.switch { padding:0; }
       </div>
       <nav class="bottombar">
         <div class="bb-placeholder">Gilt für die ganze Welt · alle können abhaken</div>
+      </nav>
+    </section>
+
+    <!-- === Modul: Banner · Baupläne ========================================= -->
+    <section class="module" data-module="banner" id="moduleBanner">
+      <div class="orte-stage banner-stage">
+        <div class="orte-suche">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input class="orte-eingabe" id="bannerSuche" type="search" placeholder="Banner suchen …" autocomplete="off">
+        </div>
+        <div class="banner-raster" id="bannerListe"></div>
+      </div>
+      <nav class="bottombar">
+        <div class="bb-placeholder">Baupläne gelten für alle Welten</div>
+        <button class="bb-item active" id="bannerNeuBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="lab">Neuer Banner</span>
+        </button>
       </nav>
     </section>
 
@@ -1036,6 +1127,13 @@ function koordinatenErkennen(text){
    Sammelobjekte (Fortschritt je Welt, für alle gemeinsam):
    GET    /sammelobjekte/welten/:id              → { status:{ [objektId]:{ von, am } } }
    PUT    /sammelobjekte/welten/:id/:objektId   { gefunden:true|false } → { status }
+
+   Banner-Baupläne (für alle Welten gleich, Regeln siehe bannerPruefen()):
+   GET    /banner                             → { liste:[banner] }
+   POST   /banner       { name, basis, ebenen }  → { banner }
+   PUT    /banner/:id   { name, basis, ebenen }  → { banner }
+   DELETE /banner/:id                         → { ok:true }
+   banner = { id, name, basis, ebenen:[{ muster, farbe }], von, am }
    ========================================================================== */
 const DEMO = {
   // Wie Modul A: ohne Backend (file://) oder ohne ?live=1 läuft der Mock
@@ -1117,7 +1215,16 @@ const MOCK = (() => {
       eye:{ von:"Max", am:"2026-09-22" }, ward:{ von:"Tom", am:"2026-09-24" }, rib:{ von:"Lena", am:"2026-09-25" },
     },
   };
-  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, ich:"Max" };
+  // Banner-Baupläne (weltunabhängig)
+  const banner = [
+    { id:"b_1", name:"Creeper-Wache", basis:"lime", ebenen:[{ muster:"creeper", farbe:"black" }], von:"Lena", am:"2026-09-18" },
+    { id:"b_2", name:"Hauptbasis", basis:"light_blue", ebenen:[
+        { muster:"triangles_bottom", farbe:"white" }, { muster:"circle", farbe:"yellow" }, { muster:"border", farbe:"blue" }], von:"Max", am:"2026-09-21" },
+    { id:"b_3", name:"Portal", basis:"purple", ebenen:[
+        { muster:"gradient", farbe:"black" }, { muster:"rhombus", farbe:"magenta" }, { muster:"stripe_center", farbe:"purple" }, { muster:"border", farbe:"black" }], von:"Max", am:"2026-09-23" },
+    { id:"b_4", name:"Prüfungskammer", basis:"cyan", ebenen:[{ muster:"bricks", farbe:"gray" }, { muster:"flow", farbe:"white" }, { muster:"border", farbe:"black" }], von:"Tom", am:"2026-09-25" },
+  ];
+  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, banner, ich:"Max" };
 })();
 
 function mockApi(path, opts){
@@ -1195,6 +1302,26 @@ function mockApi(path, opts){
     if(body?.gefunden) status[m[2]] = { von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
     else delete status[m[2]];
     return ok({ status:{ ...status } });
+  }
+
+  if(path === "/banner"){
+    if(method === "GET") return ok({ liste:MOCK.banner.map((b) => structuredClone(b)) });
+    if(method === "POST"){
+      const problem = bannerPruefen(body); if(problem) return fehler(422, problem);
+      const b = { id:MOCK.neueId("b"), ...bannerSauber(body), von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
+      MOCK.banner.unshift(b);
+      return ok({ banner:structuredClone(b) }, 201);
+    }
+  }
+  if((m = path.match(/^\/banner\/([\w-]+)$/))){
+    const b = MOCK.banner.find((x) => x.id === m[1]);
+    if(!b) return fehler(404, "Banner nicht gefunden");
+    if(method === "DELETE"){ MOCK.banner.splice(MOCK.banner.indexOf(b), 1); return ok({ ok:true }); }
+    if(method === "PUT"){
+      const problem = bannerPruefen(body); if(problem) return fehler(422, problem);
+      Object.assign(b, bannerSauber(body));
+      return ok({ banner:structuredClone(b) });
+    }
   }
 
   if(method === "POST" && path === "/orte/auslesen"){
@@ -1336,6 +1463,10 @@ function renderKopf(){
     $sub.innerHTML = `Welt ${seed} · <b>${samGefundenAnzahl()} / ${SAM_ZAEHLT.length} gefunden</b>`;
     return;
   }
+  if(aktivesModul === "banner"){
+    $sub.innerHTML = `<b>${bn.liste.length} ${bn.liste.length === 1 ? "Bauplan" : "Baupläne"}</b> · für alle Welten`;
+    return;
+  }
   $sub.innerHTML = `Welt ${seed} · <b>${dimLabel(st.dim)}</b>`;
   $tabs.querySelectorAll(".tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.dim === st.dim);
@@ -1426,6 +1557,7 @@ function renderListe(){
 function render(){
   renderKopf();
   if(aktivesModul === "sammelobjekte"){ renderSammel(); return; }
+  if(aktivesModul === "banner"){ renderBanner(); return; }
   if(st.ansicht === "liste"){ renderHud(); renderFilter(); renderListe(); }
   else karte.zeichnen();
   renderStatus();
@@ -1987,7 +2119,7 @@ function toast(text, fehler){
    des iOS-Kontrollzentrums (siehe README → Dashboard-Ansichten).
    Bereiche: Karte (Live-Karte + Koordinaten-Sammlung), Sammelobjekte,
    Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung.
-   Umgesetzt sind Karte und Sammelobjekte; Bereiche ohne mount() erscheinen
+   Umgesetzt sind Karte, Sammelobjekte und Banner; Bereiche ohne mount() erscheinen
    in der Sidebar als „geplant“.
    ========================================================================== */
 const ICON = Object.freeze({
@@ -2009,7 +2141,9 @@ const BEREICHE = [
   { key:"portale",       titel:"Portal-Verwaltung" },
   { key:"handbuch",      titel:"Handbuch" },
   { key:"bauplaene",     titel:"Baupläne" },
-  { key:"banner",        titel:"Banner" },            // Baupläne für Banner (Farben, Muster, Ebenen)
+  { key:"banner",        titel:"Banner",              // Baupläne für Banner (Grundfarbe + Muster-Ebenen)
+    mount:() => { applyTheme("overworld"); render(); bannerLaden(); },
+    unmount:() => alleSchliessen() },
   { key:"ruestung",      titel:"Rüstung" },           // Rüstungs-Sets: Material, Besatz, Verzauberungen
 ];
 let aktivesModul = "karte";
@@ -2183,6 +2317,381 @@ $samListe.addEventListener("click", (e) => {
 });
 
 /* ============================================================================
+   9d · BANNER  ·  Baupläne für Banner (Grundfarbe + bis zu 6 Muster-Ebenen)
+   ----------------------------------------------------------------------------
+   Ein Bauplan gilt für alle Welten. Musternamen deutsch wie im Spiel, der
+   englische Name steht klein daneben (für Online-Editoren/Videos).
+   Vorschau: vereinfachte Pixel-Darstellung auf dem 20×40-Raster des Banners.
+   Der Fortschritt der Anleitung (abgehakte Schritte) bleibt auf dem Gerät.
+   ========================================================================== */
+const FARBEN = Object.freeze([
+  { id:"white",      de:"Weiß",     wolle:"Weiße Wolle",     farbstoff:"Weißer Farbstoff",     hex:"#f9fffe" },
+  { id:"light_gray", de:"Hellgrau", wolle:"Hellgraue Wolle", farbstoff:"Hellgrauer Farbstoff", hex:"#9d9d97" },
+  { id:"gray",       de:"Grau",     wolle:"Graue Wolle",     farbstoff:"Grauer Farbstoff",     hex:"#474f52" },
+  { id:"black",      de:"Schwarz",  wolle:"Schwarze Wolle",  farbstoff:"Schwarzer Farbstoff",  hex:"#1d1d21" },
+  { id:"brown",      de:"Braun",    wolle:"Braune Wolle",    farbstoff:"Brauner Farbstoff",    hex:"#835432" },
+  { id:"red",        de:"Rot",      wolle:"Rote Wolle",      farbstoff:"Roter Farbstoff",      hex:"#b02e26" },
+  { id:"orange",     de:"Orange",   wolle:"Orange Wolle",    farbstoff:"Oranger Farbstoff",    hex:"#f9801d" },
+  { id:"yellow",     de:"Gelb",     wolle:"Gelbe Wolle",     farbstoff:"Gelber Farbstoff",     hex:"#fed83d" },
+  { id:"lime",       de:"Hellgrün", wolle:"Hellgrüne Wolle", farbstoff:"Hellgrüner Farbstoff", hex:"#80c71f" },
+  { id:"green",      de:"Grün",     wolle:"Grüne Wolle",     farbstoff:"Grüner Farbstoff",     hex:"#5e7c16" },
+  { id:"cyan",       de:"Türkis",   wolle:"Türkise Wolle",   farbstoff:"Türkiser Farbstoff",   hex:"#169c9c" },
+  { id:"light_blue", de:"Hellblau", wolle:"Hellblaue Wolle", farbstoff:"Hellblauer Farbstoff", hex:"#3ab3da" },
+  { id:"blue",       de:"Blau",     wolle:"Blaue Wolle",     farbstoff:"Blauer Farbstoff",     hex:"#3c44aa" },
+  { id:"purple",     de:"Violett",  wolle:"Violette Wolle",  farbstoff:"Violetter Farbstoff",  hex:"#8932b8" },
+  { id:"magenta",    de:"Magenta",  wolle:"Magenta Wolle",   farbstoff:"Magenta Farbstoff",    hex:"#c74ebd" },
+  { id:"pink",       de:"Rosa",     wolle:"Rosa Wolle",      farbstoff:"Rosa Farbstoff",       hex:"#f38baa" },
+]);
+const farbe = (id) => FARBEN.find((f) => f.id === id) || FARBEN[0];
+const HELLE_FARBEN = new Set(["white", "light_gray", "yellow", "lime", "pink", "light_blue", "orange"]);
+const kontrast = (id) => HELLE_FARBEN.has(id) ? "black" : "white";
+
+// Bannervorlagen – werden im Webstuhl nicht verbraucht (Java seit 1.21.2 wie Bedrock)
+const BANNERVORLAGEN = Object.freeze({
+  flower:       { de:"Blumen-Bannervorlage",      herkunft:"Werkbank: Papier + Margerite" },
+  creeper:      { de:"Creeper-Bannervorlage",     herkunft:"Werkbank: Papier + Creeperkopf" },
+  skull:        { de:"Schädel-Bannervorlage",     herkunft:"Werkbank: Papier + Witherskelettschädel" },
+  mojang:       { de:"Mojang-Logo-Bannervorlage", herkunft:"Werkbank: Papier + Verzauberter Goldener Apfel" },
+  curly_border: { de:"Spickelbord-Bannervorlage", herkunft:"Werkbank: Papier + Ranken" },
+  bricks:       { de:"Mauerung-Bannervorlage",    herkunft:"Werkbank: Papier + Ziegelsteine" },
+  globe:        { de:"Globus-Bannervorlage",      herkunft:"Handel: Kartograf (Meister)" },
+  piglin:       { de:"Schnauzen-Bannervorlage",   herkunft:"Truhe in der Bastionsruine" },
+  flow:         { de:"Fluss-Bannervorlage",       herkunft:"Unheilvoller Tresor (Prüfungskammer)" },
+  guster:       { de:"Windstoßer-Bannervorlage",  herkunft:"Tresor (Prüfungskammer)" },
+});
+
+// Pixel-Motive der Figuren (1 Zelle = 2×2 Banner-Pixel) – bewusst vereinfacht
+const MOTIVE = Object.freeze({
+  creeper: { x:4, y:12, z:["##..##", "##..##", "..##..", ".####.", ".####.", ".#..#."] },
+  skull:   { x:4, y:10, z:[".####.", "######", "#.##.#", "######", "..##..", "#....#", ".#..#.", "#....#"] },
+  flower:  { x:3, y:12, z:["..###..", ".#...#.", "#.###.#", "#.#.#.#", "#.###.#", ".#...#.", "..###.."] },
+  mojang:  { x:3, y:12, z:["..####.", ".#....#", "#.###..", "#.#..#.", "#.#.##.", ".#....#", "..####."] },
+  globe:   { x:3, y:12, z:["..###..", ".#.##.#", "#.###.#", "#..#..#", "##...##", ".#.#.#.", "..###.."] },
+  piglin:  { x:4, y:16, z:["######", "#.##.#", "#.##.#", "######"] },
+  flow:    { x:3, y:12, z:["#######", "#.....#", "#.###.#", "#.#.#.#", "#.#...#", "#.#####", "#......"] },
+  guster:  { x:3, y:12, z:[".#####.", "#.....#", "..###.#", ".#...#.", "#.##...", "#....#.", ".####.."] },
+});
+function motivMaske(m){
+  return (x, y) => {
+    const cx = Math.floor((x - m.x) / 2), cy = Math.floor((y - m.y) / 2);
+    return m.z[cy]?.[cx] === "#" ? 1 : 0;
+  };
+}
+const yn = (y) => y / 2;                               // Höhe auf Breitenmaß (40 → 20) für Diagonalen
+const zahn = (x) => 2.5 - Math.abs((x % 5) - 2);       // Sägezahn für die gespickelten Muster
+
+// Alle Muster: id (wie im Spiel intern), de (Spielname), en, m = Maske (x, y) → Deckkraft 0…1
+const MUSTER = Object.freeze([
+  { id:"stripe_bottom",          de:"Gefärbter Bannerfuß",               en:"Base",                       m:(x, y) => y >= 27 },
+  { id:"stripe_top",             de:"Gefärbtes Bannerhaupt",             en:"Chief",                      m:(x, y) => y < 13 },
+  { id:"stripe_left",            de:"Linke Flanke",                      en:"Pale Dexter",                m:(x) => x < 6 },
+  { id:"stripe_right",           de:"Rechte Flanke",                     en:"Pale Sinister",              m:(x) => x >= 14 },
+  { id:"stripe_center",          de:"Pfahl",                             en:"Pale",                       m:(x) => x >= 7 && x < 13 },
+  { id:"stripe_middle",          de:"Balken",                            en:"Fess",                       m:(x, y) => y >= 15 && y < 25 },
+  { id:"stripe_downright",       de:"Schrägbalken",                      en:"Bend",                       m:(x, y) => Math.abs(yn(y) - x) < 3.2 },
+  { id:"stripe_downleft",        de:"Schräglinksbalken",                 en:"Bend Sinister",              m:(x, y) => Math.abs(yn(y) - (19 - x)) < 3.2 },
+  { id:"small_stripes",          de:"Vier Pfähle",                       en:"Paly",                       m:(x) => x % 4 === 1 || x % 4 === 2 },
+  { id:"cross",                  de:"Andreaskreuz",                      en:"Saltire",                    m:(x, y) => Math.abs(yn(y) - x) < 2 || Math.abs(yn(y) - (19 - x)) < 2 },
+  { id:"straight_cross",         de:"Kreuz",                             en:"Cross",                      m:(x, y) => (x >= 8 && x < 12) || (y >= 18 && y < 22) },
+  { id:"diagonal_left",          de:"Schräglinks geteilt",               en:"Per Bend Sinister",          m:(x, y) => x + yn(y) < 20 },
+  { id:"diagonal_right",         de:"Schrägrechts geteilt",              en:"Per Bend",                   m:(x, y) => yn(y) < x },
+  { id:"diagonal_up_left",       de:"Schrägrechts geteilt (invertiert)", en:"Per Bend Inverted",          m:(x, y) => yn(y) > x },
+  { id:"diagonal_up_right",      de:"Schräglinks geteilt (invertiert)",  en:"Per Bend Sinister Inverted", m:(x, y) => x + yn(y) >= 20 },
+  { id:"half_vertical",          de:"Rechts gespalten",                  en:"Per Pale",                   m:(x) => x < 10 },
+  { id:"half_vertical_right",    de:"Links gespalten",                   en:"Per Pale Inverted",          m:(x) => x >= 10 },
+  { id:"half_horizontal",        de:"Oben geteilt",                      en:"Per Fess",                   m:(x, y) => y < 20 },
+  { id:"half_horizontal_bottom", de:"Unten geteilt",                     en:"Per Fess Inverted",          m:(x, y) => y >= 20 },
+  { id:"square_bottom_left",     de:"Gefärbtes rechtes Untereck",        en:"Base Dexter Canton",         m:(x, y) => x < 10 && y >= 27 },
+  { id:"square_bottom_right",    de:"Gefärbtes linkes Untereck",         en:"Base Sinister Canton",       m:(x, y) => x >= 10 && y >= 27 },
+  { id:"square_top_left",        de:"Gefärbtes rechtes Obereck",         en:"Chief Dexter Canton",        m:(x, y) => x < 10 && y < 13 },
+  { id:"square_top_right",       de:"Gefärbtes linkes Obereck",          en:"Chief Sinister Canton",      m:(x, y) => x >= 10 && y < 13 },
+  { id:"triangle_bottom",        de:"Halbe Spitze",                      en:"Chevron",                    m:(x, y) => (39 - y) < 10 - Math.abs(x - 9.5) },
+  { id:"triangle_top",           de:"Gestürzte halbe Spitze",            en:"Inverted Chevron",           m:(x, y) => y < 10 - Math.abs(x - 9.5) },
+  { id:"triangles_bottom",       de:"Gespickelter Bannerfuß",            en:"Base Indented",              m:(x, y) => y >= 36 - zahn(x) },
+  { id:"triangles_top",          de:"Gespickeltes Bannerhaupt",          en:"Chief Indented",             m:(x, y) => y < 3 + zahn(x) },
+  { id:"circle",                 de:"Kugel",                             en:"Roundel",                    m:(x, y) => (x - 9.5) ** 2 + (y - 19.5) ** 2 < 25 },
+  { id:"rhombus",                de:"Raute",                             en:"Lozenge",                    m:(x, y) => Math.abs(x - 9.5) / 6.5 + Math.abs(y - 19.5) / 13 < 1 },
+  { id:"border",                 de:"Bord",                              en:"Bordure",                    m:(x, y) => x < 1 || x > 18 || y < 1 || y > 38 },
+  { id:"gradient",               de:"Farbverlauf",                       en:"Gradient",                   m:(x, y) => 1 - y / 39 },
+  { id:"gradient_up",            de:"Farbverlauf (invertiert)",          en:"Base Gradient",              m:(x, y) => y / 39 },
+  { id:"curly_border",           de:"Spickelbord",                       en:"Bordure Indented",           m:(x, y) => { const d = Math.min(x, 19 - x, y, 39 - y); return d < 1 || (d < 3 && (x + y) % 3 === 0); } },
+  { id:"bricks",                 de:"Feld gemauert",                     en:"Field Masoned",              m:(x, y) => y % 4 === 3 || (x + (Math.floor(y / 4) % 2) * 3) % 6 === 0 },
+  { id:"creeper",                de:"Creeper",                           en:"Creeper Charge",             m:motivMaske(MOTIVE.creeper) },
+  { id:"skull",                  de:"Schädel",                           en:"Skull Charge",               m:motivMaske(MOTIVE.skull) },
+  { id:"flower",                 de:"Blume",                             en:"Flower Charge",              m:motivMaske(MOTIVE.flower) },
+  { id:"mojang",                 de:"Mojang-Logo",                       en:"Thing",                      m:motivMaske(MOTIVE.mojang) },
+  { id:"globe",                  de:"Globus",                            en:"Globe",                      m:motivMaske(MOTIVE.globe) },
+  { id:"piglin",                 de:"Schnauze",                          en:"Snout",                      m:motivMaske(MOTIVE.piglin) },
+  { id:"flow",                   de:"Fluss",                             en:"Flow",                       m:motivMaske(MOTIVE.flow) },
+  { id:"guster",                 de:"Windstoßer",                        en:"Guster",                     m:motivMaske(MOTIVE.guster) },
+]);
+const muster = (id) => MUSTER.find((m) => m.id === id) || MUSTER[0];
+const MAX_EBENEN = 6;   // so viele Muster nimmt der Webstuhl
+
+/** Regeln für einen Bauplan – identisch im Server umzusetzen. Gibt Fehlertext oder null zurück. */
+function bannerPruefen(b){
+  const name = String(b?.name ?? "").trim();
+  if(!name) return "Bitte einen Namen eingeben";
+  if(name.length > 60) return "Name ist zu lang (max. 60 Zeichen)";
+  if(!FARBEN.some((f) => f.id === b.basis)) return "Unbekannte Grundfarbe";
+  if(!Array.isArray(b.ebenen)) return "Ebenen fehlen";
+  if(b.ebenen.length > MAX_EBENEN) return `Im Webstuhl passen höchstens ${MAX_EBENEN} Muster auf ein Banner`;
+  for(const e of b.ebenen){
+    if(!MUSTER.some((m) => m.id === e?.muster)) return "Unbekanntes Muster";
+    if(!FARBEN.some((f) => f.id === e?.farbe)) return "Unbekannte Farbe";
+  }
+  return null;
+}
+const bannerSauber = (b) => ({ name:String(b.name).trim(), basis:b.basis, ebenen:b.ebenen.map(({ muster, farbe }) => ({ muster, farbe })) });
+
+/** Zeichnet ein Banner auf 20×40 Pixel → Data-URL (mit Cache) */
+const bannerCache = new Map();
+function bannerBild(b){
+  const schluessel = JSON.stringify([b.basis, b.ebenen]);
+  if(bannerCache.has(schluessel)) return bannerCache.get(schluessel);
+  const c = document.createElement("canvas");
+  c.width = 20; c.height = 40;
+  const g = c.getContext("2d");
+  const bild = g.createImageData(20, 40);
+  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const pix = Array.from({ length:800 }, () => rgb(farbe(b.basis).hex));
+  for(const e of b.ebenen){
+    const m = muster(e.muster).m, f = rgb(farbe(e.farbe).hex);
+    for(let y = 0; y < 40; y++) for(let x = 0; x < 20; x++){
+      const a = Math.max(0, Math.min(1, Number(m(x, y))));
+      if(!a) continue;
+      const p = pix[y * 20 + x];
+      pix[y * 20 + x] = p.map((v, i) => Math.round(v * (1 - a) + f[i] * a));
+    }
+  }
+  pix.forEach((p, i) => { bild.data.set([...p, 255], i * 4); });
+  g.putImageData(bild, 0, 0);
+  const url = c.toDataURL();
+  bannerCache.set(schluessel, url);
+  return url;
+}
+const bannerImg = (b, klasse, alt) => `<img class="banner-bild ${klasse || ""}" src="${bannerBild(b)}" alt="${esc(alt || "")}">`;
+const vorlagenVon = (b) => [...new Set(b.ebenen.map((e) => e.muster).filter((m) => BANNERVORLAGEN[m]))];
+
+/** Material + Schritte für Werkbank und Webstuhl */
+function bannerAnleitung(b){
+  const farbstoffe = new Map();
+  for(const e of b.ebenen) farbstoffe.set(e.farbe, (farbstoffe.get(e.farbe) || 0) + 1);
+  const schritte = [
+    { titel:"Banner herstellen", info:`6 × ${farbe(b.basis).wolle} + 1 Stock · Werkbank`, bild:{ basis:b.basis, ebenen:[] } },
+    ...b.ebenen.map((e, n) => {
+      const v = BANNERVORLAGEN[e.muster];
+      return { titel:muster(e.muster).de, en:muster(e.muster).en,
+        info:`${farbe(e.farbe).farbstoff}${v ? ` + ${v.de}` : ""} · Webstuhl`,
+        bild:{ basis:b.basis, ebenen:b.ebenen.slice(0, n + 1) } };
+    }),
+  ];
+  return { farbstoffe, vorlagen:vorlagenVon(b), schritte };
+}
+
+const bn = { liste:[], suche:"", entwurf:null, offen:null };
+const $bannerListe = document.getElementById("bannerListe");
+
+async function bannerLaden(){
+  const r = await api("/banner");
+  if(!r.ok) return toast(meldungAus(r), true);
+  bn.liste = r.data.liste;
+  if(aktivesModul === "banner") render();
+}
+
+function renderBanner(){
+  const q = bn.suche.trim().toLowerCase();
+  const liste = bn.liste.filter((b) => !q || b.name.toLowerCase().includes(q)
+    || b.ebenen.some((e) => muster(e.muster).de.toLowerCase().includes(q)));
+  $bannerListe.innerHTML = liste.map((b) => {
+    const vorlagen = vorlagenVon(b);
+    return `<button class="banner-karte" data-banner="${b.id}">
+      <span class="banner-rahmen">${bannerImg(b)}</span>
+      <span class="card-title">${esc(b.name)}</span>
+      <span class="card-meta">${b.ebenen.length} ${b.ebenen.length === 1 ? "Ebene" : "Ebenen"} · ${farbe(b.basis).de}</span>
+      ${vorlagen.length ? `<span class="pill">${vorlagen.length} ${vorlagen.length === 1 ? "Vorlage" : "Vorlagen"}</span>` : ""}
+    </button>`;
+  }).join("") || `<div class="empty-list" style="grid-column:1/-1">${bn.liste.length ? "Nichts gefunden." : "Noch keine Banner-Baupläne.<br>Unten „Neuer Banner“ antippen."}</div>`;
+}
+
+const bannerFortschritt = (id) => new Set(lsLesen(`banner.schritte.${id}`) || []);
+
+function bannerDetailOeffnen(id){
+  const b = bn.liste.find((x) => x.id === id); if(!b) return;
+  const { farbstoffe, vorlagen, schritte } = bannerAnleitung(b);
+  const erledigt = bannerFortschritt(id);
+  const scroll = st.sheet === "banner" ? $sheet.scrollTop : 0;
+  const sub = `${b.ebenen.length} ${b.ebenen.length === 1 ? "Ebene" : "Ebenen"} · Grundfarbe ${farbe(b.basis).de}${b.von ? ` · von ${esc(b.von)}` : ""}`;
+  const html = kopfHtml(esc(b.name), sub) + `<div class="orte-inhalt">
+    <div class="banner-detail-kopf">
+      <span class="banner-rahmen gross">${bannerImg(b, "", "Vorschau")}</span>
+      <div class="result-card">
+        <div class="result-label">Material</div>
+        <span class="mat"><i class="farbpunkt" style="background:${farbe(b.basis).hex}"></i><span><b>6 ×</b> ${farbe(b.basis).wolle}</span></span>
+        <span class="mat"><i class="farbpunkt" style="background:#7a5a3a"></i><span><b>1 ×</b> Stock</span></span>
+        ${[...farbstoffe].map(([f, n]) => `<span class="mat"><i class="farbpunkt" style="background:${farbe(f).hex}"></i><span><b>${n} ×</b> ${farbe(f).farbstoff}</span></span>`).join("")}
+      </div>
+    </div>
+    ${vorlagen.length ? `<div class="result-card">
+        <div class="result-label">Bannervorlagen</div>
+        ${vorlagen.map((v) => `<div class="vorlage-zeile"><b>${esc(BANNERVORLAGEN[v].de)}</b><span>${esc(BANNERVORLAGEN[v].herkunft)}</span></div>`).join("")}
+        <p class="result-hint">Werden im Webstuhl nicht verbraucht.</p>
+      </div>` : ""}
+    <div class="field-group"><div class="field-group-label">Anleitung · ${erledigt.size}/${schritte.length} erledigt</div>
+      <div class="list-stack">${schritte.map((s, n) => `<button class="card schritt ${erledigt.has(n) ? "erledigt" : ""}" data-aktion="banner-schritt" data-id="${b.id}" data-n="${n}">
+        <span class="schritt-nr">${erledigt.has(n) ? "✓" : n + 1}</span>
+        <span class="schritt-text"><b>${esc(s.titel)}${s.en ? `<span class="en">${esc(s.en)}</span>` : ""}</b><small>${esc(s.info)}</small></span>
+        ${bannerImg(s.bild, "mini")}</button>`).join("")}</div>
+      ${erledigt.size ? `<button class="btn-secondary" data-aktion="banner-schritte-weg" data-id="${b.id}">Haken zurücksetzen</button>` : ""}
+    </div>
+    <div class="knopf-raster">
+      <button class="btn-primary" data-aktion="banner-bearbeiten" data-id="${b.id}">Bearbeiten</button>
+      <button class="btn-danger" data-aktion="banner-loeschen" data-id="${b.id}">Löschen</button>
+    </div>
+  </div>`;
+  sheetOeffnen("banner", html, "overworld");
+  $sheet.scrollTop = scroll;
+}
+
+function bannerEditorOeffnen(id){
+  const b = id ? bn.liste.find((x) => x.id === id) : null;
+  bn.entwurf = b ? structuredClone(b) : { id:null, name:"", basis:"white", ebenen:[] };
+  bn.offen = null;
+  bannerEditorRendern();
+}
+function bannerEditorRendern(){
+  const e = bn.entwurf;
+  const name = document.getElementById("bannerName");
+  if(name && st.sheet === "banner-editor") e.name = name.value;
+  const scroll = st.sheet === "banner-editor" ? $sheet.scrollTop : 0;
+  const farbFelder = (aktiv, attr) => FARBEN.map((f) => `<button class="farbfeld ${f.id === aktiv ? "aktiv" : ""}" ${attr}="${f.id}" style="background:${f.hex}" aria-label="${f.de}" title="${f.de}"></button>`).join("");
+  const musterFelder = (l, liste) => liste.map((m) => {
+    const bild = { basis:l.farbe === e.basis ? kontrast(l.farbe) : e.basis, ebenen:[{ muster:m.id, farbe:l.farbe }] };
+    return `<button class="muster-feld ${m.id === l.muster ? "aktiv" : ""}" data-muster="${m.id}" aria-label="${esc(m.de)}" title="${esc(m.de)}"><img src="${bannerBild(bild)}" alt=""></button>`;
+  }).join("");
+  const ebenen = e.ebenen.map((l, n) => {
+    const m = muster(l.muster), v = BANNERVORLAGEN[l.muster], offen = bn.offen === n;
+    const einzeln = { basis:l.farbe === e.basis ? kontrast(l.farbe) : e.basis, ebenen:[l] };
+    return `<div class="card ebene ${offen ? "offen" : ""}">
+      <div class="ebene-zeile">
+        <button class="ebene-kopf" data-aktion="ebene-auf" data-n="${n}" aria-expanded="${offen}">
+          <span class="schritt-nr">${n + 1}</span>
+          ${bannerImg(einzeln, "mini")}
+          <span class="ebene-text"><b>${esc(m.de)}</b><small><i class="farbpunkt" style="background:${farbe(l.farbe).hex}"></i>${farbe(l.farbe).de}${v ? " · Vorlage" : ""}</small></span>
+        </button>
+        <span class="ebene-knoepfe">
+          <button class="icon-btn" data-aktion="ebene-hoch" data-n="${n}" aria-label="Eine Ebene früher" ${n ? "" : "disabled"}>↑</button>
+          <button class="icon-btn" data-aktion="ebene-runter" data-n="${n}" aria-label="Eine Ebene später" ${n < e.ebenen.length - 1 ? "" : "disabled"}>↓</button>
+          <button class="icon-btn" data-aktion="ebene-weg" data-n="${n}" aria-label="Ebene entfernen">✕</button>
+        </span>
+      </div>
+      ${offen ? `<div class="ebene-wahl" data-ebene="${n}">
+          <div class="field-group-label">Farbe · ${farbe(l.farbe).de}</div>
+          <div class="farbraster">${farbFelder(l.farbe, "data-farbe")}</div>
+          <div class="field-group-label">Muster · ${esc(m.de)}</div>
+          <div class="muster-raster">${musterFelder(l, MUSTER.filter((x) => !BANNERVORLAGEN[x.id]))}</div>
+          <div class="field-group-label">Mit Bannervorlage</div>
+          <div class="muster-raster">${musterFelder(l, MUSTER.filter((x) => BANNERVORLAGEN[x.id]))}</div>
+        </div>` : ""}
+    </div>`;
+  }).join("");
+  const html = kopfHtml(e.id ? "Banner bearbeiten" : "Neuer Banner", "Grundfarbe + bis zu 6 Muster-Ebenen") + `<div class="orte-inhalt">
+    <div class="banner-editor-kopf">
+      <span class="banner-rahmen mittel">${bannerImg(e, "", "Vorschau")}</span>
+      <div class="field-group">
+        <div class="field-group-label">Name</div>
+        <input class="orte-eingabe" id="bannerName" maxlength="60" placeholder="z. B. Creeper-Wache" value="${esc(e.name)}" autocomplete="off">
+        <div class="card-meta">${e.ebenen.length}/${MAX_EBENEN} Ebenen · Vorschau vereinfacht</div>
+      </div>
+    </div>
+    <div class="field-group"><div class="field-group-label">Grundfarbe · ${farbe(e.basis).de}</div>
+      <div class="farbraster">${farbFelder(e.basis, "data-basis")}</div></div>
+    <div class="field-group"><div class="field-group-label">Ebenen · Reihenfolge im Webstuhl</div>
+      ${ebenen ? `<div class="list-stack">${ebenen}</div>` : ""}
+      ${e.ebenen.length >= MAX_EBENEN
+        ? `<div class="banner warn">Im Webstuhl passen höchstens ${MAX_EBENEN} Muster auf ein Banner.</div>`
+        : '<button class="btn-secondary" data-aktion="ebene-neu">+ Ebene hinzufügen</button>'}
+    </div>
+    <div class="banner" id="bannerMeldung" hidden></div>
+    <div class="sheet-fuss"><button class="btn-secondary" data-aktion="banner-abbrechen">Abbrechen</button>
+      <button class="btn-primary" data-aktion="banner-speichern">Speichern</button></div>
+  </div>`;
+  sheetOeffnen("banner-editor", html, "overworld");
+  $sheet.scrollTop = scroll;
+}
+
+/** Klicks im Editor. Gibt true zurück, wenn der Klick hier behandelt wurde. */
+function bannerEditorKlick(ziel){
+  const e = bn.entwurf; if(!e) return false;
+  const basis = ziel.closest("[data-basis]");
+  if(basis){ e.basis = basis.dataset.basis; bannerEditorRendern(); return true; }
+  const wahl = ziel.closest("[data-ebene]");
+  const f = ziel.closest("[data-farbe]"), m = ziel.closest("[data-muster]");
+  if(wahl && (f || m)){
+    const l = e.ebenen[Number(wahl.dataset.ebene)];
+    if(f) l.farbe = f.dataset.farbe; else l.muster = m.dataset.muster;
+    bannerEditorRendern(); return true;
+  }
+  const a = ziel.closest("[data-aktion]"); if(!a) return false;
+  const n = Number(a.dataset.n);
+  const tauschen = (i, j) => { [e.ebenen[i], e.ebenen[j]] = [e.ebenen[j], e.ebenen[i]]; if(bn.offen === i) bn.offen = j; else if(bn.offen === j) bn.offen = i; };
+  switch(a.dataset.aktion){
+    case "ebene-auf": bn.offen = bn.offen === n ? null : n; break;
+    case "ebene-neu":
+      if(e.ebenen.length >= MAX_EBENEN) return true;
+      e.ebenen.push({ muster:"stripe_bottom", farbe:kontrast(e.basis) });
+      bn.offen = e.ebenen.length - 1; break;
+    case "ebene-hoch": if(n > 0) tauschen(n, n - 1); break;
+    case "ebene-runter": if(n < e.ebenen.length - 1) tauschen(n, n + 1); break;
+    case "ebene-weg":
+      e.ebenen.splice(n, 1);
+      if(bn.offen === n) bn.offen = null; else if(bn.offen > n) bn.offen--;
+      break;
+    default: return false;
+  }
+  bannerEditorRendern();
+  return true;
+}
+
+async function bannerSpeichern(){
+  const e = bn.entwurf;
+  e.name = document.getElementById("bannerName").value.trim();
+  const $m = document.getElementById("bannerMeldung");
+  const problem = bannerPruefen(e);
+  if(problem) return banner($m, "bad", problem + ".");
+  const body = JSON.stringify(bannerSauber(e));
+  const r = e.id ? await api(`/banner/${e.id}`, { method:"PUT", body }) : await api("/banner", { method:"POST", body });
+  if(!r.ok) return banner($m, "bad", meldungAus(r));
+  const neu = r.data.banner;
+  const i = bn.liste.findIndex((x) => x.id === neu.id);
+  // Muster geändert → abgehakte Schritte passen nicht mehr
+  if(i >= 0 && JSON.stringify([bn.liste[i].basis, bn.liste[i].ebenen]) !== JSON.stringify([neu.basis, neu.ebenen]))
+    lsSchreiben(`banner.schritte.${neu.id}`, null);
+  if(i >= 0) bn.liste[i] = neu; else bn.liste.unshift(neu);
+  bn.entwurf = null;
+  render(); bannerDetailOeffnen(neu.id); toast("Banner gespeichert");
+}
+
+async function bannerLoeschen(id){
+  const r = await api(`/banner/${id}`, { method:"DELETE" });
+  if(!r.ok) return toast(meldungAus(r), true);
+  bn.liste = bn.liste.filter((b) => b.id !== id);
+  lsSchreiben(`banner.schritte.${id}`, null);
+  alleSchliessen(); render(); toast("Banner gelöscht");
+}
+
+function bannerSchrittUmschalten(id, n){
+  const erledigt = bannerFortschritt(id);
+  erledigt.has(n) ? erledigt.delete(n) : erledigt.add(n);
+  lsSchreiben(`banner.schritte.${id}`, erledigt.size ? [...erledigt] : null);
+  bannerDetailOeffnen(id);
+}
+
+document.getElementById("bannerSuche").addEventListener("input", (e) => { bn.suche = e.target.value; renderBanner(); });
+$bannerListe.addEventListener("click", (e) => { const k = e.target.closest("[data-banner]"); if(k) bannerDetailOeffnen(k.dataset.banner); });
+document.getElementById("bannerNeuBtn").addEventListener("click", () => bannerEditorOeffnen(null));
+
+/* ============================================================================
    10 · DATEN, EVENTS, INIT
    ========================================================================== */
 function uebernehmen({ instanz, typ }){
@@ -2288,6 +2797,7 @@ $sheet.addEventListener("click", async (e) => {
     imp.dim = idim.dataset.importDim;
     return importRendern();
   }
+  if(st.sheet === "banner-editor" && bannerEditorKlick(e.target)) return;
   const a = e.target.closest("[data-aktion]"); if(!a) return;
   const id = a.dataset.id;
   switch(a.dataset.aktion){
@@ -2349,6 +2859,20 @@ $sheet.addEventListener("click", async (e) => {
       break;
     case "standort-weg":
       st.standort = null; lsSchreiben("orte.standort", null); alleSchliessen(); render(); break;
+    // Banner
+    case "banner-schritt": bannerSchrittUmschalten(id, Number(a.dataset.n)); break;
+    case "banner-schritte-weg": lsSchreiben(`banner.schritte.${id}`, null); bannerDetailOeffnen(id); break;
+    case "banner-bearbeiten": bannerEditorOeffnen(id); break;
+    case "banner-speichern": bannerSpeichern(); break;
+    case "banner-abbrechen": {
+      const zurueck = bn.entwurf?.id; bn.entwurf = null;
+      zurueck ? bannerDetailOeffnen(zurueck) : alleSchliessen();
+      break;
+    }
+    case "banner-loeschen":
+      // Zweimal tippen – ein Bauplan ist schnell weg und für alle
+      if(a.dataset.sicher !== "1"){ a.dataset.sicher = "1"; a.textContent = "Wirklich löschen?"; return; }
+      bannerLoeschen(id); break;
   }
 });
 
