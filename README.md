@@ -20,7 +20,8 @@ npm run typecheck    # TS-Check
 - `src/shared/` – Wiederverwendbare UI und Tokens
 - `src/tests/` – Unit-Tests
 
-Siehe Plan-Datei für Designregeln (12-Spalten-Grid, feste Größenstufen, getrennter Bearbeitungsmodus).
+Designregeln: 12-Spalten-Grid, feste Größenstufen, getrennter Bearbeitungsmodus.
+Nächste Schritte und offene Ideen stehen in `docs/ROADMAP.md`.
 
 ## Bildschirmgrößen
 
