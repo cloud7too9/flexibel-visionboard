@@ -24,6 +24,7 @@ import { WorkspacePanel } from "./WorkspacePanel";
 import { EmptyGridHint } from "./EmptyGridHint";
 import { useBreakpoint } from "../../../shared/hooks/useBreakpoint";
 import { adaptLayoutToBreakpoint } from "../lib/responsive-layout";
+import { useLongPress } from "../hooks/useLongPress";
 
 type DragState =
   | { kind: "idle" }
@@ -51,6 +52,7 @@ export function WorkspaceGrid() {
   const editMode = useWorkspaceStore((s) => s.editMode);
   const selectedPanelId = useWorkspaceStore((s) => s.selectedPanelId);
   const selectPanel = useWorkspaceStore((s) => s.selectPanel);
+  const setEditMode = useWorkspaceStore((s) => s.setEditMode);
   const moveItem = useWorkspaceStore((s) => s.moveItem);
   const resizeItem = useWorkspaceStore((s) => s.resizeItem);
 
@@ -68,6 +70,17 @@ export function WorkspaceGrid() {
     [layout, breakpoint],
   );
   const canArrange = editMode && breakpoint.erlaubtAnordnen;
+
+  // Langes Drücken auf die Kopfzeile eines Widgets (ohne Verschieben) schaltet
+  // die gesamte Oberfläche in den Bearbeitungszustand. Gilt für alle
+  // Bildschirmgrößen; auf Touch-Geräten ist das der einzige Einstieg.
+  const longPress = useLongPress<Id>((id) => {
+    selectPanel(id);
+    setEditMode(true);
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate(10);
+    }
+  });
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -94,7 +107,11 @@ export function WorkspaceGrid() {
   const totalHeight =
     totalRows * displayLayout.zeilenHoehe + (totalRows - 1) * displayLayout.abstand;
 
-  const onDragPointerDown = (e: ReactPointerEvent, id: Id) => {
+  const onHeaderPointerDown = (e: ReactPointerEvent, id: Id) => {
+    if (!editMode) {
+      longPress.start(e, id);
+      return;
+    }
     if (!canArrange) return;
     e.preventDefault();
     const item = layout.items.find((i) => i.id === id);
@@ -237,7 +254,7 @@ export function WorkspaceGrid() {
             editMode={editMode}
             arrangeable={canArrange}
             selected={selectedPanelId === item.id}
-            onDragPointerDown={onDragPointerDown}
+            onHeaderPointerDown={onHeaderPointerDown}
             onResizePointerDown={onResizePointerDown}
           />
         );

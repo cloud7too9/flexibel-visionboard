@@ -11,7 +11,8 @@ interface Props {
   /** Verschieben/Skalieren erlaubt (Bearbeitungsmodus im Desktop-Raster). */
   arrangeable: boolean;
   selected: boolean;
-  onDragPointerDown: (e: ReactPointerEvent, id: string) => void;
+  /** Kopfzeile: startet Verschieben (Bearbeitungszustand, Desktop) oder langes Drücken. */
+  onHeaderPointerDown: (e: ReactPointerEvent, id: string) => void;
   onResizePointerDown: (e: ReactPointerEvent, id: string) => void;
 }
 
@@ -21,7 +22,7 @@ export function WorkspacePanel({
   editMode,
   arrangeable,
   selected,
-  onDragPointerDown,
+  onHeaderPointerDown,
   onResizePointerDown,
 }: Props) {
   return (
@@ -45,11 +46,12 @@ export function WorkspacePanel({
     >
       <div
         className={[
-          "flex items-center justify-between gap-2 border-b border-border px-2.5 py-1.5 text-sm font-medium sm:px-3 sm:py-2",
-          editMode ? "select-none bg-surface-raised" : "",
+          "long-press-target flex items-center justify-between gap-2 border-b border-border px-2.5 py-1.5 text-sm font-medium sm:px-3 sm:py-2",
+          editMode ? "bg-surface-raised" : "",
           arrangeable ? "cursor-move touch-none" : "",
         ].join(" ")}
-        onPointerDown={arrangeable ? (e) => onDragPointerDown(e, item.id) : undefined}
+        onPointerDown={(e) => onHeaderPointerDown(e, item.id)}
+        onContextMenu={(e) => e.preventDefault()}
       >
         <span className="truncate">{item.titel}</span>
         {editMode && <PanelToolbar panelId={item.id} />}

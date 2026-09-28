@@ -5,13 +5,18 @@ import { getBreakpoint, CANONICAL_BREAKPOINT } from "../model/breakpoints";
 
 export function WorkspaceHeader() {
   const editMode = useWorkspaceStore((s) => s.editMode);
-  const toggleEditMode = useWorkspaceStore((s) => s.toggleEditMode);
+  const setEditMode = useWorkspaceStore((s) => s.setEditMode);
   const openAddPanel = useWorkspaceStore((s) => s.openAddPanel);
   const resetLayout = useWorkspaceStore((s) => s.resetLayout);
-  const saveLayoutNow = useWorkspaceStore((s) => s.saveLayoutNow);
   const layoutName = useWorkspaceStore((s) => s.layout.name);
   const breakpoint = useBreakpoint();
   const canonical = getBreakpoint(CANONICAL_BREAKPOINT);
+
+  // Der Button „Bearbeiten“ ist nur auf Desktop ein Einstieg. Auf kleineren
+  // Bildschirmen wird der Bearbeitungszustand ausschließlich durch langes
+  // Drücken auf die Kopfzeile eines Widgets betreten, damit die Oberfläche
+  // im Normalzustand keinen Platz für Bedienelemente verbraucht.
+  const showEditButton = !editMode && breakpoint.name === CANONICAL_BREAKPOINT;
 
   return (
     <header className="border-b border-border bg-surface-muted">
@@ -29,42 +34,42 @@ export function WorkspaceHeader() {
             {breakpoint.label} · {breakpoint.spalten} Sp.
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {editMode && (
-            <>
-              <Button variant="ghost" onClick={openAddPanel}>
-                <span aria-hidden="true">+</span>
-                <span className="hidden sm:inline">Panel hinzufügen</span>
-                <span className="sm:hidden">Panel</span>
+        {(editMode || showEditButton) && (
+          <div className="flex flex-wrap items-center gap-2">
+            {editMode ? (
+              <>
+                <Button variant="ghost" onClick={openAddPanel}>
+                  <span aria-hidden="true">+</span>
+                  <span className="hidden sm:inline">Widget hinzufügen</span>
+                  <span className="sm:hidden">Widget</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    if (confirm("Layout auf Standard zurücksetzen?")) resetLayout();
+                  }}
+                >
+                  Zurücksetzen
+                </Button>
+                <Button variant="primary" onClick={() => setEditMode(false)}>
+                  <span className="hidden sm:inline">Bearbeitung beenden</span>
+                  <span className="sm:hidden">Fertig</span>
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" onClick={() => setEditMode(true)}>
+                Bearbeiten
               </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  if (confirm("Layout auf Standard zurücksetzen?")) resetLayout();
-                }}
-              >
-                Zurücksetzen
-              </Button>
-              <Button variant="ghost" onClick={saveLayoutNow}>
-                Speichern
-              </Button>
-            </>
-          )}
-          <Button
-            variant={editMode ? "primary" : "ghost"}
-            onClick={toggleEditMode}
-            aria-pressed={editMode}
-          >
-            {editMode ? "Fertig" : "Bearbeiten"}
-          </Button>
-        </div>
+            )}
+          </div>
+        )}
       </div>
       {editMode && !breakpoint.erlaubtAnordnen && (
         <p
           role="status"
           className="border-t border-border bg-surface px-3 py-2 text-xs text-text-muted sm:px-4"
         >
-          Auf {breakpoint.label}-Größe werden Panels automatisch angeordnet. Verschieben und
+          Auf {breakpoint.label}-Größe werden Widgets automatisch angeordnet. Verschieben und
           Skalieren ist ab {canonical.label}-Breite (≥ {canonical.minWidth}px) möglich.
           Hinzufügen, Duplizieren und Entfernen funktionieren hier weiterhin.
         </p>

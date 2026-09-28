@@ -8,7 +8,7 @@ export function AddPanelModal() {
   const addItem = useWorkspaceStore((s) => s.addItem);
 
   return (
-    <Modal open={open} title="Panel hinzufügen" onClose={closeAddPanel}>
+    <Modal open={open} title="Widget hinzufügen" onClose={closeAddPanel}>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
         {PANEL_TYPEN.map((typ) => {
           const def = PANEL_REGISTRY[typ];
