@@ -37,7 +37,7 @@ async function boardStarten() {
   for (let i = 0; i < 60; i++) {
     // Beendet sich sofort, wenn der Port noch belegt ist (z. B. altes Board aus einem abgebrochenen Lauf)
     if (board.exitCode !== null) throw new Error(`Board beendet sich sofort – Port ${BOARD_PORT} belegt?`);
-    try { if ((await fetch(`${BOARD}/api/typen`)).ok) return; } catch {}
+    try { if ((await fetch(`${BOARD}/api/server`)).ok) return; } catch {}
     await schlafen(200);
   }
   throw new Error("Board startet nicht (npm --prefix koordinaten-board/server install?)");

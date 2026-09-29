@@ -75,6 +75,7 @@ try {
   pruefe(await text(max, ".sheet-kopf h2") === "Beitreten", "Startet mit „Beitreten“");
   pruefe(await max.$eval("#boardPin", (e) => e.value) === PIN, "PIN aus dem QR-Code vorbefüllt");
   pruefe(await max.$("#boardScanner") === null, "Kein Kamera-Scanner nötig");
+  pruefe((await fetch(`${BOARD}/api/typen`)).status === 404, "Die alte Handy-Steuerung des Boards ist abgelöst");
   await max.screenshot({ path: `${DIR}/l1-beitreten.png` });
   await max.fill("#boardName", "Max");
   await max.click('[data-aktion="board-beitreten"]');
@@ -152,6 +153,17 @@ try {
   pruefe(orteWelt1 === "Hauptbasis, Stronghold (Stairway) [stronghold.png], Village", "Anzeige: Hauptbasis, Stronghold (Stairway) mit Kennblock, Village");
   pruefe((await text(anzeige, ".subtitle")).includes("Welt 68891…0698"), "Anzeige nennt die Welt");
   await anzeige.screenshot({ path: `${DIR}/l6-anzeige-welt1.png` });
+
+  // Anheften: Ort groß oben auf der Anzeige (früher in der Board-Steuerung)
+  await max.evaluate(() => { modulWechseln("karte"); detailOeffnen(st.instanzen.find((i) => typVon(i).kategorie === "Stronghold").id); });
+  await max.waitForSelector('[data-aktion="anheften"]');
+  await max.click('[data-aktion="anheften"]');
+  pruefe(await warteAuf(anzeige, () => document.querySelector(".a-gross .name")?.textContent === "Stronghold (Stairway)"), "Angeheftet → groß oben auf der Anzeige");
+  pruefe(await warteAuf(max, () => document.querySelector('[data-aktion="anheften"]')?.classList.contains("aktiv")), "Knopf im Detail zeigt „Lösen“");
+  await anzeige.waitForTimeout(500);
+  await anzeige.screenshot({ path: `${DIR}/l6b-anzeige-angeheftet.png` });
+  await max.screenshot({ path: `${DIR}/l6c-detail-angeheftet.png` });
+  await max.click('#orteSheetInhalt [data-aktion="schliessen"]');
 
   // Zweite Welt mit End City – die Anzeige bleibt bei der ersten, bis jemand umstellt
   const welt2 = await max.evaluate(async () => {

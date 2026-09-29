@@ -56,14 +56,6 @@ export interface GezeigteKarte {
   am: string;
 }
 
-export type OrtEingabe = Pick<Ort, 'name' | 'x' | 'y' | 'z' | 'dimension' | 'kategorie' | 'typ' | 'notiz' | 'datei' | 'angeheftet'>;
-
-export type Operation =
-  | { art: 'hinzufuegen'; ort: OrtEingabe }
-  | { art: 'aendern'; id: string; felder: Partial<OrtEingabe> }
-  | { art: 'entfernen'; id: string }
-  | { art: 'einstellungen'; felder: Partial<Einstellungen> };
-
 export const DIMENSIONEN: { wert: Dimension; label: string }[] = [
   { wert: 'oberwelt', label: 'Oberwelt' },
   { wert: 'nether', label: 'Nether' },
@@ -83,26 +75,5 @@ export const KATEGORIEN: { wert: Kategorie; label: string }[] = [
 export const dimensionLabel = (d: Dimension) => DIMENSIONEN.find((x) => x.wert === d)?.label ?? d;
 export const kategorieLabel = (k: Kategorie) => KATEGORIEN.find((x) => x.wert === k)?.label ?? k;
 
-export interface FeatureTyp {
-  typ: string;
-  kategorie: Kategorie;
-  dimension: Dimension | null;
-}
-
-/** Ergebnis der Screenshot-Erkennung vom Server */
-export interface Erkannt {
-  name: string;
-  typ: string;
-  x: number;
-  y: number | null;
-  z: number;
-  dimension: Dimension;
-  kategorie: Kategorie;
-  box: { x0: number; y0: number; x1: number; y1: number } | null;
-}
-
 /** CSS-Klasse, die die komplette Oberfläche in die Farben der Dimension taucht */
 export const thema = (d: Dimension) => `thema-${d}`;
-
-/** „in der Oberwelt“ / „im Nether“ / „im End“ */
-export const inDimension = (d: Dimension) => (d === 'oberwelt' ? 'in der Oberwelt' : `im ${dimensionLabel(d)}`);

@@ -16,7 +16,7 @@ import { COMPANION_ORDNER } from './regeln.js';
 import { besteAdresse } from './netzwerk.js';
 import { fehlversuchSperre } from './sperre.js';
 import { kartePruefen } from './zeigen.js';
-import { FEATURES, screenshotAuslesen, erkennungBeenden } from './erkennung.js';
+import { erkennungBeenden } from './erkennung.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
@@ -27,7 +27,6 @@ const COMPANION_DATEI = process.env.COMPANION_DATEI ?? 'companion-prototyp.html'
 // Anzeige darf standardmäßig nur vom Gerät selbst geöffnet werden (localhost).
 // Läuft die Anzeige auf einem anderen Gerät (z. B. Smart-TV-Browser): ANZEIGE_OFFEN=1
 const ANZEIGE_OFFEN = process.env.ANZEIGE_OFFEN === '1';
-const ERLAUBTE_BILDER = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
 const FARBEN = ['#00e5ff', '#7cff6b', '#ffd23f', '#b98cff', '#ff9f43', '#4dabff'];
 
 // ---------- PIN + Sitzungs-Signatur (bleiben über Neustarts erhalten) ----------
@@ -182,28 +181,6 @@ app.get('/api/anzeige', async (req, reply) => {
     weitere: netz.kandidaten.filter((k) => k.adresse !== qrIp()).map((k) => ({ name: k.name, url: lanAdresse(k.adresse) })),
   };
 });
-
-// Seed-Map-Screenshot auslesen – wird NICHT gespeichert, nur ausgewertet
-app.post('/api/auslesen', async (req, reply) => {
-  if (!nutzerAusAnfrage(req)) return reply.code(401).send({ fehler: 'Nicht angemeldet' });
-  const teil = await req.file();
-  if (!teil) return reply.code(400).send({ fehler: 'Keine Datei' });
-  if (!ERLAUBTE_BILDER[teil.mimetype]) {
-    teil.file.resume();
-    return reply.code(415).send({ fehler: 'Nur Bilder (JPG, PNG, WebP)' });
-  }
-  const bild = await teil.toBuffer();
-  try {
-    return await screenshotAuslesen(bild);
-  } catch (fehler) {
-    req.log.error(fehler);
-    return reply.code(500).send({ fehler: 'Texterkennung fehlgeschlagen' });
-  }
-});
-
-// Feature-Typen der Seed Map (für Auswahl und Filter auf dem Handy)
-const TYPEN = [...new Map(FEATURES.map((f) => [f.typ, { typ: f.typ, kategorie: f.kategorie, dimension: f.dimension }])).values()];
-app.get('/api/typen', async () => TYPEN);
 
 // Daran erkennt die Companion, dass sie vom Board ausgeliefert wird (Live-Betrieb statt DEMO)
 app.get('/api/server', async () => ({ name: 'koordinaten-board' }));

@@ -5,7 +5,7 @@ import { DIMENSIONEN, KATEGORIEN, dimensionLabel, kategorieLabel, thema, type Or
 import { umrechnen, zahl } from '../lib/koordinaten';
 import { Icon } from '../komponenten/Icon';
 import { OrtIcon } from '../komponenten/OrtIcon';
-import { KoordChip } from '../komponenten/Eingaben';
+import { KoordChip } from '../komponenten/KoordChip';
 import { Gezeigt } from './Gezeigt';
 
 const MAX_ANGEHEFTET = 6;

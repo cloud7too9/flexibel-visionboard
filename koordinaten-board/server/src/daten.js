@@ -158,6 +158,16 @@ export class Daten {
     return { instanz: kopie(i), weltId: this.dimension(i.dimensionId)?.worldId };
   }
 
+  /** Für die großen Karten der Anzeige – Biome zeigt die Anzeige nicht, also auch nicht anheftbar */
+  instanzAnheften(id, body) {
+    const i = this.instanz(id);
+    const t = this.inhalt.typen.find((x) => x.id === i.featureTypeId);
+    if (t?.kategorie === BIOMES) fehler(403, 'Biome zeigt die Anzeige nicht');
+    Object.assign(i, { angeheftet: Boolean(body?.angeheftet), geaendert: new Date().toISOString() });
+    this.speichernVerzoegert();
+    return { instanz: kopie(i), weltId: this.dimension(i.dimensionId)?.worldId };
+  }
+
   instanzLoeschen(id) {
     const i = this.instanz(id);
     this.inhalt.instanzen.splice(this.inhalt.instanzen.indexOf(i), 1);

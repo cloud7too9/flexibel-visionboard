@@ -42,6 +42,11 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
     geaendert('orte', weltId);
     return { instanz };
   });
+  app.put('/orte/instanzen/:id/angeheftet', async (req) => {
+    const { instanz, weltId } = daten.instanzAnheften(req.params.id, req.body);
+    geaendert('orte', weltId);
+    return { instanz };
+  });
   app.delete('/orte/instanzen/:id', async (req) => {
     const { weltId } = daten.instanzLoeschen(req.params.id);
     geaendert('orte', weltId);

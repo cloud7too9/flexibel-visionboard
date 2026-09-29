@@ -33,6 +33,8 @@ test('Welten, Orte, Typen – wie der DEMO-Mock der Companion', () => {
   assert.equal(d.instanzAendern(instanz.id, { x: 1, y: 40, z: 2 }).instanz.y, 40);
   const biom = d.instanzAnlegen({ dimensionId: 'd_w_1_nether', kategorie: 'Biomes', variante: 'Soul Sand Valley', x: 0, y: null, z: 0, quelle: 'screenshot' }, 'Max');
   wirft(() => d.instanzAendern(biom.instanz.id, { x: 1, y: null, z: 1 }), 403);
+  assert.equal(d.instanzAnheften(instanz.id, { angeheftet: true }).instanz.angeheftet, true);
+  wirft(() => d.instanzAnheften(biom.instanz.id, { angeheftet: true }), 403);
   d.instanzLoeschen(biom.instanz.id);
   wirft(() => d.instanzLoeschen(biom.instanz.id), 404);
 });

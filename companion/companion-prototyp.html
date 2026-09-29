@@ -822,6 +822,7 @@ button.switch { padding:0; }
 .board-zeile span:first-child { color:var(--text-dim); }
 .board-zeile b { text-align:right; word-break:break-word; }
 .board-einstellungen { gap:12px; }
+.anheften.aktiv { border-color:var(--accent); color:var(--accent); }
 .sam-board { flex:1; margin:8px 14px; }
 .board-schalter { align-items:center; }
 .board-status { display:flex; align-items:center; gap:9px; font-size:16px; }
@@ -1251,6 +1252,7 @@ function koordinatenErkennen(text){
                                         quelle:"screenshot"|"manuell" }
                                       → { instanz, typ }   (Typ wird gefunden oder angelegt)
    PATCH  /orte/instanzen/:id  { x, y, z }   → { instanz }  (Biome: 403)
+   PUT    /orte/instanzen/:id/angeheftet { angeheftet } → { instanz }  (groß auf der Anzeige; Biome: 403)
    DELETE /orte/instanzen/:id                → { ok:true }
    POST   /orte/auslesen  (multipart „datei“) → { erkannt:{ titel, kategorie, variante, dimension,
                                                   x, y|null, z } | null }
@@ -1412,6 +1414,13 @@ function mockApi(path, opts){
     return ok({ instanz:{ ...instanz }, typ }, 201);
   }
 
+  if(method === "PUT" && (m = path.match(/^\/orte\/instanzen\/([\w-]+)\/angeheftet$/))){
+    const i = MOCK.instanzen.find((x) => x.id === m[1]);
+    if(!i) return fehler(404, "Ort nicht gefunden");
+    if(MOCK.typen.find((x) => x.id === i.featureTypeId)?.kategorie === BIOMES) return fehler(403, "Biome zeigt die Anzeige nicht");
+    i.angeheftet = Boolean(body?.angeheftet);
+    return ok({ instanz:{ ...i } });
+  }
   if((m = path.match(/^\/orte\/instanzen\/([\w-]+)$/))){
     const i = MOCK.instanzen.find((x) => x.id === m[1]);
     if(!i) return fehler(404, "Ort nicht gefunden");
@@ -2026,6 +2035,8 @@ function detailOeffnen(id, loeschenFragen){
     </div>
     ${biom ? `<div class="banner info">Biome stammen aus Screenshots – die Koordinaten sind fest. Falsch erfasst? Löschen und neu auslesen.</div>` : ""}
     ${boardZeigenKnopf(`ort:${i.id}`)}
+    ${DEMO.enabled || biom ? "" : `<button class="btn-secondary anheften ${i.angeheftet ? "aktiv" : ""}" data-aktion="anheften" data-id="${i.id}">
+      ${i.angeheftet ? "Groß auf der Anzeige · Lösen" : "Auf der Anzeige anheften"}</button>`}
     <div class="knopf-raster">
       <button class="btn-secondary" data-aktion="kopieren" data-text="${i.x} ${i.y ?? "~"} ${i.z}">Koordinaten</button>
       <button class="btn-secondary" data-aktion="kopieren" data-text="${esc(tpBefehl(i.x, i.y, i.z, dim))}">/tp-Befehl</button>
@@ -3902,6 +3913,15 @@ $sheet.addEventListener("click", async (e) => {
       alleSchliessen(); toast("Vom Board getrennt"); break;
     case "board-zeigen": boardZeigen(a.dataset.boardQuelle); break;
     case "board-qr": boardEinstellungenAendern({ qrZeigen:!bd.einstellungen?.qrZeigen }); break;
+    case "anheften": {
+      const i = st.instanzen.find((x) => x.id === id); if(!i) break;
+      const r = await api(`/orte/instanzen/${id}/angeheftet`, { method:"PUT", body:JSON.stringify({ angeheftet:!i.angeheftet }) });
+      if(!r.ok){ toast(meldungAus(r), true); break; }
+      uebernehmen({ instanz:r.data.instanz });
+      detailOeffnen(id);
+      toast(r.data.instanz.angeheftet ? "Liegt groß auf der Anzeige" : "Nicht mehr angeheftet");
+      break;
+    }
     case "board-wegnehmen": boardWegnehmen(); break;
     case "banner-loeschen":
       // Zweimal tippen – ein Bauplan ist schnell weg und für alle
