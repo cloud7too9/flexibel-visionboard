@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { Zustand } from './zustand.js';
 import { besteAdresse } from './netzwerk.js';
 import { fehlversuchSperre } from './sperre.js';
+import { kartePruefen } from './zeigen.js';
 import { FEATURES, screenshotAuslesen, erkennungBeenden } from './erkennung.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -234,6 +235,30 @@ function anAlle(nachricht) {
   for (const v of verbindungen) if (v.socket.readyState === 1) v.socket.send(text);
 }
 
+// Karte, die gerade groß auf der Anzeige liegt („Auf die Anzeige werfen“).
+// Nur im Speicher: Nach einem Neustart ist die Anzeige wieder frei.
+let gezeigt = null;
+
+/** Nachrichten zum Zeigen – true, wenn die Nachricht damit erledigt ist */
+function zeigenBearbeiten(op, verbindung) {
+  if (op.art === 'zeigen') {
+    const { karte, fehler } = kartePruefen(op.karte);
+    if (fehler) {
+      senden(verbindung.socket, { art: 'fehler', text: fehler, anfrage: op.anfrage });
+      return true;
+    }
+    gezeigt = { id: randomUUID(), ...karte, von: verbindung.nutzer.name, farbe: verbindung.nutzer.farbe, am: new Date().toISOString() };
+  } else if (op.art === 'verbergen') {
+    // Mit id nur genau diese Karte – sonst nähme ein spätes „Weg“ eine neuere Karte mit
+    if (gezeigt && (!op.id || op.id === gezeigt.id)) gezeigt = null;
+  } else {
+    return false;
+  }
+  anAlle({ art: 'gezeigt', karte: gezeigt });
+  senden(verbindung.socket, { art: 'ok', anfrage: op.anfrage });
+  return true;
+}
+
 function teilnehmerMelden() {
   const namen = [...new Set([...verbindungen].filter((v) => v.nutzer).map((v) => v.nutzer.name))];
   anAlle({ art: 'teilnehmer', namen });
@@ -253,6 +278,7 @@ app.get('/ws', { websocket: true }, (socket, req) => {
 
   verbindungen.add(verbindung);
   senden(socket, { art: 'zustand', zustand: zustand.momentaufnahme() });
+  senden(socket, { art: 'gezeigt', karte: gezeigt });
   teilnehmerMelden();
 
   socket.on('message', async (roh) => {
@@ -263,6 +289,8 @@ app.get('/ws', { websocket: true }, (socket, req) => {
     } catch {
       return;
     }
+    if (!op || typeof op !== 'object') return;
+    if (zeigenBearbeiten(op, verbindung)) return;
     const ergebnis = zustand.anwenden(op, verbindung.nutzer.name);
     if (ergebnis.fehler) senden(socket, { art: 'fehler', text: ergebnis.fehler, anfrage: op.anfrage });
     if (!ergebnis.geaendert) return;

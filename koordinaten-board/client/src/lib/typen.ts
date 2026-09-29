@@ -30,6 +30,26 @@ export interface BoardZustand {
   version: number;
 }
 
+/** Block einer gezeigten Karte (Aufbau und Grenzen: server/src/zeigen.js) */
+export type KartenBlock =
+  | { art: 'koordinaten'; label?: string; x: number; y: number | null; z: number; dimension: Dimension | null }
+  | { art: 'zeilen'; zeilen: { label: string; wert: string }[] }
+  | { art: 'text'; text: string };
+
+/** Karte, die ein Handy groß auf die Anzeige geworfen hat */
+export interface GezeigteKarte {
+  id: string;
+  titel: string;
+  unter?: string;
+  bereich?: string;
+  quelle?: string;
+  dimension: Dimension | null;
+  bloecke: KartenBlock[];
+  von: string;
+  farbe: string;
+  am: string;
+}
+
 export type OrtEingabe = Pick<Ort, 'name' | 'x' | 'y' | 'z' | 'dimension' | 'kategorie' | 'typ' | 'notiz' | 'datei' | 'angeheftet'>;
 
 export type Operation =

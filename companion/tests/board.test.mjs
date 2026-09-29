@@ -2,7 +2,7 @@
 // per Kamera (Fake-Kamera zeigt den QR-Code), per Foto und von Hand.
 import { chromium } from "playwright";
 import { fileURLToPath } from "node:url";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
@@ -17,6 +17,11 @@ const BOARD_PORT = 3198, SEITE_PORT = 3196, PIN = "4711";
 const BOARD = `http://127.0.0.1:${BOARD_PORT}`;
 const QR_TEXT = `${BOARD}/?pin=${PIN}`;
 const JSQR = path.join(HIER, "node_modules/jsqr/dist/jsQR.js");
+// Die Anzeige braucht den gebauten Board-Client
+if (!existsSync(path.join(HIER, "../../koordinaten-board/client/dist/index.html"))) {
+  console.log("FEHL Board-Client nicht gebaut: npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build");
+  process.exit(1);
+}
 
 const pruefe = (ok, text) => { console.log((ok ? "OK   " : "FEHL ") + text); if (!ok) process.exitCode = 1; };
 const schlafen = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -206,6 +211,81 @@ try {
     pruefe((await zeilenLesen(p)).startsWith("Angemeldet als=Lena"), "Angemeldet als Lena");
     pruefe(await p.evaluate(() => JSON.parse(localStorage.getItem("board.name"))) === "Lena", "Name für nächstes Mal gemerkt");
     await p.screenshot({ path: `${DIR}/v6-von-hand.png` });
+    pruefe((await text(p, "#orteSheetInhalt")).includes("Gerade liegt nichts auf dem Board"), "Board-Sheet: nichts auf der Anzeige");
+
+    // === Aufs Board: Ort auf die Anzeige werfen ===================================
+    // Tim ist mit dem Handy am Board und hat schon Orte eingetragen
+    const tim = await (await fetch(`${BOARD}/api/beitreten`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pin: PIN, name: "Tim" }) })).json();
+    const timWs = new WebSocket(`ws://127.0.0.1:${BOARD_PORT}/ws?token=${encodeURIComponent(tim.token)}`);
+    const antworten = [];
+    timWs.onmessage = (e) => { const n = JSON.parse(e.data); if (n.anfrage) antworten.push(n); };
+    await new Promise((r) => { timWs.onopen = r; });
+    for (const [name, x, y, z, dimension, kategorie] of [["Hauptbasis", 212, 71, -388, "oberwelt", "basis"], ["Dorf am See", 1040, 64, 310, "oberwelt", "dorf"],
+      ["Festung", 180, 70, -95, "nether", "struktur"], ["End-Stadt", 1300, 60, -820, "ende", "struktur"]]) {
+      timWs.send(JSON.stringify({ art: "hinzufuegen", ort: { name, x, y, z, dimension, kategorie } }));
+    }
+    await schlafen(300);
+    const anzeige = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+    await anzeige.goto(`${BOARD}/anzeige`);
+    await anzeige.waitForSelector(".anzeige");
+    pruefe(await anzeige.$(".a-gezeigt") === null, "Anzeige: noch keine Karte");
+
+    await p.click('[data-aktion="schliessen"]'); await p.waitForTimeout(250);
+    await p.click('#orteAnsicht [data-ansicht="liste"]'); await p.waitForTimeout(300);
+    await p.click(".ort-zeile"); await p.waitForTimeout(350);
+    const ortTitel = await text(p, ".sheet-kopf h2");
+    const ortX = await p.$eval(".result-coords b", (e) => e.textContent);
+    pruefe(await text(p, ".board-zeigen") === "Aufs Board", `Detail „${ortTitel}“: Knopf „Aufs Board“`);
+    await p.click(".board-zeigen");
+    pruefe(await warteAuf(anzeige, () => document.querySelector(".g-karte h2")), "Anzeige zeigt die Karte");
+    await anzeige.waitForTimeout(600);  // Einblenden abwarten
+    pruefe(await text(anzeige, ".g-karte h2") === ortTitel, `Anzeige: Titel „${ortTitel}“`);
+    const achsen = await anzeige.$$eval(".g-koord", (l) => l.map((k) => k.textContent.replace(/\s+/g, " ").trim()));
+    console.log("     Anzeige:", await text(anzeige, ".g-kopf"), "|", achsen.join(" | "));
+    pruefe(achsen[0].includes("X" + ortX), "Anzeige: X-Koordinate wie in der Companion");
+    pruefe(achsen.length === 2 && /^Im Nether|^In der Oberwelt/.test(achsen[1]), "Anzeige: umgerechnete Koordinaten");
+    pruefe((await text(anzeige, ".g-von")).startsWith("Lena"), "Anzeige: von Lena");
+    pruefe(await warteAuf(p, () => document.querySelector(".board-zeigen")?.classList.contains("aktiv")), "Detail: Knopf zeigt „Liegt auf dem Board“");
+    const lage = await anzeige.evaluate(() => {
+      const r = (s) => document.querySelector(s).getBoundingClientRect();
+      const karte = r(".g-karte"), seite = r(".a-seite"), gez = r(".a-gezeigt");
+      return { seiteRechts: seite.left > gez.right - 1, karteGanz: karte.top >= gez.top && karte.bottom <= gez.bottom + 1 && karte.bottom <= innerHeight };
+    });
+    pruefe(lage.seiteRechts, "Anzeige: Seitenleiste mit QR-Code bleibt rechts frei");
+    pruefe(lage.karteGanz, "Anzeige: Karte vollständig sichtbar");
+    await anzeige.screenshot({ path: `${DIR}/v8-anzeige-ort.png` });
+    await p.screenshot({ path: `${DIR}/v9-detail-aufs-board.png` });
+
+    // Neu geladene Anzeige bekommt die Karte sofort
+    await anzeige.reload();
+    pruefe(await warteAuf(anzeige, () => document.querySelector(".g-karte h2")), "Anzeige nach Neuladen: Karte wieder da");
+
+    // Tim wirft etwas Neues – Zeilen und Text, im Nether
+    timWs.send(JSON.stringify({ art: "zeigen", anfrage: 1, karte: { titel: "<b>Eisenfarm</b>", unter: "Portal-Verbindung", bereich: "Portale", dimension: "nether",
+      bloecke: [{ art: "zeilen", zeilen: [{ label: "Status", wert: "Einseitig" }, { label: "Abstand", wert: "34 Blöcke" }] }, { art: "text", text: "Nether-Portal genau bei X 37 · Y 80 · Z −53 bauen." }] } }));
+    timWs.send(JSON.stringify({ art: "zeigen", anfrage: 2, karte: { titel: "Kaputt", bloecke: [{ art: "html", inhalt: "<script>" }] } }));
+    await schlafen(500);
+    pruefe(antworten.some((n) => n.anfrage === 1 && n.art === "ok"), "Tim: Karte angenommen");
+    pruefe(antworten.some((n) => n.anfrage === 2 && n.art === "fehler" && n.text === "Unbekannter Block"), "Tim: ungültige Karte abgelehnt");
+    pruefe(await warteAuf(anzeige, () => document.querySelector(".g-karte h2")?.textContent === "<b>Eisenfarm</b>"), "Anzeige: neue Karte ersetzt die alte, HTML bleibt Text");
+    await anzeige.waitForTimeout(600);
+    pruefe(await anzeige.$eval(".g-karte", (e) => e.classList.contains("thema-nether")), "Anzeige: Karte im Nether-Theme");
+    pruefe((await anzeige.$$eval(".g-zeile", (l) => l.map((z) => z.textContent).join(" | "))) === "StatusEinseitig | Abstand34 Blöcke", "Anzeige: Zeilen");
+    pruefe((await text(anzeige, ".g-text")).startsWith("Nether-Portal genau"), "Anzeige: Text");
+    await anzeige.screenshot({ path: `${DIR}/v10-anzeige-zeilen.png` });
+    pruefe(await warteAuf(p, () => !document.querySelector(".board-zeigen")?.classList.contains("aktiv")), "Detail: Knopf wieder „Aufs Board“");
+
+    // Wegnehmen über das Board-Sheet
+    await p.click('[data-aktion="schliessen"]'); await p.waitForTimeout(250);
+    await boardAntippen(p); await p.waitForTimeout(300);
+    const auf = await text(p, ".board-gezeigt");
+    pruefe(auf.includes("<b>Eisenfarm</b>") && auf.includes("von Tim"), "Board-Sheet: zeigt Tims Karte");
+    await p.screenshot({ path: `${DIR}/v11-sheet-gezeigt.png` });
+    await p.click('[data-aktion="board-wegnehmen"]');
+    pruefe(await warteAuf(anzeige, () => !document.querySelector(".a-gezeigt")), "Wegnehmen → Anzeige wieder frei");
+    pruefe(await warteAuf(p, () => document.getElementById("orteSheetInhalt")?.textContent.includes("Gerade liegt nichts")), "Board-Sheet: wieder leer");
+    timWs.close();
+    await anzeige.close();
 
     // Die übrigen Bereiche laufen weiter
     await p.click('[data-aktion="schliessen"]');

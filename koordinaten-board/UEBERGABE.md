@@ -17,8 +17,10 @@ Ein Gerät im Zimmer zeigt Minecraft-Koordinaten groß an. Alle anderen verbinde
   - Anmeldung: PIN + HMAC-Token
   - Texterkennung: tesseract.js lokal (`eng`, best_int), Feature-Namen per Levenshtein unscharf zugeordnet
 - **Starten**: `start.bat` auf Windows (Node 20+) oder `start.sh`. Die Anzeige unter `/anzeige` ist nur vom Board-Rechner selbst erreichbar.
-- **Tests**: `npm test` → 16 Tests (Erkennung 11, Netzwerk 3, PIN-Sperre 2), alle grün.
-- **Für die Companion** (Branch `board/scanner`): CORS für `/api/beitreten` und `/api/ich`, Sperre nach 5 falschen PINs für 60 s.
+- **Tests**: `npm test` → 19 Tests (Erkennung 11, Netzwerk 3, PIN-Sperre 2, Karten 3), alle grün.
+- **Für die Companion** (Branch `board/scanner`):
+  - CORS für `/api/beitreten` und `/api/ich`, Sperre nach 5 falschen PINs für 60 s.
+  - „Aufs Board“: WebSocket-Nachrichten `zeigen` / `verbergen`, an alle `gezeigt`. Die Karte wird geprüft (`server/src/zeigen.js`), nur im Speicher gehalten und auf der Anzeige groß gezeigt (`client/src/anzeige/Gezeigt.tsx`).
 - **Git**: Der Verlauf ist mit allen Commits im Repo erhalten (Ordner `koordinaten-board/`). Letzter Commit hier: „QR-Code lernt die tatsächlich erreichbare Adresse“ (früher `75b00b2`).
 - ⚠️ **Ein Commit fehlt noch**: Laut alter Übergabe steht `main` bei Max auf `0b1d2f4` mit 15 Tests (Netzwerk 4). Dieser Commit war nicht im Zip. Bei Gelegenheit aus dem lokalen Board-Repo nachziehen, z. B. per `git format-patch 75b00b2..0b1d2f4` und im Repo mit `git am --directory=koordinaten-board` einspielen.
 

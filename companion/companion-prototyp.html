@@ -806,6 +806,12 @@ button.switch { padding:0; }
 .board-zeile span:first-child { color:var(--text-dim); }
 .board-zeile b { text-align:right; word-break:break-word; }
 .board-status { display:flex; align-items:center; gap:9px; font-size:16px; }
+.board-zeigen { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
+.board-zeigen svg { color:var(--accent); }
+.board-zeigen.aktiv { border-color:var(--accent); color:var(--accent); }
+.board-gezeigt { display:flex; align-items:center; gap:12px; }
+.board-gezeigt .text { flex:1; min-width:0; }
+.board-gezeigt .btn-secondary { min-height:38px; padding:8px 14px; }
 
 /* Toast */
 .orte-toast { position:absolute; left:50%; bottom:calc(86px + env(safe-area-inset-bottom)); transform:translateX(-50%);
@@ -2000,6 +2006,7 @@ function detailOeffnen(id, loeschenFragen){
       ${w ? `<div class="result-row"><span class="rname">Von deinem Standort</span><span><b class="rval mono">${entfernungText(w.meter)}</b><span class="runit">${w.richtung}</span></span></div>` : ""}
     </div>
     ${biom ? `<div class="banner info">Biome stammen aus Screenshots – die Koordinaten sind fest. Falsch erfasst? Löschen und neu auslesen.</div>` : ""}
+    ${boardZeigenKnopf(`ort:${i.id}`)}
     <div class="knopf-raster">
       <button class="btn-secondary" data-aktion="kopieren" data-text="${i.x} ${i.y ?? "~"} ${i.z}">Koordinaten</button>
       <button class="btn-secondary" data-aktion="kopieren" data-text="${esc(tpBefehl(i.x, i.y, i.z, dim))}">/tp-Befehl</button>
@@ -2012,6 +2019,7 @@ function detailOeffnen(id, loeschenFragen){
         </div>`}
   </div>`;
   sheetOeffnen("detail", html, dim);
+  boardZeigenKnoepfe();
 }
 
 function bearbeitenOeffnen(id){
@@ -3238,7 +3246,16 @@ document.getElementById("portalWeltBtn").addEventListener("click", () => weltOef
      WS   <board>/ws?token=…                    → { art:"zustand"|"teilnehmer", … }
    Das Board ist ein eigenes Gerät: Die Verbindung ist auch im DEMO-Modus echt.
    Sie gilt nur für dieses Gerät (localStorage „board.verbindung“, „board.name“).
-   Welche Inhalte die Companion ans Board sendet, ist noch offen.
+
+   „Aufs Board“ (Inhalte auf die Anzeige werfen), über dieselbe Verbindung:
+     → { art:"zeigen", karte, anfrage }       ← { art:"ok"|"fehler", anfrage }
+     → { art:"verbergen", id, anfrage }       ← an alle: { art:"gezeigt", karte|null }
+     karte = { titel, unter?, bereich?, quelle?, dimension:"oberwelt"|"nether"|"ende"|null,
+               bloecke:[ { art:"koordinaten", label?, x, y|null, z, dimension? }
+                       | { art:"zeilen", zeilen:[{ label, wert }] } | { art:"text", text } ] }
+   Das Board prüft die Karte (koordinaten-board/server/src/zeigen.js) und zeigt
+   sie groß, bis die nächste kommt oder jemand sie wegnimmt. Welche Inhalte es
+   gibt, legt BOARD_KARTEN fest – das Board selbst kennt keine Bereiche.
    ========================================================================== */
 const bd = {
   verbindung: lsLesen("board.verbindung"),  // { adresse, token, name } oder null
@@ -3246,7 +3263,10 @@ const bd = {
   teilnehmer: [], orte: null,
   socket: null, timer: null, wartezeit: 500,
   scan: null,                                // { stream } solange die Kamera läuft
+  gezeigt: null,                             // Karte, die gerade auf der Anzeige liegt
+  offen: new Map(), zaehler: 0,              // gesendete Nachrichten, die auf „ok“ warten
 };
+const BOARD_DIM = Object.freeze({ overworld:"oberwelt", nether:"nether", end:"ende" });
 const adresseKurz = (a) => String(a || "").replace(/^https?:\/\//, "");
 
 /** Inhalt des Board-QR-Codes lesen: „http://192.168.8.184:3000/?pin=1234“ → { adresse, pin } */
@@ -3434,14 +3454,20 @@ function boardVerbinden(){
   ws.onopen = () => { if(bd.socket !== ws) return; bd.status = "verbunden"; bd.wartezeit = 500; boardAnzeigen(); };
   ws.onmessage = (e) => {
     let n; try { n = JSON.parse(e.data); } catch { return; }
+    if((n.art === "ok" || n.art === "fehler") && n.anfrage){
+      const w = bd.offen.get(n.anfrage); bd.offen.delete(n.anfrage);
+      return n.art === "ok" ? w?.ok() : w?.fehler(n.text || "Board hat abgelehnt");
+    }
     if(n.art === "teilnehmer") bd.teilnehmer = n.namen || [];
     else if(n.art === "zustand") bd.orte = n.zustand?.orte?.length ?? null;
+    else if(n.art === "gezeigt") bd.gezeigt = n.karte || null;
     else return;
     boardAnzeigen();
   };
   ws.onclose = (e) => {
     if(bd.socket !== ws) return;             // absichtlich geschlossen oder ersetzt
     bd.socket = null;
+    boardOffeneAbbrechen();
     if(e.code === 4001){                     // Token abgelehnt, z. B. Board neu eingerichtet
       boardTrennen();
       return toast("Das Board kennt dieses Gerät nicht mehr – bitte neu scannen", true);
@@ -3455,10 +3481,72 @@ function boardSocketZu(){
   clearTimeout(bd.timer);
   const s = bd.socket; bd.socket = null;
   s?.close();
+  boardOffeneAbbrechen();
+}
+function boardOffeneAbbrechen(){
+  for(const w of bd.offen.values()) w.fehler("Verbindung zum Board unterbrochen");
+  bd.offen.clear();
+  bd.gezeigt = null;                          // nach dem Neuverbinden schickt das Board den Stand
+}
+/** Nachricht ans Board, wartet auf dessen „ok“ (sonst Fehlertext) */
+function boardSenden(op){
+  return new Promise((ok, fehler) => {
+    const s = bd.socket;
+    if(!s || s.readyState !== WebSocket.OPEN) return fehler("Keine Verbindung zum Board");
+    const anfrage = ++bd.zaehler;
+    bd.offen.set(anfrage, { ok, fehler });
+    s.send(JSON.stringify({ ...op, anfrage }));
+    setTimeout(() => { if(bd.offen.delete(anfrage)) fehler("Board antwortet nicht"); }, 8000);
+  });
+}
+
+// --- „Aufs Board“ -----------------------------------------------------------------
+// Welche Inhalte sich zeigen lassen: quelle „<art>:<id>“ → Karte fürs Board
+const BOARD_KARTEN = {
+  ort: ortKarte,                              // Karte: ein Ort aus der Koordinaten-Sammlung
+};
+function ortKarte(id){
+  const i = st.instanzen.find((x) => x.id === id); if(!i) return null;
+  const t = typVon(i), dim = dimTypeVon(i.dimensionId);
+  const biom = t.kategorie === BIOMES ? biomFinden(t.variante) : null;
+  const bloecke = [{ art:"koordinaten", x:i.x, y:i.y ?? null, z:i.z }];
+  const u = umrechnen(i.x, i.z, dim);
+  if(u) bloecke.push({ art:"koordinaten", label:u.dim === "nether" ? "Im Nether" : "In der Oberwelt",
+                       x:u.x, y:null, z:u.z, dimension:BOARD_DIM[u.dim] });
+  const unter = [t.variante ? t.kategorie : null, biom?.gruppe].filter(Boolean).join(" · ");
+  return { titel:t.variante || t.kategorie, unter:unter || undefined, bereich:"Karte",
+           quelle:`ort:${i.id}`, dimension:BOARD_DIM[dim], bloecke };
+}
+async function boardZeigen(quelle){
+  const [art, ...rest] = quelle.split(":");
+  const karte = BOARD_KARTEN[art]?.(rest.join(":"));
+  if(!karte) return toast("Das lässt sich nicht aufs Board legen", true);
+  try { await boardSenden({ art:"zeigen", karte }); toast("Liegt auf dem Board"); }
+  catch(f){ toast(String(f), true); }
+}
+async function boardWegnehmen(){
+  if(!bd.gezeigt) return;
+  try { await boardSenden({ art:"verbergen", id:bd.gezeigt.id }); toast("Vom Board genommen"); }
+  catch(f){ toast(String(f), true); }
+}
+const BOARD_ZEIGEN_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4M12 7v6M9.5 10.5 12 13l2.5-2.5"/></svg>';
+/** Knopf „Aufs Board“ für ein Sheet – nur, wenn dieses Gerät mit einem Board verbunden ist */
+function boardZeigenKnopf(quelle){
+  if(!bd.verbindung) return "";
+  return `<button class="btn-secondary board-zeigen" data-board-quelle="${esc(quelle)}"></button>`;
+}
+/** Knöpfe im offenen Sheet an den Stand anpassen (liegt dieser Inhalt gerade auf dem Board?) */
+function boardZeigenKnoepfe(){
+  $sheet.querySelectorAll("[data-board-quelle]").forEach((k) => {
+    const liegt = bd.gezeigt?.quelle === k.dataset.boardQuelle;
+    k.classList.toggle("aktiv", liegt);
+    k.dataset.aktion = liegt ? "board-wegnehmen" : "board-zeigen";
+    k.innerHTML = BOARD_ZEIGEN_ICON + (liegt ? "Liegt auf dem Board · Wegnehmen" : "Aufs Board");
+  });
 }
 function boardTrennen(){
   boardSocketZu();
-  Object.assign(bd, { verbindung:null, status:"aus", teilnehmer:[], orte:null, wartezeit:500 });
+  Object.assign(bd, { verbindung:null, status:"aus", teilnehmer:[], orte:null, gezeigt:null, wartezeit:500 });
   lsSchreiben("board.verbindung", null);
   boardAnzeigen();
 }
@@ -3482,6 +3570,7 @@ function boardKnopfRendern(){
 }
 function boardAnzeigen(){
   boardKnopfRendern();
+  boardZeigenKnoepfe();
   // Formular nicht neu zeichnen (Eingaben blieben sonst nicht stehen) – nur die Status-Ansicht
   if(st.sheet === "board" && bd.verbindung) boardSheetRendern();
 }
@@ -3504,6 +3593,13 @@ function boardSheetRendern(){
         ${zeile("Angemeldet als", esc(v.name))}
         ${zeile("Im Raum", bd.teilnehmer.length ? esc(bd.teilnehmer.join(", ")) : "—")}
         ${zeile("Orte auf dem Board", bd.orte ?? "—")}
+      </div>
+      <div class="field-group"><div class="field-group-label">Auf der Anzeige</div>
+        ${bd.gezeigt ? `<div class="card board-gezeigt" style="flex-direction:row">
+            <span class="text"><span class="card-title">${esc(bd.gezeigt.titel)}</span>
+              <span class="card-meta" style="display:block">${esc([bd.gezeigt.bereich, `von ${bd.gezeigt.von}`].filter(Boolean).join(" · "))}</span></span>
+            <button class="btn-secondary" data-aktion="board-wegnehmen">Wegnehmen</button></div>`
+          : `<div class="banner info">Gerade liegt nichts auf dem Board. Im Detail eines Ortes „Aufs Board“ antippen.</div>`}
       </div>
       <div class="sheet-fuss">
         <button class="btn-secondary" data-aktion="board-trennen">Trennen</button>
@@ -3742,6 +3838,8 @@ $sheet.addEventListener("click", async (e) => {
     case "board-kamera": boardScanStarten(); break;
     case "board-foto": document.getElementById("boardFoto").click(); break;
     case "board-trennen": boardTrennen(); alleSchliessen(); toast("Vom Board getrennt"); break;
+    case "board-zeigen": boardZeigen(a.dataset.boardQuelle); break;
+    case "board-wegnehmen": boardWegnehmen(); break;
     case "banner-loeschen":
       // Zweimal tippen – ein Bauplan ist schnell weg und für alle
       if(a.dataset.sicher !== "1"){ a.dataset.sicher = "1"; a.textContent = "Wirklich löschen?"; return; }

@@ -5,6 +5,7 @@ import { DIMENSIONEN, KATEGORIEN, dimensionLabel, kategorieLabel, thema, type Or
 import { umrechnen, zahl } from '../lib/koordinaten';
 import { Icon } from '../komponenten/Icon';
 import { KoordChip } from '../komponenten/Eingaben';
+import { Gezeigt } from './Gezeigt';
 
 const MAX_ANGEHEFTET = 6;
 const NEU_DAUER_MS = 90_000;
@@ -80,7 +81,7 @@ const sortieren = (a: Ort, b: Ort) =>
   kategorieIndex(a.kategorie) - kategorieIndex(b.kategorie) || a.name.localeCompare(b.name, 'de');
 
 export function Anzeige() {
-  const { zustand, verbunden, teilnehmer } = useBoard({ query: 'rolle=anzeige' });
+  const { zustand, verbunden, teilnehmer, gezeigt } = useBoard({ query: 'rolle=anzeige' });
   const [beitritt, setBeitritt] = useState<Beitritt | null>(null);
   const [qr, setQr] = useState('');
   const [gesperrt, setGesperrt] = useState(false);
@@ -219,6 +220,8 @@ export function Anzeige() {
           </section>
         </main>
       )}
+
+      {gezeigt && <Gezeigt key={gezeigt.id} karte={gezeigt} seit={vorZeit(gezeigt.am, jetzt)} />}
 
       <aside className="a-seite">
         {qrZeigen && beitritt && (

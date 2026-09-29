@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { BoardZustand, Operation } from './typen';
+import type { BoardZustand, GezeigteKarte, Operation } from './typen';
 
 type Nachricht =
   | { art: 'zustand'; zustand: BoardZustand }
   | { art: 'teilnehmer'; namen: string[] }
+  | { art: 'gezeigt'; karte: GezeigteKarte | null }
   | { art: 'ok'; anfrage?: number }
   | { art: 'fehler'; text: string; anfrage?: number };
 
@@ -19,6 +20,7 @@ export function useBoard({ query, beiAbgelehnt }: Optionen) {
   const [zustand, setZustand] = useState<BoardZustand | null>(null);
   const [verbunden, setVerbunden] = useState(false);
   const [teilnehmer, setTeilnehmer] = useState<string[]>([]);
+  const [gezeigt, setGezeigt] = useState<GezeigteKarte | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const offen = useRef(new Map<number, { ok: () => void; fehler: (t: string) => void }>());
   const zaehler = useRef(0);
@@ -44,6 +46,7 @@ export function useBoard({ query, beiAbgelehnt }: Optionen) {
         const n = JSON.parse(e.data) as Nachricht;
         if (n.art === 'zustand') setZustand(n.zustand);
         else if (n.art === 'teilnehmer') setTeilnehmer(n.namen);
+        else if (n.art === 'gezeigt') setGezeigt(n.karte);
         else if (n.art === 'ok' && n.anfrage) {
           offen.current.get(n.anfrage)?.ok();
           offen.current.delete(n.anfrage);
@@ -97,5 +100,5 @@ export function useBoard({ query, beiAbgelehnt }: Optionen) {
     });
   }, []);
 
-  return { zustand, verbunden, teilnehmer, senden };
+  return { zustand, verbunden, teilnehmer, gezeigt, senden };
 }

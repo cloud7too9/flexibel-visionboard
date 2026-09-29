@@ -432,6 +432,40 @@ select.eingabe {
 .a-log-item .was b { color: var(--text); }
 .a-log-item .was .pfeil { color: var(--accent); margin: 0 0.3em; }
 
+/* Gezeigte Karte („Aufs Board“) – liegt über dem Hauptbereich, Seitenleiste bleibt frei.
+   Feste Rasterplätze, damit die Karte die anderen Teile nicht verschiebt. */
+.a-haupt, .a-leer-gross { grid-column: 1; grid-row: 2; }
+.a-seite { grid-column: 2; grid-row: 2; }
+.a-gezeigt {
+  grid-column: 1; grid-row: 2; z-index: 5; min-height: 0; display: grid; place-items: center; padding: 1.5em;
+  background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(6px); border-radius: 1.3em; animation: einblenden 0.3s ease;
+}
+.g-karte {
+  width: min(100%, 60em); max-height: 100%; overflow: hidden; display: flex; flex-direction: column; gap: 1.1em;
+  background: var(--surface); color: var(--text); border: 1px solid var(--accent); border-radius: 1.6em; padding: 2em 2.2em;
+  box-shadow: 0 0 0 1px var(--accent), 0 0 3em var(--accent-soft), 0 1.5em 4em rgba(0, 0, 0, 0.5);
+  animation: g-rein 0.45s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+@keyframes g-rein { from { transform: translateY(1.5em) scale(0.97); opacity: 0; } }
+.g-kopf { display: flex; align-items: center; gap: 1em; }
+.g-kopf .kicker { color: var(--accent); font-size: 0.95em; }
+.g-von { margin-left: auto; padding: 0.4em 0.85em; border-radius: 0.8em; font-size: 0.95em; box-shadow: none; background: var(--surface-2); color: var(--text-dim); }
+.g-von b { color: var(--text); }
+.g-karte h2 { font-size: 3.4em; font-weight: 800; line-height: 1.05; letter-spacing: -0.01em; word-break: break-word; }
+.g-unter { font-size: 1.3em; color: var(--text-dim); font-weight: 600; margin-top: -0.5em; }
+.g-bloecke { display: flex; flex-direction: column; gap: 1em; min-height: 0; }
+.g-koord { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 1.1em; padding: 1em 1.1em; }
+.g-koord .kicker { color: var(--accent); margin-bottom: 0.55em; }
+.g-achsen { display: flex; gap: 0.8em; }
+.g-achsen > div { flex: 1; background: var(--surface-3); border-radius: 0.9em; padding: 0.45em 0.6em 0.55em; text-align: center; min-width: 0; }
+.g-achsen .lbl { display: block; color: var(--text-faint); font-weight: 700; font-size: 0.9em; letter-spacing: 0.14em; }
+.g-achsen b { display: block; font-size: 3.6em; font-weight: 700; line-height: 1.1; color: var(--accent); white-space: nowrap; }
+.g-bloecke > .g-koord ~ .g-koord .g-achsen b { font-size: 2.1em; }
+.g-zeilen { display: flex; flex-direction: column; gap: 0.5em; background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 1.1em; padding: 1em 1.2em; }
+.g-zeile { display: flex; justify-content: space-between; gap: 1.5em; font-size: 1.25em; }
+.g-zeile span { color: var(--text-dim); }
+.g-text { font-size: 1.25em; line-height: 1.5; color: var(--text-dim); }
+
 .a-leer-gross { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8em; text-align: center; color: var(--text-dim); }
 .a-leer-gross .me-ico { width: 4.5em; height: 4.5em; border-radius: 1.4em; background: var(--surface-2); border: 1px solid var(--border-soft); display: grid; place-items: center; color: var(--accent); }
 .a-leer-gross strong { font-size: 1.8em; color: var(--text); }

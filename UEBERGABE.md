@@ -65,7 +65,7 @@ Was wohin gehört:
 | Zweck | PWA am Handy: Karte, Sammelobjekte, Portale, Banner, später Rüstung, Handbuch, Baupläne | Gerät im Zimmer zeigt Koordinaten groß an, Handys tragen per QR/PIN ein |
 | Technik | eine HTML-Datei, Vanilla JS, kein Build, DEMO-Mock | Fastify 5, Vite + React 19 + TypeScript, JSON-Speicher, tesseract.js |
 | Stand | 4 von 7 Bereichen umgesetzt, Rüstung als Nächstes | fertig |
-| Tests | Playwright: Banner, Portale, Board-Verbindung (82 Prüfungen) | `node --test`: Erkennung, Netzwerk, PIN-Sperre (16 Tests) |
+| Tests | Playwright: Banner, Portale, Board-Verbindung (104 Prüfungen) | `node --test`: Erkennung, Netzwerk, PIN-Sperre, Karten (19 Tests) |
 
 ---
 
@@ -77,7 +77,8 @@ Was wohin gehört:
 - **Dashboard**: Das Board ist das Raum-Dashboard. Jeder Companion-Bereich bekommt eigene Dashboard-Ansichten (Widgets), die dort laufen sollen.
   - Vorbild ist das **iOS-Kontrollzentrum**, siehe `referenz/dashboard/`: Ansichten in festen Rastergrößen 1×1, 2×1 und 2×2 auf 4 Spalten, Galerie „Ansicht hinzufügen“ nach Bereich gruppiert mit Suche, Bearbeiten-Modus mit „−“ und Griff zum Vergrößern.
   - Im Companion-Code vorbereitet: Der Modul-Vertrag in `BEREICHE` sieht `ansichten: [{ key, titel, groessen, render(el, groesse) }]` vor. Bisher nur dokumentiert.
-- **Verbindung**: Die Companion scannt den QR-Code der Anzeige und tritt dem Board bei wie ein Handy (Name + PIN → Token, danach WebSocket). Das Board gibt dafür `/api/beitreten` und `/api/ich` per CORS frei und sperrt nach 5 falschen PINs für 60 s. Gesendet wird noch nichts. Details: `companion/README.md` → Board-Verbindung.
+- **Verbindung**: Die Companion scannt den QR-Code der Anzeige und tritt dem Board bei wie ein Handy (Name + PIN → Token, danach WebSocket). Das Board gibt dafür `/api/beitreten` und `/api/ich` per CORS frei und sperrt nach 5 falschen PINs für 60 s. Details: `companion/README.md` → Board-Verbindung.
+- **Aufs Board**: Die Companion wirft Inhalte groß auf die Anzeige (Variante B, wie Chromecast). Das Board kennt keine Companion-Bereiche, es zeigt allgemeine Karten (Titel + Blöcke `koordinaten`/`zeilen`/`text`, geprüft in `koordinaten-board/server/src/zeigen.js`) und speichert sie nicht. Bisher schickt die Companion Orte.
 - **Optik**: Das Board wurde bereits an die Live-Karte der Companion angeglichen.
 
 ---
@@ -106,7 +107,7 @@ Was wohin gehört:
    - Eine Seite pro Bereich (wie die Kontrollzentrum-Seiten)?
    - Wird am Handy oder an der Anzeige im Zimmer bearbeitet?
    - Welche Ansichten bekommt jeder Bereich? (wird beim jeweiligen Bereich geklärt)
-4. **Inhalte ans Board senden**: Welche Inhalte die Companion ans Board schickt und wie das Board sie zeigt. Die Verbindung steht, gesendet wird noch nichts.
+4. **Aufs Board**: Welche Inhalte nach dem Ort kommen, und ob eine Karte nach einiger Zeit von selbst verschwindet. Zurzeit bleibt sie liegen, bis die nächste kommt oder jemand sie in der Companion wegnimmt; die Handy-Oberfläche des Boards hat dafür noch keinen Knopf.
 5. **Companion über https ↔ Board über http**: Die Companion soll später als PWA über **https** laufen (z. B. Hetzner), das Board liefert nur **http** im Heimnetz. Browser blockieren Anfragen von einer https-Seite an eine http-Adresse (Mixed Content), Safari auf dem iPhone ausnahmslos. Die Kamera wiederum gibt es nur in einem sicheren Kontext (https oder localhost). Heute funktioniert die Verbindung deshalb, wenn die Companion über http oder als Datei geöffnet wird; die Kamera dann nur am Rechner, am Handy bleiben Foto und Eingabe von Hand. Die Companion meldet den Fall ausdrücklich („Der Browser blockiert die Verbindung …“). Mögliche Wege:
    - Board bekommt https mit echtem Zertifikat (eigene Domain, die auf die Heimnetz-Adresse zeigt)
    - Hetzner als Vermittler: Das Board verbindet sich nach außen, die Companion spricht nur mit Hetzner (hängt an der Entscheidung zur Datenhaltung)
