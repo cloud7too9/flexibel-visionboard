@@ -2,11 +2,10 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { useWorkspaceStore } from "../model/workspace.store";
+import { selectActiveLayer, useWorkspaceStore } from "../model/workspace.store";
 import {
   cellToPixel,
   columnWidth,
@@ -22,6 +21,9 @@ import type { Id } from "../../../shared/types/common.types";
 import type { LayoutItem } from "../model/workspace.types";
 import { WorkspacePanel } from "./WorkspacePanel";
 import { EmptyGridHint } from "./EmptyGridHint";
+import { useBreakpoint } from "../../../shared/hooks/useBreakpoint";
+import { adaptLayoutToBreakpoint } from "../lib/responsive-layout";
+import { useLongPress } from "../hooks/useLongPress";
 
 type DragState =
   | { kind: "idle" }
@@ -45,42 +47,73 @@ type DragState =
     };
 
 export function WorkspaceGrid() {
-  const layout = useWorkspaceStore((s) => s.layout);
+  const layout = useWorkspaceStore(selectActiveLayer);
   const editMode = useWorkspaceStore((s) => s.editMode);
   const selectedPanelId = useWorkspaceStore((s) => s.selectedPanelId);
   const selectPanel = useWorkspaceStore((s) => s.selectPanel);
+  const setEditMode = useWorkspaceStore((s) => s.setEditMode);
   const moveItem = useWorkspaceStore((s) => s.moveItem);
   const resizeItem = useWorkspaceStore((s) => s.resizeItem);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  // Callback-Ref statt useRef: Der Container existiert nicht, solange der
+  // Layer leer ist. So wird die Breite gemessen, sobald er erscheint.
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [drag, setDrag] = useState<DragState>({ kind: "idle" });
 
+  // Bildschirmgröße: Das gespeicherte Layout ist im Desktop-Raster (12 Spalten)
+  // abgelegt. Für Tablet/Mobil wird daraus ein Layout mit weniger Spalten
+  // abgeleitet. Verschieben/Skalieren ist nur im kanonischen Raster erlaubt,
+  // damit die Bearbeitung 1:1 gespeichert werden kann.
+  const breakpoint = useBreakpoint();
+  const displayLayout = useMemo(
+    () => adaptLayoutToBreakpoint(layout, breakpoint),
+    [layout, breakpoint],
+  );
+  const canArrange = editMode && breakpoint.erlaubtAnordnen;
+
+  // Langes Drücken auf die Kopfzeile eines Widgets (ohne Verschieben) schaltet
+  // die gesamte Oberfläche in den Bearbeitungszustand. Gilt für alle
+  // Bildschirmgrößen; auf Touch-Geräten ist das der einzige Einstieg.
+  const longPress = useLongPress<Id>((id) => {
+    selectPanel(id);
+    setEditMode(true);
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate(10);
+    }
+  });
+
   useLayoutEffect(() => {
-    const el = containerRef.current;
+    const el = containerEl;
     if (!el) return;
     const update = () => setContainerWidth(el.clientWidth);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [containerEl]);
 
   const config: GridConfig = useMemo(
     () => ({
-      cols: layout.spalten,
-      rowHeight: layout.zeilenHoehe,
-      gap: layout.abstand,
+      cols: displayLayout.spalten,
+      rowHeight: displayLayout.zeilenHoehe,
+      gap: displayLayout.abstand,
       containerWidth,
     }),
-    [layout.spalten, layout.zeilenHoehe, layout.abstand, containerWidth],
+    [displayLayout.spalten, displayLayout.zeilenHoehe, displayLayout.abstand, containerWidth],
   );
 
-  const totalRows = gridRowCount(layout.items);
-  const totalHeight = totalRows * layout.zeilenHoehe + (totalRows - 1) * layout.abstand;
+  // Auf kleinen Bildschirmen keine zusätzlichen Leerzeilen unter dem Inhalt.
+  const totalRows = gridRowCount(displayLayout.items, breakpoint.erlaubtAnordnen ? 6 : 1);
+  const totalHeight =
+    totalRows * displayLayout.zeilenHoehe + (totalRows - 1) * displayLayout.abstand;
 
-  const onDragPointerDown = (e: ReactPointerEvent, id: Id) => {
-    if (!editMode) return;
+  const onHeaderPointerDown = (e: ReactPointerEvent, id: Id) => {
+    if (!editMode) {
+      longPress.start(e, id);
+      return;
+    }
+    if (!canArrange) return;
     e.preventDefault();
     const item = layout.items.find((i) => i.id === id);
     if (!item) return;
@@ -98,7 +131,7 @@ export function WorkspaceGrid() {
   };
 
   const onResizePointerDown = (e: ReactPointerEvent, id: Id) => {
-    if (!editMode) return;
+    if (!canArrange) return;
     e.preventDefault();
     e.stopPropagation();
     const item = layout.items.find((i) => i.id === id);
@@ -115,6 +148,10 @@ export function WorkspaceGrid() {
       valid: true,
     });
   };
+
+  useEffect(() => {
+    if (!canArrange && drag.kind !== "idle") setDrag({ kind: "idle" });
+  }, [canArrange, drag.kind]);
 
   useEffect(() => {
     if (drag.kind === "idle") return;
@@ -190,12 +227,12 @@ export function WorkspaceGrid() {
     };
   }, [drag, config, layout, moveItem, resizeItem]);
 
-  if (layout.items.length === 0) {
+  if (displayLayout.items.length === 0) {
     return <EmptyGridHint />;
   }
 
   const col = columnWidth(config);
-  const gridBackground = editMode
+  const gridBackground = canArrange
     ? {
         backgroundImage: `repeating-linear-gradient(to right, rgb(var(--color-border) / 0.35) 0, rgb(var(--color-border) / 0.35) 1px, transparent 1px, transparent ${col + config.gap}px), repeating-linear-gradient(to bottom, rgb(var(--color-border) / 0.35) 0, rgb(var(--color-border) / 0.35) 1px, transparent 1px, transparent ${config.rowHeight + config.gap}px)`,
       }
@@ -203,11 +240,12 @@ export function WorkspaceGrid() {
 
   return (
     <div
-      ref={containerRef}
+      ref={setContainerEl}
+      data-breakpoint={breakpoint.name}
       className="relative w-full"
       style={{ height: totalHeight, ...gridBackground }}
     >
-      {layout.items.map((item) => {
+      {displayLayout.items.map((item) => {
         const rect = cellToPixel(item.x, item.y, item.w, item.h, config);
         return (
           <WorkspacePanel
@@ -215,13 +253,16 @@ export function WorkspaceGrid() {
             item={item}
             rect={rect}
             editMode={editMode}
+            arrangeable={canArrange}
             selected={selectedPanelId === item.id}
-            onDragPointerDown={onDragPointerDown}
+            onHeaderPointerDown={onHeaderPointerDown}
             onResizePointerDown={onResizePointerDown}
           />
         );
       })}
-      {drag.kind !== "idle" && <DragPreview drag={drag} config={config} layout={layout.items} />}
+      {drag.kind !== "idle" && (
+        <DragPreview drag={drag} config={config} layout={displayLayout.items} />
+      )}
     </div>
   );
 }
