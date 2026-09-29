@@ -77,6 +77,9 @@ function PortalChip({ ort, klein }: { ort: Ort; klein?: boolean }) {
   return klein ? <span className="mono">{inhalt}</span> : <span className="chip portal-chip mono">{inhalt}</span>;
 }
 
+/** Seed kurz wie in der Companion: „68891…0698“ */
+const kurzSeed = (s: string) => (s.length > 12 ? `${s.slice(0, 5)}…${s.slice(-4)}` : s);
+
 const kategorieIndex = (k: Ort['kategorie']) => KATEGORIEN.findIndex((x) => x.wert === k);
 const sortieren = (a: Ort, b: Ort) =>
   kategorieIndex(a.kategorie) - kategorieIndex(b.kategorie) || a.name.localeCompare(b.name, 'de');
@@ -136,7 +139,9 @@ export function Anzeige() {
             <span className="compass"><Icon name="kompass" /></span>
             <h1>{titel}</h1>
           </div>
-          <div className="subtitle">Koordinaten-Board · <b>{orte.length} Orte</b></div>
+          <div className="subtitle">
+            Koordinaten-Board{zustand?.welt && <> · Welt <span className="mono">{kurzSeed(zustand.welt.seed)}</span></>} · <b>{orte.length} Orte</b>
+          </div>
         </div>
 
         <div className="tabs" aria-hidden="true">

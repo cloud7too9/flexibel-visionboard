@@ -821,6 +821,8 @@ button.switch { padding:0; }
 .board-zeile { display:flex; justify-content:space-between; gap:12px; font-size:13.5px; }
 .board-zeile span:first-child { color:var(--text-dim); }
 .board-zeile b { text-align:right; word-break:break-word; }
+.board-einstellungen { gap:12px; }
+.board-schalter { align-items:center; }
 .board-status { display:flex; align-items:center; gap:9px; font-size:16px; }
 .board-zeigen { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
 .board-zeigen svg { color:var(--accent); }
@@ -3148,6 +3150,7 @@ const bd = {
   socket: null, timer: null, wartezeit: 500,
   scan: null,                                // { stream } solange die Kamera läuft
   gezeigt: null,                             // Karte, die gerade auf der Anzeige liegt
+  einstellungen: null,                       // Live: { titel, qrZeigen, aktiveWelt, aktiv } der Anzeige
   offen: new Map(), zaehler: 0,              // gesendete Nachrichten, die auf „ok“ warten
 };
 const BOARD_DIM = Object.freeze({ overworld:"oberwelt", nether:"nether", end:"ende" });
@@ -3348,8 +3351,9 @@ function anmeldungAbgelaufen(){
 async function liveAktualisieren({ bereich, weltId }){
   if(DEMO.enabled) return;
   if(bereich === "banner") return bannerLaden();
-  if(bereich === "einstellungen") return boardAnzeigen();
-  if(bereich === "welten" || (weltId && weltId !== st.weltId)) return weltenAuffrischen();
+  if(bereich === "einstellungen") return boardEinstellungenLaden();
+  if(bereich === "welten"){ await weltenAuffrischen(); return boardEinstellungenLaden(); }
+  if(weltId && weltId !== st.weltId) return weltenAuffrischen();
   if(bereich === "orte") return orteAuffrischen();
   if(bereich === "sammelobjekte") return samLaden();
   if(bereich === "portale") return portaleLaden();
@@ -3477,7 +3481,7 @@ function boardZeigenKnoepfe(){
 }
 function boardTrennen(){
   boardSocketZu();
-  Object.assign(bd, { verbindung:null, status:"aus", teilnehmer:[], orte:null, gezeigt:null, wartezeit:500 });
+  Object.assign(bd, { verbindung:null, status:"aus", teilnehmer:[], orte:null, gezeigt:null, einstellungen:null, wartezeit:500 });
   lsSchreiben("board.verbindung", null);
   boardAnzeigen();
 }
@@ -3502,12 +3506,40 @@ function boardKnopfRendern(){
 function boardAnzeigen(){
   boardKnopfRendern();
   boardZeigenKnoepfe();
-  // Formular nicht neu zeichnen (Eingaben blieben sonst nicht stehen) – nur die Status-Ansicht
-  if(st.sheet === "board" && bd.verbindung) boardSheetRendern();
+  // Formular nicht neu zeichnen (Eingaben blieben sonst nicht stehen) – nur die Status-Ansicht,
+  // und die auch nicht, solange jemand den Titel der Anzeige tippt
+  if(st.sheet === "board" && bd.verbindung && document.activeElement?.id !== "boardTitel") boardSheetRendern();
 }
 function boardOeffnen(){
   alleSchliessen();
   boardSheetRendern();
+  boardEinstellungenLaden();
+}
+
+// --- Live: Einstellungen der Anzeige im Zimmer (aktive Welt, Titel, QR-Code) ------
+async function boardEinstellungenLaden(){
+  if(DEMO.enabled || !bd.verbindung) return;
+  const r = await api("/board/einstellungen");
+  if(r.ok){ bd.einstellungen = r.data; boardAnzeigen(); }
+}
+async function boardEinstellungenAendern(felder){
+  const r = await api("/board/einstellungen", { method:"PUT", body:JSON.stringify(felder) });
+  if(!r.ok) return toast(meldungAus(r), true);
+  bd.einstellungen = r.data; boardAnzeigen();
+}
+function boardEinstellungenHtml(){
+  const e = bd.einstellungen;
+  if(DEMO.enabled || !e) return "";
+  const welten = st.welten.map((w) => `<option value="${esc(w.id)}" ${w.id === e.aktiv ? "selected" : ""}>Seed ${esc(kurzSeed(w.seed))} · ${w.anzahl ?? 0} Orte</option>`).join("");
+  return `<div class="field-group"><div class="field-group-label">Anzeige im Zimmer</div>
+    <div class="card board-einstellungen">
+      <label class="field"><span class="field-label">Welt auf der Anzeige</span>
+        <select class="orte-eingabe" id="boardWelt" ${welten ? "" : "disabled"}>${welten || "<option>Noch keine Welt</option>"}</select></label>
+      <label class="field"><span class="field-label">Titel</span>
+        <input class="orte-eingabe" id="boardTitel" maxlength="60" autocomplete="off" value="${esc(e.titel)}"></label>
+      <div class="board-zeile board-schalter"><span>QR-Code zum Beitreten zeigen</span>
+        <button class="switch ${e.qrZeigen ? "on" : ""}" data-aktion="board-qr" role="switch" aria-checked="${e.qrZeigen}" aria-label="QR-Code zeigen"></button></div>
+    </div></div>`;
 }
 function boardSheetRendern(){
   const v = bd.verbindung;
@@ -3525,6 +3557,7 @@ function boardSheetRendern(){
         ${zeile("Im Raum", bd.teilnehmer.length ? esc(bd.teilnehmer.join(", ")) : "—")}
         ${zeile("Orte auf dem Board", bd.orte ?? "—")}
       </div>
+      ${boardEinstellungenHtml()}
       <div class="field-group"><div class="field-group-label">Auf der Anzeige</div>
         ${bd.gezeigt ? `<div class="card board-gezeigt" style="flex-direction:row">
             <span class="text"><span class="card-title">${esc(bd.gezeigt.titel)}</span>
@@ -3791,6 +3824,7 @@ $sheet.addEventListener("click", async (e) => {
       if(!DEMO.enabled) return location.replace(location.pathname);   // abgemeldet → neu beitreten
       alleSchliessen(); toast("Vom Board getrennt"); break;
     case "board-zeigen": boardZeigen(a.dataset.boardQuelle); break;
+    case "board-qr": boardEinstellungenAendern({ qrZeigen:!bd.einstellungen?.qrZeigen }); break;
     case "board-wegnehmen": boardWegnehmen(); break;
     case "banner-loeschen":
       // Zweimal tippen – ein Bauplan ist schnell weg und für alle
@@ -3828,6 +3862,8 @@ $sheet.addEventListener("input", (e) => {
 });
 $sheet.addEventListener("change", (e) => {
   if(e.target.id === "boardFoto"){ const d = e.target.files[0]; e.target.value = ""; if(d) boardFotoLesen(d); return; }
+  if(e.target.id === "boardWelt") return boardEinstellungenAendern({ aktiveWelt:e.target.value });
+  if(e.target.id === "boardTitel") return boardEinstellungenAendern({ titel:e.target.value });
   if(e.target.id === "formKategorie"){ form.kategorie = e.target.value; form.variante = ""; formularRendern(true); }
   if(e.target.id === "formTyp"){ form.variante = e.target.value; formularRendern(true); }
 });

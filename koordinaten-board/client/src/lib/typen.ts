@@ -25,8 +25,11 @@ export interface Einstellungen {
 }
 
 export interface BoardZustand {
+  /** Orte der aktiven Welt (der Server rechnet sie aus den Daten der Companion um) */
   orte: Ort[];
   einstellungen: Einstellungen;
+  /** Welt, deren Orte die Anzeige zeigt – null, solange es keine gibt */
+  welt?: { id: string; seed: string } | null;
   version: number;
 }
 

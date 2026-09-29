@@ -136,6 +136,48 @@ try {
   const regel = await max.evaluate(() => api("/banner", { method: "POST", body: JSON.stringify({ name: "Zu viel", basis: "white", ebenen: Array(7).fill({ muster: "cross", farbe: "red" }) }) }));
   pruefe(regel.status === 422 && regel.data.message.includes("höchstens 6"), "Server prüft mit denselben Regeln (7 Muster abgelehnt)");
 
+  // === Anzeige im Zimmer zeigt die aktive Welt ===================================
+  const anzeige = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
+  anzeige.on("pageerror", (e) => fehler.push("Anzeige: " + e.message));
+  await anzeige.goto(`${BOARD}/anzeige`);
+  await anzeige.waitForSelector(".anzeige");
+  const anzeigeOrte = () => anzeige.$$eval(".a-zeile", (l) => l.map((z) => {
+    const img = z.querySelector("img.kennblock");
+    return z.querySelector(".name > span").textContent.trim() + (img ? ` [${img.getAttribute("src").split("/").pop()}]` : "");
+  }).sort().join(", "));
+  pruefe(await warteAuf(anzeige, () => document.querySelectorAll(".a-zeile").length === 3), "Anzeige: Orte der ersten Welt");
+  await anzeige.waitForFunction(() => [...document.querySelectorAll("img.kennblock")].every((i) => i.complete));
+  const orteWelt1 = await anzeigeOrte();
+  console.log("     Anzeige:", orteWelt1);
+  pruefe(orteWelt1 === "Hauptbasis, Stronghold (Stairway) [stronghold.png], Village", "Anzeige: Hauptbasis, Stronghold (Stairway) mit Kennblock, Village");
+  pruefe((await text(anzeige, ".subtitle")).includes("Welt 68891…0698"), "Anzeige nennt die Welt");
+  await anzeige.screenshot({ path: `${DIR}/l6-anzeige-welt1.png` });
+
+  // Zweite Welt mit End City – die Anzeige bleibt bei der ersten, bis jemand umstellt
+  const welt2 = await max.evaluate(async () => {
+    const w = (await api("/orte/welten", { method: "POST", body: JSON.stringify({ seed: "-4719278516927443210" }) })).data.welt;
+    await api("/orte/instanzen", { method: "POST", body: JSON.stringify({ dimensionId: `d_${w.id}_end`, kategorie: "End City", variante: null, x: 1300, y: 60, z: -820, quelle: "manuell" }) });
+    return w.id;
+  });
+  await schlafen(400);
+  pruefe((await anzeigeOrte()).startsWith("Hauptbasis"), "Neue Welt ändert die Anzeige nicht");
+  await max.evaluate(() => boardOeffnen());
+  pruefe(await warteAuf(max, () => document.getElementById("boardWelt")?.options.length === 2), "Board-Sheet: Auswahl mit beiden Welten");
+  await max.screenshot({ path: `${DIR}/l7-board-einstellungen.png` });
+  await max.selectOption("#boardWelt", welt2);
+  pruefe(await warteAuf(anzeige, () => document.querySelectorAll(".a-zeile").length === 1 && document.querySelector(".a-zeile .name > span").textContent === "End City"), "Aktive Welt umgestellt → Anzeige zeigt End City");
+  pruefe((await text(anzeige, ".subtitle")).includes("Welt -4719…3210"), "Anzeige nennt die neue Welt");
+  await max.fill("#boardTitel", "Server-Welt"); await max.press("#boardTitel", "Enter"); await max.$eval("#boardTitel", (e) => e.blur());
+  pruefe(await warteAuf(anzeige, () => document.querySelector("h1")?.textContent === "Server-Welt"), "Titel der Anzeige geändert");
+  pruefe(await anzeige.$(".qr") !== null, "QR-Code sichtbar");
+  await max.click('[data-aktion="board-qr"]');
+  pruefe(await warteAuf(anzeige, () => !document.querySelector(".qr")), "QR-Code ausgeblendet");
+  pruefe(await warteAuf(max, () => bd.einstellungen?.qrZeigen === false && document.querySelector('[data-aktion="board-qr"]')?.getAttribute("aria-checked") === "false"), "Schalter zeigt „aus“");
+  await max.click('[data-aktion="board-qr"]');
+  await anzeige.waitForTimeout(600);
+  await anzeige.screenshot({ path: `${DIR}/l8-anzeige-welt2.png` });
+  await max.click('#orteSheetInhalt [data-aktion="schliessen"]');
+
   // === Neuladen und Server-Neustart =============================================
   await max.reload();
   pruefe(await warteAuf(max, () => !DEMO.enabled && st.instanzen?.length === 3 && bd.status === "verbunden"), "Neuladen: angemeldet, Daten da, live verbunden");
@@ -146,6 +188,8 @@ try {
   await max.reload();
   await max.evaluate(() => modulWechseln("sammelobjekte"));
   pruefe(await warteAuf(max, () => st.instanzen?.length === 3 && sam.status.rib && pt.liste.length === 1), "Nach dem Neustart: Orte, Sammelobjekt, Portal noch da");
+  pruefe(await warteAuf(anzeige, () => document.querySelector("h1")?.textContent === "Server-Welt" && document.querySelector(".a-zeile .name > span")?.textContent === "End City", null, 12000),
+    "Anzeige nach dem Neustart: weiter Welt 2 mit Titel");
 
   // === Abmelden, abgelaufene Anmeldung ==========================================
   await lena.evaluate(() => { bd.verbindung.token = "kaputt.token"; lsSchreiben("board.verbindung", bd.verbindung); });

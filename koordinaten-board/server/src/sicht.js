@@ -18,7 +18,8 @@ export function anzeigeSicht(daten) {
     const eigen = t.kategorie === regeln.EIGENE_ORTE;
     orte.push({
       id: i.id,
-      name: t.variante || t.kategorie,
+      // wie der Titel im Seed-Map-Popup: „Stronghold (Stairway)“, eigene Orte mit ihrem Namen
+      name: eigen ? t.variante : t.variante ? `${t.kategorie} (${t.variante})` : t.kategorie,
       x: i.x, y: i.y ?? null, z: i.z,
       dimension: DIMENSION[daten.dimension(i.dimensionId).type],
       kategorie: eigen ? 'basis' : KATEGORIE.get(t.kategorie) ?? 'struktur',
