@@ -118,6 +118,13 @@ try {
   pruefe(ergebnisOhne === await nodeErgebnis(FIXTURE) && (await ohne.textContent("#eKopf")).includes("Vordergrund"),
     "Worker gesperrt: Rückfall im Vordergrund, gleiches Ergebnis, als „Vordergrund“ gekennzeichnet");
 
+  // ---- Kopieren verweigert (manche App-Ansichten): Text zum Markieren anzeigen ----------
+  await ohne.evaluate(() => { navigator.clipboard.writeText = () => Promise.reject(new DOMException("verweigert", "NotAllowedError")); });
+  await ohne.click("#kopieren");
+  const markiert = await ohne.evaluate(() => { const t = document.getElementById("berichtText");
+    return !t.hidden && t.value.startsWith("Welt: Meine Welt (1)") && t.value.includes("Gerät:") && t.selectionEnd === t.value.length; });
+  pruefe(markiert && (await ohne.textContent("#kopieren")).includes("markieren"), "Kopieren verweigert: Ergebnis erscheint markiert im Textfeld");
+
   // ---- Als Datei: Hinweis statt Auswahl -----------------------------------------------
   const d = await browser.newPage();
   await d.goto(new URL("../welt-pruefen.html", import.meta.url).href);

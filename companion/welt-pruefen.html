@@ -12,6 +12,7 @@
 :root {
   --bg:#0d0f13; --surface:#161a21; --surface-2:#1d222b; --surface-3:#252b36; --border:#2b313d; --border-soft:#20252f;
   --text:#eef1f6; --text-dim:#828b9b; --text-faint:#565e6c; --accent:#2ed47e; --accent-ink:#04160b; --accent-soft:rgba(46,212,126,.16);
+  color-scheme:dark;   /* bewusst nur dunkel wie die Companion */
 }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -42,6 +43,8 @@ input[type=file] { position:absolute; width:1px; height:1px; opacity:0; }
 canvas { image-rendering:pixelated; image-rendering:crisp-edges; align-self:flex-start; max-width:100%;
   background:repeating-conic-gradient(#1a1e25 0 25%, #14171d 0 50%) 0 0 / 16px 16px; border-radius:6px; }
 .klein { color:var(--text-faint); font-size:12px; }
+textarea { width:100%; min-height:150px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:10px;
+  padding:10px; font:12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; resize:vertical; }
 [hidden] { display:none !important; }
 </style>
 </head>
@@ -73,6 +76,7 @@ canvas { image-rendering:pixelated; image-rendering:crisp-edges; align-self:flex
       <div class="label">Für Claude</div>
       <div class="klein">Kopieren und im Chat einfügen – Dauer, Größe und Gerät helfen beim Einschätzen.</div>
       <button class="knopf zweit" id="kopieren">Ergebnis kopieren</button>
+      <textarea id="berichtText" readonly hidden aria-label="Ergebnis zum Markieren und Kopieren"></textarea>
     </div>
   </section>
 </main>
@@ -142,7 +146,7 @@ function starten(datei) {
   };
   let modus = "Worker", gemeldet = false;
   try {
-    worker = new Worker(new URL("./biom-import.worker.js", location.href), { type: "module" });
+    worker = new Worker(new URL("./biom-import.worker.js", document.baseURI), { type: "module" });
     worker.onmessage = ({ data }) => { gemeldet = true; nachricht(data); };
     // Lädt der Worker gar nicht (z. B. gesperrt), bevor er sich meldet → im Vordergrund lesen
     worker.onerror = (e) => { e.preventDefault(); worker?.terminate(); worker = null; if (gemeldet) nachricht({ typ: "fehler", text: `Der Import ist ausgefallen: ${e.message || "unbekannter Fehler"}` }); else { modus = "Vordergrund"; imVordergrund(datei, nachricht); } };
@@ -245,9 +249,16 @@ function zeigen(datei, meta, kacheln, dauer) {
 }
 
 $("kopieren").addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText(bericht); $("kopieren").textContent = "Kopiert ✓"; }
-  catch { $("kopieren").textContent = "Kopieren nicht möglich"; }
-  setTimeout(() => { $("kopieren").textContent = "Ergebnis kopieren"; }, 2000);
+  try {
+    await navigator.clipboard.writeText(bericht);
+    $("kopieren").textContent = "Kopiert ✓";
+    setTimeout(() => { $("kopieren").textContent = "Ergebnis kopieren"; }, 2000);
+  } catch {
+    // Manche App-Ansichten erlauben kein Kopieren per Knopf – dann zum Markieren anzeigen
+    $("berichtText").value = bericht; $("berichtText").hidden = false;
+    $("berichtText").focus(); $("berichtText").select();
+    $("kopieren").textContent = "Text unten markieren und kopieren";
+  }
 });
 </script>
 </body>
