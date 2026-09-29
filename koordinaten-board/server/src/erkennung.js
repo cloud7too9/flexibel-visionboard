@@ -84,7 +84,8 @@ export const FEATURES = [
 ].flatMap(([typ, kategorie, dimension, aliase = []]) =>
   [typ, ...aliase].map((name) => ({ name, typ, kategorie, dimension })));
 
-function abstand(a, b) {
+/** Levenshtein-Abstand – für unscharfe Vergleiche mit OCR-Text */
+export function abstand(a, b) {
   const d = Array.from({ length: b.length + 1 }, (_, i) => i);
   for (let i = 1; i <= a.length; i += 1) {
     let vorher = d[0];
@@ -219,17 +220,23 @@ function worker() {
   return workerPromise;
 }
 
-/** Liest einen Screenshot (Buffer) aus. Aufträge laufen nacheinander. */
-export function screenshotAuslesen(bild) {
+/** Texterkennung eines Bildes (Buffer) → { zeilen:[{ text, bbox }], text }. Aufträge laufen nacheinander. */
+export function texterkennung(bild) {
   const auftrag = warteschlange.then(async () => {
     const w = await worker();
     const { data } = await w.recognize(bild, {}, { blocks: true, text: true });
     const zeilen = (data.blocks ?? []).flatMap((b) => b.paragraphs.flatMap((p) => p.lines))
       .map((l) => ({ text: l.text, bbox: l.bbox }));
-    return { erkannt: seedMapAuswerten(zeilen), text: data.text };
+    return { zeilen, text: data.text };
   });
   warteschlange = auftrag.catch(() => {});
   return auftrag;
+}
+
+/** Liest einen Seed-Map-Screenshot (Buffer) aus. */
+export async function screenshotAuslesen(bild) {
+  const { zeilen, text } = await texterkennung(bild);
+  return { erkannt: seedMapAuswerten(zeilen), text };
 }
 
 export async function erkennungBeenden() {

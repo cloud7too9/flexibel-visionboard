@@ -2,7 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,7 +46,7 @@ test('ohne Anmeldung kein Zugriff', async () => {
   assert.equal(r.daten.message, 'Nicht angemeldet');
 });
 
-test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner', async () => {
+test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner, Rüstung', async () => {
   const max = await beitreten('Max');
   let r = await anfrage('POST', '/api/orte/welten', max, { seed: '6889192652397090698' });
   assert.equal(r.status, 201);
@@ -70,7 +70,39 @@ test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner', async ()
   assert.equal(r.status, 201);
   assert.equal((await anfrage('GET', '/api/banner', lena)).daten.liste[0].name, 'Wappen');
   assert.equal((await anfrage('PUT', '/api/banner/b_99', max, { name: 'x', basis: 'white', ebenen: [] })).status, 404);
+  r = await anfrage('POST', '/api/ruestung', lena, { name: 'Amethyst', teile: { chestplate: { ruestung: 'diamond', muster: 'silence', material: 'amethyst', verzaubert: true } } });
+  assert.equal(r.status, 201);
+  const set = r.daten.set;
+  assert.equal((await anfrage('GET', '/api/ruestung', max)).daten.sets[0].von, 'Lena');
+  r = await anfrage('PUT', `/api/ruestung/${set.id}`, max, { name: 'Amethyst', teile: { helmet: { ruestung: 'turtle' }, boots: { ruestung: 'turtle' } } });
+  assert.deepEqual([r.status, r.daten.message], [422, 'Schildkröte gibt es nur als Schildkrötenpanzer']);
+  assert.deepEqual((await anfrage('DELETE', `/api/ruestung/${set.id}`, max)).daten, { ok: true });
+  assert.equal((await anfrage('GET', '/api/ruestung', max)).daten.sets.length, 0);
   assert.equal((await anfrage('PUT', '/api/board/einstellungen', max, { aktiveWelt: 'w_99' })).status, 404);
+});
+
+test('Rüstungs-Baukasten wird ausgeliefert (Texturen, Module, Manifest)', async () => {
+  const manifest = await (await fetch(`${BASIS}/ruestungs-baukasten/manifest.json`)).json();
+  assert.equal(manifest.teile.length, 4);
+  for (const [pfad, typ] of [['fertig/items/iron_helmet__amethyst.png', 'image/png'], ['vorlagen/eye_armor_trim_smithing_template.png', 'image/png'],
+    ['baukasten.js', 'application/javascript'], ['figur3d.js', 'application/javascript']]) {
+    const res = await fetch(`${BASIS}/ruestungs-baukasten/${pfad}`);
+    assert.equal(res.status, 200, pfad);
+    assert.ok(res.headers.get('content-type').startsWith(typ), `${pfad}: ${res.headers.get('content-type')}`);
+  }
+});
+
+test('Screenshot auslesen: Banner-Anleitung liefert banner statt Ort', { timeout: 60_000 }, async () => {
+  const max = await beitreten('Max');
+  const form = new FormData();
+  const bild = readFileSync(fileURLToPath(new URL('../../../referenz/banner/rezept-beispiel.jpg', import.meta.url)));
+  form.append('datei', new Blob([bild], { type: 'image/jpeg' }), 'rezept.jpg');
+  const res = await fetch(`${BASIS}/api/orte/auslesen`, { method: 'POST', headers: { authorization: `Bearer ${max}` }, body: form });
+  const d = await res.json();
+  assert.equal(res.status, 200);
+  assert.equal(d.erkannt, null);
+  assert.equal(d.banner.basis, 'black');
+  assert.deepEqual(d.banner.ebenen.map((e) => e.muster), ['border', 'rhombus', 'border', 'flower', 'square_top_left', 'square_bottom_right']);
 });
 
 test('Änderungen gehen live an alle, Daten überstehen einen Neustart', async () => {

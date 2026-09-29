@@ -56,6 +56,14 @@ test('Sammelobjekte, Portale, Banner', () => {
   const b = d.bannerAnlegen({ name: 'Wappen', basis: 'white', ebenen: [{ muster: 'cross', farbe: 'red', extra: 1 }] }, 'Max');
   assert.deepEqual(b.ebenen, [{ muster: 'cross', farbe: 'red' }]);
   wirft(() => d.bannerAendern(b.id, { name: 'x', basis: 'lila', ebenen: [] }), 422, 'Unbekannte Grundfarbe');
+
+  const r = d.ruestungAnlegen({ name: 'Amethyst', teile: { helmet: { ruestung: 'iron', muster: 'eye', material: 'amethyst', verzaubert: true } } }, 'Lena');
+  assert.deepEqual([r.id.startsWith('r_'), r.von, r.teile.helmet.material, r.teile.boots], [true, 'Lena', 'amethyst', null]);
+  wirft(() => d.ruestungAendern(r.id, { name: 'x', teile: { boots: { ruestung: 'turtle' } } }), 422, 'Schildkröte gibt es nur als Schildkrötenpanzer');
+  assert.equal(d.ruestungAendern(r.id, { name: 'Neu', teile: { boots: { ruestung: 'gold' } } }).teile.helmet, null);
+  assert.equal(d.ruestungListe()[0].name, 'Neu');
+  d.ruestungLoeschen(r.id);
+  wirft(() => d.ruestungLoeschen(r.id), 404);
 });
 
 test('Speichern und Laden', async () => {

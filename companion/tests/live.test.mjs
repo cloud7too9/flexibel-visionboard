@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { threeUmleiten, CHROMIUM_OPTIONEN } from "./hilfen.mjs";
 
 const HIER = fileURLToPath(new URL(".", import.meta.url));
 const DIR = path.join(HIER, "bilder");
@@ -42,11 +43,12 @@ async function boardStoppen() {
   await new Promise((r) => b.once("exit", r));
 }
 
-const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
+const browser = await chromium.launch(CHROMIUM_OPTIONEN);
 const fehler = [], antworten = [];
 let boardAus = false;   // absichtlicher Neustart: fehlgeschlagene Wiederverbindungen sind dann erwartet
 async function handy() {
   const kontext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  await threeUmleiten(kontext);   // three.js für die 3D-Figur kommt sonst vom CDN
   const p = await kontext.newPage();
   p.on("pageerror", (e) => fehler.push(e.message));
   // Ladefehler prüft „antworten“ genau; die Konsole meldet sie nur ohne Adresse (auch /favicon.ico)
@@ -127,7 +129,7 @@ try {
   await max.evaluate(() => modulWechseln("sammelobjekte"));
   await lena.evaluate(() => modulWechseln("sammelobjekte"));
   await lena.click('[data-sam-haken="rib"]');
-  pruefe(await warteAuf(max, () => sam.status.rib?.von === "Lena"), "Max sieht: Rippen gefunden von Lena");
+  pruefe(await warteAuf(max, () => sam.status.rib?.von === "Lena"), "Max sieht: Rippenzier gefunden von Lena");
   pruefe(await warteAuf(max, () => document.querySelector('[data-sam="rib"]')?.classList.contains("earned")), "… auch in der Liste");
   await max.screenshot({ path: `${DIR}/l4-max-sammel.png` });
 
@@ -141,6 +143,58 @@ try {
   pruefe(await warteAuf(lena, () => pt.liste.length === 1 && document.querySelector(".verbindung")), "Portal-Verbindung erscheint bei Lena");
   const regel = await max.evaluate(() => api("/banner", { method: "POST", body: JSON.stringify({ name: "Zu viel", basis: "white", ebenen: Array(7).fill({ muster: "cross", farbe: "red" }) }) }));
   pruefe(regel.status === 422 && regel.data.message.includes("höchstens 6"), "Server prüft mit denselben Regeln (7 Muster abgelehnt)");
+
+  // === Rüstung: Sets für alle Welten, Figur vom Board =============================
+  await max.evaluate(() => modulWechseln("ruestung"));
+  await lena.evaluate(() => modulWechseln("ruestung"));
+  pruefe(await warteAuf(max, () => rs.geladen && document.querySelector("#ruestungListe .empty-list")), "Rüstung: noch keine Sets");
+  await lena.evaluate(() => api("/ruestung", { method: "POST", body: JSON.stringify({ name: "Rippen-Set", teile: {
+    helmet: { ruestung: "netherite", muster: "rib", material: "gold", verzaubert: true }, boots: { ruestung: "iron", muster: "eye", material: "amethyst" } } }) }));
+  pruefe(await warteAuf(max, () => rs.sets[0]?.name === "Rippen-Set" && rs.sets[0].von === "Lena"), "Max sieht Lenas Rüstungs-Set live");
+  pruefe(await warteAuf(max, () => document.querySelector(".ruestung-karte .pill")?.textContent.trim() === "1/2 gefunden"), "Rippenzier ist in dieser Welt gefunden → 1/2");
+  await max.click(".ruestung-karte");
+  pruefe(await warteAuf(max, () => fig.art === "3d", null, 15000), "Figur über das Board: 3D (Baukasten vom Board-Server)");
+  await lena.evaluate(() => api(`/sammelobjekte/welten/${st.weltId}/eye`, { method: "PUT", body: JSON.stringify({ gefunden: true }) }));
+  pruefe(await warteAuf(max, () => document.querySelector("#orteSheetInhalt .banner.ok")?.textContent.includes("Alle Rüstungsbesätze")),
+    "Lena findet die Augenzier → Max' offenes Set zeigt: alle gefunden");
+  await max.waitForTimeout(600);
+  await max.screenshot({ path: `${DIR}/l3d-ruestung-live.png` });
+  const falsch = await max.evaluate(() => api("/ruestung", { method: "POST", body: JSON.stringify({ name: "Panzer", teile: { boots: { ruestung: "turtle" } } }) }));
+  pruefe(falsch.status === 422 && falsch.data.message === "Schildkröte gibt es nur als Schildkrötenpanzer", "Server prüft Rüstung mit denselben Regeln");
+  await max.click('#orteSheetInhalt [data-aktion="schliessen"]');
+
+  // === Banner aus einem Screenshot (Anleitung „Black Base“, „Cyan Bordure“ …) =======
+  await max.evaluate(() => modulWechseln("banner"));
+  await lena.evaluate(() => modulWechseln("banner"));
+  const rezept = path.join(HIER, "../../referenz/banner/rezept-beispiel.jpg");
+  const hochladen = async () => {
+    const [waehler] = await Promise.all([max.waitForEvent("filechooser"), max.click("#bannerScreenshotBtn")]);
+    await waehler.setFiles(rezept);
+    return warteAuf(max, () => st.importe?.length && st.importe.at(-1).status === "fertig", null, 60000);
+  };
+  pruefe(await hochladen(), "Banner-Bereich: Screenshot → Board liest die Anleitung aus");
+  const imp = await max.evaluate(() => st.importe.at(-1));
+  pruefe(imp.banner?.basis === "black" && imp.banner.ebenen.length === 6 && imp.an, "Erkannt: schwarzes Banner mit 6 Mustern, zum Speichern vorgemerkt");
+  pruefe((await text(max, "#orteSheetInhalt .imp-schritte")).includes("Raute (Hellblau)"), "Prüfliste zeigt die Schritte auf Deutsch");
+  pruefe((await text(max, '[data-aktion="import-speichern"]')) === "1 Banner speichern", "Knopf „1 Banner speichern“");
+  pruefe((await max.$eval(`[data-import-name="${imp.id}"]`, (e) => e.value)).startsWith("Banner vom "), "Name vorgeschlagen");
+  await max.fill(`[data-import-name="${imp.id}"]`, "Enderauge");
+  await max.screenshot({ path: `${DIR}/l3b-banner-screenshot.png` });
+  await max.click('[data-aktion="import-speichern"]');
+  pruefe(await warteAuf(max, () => bn.liste.some((b) => b.name === "Enderauge") && st.sheet === null), "Banner „Enderauge“ gespeichert");
+  const gespeichert = await max.evaluate(() => bn.liste.find((b) => b.name === "Enderauge"));
+  pruefe(JSON.stringify(gespeichert.ebenen.map((e) => `${e.farbe} ${e.muster}`)) === JSON.stringify(["cyan border", "light_blue rhombus", "black border",
+    "black flower", "black square_top_left", "black square_bottom_right"]) && gespeichert.basis === "black", "Muster und Farben wie in der Anleitung");
+  pruefe(await warteAuf(lena, () => bn.liste.some((b) => b.name === "Enderauge" && b.von === "Max")), "Lena sieht den Banner live");
+  await max.evaluate((id) => bannerDetailOeffnen(id), gespeichert.id);
+  await max.waitForTimeout(400);
+  await max.screenshot({ path: `${DIR}/l3c-banner-detail.png` });
+  await max.click('#orteSheetInhalt [data-aktion="schliessen"]');
+  pruefe(await hochladen(), "Derselbe Screenshot noch einmal");
+  const nochmal = await max.evaluate(() => st.importe.at(-1));
+  pruefe(!nochmal.an && nochmal.meldungen.some(([, t]) => t === "Schon gespeichert als „Enderauge“"), "… wird als schon gespeichert erkannt und nicht vorgemerkt");
+  await max.click('#orteSheetInhalt [data-aktion="schliessen"]');
+  await max.evaluate(() => { st.importe = []; });
 
   // === Anzeige im Zimmer zeigt die aktive Welt ===================================
   const anzeige = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
@@ -208,6 +262,7 @@ try {
   await max.reload();
   await max.evaluate(() => modulWechseln("sammelobjekte"));
   pruefe(await warteAuf(max, () => st.instanzen?.length === 3 && sam.status.rib && pt.liste.length === 1), "Nach dem Neustart: Orte, Sammelobjekt, Portal noch da");
+  pruefe((await max.evaluate(() => api("/ruestung"))).data.sets[0]?.name === "Rippen-Set", "… und das Rüstungs-Set");
   pruefe(await warteAuf(anzeige, () => document.querySelector("h1")?.textContent === "Server-Welt" && document.querySelector(".a-zeile .name > span")?.textContent === "End City", null, 12000),
     "Anzeige nach dem Neustart: weiter Welt 2 mit Titel");
 
@@ -225,8 +280,8 @@ try {
   pruefe(await warteAuf(max, () => document.querySelector(".sheet-kopf h2")?.textContent === "Beitreten" && !bd.verbindung), "Abmelden → „Beitreten“");
 
   pruefe(fehler.length === 0, `keine Fehler in der Konsole${fehler.length ? ": " + fehler.join(" | ") : ""}`);
-  // erwartet: 7 Muster abgelehnt, ungültiges Token, falsche PIN
-  const erwartet = ["422 /api/banner", "401 /api/orte/welten", "401 /api/beitreten"];
+  // erwartet: 7 Muster abgelehnt, Schildkröten-Stiefel abgelehnt, ungültiges Token, falsche PIN
+  const erwartet = ["422 /api/banner", "422 /api/ruestung", "401 /api/orte/welten", "401 /api/beitreten"];
   pruefe(JSON.stringify(antworten) === JSON.stringify(erwartet), `nur erwartete HTTP-Fehler: ${antworten.join(", ")}`);
 } catch (e) {
   pruefe(false, "Abbruch: " + e.message);

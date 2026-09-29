@@ -1,0 +1,991 @@
+{
+ "quelle": "Mojang/bedrock-samples (main), resource_pack/textures – Namen aus texts/de_DE.lang",
+ "schluesselPalette": [
+  "#e0e0e0",
+  "#c0c0c0",
+  "#a0a0a0",
+  "#808080",
+  "#606060",
+  "#404040",
+  "#202020",
+  "#000000"
+ ],
+ "teile": [
+  {
+   "id": "helmet",
+   "name": "Helm",
+   "schicht": 1,
+   "bereiche": [
+    "kopf"
+   ],
+   "aufblaehen": 1,
+   "besatzItem": "besatz/items/helmet_trim.png",
+   "leererSlot": "slots/empty_armor_slot_helmet.png"
+  },
+  {
+   "id": "chestplate",
+   "name": "Harnisch",
+   "schicht": 1,
+   "bereiche": [
+    "koerper",
+    "armR",
+    "armL"
+   ],
+   "aufblaehen": 1,
+   "besatzItem": "besatz/items/chestplate_trim.png",
+   "leererSlot": "slots/empty_armor_slot_chestplate.png"
+  },
+  {
+   "id": "leggings",
+   "name": "Beinschutz",
+   "schicht": 2,
+   "bereiche": [
+    "koerper",
+    "beinR",
+    "beinL"
+   ],
+   "aufblaehen": 0.5,
+   "besatzItem": "besatz/items/leggings_trim.png",
+   "leererSlot": "slots/empty_armor_slot_leggings.png"
+  },
+  {
+   "id": "boots",
+   "name": "Stiefel",
+   "schicht": 1,
+   "bereiche": [
+    "beinR",
+    "beinL"
+   ],
+   "aufblaehen": 1,
+   "besatzItem": "besatz/items/boots_trim.png",
+   "leererSlot": "slots/empty_armor_slot_boots.png"
+  }
+ ],
+ "ruestungen": [
+  {
+   "id": "leather",
+   "name": "Leder",
+   "faerbbar": true,
+   "dunkelBeiMaterial": null,
+   "teile": {
+    "helmet": {
+     "name": "Lederkappe",
+     "item": "items/leather_helmet.png",
+     "itemOverlay": "items/leather_helmet_overlay.png"
+    },
+    "chestplate": {
+     "name": "Lederjacke",
+     "item": "items/leather_chestplate.png",
+     "itemOverlay": "items/leather_chestplate_overlay.png"
+    },
+    "leggings": {
+     "name": "Lederhose",
+     "item": "items/leather_leggings.png",
+     "itemOverlay": "items/leather_leggings_overlay.png"
+    },
+    "boots": {
+     "name": "Lederstiefel",
+     "item": "items/leather_boots.png",
+     "itemOverlay": "items/leather_boots_overlay.png"
+    }
+   },
+   "modell": {
+    "1": "modell/leather_1.png",
+    "2": "modell/leather_2.png",
+    "1_overlay": "modell/leather_1_overlay.png",
+    "2_overlay": "modell/leather_2_overlay.png"
+   }
+  },
+  {
+   "id": "chainmail",
+   "name": "Kette",
+   "faerbbar": false,
+   "dunkelBeiMaterial": null,
+   "teile": {
+    "helmet": {
+     "name": "Kettenhemd-Helm",
+     "item": "items/chainmail_helmet.png"
+    },
+    "chestplate": {
+     "name": "Kettenhemd-Harnisch",
+     "item": "items/chainmail_chestplate.png"
+    },
+    "leggings": {
+     "name": "Kettenhemd-Beinschutz",
+     "item": "items/chainmail_leggings.png"
+    },
+    "boots": {
+     "name": "Kettenhemd-Stiefel",
+     "item": "items/chainmail_boots.png"
+    }
+   },
+   "modell": {
+    "1": "modell/chainmail_1.png",
+    "2": "modell/chainmail_2.png"
+   }
+  },
+  {
+   "id": "iron",
+   "name": "Eisen",
+   "faerbbar": false,
+   "dunkelBeiMaterial": "iron",
+   "teile": {
+    "helmet": {
+     "name": "Eisenhelm",
+     "item": "items/iron_helmet.png"
+    },
+    "chestplate": {
+     "name": "Eisenharnisch",
+     "item": "items/iron_chestplate.png"
+    },
+    "leggings": {
+     "name": "Eisenbeinschutz",
+     "item": "items/iron_leggings.png"
+    },
+    "boots": {
+     "name": "Eisenstiefel",
+     "item": "items/iron_boots.png"
+    }
+   },
+   "modell": {
+    "1": "modell/iron_1.png",
+    "2": "modell/iron_2.png"
+   }
+  },
+  {
+   "id": "gold",
+   "name": "Gold",
+   "faerbbar": false,
+   "dunkelBeiMaterial": "gold",
+   "teile": {
+    "helmet": {
+     "name": "Goldhelm",
+     "item": "items/gold_helmet.png"
+    },
+    "chestplate": {
+     "name": "Goldharnisch",
+     "item": "items/gold_chestplate.png"
+    },
+    "leggings": {
+     "name": "Goldbeinschutz",
+     "item": "items/gold_leggings.png"
+    },
+    "boots": {
+     "name": "Goldstiefel",
+     "item": "items/gold_boots.png"
+    }
+   },
+   "modell": {
+    "1": "modell/gold_1.png",
+    "2": "modell/gold_2.png"
+   }
+  },
+  {
+   "id": "diamond",
+   "name": "Diamant",
+   "faerbbar": false,
+   "dunkelBeiMaterial": "diamond",
+   "teile": {
+    "helmet": {
+     "name": "Diamanthelm",
+     "item": "items/diamond_helmet.png"
+    },
+    "chestplate": {
+     "name": "Diamantharnisch",
+     "item": "items/diamond_chestplate.png"
+    },
+    "leggings": {
+     "name": "Diamantbeinschutz",
+     "item": "items/diamond_leggings.png"
+    },
+    "boots": {
+     "name": "Diamantstiefel",
+     "item": "items/diamond_boots.png"
+    }
+   },
+   "modell": {
+    "1": "modell/diamond_1.png",
+    "2": "modell/diamond_2.png"
+   }
+  },
+  {
+   "id": "netherite",
+   "name": "Netherit",
+   "faerbbar": false,
+   "dunkelBeiMaterial": "netherite",
+   "teile": {
+    "helmet": {
+     "name": "Netherithelm",
+     "item": "items/netherite_helmet.png"
+    },
+    "chestplate": {
+     "name": "Netheritharnisch",
+     "item": "items/netherite_chestplate.png"
+    },
+    "leggings": {
+     "name": "Netheritbeinschutz",
+     "item": "items/netherite_leggings.png"
+    },
+    "boots": {
+     "name": "Netheritstiefel",
+     "item": "items/netherite_boots.png"
+    }
+   },
+   "modell": {
+    "1": "modell/netherite_1.png",
+    "2": "modell/netherite_2.png"
+   }
+  },
+  {
+   "id": "copper",
+   "name": "Kupfer",
+   "faerbbar": false,
+   "dunkelBeiMaterial": "copper",
+   "teile": {
+    "helmet": {
+     "name": "Kupferhelm",
+     "item": "items/copper_helmet.png"
+    },
+    "chestplate": {
+     "name": "Kupferharnisch",
+     "item": "items/copper_chestplate.png"
+    },
+    "leggings": {
+     "name": "Kupferbeinschutz",
+     "item": "items/copper_leggings.png"
+    },
+    "boots": {
+     "name": "Kupferstiefel",
+     "item": "items/copper_boots.png"
+    }
+   },
+   "modell": {
+    "1": "modell/copper_1.png",
+    "2": "modell/copper_2.png"
+   }
+  },
+  {
+   "id": "turtle",
+   "name": "Schildkröte",
+   "faerbbar": false,
+   "dunkelBeiMaterial": null,
+   "teile": {
+    "helmet": {
+     "name": "Schildkrötenpanzer",
+     "item": "items/turtle_helmet.png"
+    }
+   },
+   "modell": {
+    "1": "modell/turtle_1.png"
+   }
+  }
+ ],
+ "muster": [
+  {
+   "id": "sentry",
+   "name": "Wächterzier",
+   "vorlage": "sentry_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/sentry.png",
+   "ebene2": "besatz/muster/sentry_leggings.png",
+   "vorlageIcon": "vorlagen/sentry_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "dune",
+   "name": "Dünenzier",
+   "vorlage": "dune_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/dune.png",
+   "ebene2": "besatz/muster/dune_leggings.png",
+   "vorlageIcon": "vorlagen/dune_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "coast",
+   "name": "Küstenzier",
+   "vorlage": "coast_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/coast.png",
+   "ebene2": "besatz/muster/coast_leggings.png",
+   "vorlageIcon": "vorlagen/coast_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "wild",
+   "name": "Wilde Zier",
+   "vorlage": "wild_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/wild.png",
+   "ebene2": "besatz/muster/wild_leggings.png",
+   "vorlageIcon": "vorlagen/wild_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "ward",
+   "name": "Mündelzier",
+   "vorlage": "ward_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/ward.png",
+   "ebene2": "besatz/muster/ward_leggings.png",
+   "vorlageIcon": "vorlagen/ward_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "eye",
+   "name": "Augenzier",
+   "vorlage": "eye_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/eye.png",
+   "ebene2": "besatz/muster/eye_leggings.png",
+   "vorlageIcon": "vorlagen/eye_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "vex",
+   "name": "Plagegeistzier",
+   "vorlage": "vex_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/vex.png",
+   "ebene2": "besatz/muster/vex_leggings.png",
+   "vorlageIcon": "vorlagen/vex_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "tide",
+   "name": "Gezeitenzier",
+   "vorlage": "tide_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/tide.png",
+   "ebene2": "besatz/muster/tide_leggings.png",
+   "vorlageIcon": "vorlagen/tide_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "snout",
+   "name": "Schnauzezier",
+   "vorlage": "snout_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/snout.png",
+   "ebene2": "besatz/muster/snout_leggings.png",
+   "vorlageIcon": "vorlagen/snout_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "rib",
+   "name": "Rippenzier",
+   "vorlage": "rib_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/rib.png",
+   "ebene2": "besatz/muster/rib_leggings.png",
+   "vorlageIcon": "vorlagen/rib_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "spire",
+   "name": "Turmzier",
+   "vorlage": "spire_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/spire.png",
+   "ebene2": "besatz/muster/spire_leggings.png",
+   "vorlageIcon": "vorlagen/spire_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "silence",
+   "name": "Stillezier",
+   "vorlage": "silence_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/silence.png",
+   "ebene2": "besatz/muster/silence_leggings.png",
+   "vorlageIcon": "vorlagen/silence_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "wayfinder",
+   "name": "Wegfinderzier",
+   "vorlage": "wayfinder_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/wayfinder.png",
+   "ebene2": "besatz/muster/wayfinder_leggings.png",
+   "vorlageIcon": "vorlagen/wayfinder_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "raiser",
+   "name": "Erheberzier",
+   "vorlage": "raiser_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/raiser.png",
+   "ebene2": "besatz/muster/raiser_leggings.png",
+   "vorlageIcon": "vorlagen/raiser_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "shaper",
+   "name": "Formerzier",
+   "vorlage": "shaper_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/shaper.png",
+   "ebene2": "besatz/muster/shaper_leggings.png",
+   "vorlageIcon": "vorlagen/shaper_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "host",
+   "name": "Hüterzier",
+   "vorlage": "host_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/host.png",
+   "ebene2": "besatz/muster/host_leggings.png",
+   "vorlageIcon": "vorlagen/host_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "flow",
+   "name": "Flusszier",
+   "vorlage": "flow_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/flow.png",
+   "ebene2": "besatz/muster/flow_leggings.png",
+   "vorlageIcon": "vorlagen/flow_armor_trim_smithing_template.png"
+  },
+  {
+   "id": "bolt",
+   "name": "Blitzzier",
+   "vorlage": "bolt_armor_trim_smithing_template",
+   "ebene1": "besatz/muster/bolt.png",
+   "ebene2": "besatz/muster/bolt_leggings.png",
+   "vorlageIcon": "vorlagen/bolt_armor_trim_smithing_template.png"
+  }
+ ],
+ "materialien": [
+  {
+   "id": "amethyst",
+   "name": "Amethyst",
+   "zutat": "amethyst_shard",
+   "palette": [
+    "#c98ff3",
+    "#9a5cc6",
+    "#6c49aa",
+    "#523687",
+    "#422776",
+    "#361c6a",
+    "#240c53",
+    "#17063b"
+   ],
+   "paletteDunkel": null,
+   "zutatIcon": "zutaten/amethyst_shard.png"
+  },
+  {
+   "id": "copper",
+   "name": "Kupfer",
+   "zutat": "copper_ingot",
+   "palette": [
+    "#e3826c",
+    "#b4684d",
+    "#9a472c",
+    "#793c28",
+    "#6d3420",
+    "#5f2b18",
+    "#4c2010",
+    "#3d180b"
+   ],
+   "paletteDunkel": [
+    "#7b4135",
+    "#6b3628",
+    "#592a19",
+    "#4c2416",
+    "#401e11",
+    "#36190f",
+    "#29140c",
+    "#1b0e08"
+   ],
+   "zutatIcon": "zutaten/copper_ingot.png"
+  },
+  {
+   "id": "diamond",
+   "name": "Diamant",
+   "zutat": "diamond",
+   "palette": [
+    "#cbfff5",
+    "#6eecd2",
+    "#2cbaa8",
+    "#1d969a",
+    "#0c788d",
+    "#076578",
+    "#04515f",
+    "#013c47"
+   ],
+   "paletteDunkel": [
+    "#15b3a1",
+    "#0a9ca1",
+    "#048185",
+    "#027472",
+    "#065d5b",
+    "#095148",
+    "#034642",
+    "#04403e"
+   ],
+   "zutatIcon": "zutaten/diamond.png"
+  },
+  {
+   "id": "emerald",
+   "name": "Smaragd",
+   "zutat": "emerald",
+   "palette": [
+    "#82f6ad",
+    "#0ec754",
+    "#11a036",
+    "#107b24",
+    "#0e7222",
+    "#09631b",
+    "#035013",
+    "#023d0e"
+   ],
+   "paletteDunkel": null,
+   "zutatIcon": "zutaten/emerald.png"
+  },
+  {
+   "id": "gold",
+   "name": "Gold",
+   "zutat": "gold_ingot",
+   "palette": [
+    "#fffd90",
+    "#ecd93f",
+    "#deb12d",
+    "#b16712",
+    "#a0450a",
+    "#803503",
+    "#712d00",
+    "#572300"
+   ],
+   "paletteDunkel": [
+    "#c29c2a",
+    "#ba8327",
+    "#a35f14",
+    "#89470c",
+    "#803503",
+    "#712d00",
+    "#572300",
+    "#3e1b03"
+   ],
+   "zutatIcon": "zutaten/gold_ingot.png"
+  },
+  {
+   "id": "iron",
+   "name": "Eisen",
+   "zutat": "iron_ingot",
+   "palette": [
+    "#c5d2d4",
+    "#bfc9c8",
+    "#9daaaa",
+    "#7b8989",
+    "#717d7d",
+    "#657070",
+    "#576363",
+    "#465151"
+   ],
+   "paletteDunkel": [
+    "#a2b0b3",
+    "#8a9291",
+    "#6f7676",
+    "#576363",
+    "#3d4949",
+    "#313b3b",
+    "#2b3434",
+    "#1d2828"
+   ],
+   "zutatIcon": "zutaten/iron_ingot.png"
+  },
+  {
+   "id": "lapis",
+   "name": "Lapis",
+   "zutat": "dye_powder_blue",
+   "palette": [
+    "#416e97",
+    "#1c4d9c",
+    "#21497b",
+    "#123365",
+    "#112e63",
+    "#0c285a",
+    "#091e45",
+    "#051636"
+   ],
+   "paletteDunkel": null,
+   "zutatIcon": "zutaten/dye_powder_blue.png"
+  },
+  {
+   "id": "netherite",
+   "name": "Netherit",
+   "zutat": "netherite_ingot",
+   "palette": [
+    "#5a575a",
+    "#443a3b",
+    "#312e31",
+    "#2f2727",
+    "#231e1e",
+    "#1a1616",
+    "#100c0c",
+    "#090707"
+   ],
+   "paletteDunkel": [
+    "#2e2829",
+    "#282425",
+    "#281d1d",
+    "#241a1a",
+    "#1f1717",
+    "#1d1313",
+    "#140f0f",
+    "#0b0909"
+   ],
+   "zutatIcon": "zutaten/netherite_ingot.png"
+  },
+  {
+   "id": "quartz",
+   "name": "Quarz",
+   "zutat": "quartz",
+   "palette": [
+    "#f2efed",
+    "#f6eadf",
+    "#e3dbc4",
+    "#b6ad96",
+    "#908e80",
+    "#656156",
+    "#45433c",
+    "#2a2822"
+   ],
+   "paletteDunkel": null,
+   "zutatIcon": "zutaten/quartz.png"
+  },
+  {
+   "id": "redstone",
+   "name": "Redstone",
+   "zutat": "redstone_dust",
+   "palette": [
+    "#e62008",
+    "#bd2008",
+    "#971607",
+    "#781101",
+    "#650b01",
+    "#520d06",
+    "#360803",
+    "#1d0502"
+   ],
+   "paletteDunkel": null,
+   "zutatIcon": "zutaten/redstone_dust.png"
+  },
+  {
+   "id": "resin",
+   "name": "Harz",
+   "zutat": "resin_brick",
+   "palette": [
+    "#ffc354",
+    "#f69f3b",
+    "#f0852a",
+    "#ec7214",
+    "#db5f10",
+    "#c7490a",
+    "#a53b11",
+    "#802a1a"
+   ],
+   "paletteDunkel": null,
+   "zutatIcon": "zutaten/resin_brick.png"
+  }
+ ],
+ "farbstoffe": [
+  {
+   "id": "white",
+   "name": "Weiß",
+   "hex": "#f0f0f0"
+  },
+  {
+   "id": "orange",
+   "name": "Orange",
+   "hex": "#f9801d"
+  },
+  {
+   "id": "magenta",
+   "name": "Magenta",
+   "hex": "#c74ebd"
+  },
+  {
+   "id": "light_blue",
+   "name": "Hellblau",
+   "hex": "#3ab3da"
+  },
+  {
+   "id": "yellow",
+   "name": "Gelb",
+   "hex": "#fed83d"
+  },
+  {
+   "id": "lime",
+   "name": "Hellgrün",
+   "hex": "#80c71f"
+  },
+  {
+   "id": "pink",
+   "name": "Rosa",
+   "hex": "#f38baa"
+  },
+  {
+   "id": "gray",
+   "name": "Grau",
+   "hex": "#474f52"
+  },
+  {
+   "id": "light_gray",
+   "name": "Hellgrau",
+   "hex": "#9d9d97"
+  },
+  {
+   "id": "cyan",
+   "name": "Türkis",
+   "hex": "#169c9c"
+  },
+  {
+   "id": "purple",
+   "name": "Violett",
+   "hex": "#8932b8"
+  },
+  {
+   "id": "blue",
+   "name": "Blau",
+   "hex": "#3c44aa"
+  },
+  {
+   "id": "brown",
+   "name": "Braun",
+   "hex": "#835432"
+  },
+  {
+   "id": "green",
+   "name": "Grün",
+   "hex": "#5e7c16"
+  },
+  {
+   "id": "red",
+   "name": "Rot",
+   "hex": "#b02e26"
+  },
+  {
+   "id": "black",
+   "name": "Schwarz",
+   "hex": "#1d1d21"
+  }
+ ],
+ "lederStandard": "#a06540",
+ "glanz": {
+  "item": "effekte/enchanted_item_glint.png",
+  "modell": "effekte/enchanted_actor_glint.png"
+ },
+ "skin": "skin/steve.png",
+ "fertigeItems": {
+  "ordner": "fertig/items",
+  "schema": "<ruestung>_<teil>[_<farbstoff|standard>][__<material>].png",
+  "hinweis": "Farbstoff-Teil nur bei Leder; ohne __<material> = ohne Besatz"
+ },
+ "traeger": {
+  "steve": {
+   "name": "Steve",
+   "textur": "skin/steve.png",
+   "texturGroesse": [
+    64,
+    64
+   ]
+  },
+  "staender": {
+   "name": "Rüstungsständer",
+   "textur": "traeger/armor_stand.png",
+   "texturGroesse": [
+    64,
+    64
+   ],
+   "wuerfel": [
+    {
+     "teil": "baseplate",
+     "ursprung": [
+      -6.0,
+      0.0,
+      -6.0
+     ],
+     "groesse": [
+      12.0,
+      1.0,
+      12.0
+     ],
+     "uv": [
+      0.0,
+      32.0
+     ],
+     "spiegeln": false
+    },
+    {
+     "teil": "body",
+     "ursprung": [
+      -6.0,
+      21.0,
+      -1.5
+     ],
+     "groesse": [
+      12.0,
+      3.0,
+      3.0
+     ],
+     "uv": [
+      0.0,
+      26.0
+     ],
+     "spiegeln": false
+    },
+    {
+     "teil": "body",
+     "ursprung": [
+      -3.0,
+      14.0,
+      -1.0
+     ],
+     "groesse": [
+      2.0,
+      7.0,
+      2.0
+     ],
+     "uv": [
+      16.0,
+      0.0
+     ],
+     "spiegeln": false
+    },
+    {
+     "teil": "body",
+     "ursprung": [
+      1.0,
+      14.0,
+      -1.0
+     ],
+     "groesse": [
+      2.0,
+      7.0,
+      2.0
+     ],
+     "uv": [
+      48.0,
+      16.0
+     ],
+     "spiegeln": false
+    },
+    {
+     "teil": "body",
+     "ursprung": [
+      -4.0,
+      12.0,
+      -1.0
+     ],
+     "groesse": [
+      8.0,
+      2.0,
+      2.0
+     ],
+     "uv": [
+      0.0,
+      48.0
+     ],
+     "spiegeln": false
+    },
+    {
+     "teil": "head",
+     "ursprung": [
+      -1.0,
+      24.0,
+      -1.0
+     ],
+     "groesse": [
+      2.0,
+      7.0,
+      2.0
+     ],
+     "uv": [
+      0.0,
+      0.0
+     ],
+     "spiegeln": false
+    },
+    {
+     "teil": "leftarm",
+     "ursprung": [
+      5.0,
+      12.0,
+      -1.0
+     ],
+     "groesse": [
+      2.0,
+      12.0,
+      2.0
+     ],
+     "uv": [
+      32.0,
+      16.0
+     ],
+     "spiegeln": true
+    },
+    {
+     "teil": "leftleg",
+     "ursprung": [
+      0.9,
+      1.0,
+      -1.0
+     ],
+     "groesse": [
+      2.0,
+      11.0,
+      2.0
+     ],
+     "uv": [
+      40.0,
+      16.0
+     ],
+     "spiegeln": true
+    },
+    {
+     "teil": "rightarm",
+     "ursprung": [
+      -7.0,
+      12.0,
+      -1.0
+     ],
+     "groesse": [
+      2.0,
+      12.0,
+      2.0
+     ],
+     "uv": [
+      24.0,
+      0.0
+     ],
+     "spiegeln": false
+    },
+    {
+     "teil": "rightleg",
+     "ursprung": [
+      -2.9,
+      1.0,
+      -1.0
+     ],
+     "groesse": [
+      2.0,
+      11.0,
+      2.0
+     ],
+     "uv": [
+      8.0,
+      0.0
+     ],
+     "spiegeln": false
+    }
+   ],
+   "quelle": "models/entity/armor_stand.geo.json (ohne Posen)"
+  }
+ },
+ "sockel": {
+  "oben": "bloecke/stone_slab_top.png",
+  "seite": "bloecke/stone_slab_side.png",
+  "hintergrund": "bloecke/stone.png"
+ },
+ "dimensionen": [
+  {
+   "id": "oberwelt",
+   "name": "Oberwelt",
+   "hintergrund": "bloecke/deepslate.png",
+   "sockel": {
+    "oben": "bloecke/polished_deepslate.png",
+    "seite": "bloecke/polished_deepslate.png"
+   }
+  },
+  {
+   "id": "nether",
+   "name": "Nether",
+   "hintergrund": "bloecke/netherrack.png",
+   "sockel": {
+    "oben": "bloecke/polished_blackstone.png",
+    "seite": "bloecke/polished_blackstone.png"
+   }
+  },
+  {
+   "id": "end",
+   "name": "End",
+   "hintergrund": "bloecke/obsidian.png",
+   "sockel": {
+    "oben": "bloecke/end_bricks.png",
+    "seite": "bloecke/end_bricks.png"
+   }
+  }
+ ]
+}

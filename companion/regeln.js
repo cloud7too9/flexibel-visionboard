@@ -55,29 +55,30 @@ const BIOME = Object.freeze(Object.entries(BIOM_GRUPPEN).flatMap(([gruppe, namen
 const biomFinden = (name) => BIOME.find((b) => b.name.toLowerCase() === String(name || "").trim().toLowerCase()) || null;
 
 /* ---- Sammelobjekte ------------------------------------------------------ */
-/* Sammelobjekte: Rüstungs-Modifikationen (Schmiedevorlagen). Deutsche Spielnamen laut
-   Minecraft-Wiki, Fundort = FeatureCategory der Karte → Verknüpfung zu bekannten Orten.
-   Stand: 18 Rüstungsbesätze (inkl. Fluss/Bolzen aus 1.21) + Netheritaufwertung. */
+/* Sammelobjekte: Rüstungs-Modifikationen (Schmiedevorlagen). Deutsche Namen wie in
+   Bedrock (texts/de_DE.lang, z. B. „Wächterzier“), englischer Name daneben.
+   Fundort = FeatureCategory der Karte → Verknüpfung zu bekannten Orten.
+   Stand: 18 Rüstungsbesätze (inkl. Fluss/Blitz aus 1.21) + Netheritaufwertung. */
 const SAMMELOBJEKTE = Object.freeze([
-  { id:"sentry",    name:"Wachen",      en:"Sentry",    kategorie:"Outpost",         dim:"overworld", quelle:"Truhe im Plünderer-Außenposten" },
-  { id:"dune",      name:"Dünen",       en:"Dune",      kategorie:"Desert Temple",   dim:"overworld", quelle:"Truhe im Wüstentempel" },
-  { id:"wild",      name:"Wildnis",     en:"Wild",      kategorie:"Jungle Temple",   dim:"overworld", quelle:"Truhe im Dschungeltempel" },
-  { id:"coast",     name:"Küsten",      en:"Coast",     kategorie:"Shipwreck",       dim:"overworld", quelle:"Schatz-, Karten- oder Vorratstruhe im Schiffswrack" },
-  { id:"wayfinder", name:"Wegfinder",   en:"Wayfinder", kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
-  { id:"raiser",    name:"Aufzieher",   en:"Raiser",    kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
-  { id:"shaper",    name:"Gestalter",   en:"Shaper",    kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
-  { id:"host",      name:"Gastwirts",   en:"Host",      kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
-  { id:"vex",       name:"Plagegeist",  en:"Vex",       kategorie:"Mansion",         dim:"overworld", quelle:"Truhe im Waldanwesen" },
-  { id:"tide",      name:"Gezeiten",    en:"Tide",      kategorie:"Monument",        dim:"overworld", quelle:"Drop vom Großen Wächter im Ozeanmonument" },
-  { id:"ward",      name:"Warthof",     en:"Ward",      kategorie:"Ancient City",    dim:"overworld", quelle:"Truhe in der Antiken Stätte" },
-  { id:"silence",   name:"Stille",      en:"Silence",   kategorie:"Ancient City",    dim:"overworld", quelle:"Truhe in der Antiken Stätte – sehr selten" },
-  { id:"bolt",      name:"Bolzen",      en:"Bolt",      kategorie:"Trial Chamber",   dim:"overworld", quelle:"Tresor in der Prüfungskammer" },
-  { id:"flow",      name:"Fluss",       en:"Flow",      kategorie:"Trial Chamber",   dim:"overworld", quelle:"Unheilvoller Tresor in der Prüfungskammer" },
-  { id:"eye",       name:"Augen",       en:"Eye",       kategorie:"Stronghold",      dim:"overworld", quelle:"Truhe am Altar oder in der Bibliothek der Festung" },
-  { id:"rib",       name:"Rippen",      en:"Rib",       kategorie:"Nether Fortress", dim:"nether",    quelle:"Truhe in der Netherfestung" },
-  { id:"snout",     name:"Schnauzen",   en:"Snout",     kategorie:"Bastion",         dim:"nether",    quelle:"Truhe in der Bastionsruine" },
-  { id:"netherite", name:"Netheritaufwertung", en:"Netherite Upgrade", kategorie:"Bastion", dim:"nether", quelle:"Truhe in der Bastionsruine, in der Schatzkammer am häufigsten", aufwertung:true },
-  { id:"spire",     name:"Turmspitzen", en:"Spire",     kategorie:"End City",        dim:"end",       quelle:"Truhe in der Endsiedlung" },
+  { id:"sentry",    name:"Wächterzier",    en:"Sentry",     kategorie:"Outpost",         dim:"overworld", quelle:"Truhe im Plünderer-Außenposten" },
+  { id:"dune",      name:"Dünenzier",      en:"Dune",       kategorie:"Desert Temple",   dim:"overworld", quelle:"Truhe im Wüstentempel" },
+  { id:"wild",      name:"Wilde Zier",     en:"Wild",       kategorie:"Jungle Temple",   dim:"overworld", quelle:"Truhe im Dschungeltempel" },
+  { id:"coast",     name:"Küstenzier",     en:"Coast",      kategorie:"Shipwreck",       dim:"overworld", quelle:"Schatz-, Karten- oder Vorratstruhe im Schiffswrack" },
+  { id:"wayfinder", name:"Wegfinderzier",  en:"Wayfinder",  kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
+  { id:"raiser",    name:"Erheberzier",    en:"Raiser",     kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
+  { id:"shaper",    name:"Formerzier",     en:"Shaper",     kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
+  { id:"host",      name:"Hüterzier",      en:"Host",       kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
+  { id:"vex",       name:"Plagegeistzier", en:"Vex",        kategorie:"Mansion",         dim:"overworld", quelle:"Truhe im Waldanwesen" },
+  { id:"tide",      name:"Gezeitenzier",   en:"Tide",       kategorie:"Monument",        dim:"overworld", quelle:"Drop vom Großen Wächter im Ozeanmonument" },
+  { id:"ward",      name:"Mündelzier",     en:"Ward",       kategorie:"Ancient City",    dim:"overworld", quelle:"Truhe in der Antiken Stätte" },
+  { id:"silence",   name:"Stillezier",     en:"Silence",    kategorie:"Ancient City",    dim:"overworld", quelle:"Truhe in der Antiken Stätte – sehr selten" },
+  { id:"bolt",      name:"Blitzzier",      en:"Bolt",       kategorie:"Trial Chamber",   dim:"overworld", quelle:"Tresor in der Prüfungskammer" },
+  { id:"flow",      name:"Flusszier",      en:"Flow",       kategorie:"Trial Chamber",   dim:"overworld", quelle:"Unheilvoller Tresor in der Prüfungskammer" },
+  { id:"eye",       name:"Augenzier",      en:"Eye",        kategorie:"Stronghold",      dim:"overworld", quelle:"Truhe am Altar oder in der Bibliothek der Festung" },
+  { id:"rib",       name:"Rippenzier",     en:"Rib",        kategorie:"Nether Fortress", dim:"nether",   quelle:"Truhe in der Netherfestung" },
+  { id:"snout",     name:"Schnauzezier",   en:"Snout",      kategorie:"Bastion",         dim:"nether",   quelle:"Truhe in der Bastionsruine" },
+  { id:"netherite", name:"Netheritaufwertung", en:"Netherite Upgrade", kategorie:"Bastion",         dim:"nether",   quelle:"Truhe in der Bastionsruine, in der Schatzkammer am häufigsten", aufwertung:true },
+  { id:"spire",     name:"Turmzier",       en:"Spire",      kategorie:"End City",        dim:"end",      quelle:"Truhe in der Endsiedlung" },
 ]);
 
 /* ---- Banner: Farben, Muster, Webstuhl ----------------------------------- */
@@ -200,6 +201,78 @@ function bannerPruefen(b){
   return null;
 }
 const bannerSauber = (b) => ({ name:String(b.name).trim(), basis:b.basis, ebenen:b.ebenen.map(({ muster, farbe }) => ({ muster, farbe })) });
+
+/* ---- Rüstung: Sets aus vier Teilen mit Besatz ---------------------------- */
+/* Namen wie in Bedrock (texts/de_DE.lang). IDs wie im Rüstungs-Baukasten
+   (ruestungs-baukasten/manifest.json) – ein Test prüft, dass beides zusammenpasst.
+   Besatz-Muster = die Rüstungsbesätze aus SAMMELOBJEKTE (gleiche IDs). */
+const RUESTUNGS_TEILE = Object.freeze([
+  { id:"helmet",     name:"Helm" },
+  { id:"chestplate", name:"Harnisch" },
+  { id:"leggings",   name:"Beinschutz" },
+  { id:"boots",      name:"Stiefel" },
+]);
+const RUESTUNGEN = Object.freeze([
+  { id:"leather",   name:"Leder",       faerbbar:true, teile:{ helmet:"Lederkappe", chestplate:"Lederjacke", leggings:"Lederhose", boots:"Lederstiefel" } },
+  { id:"chainmail", name:"Kette",       teile:{ helmet:"Kettenhemd-Helm", chestplate:"Kettenhemd-Harnisch", leggings:"Kettenhemd-Beinschutz", boots:"Kettenhemd-Stiefel" } },
+  { id:"copper",    name:"Kupfer",      teile:{ helmet:"Kupferhelm", chestplate:"Kupferharnisch", leggings:"Kupferbeinschutz", boots:"Kupferstiefel" } },
+  { id:"iron",      name:"Eisen",       teile:{ helmet:"Eisenhelm", chestplate:"Eisenharnisch", leggings:"Eisenbeinschutz", boots:"Eisenstiefel" } },
+  { id:"gold",      name:"Gold",        teile:{ helmet:"Goldhelm", chestplate:"Goldharnisch", leggings:"Goldbeinschutz", boots:"Goldstiefel" } },
+  { id:"diamond",   name:"Diamant",     teile:{ helmet:"Diamanthelm", chestplate:"Diamantharnisch", leggings:"Diamantbeinschutz", boots:"Diamantstiefel" } },
+  { id:"netherite", name:"Netherit",    teile:{ helmet:"Netherithelm", chestplate:"Netheritharnisch", leggings:"Netheritbeinschutz", boots:"Netheritstiefel" } },
+  { id:"turtle",    name:"Schildkröte", teile:{ helmet:"Schildkrötenpanzer" } },
+]);
+/* Besatz-Materialien: zutat = Item für den Schmiedetisch (Icon-Name im Baukasten), hex = Farbpunkt */
+const BESATZ_MATERIALIEN = Object.freeze([
+  { id:"amethyst",  name:"Amethyst",  zutat:"Amethystscherbe", icon:"amethyst_shard",  hex:"#9a5cc6" },
+  { id:"copper",    name:"Kupfer",    zutat:"Kupferbarren",    icon:"copper_ingot",    hex:"#b4684d" },
+  { id:"diamond",   name:"Diamant",   zutat:"Diamant",         icon:"diamond",         hex:"#6eecd2" },
+  { id:"emerald",   name:"Smaragd",   zutat:"Smaragd",         icon:"emerald",         hex:"#11a036" },
+  { id:"gold",      name:"Gold",      zutat:"Goldbarren",      icon:"gold_ingot",      hex:"#deb12d" },
+  { id:"iron",      name:"Eisen",     zutat:"Eisenbarren",     icon:"iron_ingot",      hex:"#bfc9c8" },
+  { id:"lapis",     name:"Lapis",     zutat:"Lapislazuli",     icon:"dye_powder_blue", hex:"#21497b" },
+  { id:"netherite", name:"Netherit",  zutat:"Netheritbarren",  icon:"netherite_ingot", hex:"#443a3b" },
+  { id:"quartz",    name:"Quarz",     zutat:"Netherquarz",     icon:"quartz",          hex:"#e3dbc4" },
+  { id:"redstone",  name:"Redstone",  zutat:"Redstone-Staub",  icon:"redstone_dust",   hex:"#971607" },
+  { id:"resin",     name:"Harz",      zutat:"Harzziegel",      icon:"resin_brick",     hex:"#f0852a" },
+]);
+const LEDER_STANDARD = "#a06540";   // ungefärbtes Leder
+const ruestungsArt = (id) => RUESTUNGEN.find((r) => r.id === id) || null;
+const besatzMaterial = (id) => BESATZ_MATERIALIEN.find((m) => m.id === id) || null;
+const besatzMuster = (id) => SAMMELOBJEKTE.find((o) => o.id === id && !o.aufwertung) || null;
+
+/** Regeln für ein Rüstungs-Set – identisch im Server umzusetzen. Gibt Fehlertext oder null zurück. */
+function ruestungPruefen(s){
+  const name = String(s?.name ?? "").trim();
+  if(!name) return "Bitte einen Namen eingeben";
+  if(name.length > 60) return "Name ist zu lang (max. 60 Zeichen)";
+  if(!s.teile || typeof s.teile !== "object") return "Teile fehlen";
+  let anzahl = 0;
+  for(const { id, name:teilName } of RUESTUNGS_TEILE){
+    const t = s.teile[id];
+    if(t == null) continue;
+    const r = ruestungsArt(t.ruestung);
+    if(!r) return `${teilName}: Unbekannte Rüstung`;
+    if(!r.teile[id]) return `${r.name} gibt es nur als ${Object.values(r.teile).join(", ")}`;
+    if(t.muster != null && !besatzMuster(t.muster)) return `${teilName}: Unbekannter Rüstungsbesatz`;
+    if(t.muster != null && !besatzMaterial(t.material)) return `${teilName}: Material für den Besatz fehlt`;
+    if(t.farbe != null && r.faerbbar && !FARBEN.some((f) => f.id === t.farbe)) return `${teilName}: Unbekannte Farbe`;
+    anzahl += 1;
+  }
+  if(!anzahl) return "Mindestens ein Rüstungsteil auswählen";
+  return null;
+}
+/** Nur bekannte Felder; Material ohne Besatz und Farbe bei nicht färbbarer Rüstung fallen weg. */
+const ruestungSauber = (s) => ({
+  name:String(s.name).trim(),
+  teile:Object.fromEntries(RUESTUNGS_TEILE.map(({ id }) => {
+    const t = s.teile[id];
+    if(t == null) return [id, null];
+    const muster = t.muster ?? null;
+    return [id, { ruestung:t.ruestung, muster, material:muster ? t.material : null,
+                  farbe:ruestungsArt(t.ruestung).faerbbar ? t.farbe ?? null : null, verzaubert:Boolean(t.verzaubert) }];
+  })),
+});
 
 /* ---- Regeln · Karte ----------------------------------------------------- */
 /** Regeln für neue Instanzen – identisch im Server umzusetzen. Gibt Fehlertext oder null zurück. */

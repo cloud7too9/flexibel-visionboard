@@ -3,6 +3,7 @@
 // `geaendert` den Bereich, damit Handys und Anzeige neu laden bzw. neu zeichnen.
 import { DatenFehler } from './daten.js';
 import { screenshotAuslesen, fuerCompanion } from './erkennung.js';
+import { bannerAuslesen } from './banner-erkennung.js';
 
 const BILDER = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -52,7 +53,8 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
     geaendert('orte', weltId);
     return { ok: true };
   });
-  // Seed-Map-Screenshot auslesen (lokale OCR des Boards) – das Bild wird nicht gespeichert
+  // Screenshot auslesen (lokale OCR des Boards) – das Bild wird nicht gespeichert.
+  // Erst als Seed-Map-Popup (Ort), sonst als Banner-Anleitung (banner).
   app.post('/orte/auslesen', async (req) => {
     const teil = await req.file();
     if (!teil) throw new DatenFehler(400, 'Keine Datei');
@@ -60,8 +62,10 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
       teil.file.resume();
       throw new DatenFehler(415, 'Nur Bilder (JPG, PNG, WebP)');
     }
-    const { erkannt } = await screenshotAuslesen(await teil.toBuffer());
-    return { erkannt: fuerCompanion(erkannt) };
+    const bild = await teil.toBuffer();
+    const { erkannt } = await screenshotAuslesen(bild);
+    const banner = erkannt ? null : await bannerAuslesen(bild, teil.mimetype);
+    return { erkannt: fuerCompanion(erkannt), banner };
   });
 
   // ---- Sammelobjekte ----
@@ -105,6 +109,24 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
   app.delete('/banner/:id', async (req) => {
     daten.bannerLoeschen(req.params.id);
     geaendert('banner');
+    return { ok: true };
+  });
+
+  // ---- Rüstungs-Sets (für alle Welten) ----
+  app.get('/ruestung', async () => ({ sets: daten.ruestungListe() }));
+  app.post('/ruestung', async (req, reply) => {
+    const set = daten.ruestungAnlegen(req.body, req.nutzer.name);
+    geaendert('ruestung');
+    return reply.code(201).send({ set });
+  });
+  app.put('/ruestung/:id', async (req) => {
+    const set = daten.ruestungAendern(req.params.id, req.body);
+    geaendert('ruestung');
+    return { set };
+  });
+  app.delete('/ruestung/:id', async (req) => {
+    daten.ruestungLoeschen(req.params.id);
+    geaendert('ruestung');
     return { ok: true };
   });
 
