@@ -493,6 +493,11 @@ body {
   border:1px solid var(--border-soft); }
 .ach-item.earned .ach-icon { background:var(--accent-soft); color:var(--accent);
   border-color:var(--accent); }
+/* Pixel-Icons aus dem Rüstungs-Baukasten (16×16) – scharf vergrößert */
+.item-bild { display:block; image-rendering:pixelated; image-rendering:crisp-edges; }
+.ach-item .ach-icon .item-bild { width:26px; height:26px; }
+.ach-item:not(.earned) .ach-icon .item-bild { opacity:.5; filter:grayscale(.7); }
+.sheet-kopf-bild .item-bild { width:34px; height:34px; }
 .ach-item .ach-body { flex:1; min-width:0; }
 .ach-item .ach-name { font-size:14px; font-weight:700; color:var(--text-dim);
   line-height:1.3; }
@@ -743,6 +748,143 @@ button.switch { padding:0; }
   display:grid; place-items:center; cursor:pointer; transition:border-color .2s, background .2s; }
 .muster-feld img { width:20px; height:40px; image-rendering:pixelated; display:block; }
 .muster-feld.aktiv { border-color:var(--accent); background:var(--accent-soft); }
+
+/* ---- Rüstung  ·  Sets am Schmiedetisch (Liste, Detail, Editor, Bühne) ------ */
+.ruestung-stage { padding-top:2px; }
+/* Item-Rahmen: Icon + Verzauberungs-Schimmer (das Icon ist die Maske) */
+.item-rahmen { position:relative; display:inline-block; line-height:0; flex:0 0 auto; }
+.item-rahmen.leer .item-bild { opacity:.35; }
+.glanz-schicht { position:absolute; inset:0; pointer-events:none;
+  -webkit-mask:var(--maske) center / 100% 100% no-repeat; mask:var(--maske) center / 100% 100% no-repeat;
+  background:linear-gradient(120deg, transparent 22%, rgba(196,130,255,.85) 34%, transparent 46%, transparent 58%, rgba(160,96,255,.6) 68%, transparent 80%) 0 0 / 300% 300%;
+  mix-blend-mode:screen; animation:glanz 3.4s linear infinite; }
+@keyframes glanz { from { background-position:100% 100%; } to { background-position:0 0; } }
+@media (prefers-reduced-motion: reduce) { .glanz-schicht { animation:none; background-position:50% 50%; } }
+.item-rahmen.glanz:not(:has(.glanz-schicht)) .item-bild { filter:drop-shadow(0 0 2px rgba(186,120,255,.95)); }
+
+.ruestung-karte { flex-direction:row; align-items:center; gap:14px; text-align:left; cursor:pointer; font:inherit; color:var(--text); width:100%; }
+.ruestung-karte:active { background:var(--surface-3); }
+.ruestung-icons { display:grid; grid-template-columns:repeat(2, 30px); gap:4px; padding:7px; border-radius:12px;
+  background:var(--surface-3); border:1px solid var(--border-soft); flex:0 0 auto; }
+.ruestung-icons .item-bild { width:30px; height:30px; }
+.ruestung-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+.ruestung-text .card-meta { margin-top:0; }
+.besatz-reihe { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:3px; }
+.besatz-reihe .pill { margin-left:4px; }
+.vorlage-mini { position:relative; width:24px; height:24px; border-radius:6px; display:grid; place-items:center;
+  background:var(--surface-3); border:1px solid var(--border-soft); }
+.vorlage-mini .item-bild { width:18px; height:18px; opacity:.45; filter:grayscale(.8); }
+.vorlage-mini.gefunden { border-color:var(--accent); background:var(--accent-soft); }
+.vorlage-mini.gefunden .item-bild { opacity:1; filter:none; }
+
+/* Bühne: Figur vor dem Block der Dimension */
+.buehne { position:relative; border-radius:16px; overflow:hidden; border:1px solid var(--border-soft);
+  background:linear-gradient(rgba(10,12,16,.35), rgba(10,12,16,.72)), var(--hintergrund) 0 0 / 48px 48px;
+  image-rendering:pixelated; }
+.buehne-flaeche { height:300px; display:grid; place-items:center; }
+.buehne.klein .buehne-flaeche { height:180px; }
+.buehne-flaeche .dreher { width:22px; height:22px; margin:0; }
+.figur-3d { width:100%; height:100%; display:block; touch-action:pan-y; cursor:grab; }
+.figur-3d:active { cursor:grabbing; }
+.figur-2d { height:92%; width:auto; image-rendering:pixelated; image-rendering:crisp-edges; cursor:pointer;
+  filter:drop-shadow(0 10px 14px rgba(0,0,0,.55)); }
+.buehne-icons { display:grid; grid-template-columns:repeat(2, 64px); gap:12px; }
+.buehne.klein .buehne-icons { grid-template-columns:repeat(4, 48px); }
+.buehne-icons .item-bild { width:64px; height:64px; filter:drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
+.buehne.klein .buehne-icons .item-bild { width:48px; height:48px; }
+.buehne-leiste { display:flex; gap:5px; flex-wrap:wrap; padding:7px 8px; background:rgba(8,10,13,.55);
+  border-top:1px solid rgba(255,255,255,.08); }
+.buehne-knopf { border:1px solid rgba(255,255,255,.14); background:rgba(12,14,18,.62); color:rgba(255,255,255,.78);
+  border-radius:9px; padding:5px 9px; font:inherit; font-size:11.5px; font-weight:700; cursor:pointer; backdrop-filter:blur(6px); }
+.buehne-knopf.aktiv { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+.buehne-knopf.traeger { margin-left:auto; }
+.buehne-hinweis { position:absolute; top:8px; left:10px; right:10px; text-align:right; font-size:11px; font-weight:600;
+  color:rgba(255,255,255,.62); pointer-events:none; text-shadow:0 1px 2px rgba(0,0,0,.8); }
+.buehne-hinweis:empty { display:none; }
+
+/* Schmiedetisch: Vorlage + Rüstung + Material → Ergebnis */
+.slot { width:44px; height:44px; flex:0 0 auto; display:grid; place-items:center; padding:0;
+  background:#8b8b8b; border:2px solid; border-color:#373737 #fff #fff #373737; border-radius:2px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); font:inherit; color:inherit; }
+.slot .item-bild { width:32px; height:32px; }
+.slot .geist { line-height:0; opacity:.22; filter:grayscale(1) brightness(1.6); }
+.slot.ergebnis { width:50px; height:50px; }
+.slot.ergebnis .item-bild { width:38px; height:38px; }
+.rezept-pfeil { color:var(--text-faint); display:grid; place-items:center; flex:0 0 auto; }
+.rezept { gap:10px; }
+.rezept-zeile { display:flex; align-items:center; gap:6px; }
+.rezept-text { display:flex; flex-direction:column; gap:2px; }
+.rezept-text b { font-size:14.5px; }
+.rezept-text small { font-size:12px; color:var(--text-faint); line-height:1.4; display:flex; align-items:center; flex-wrap:wrap; gap:0 5px; }
+.rezept-text .en { font-weight:600; font-size:11px; margin-left:4px; }
+.rezept-text .verz, .schmiede-text .verz { color:#c49bff; font-weight:700; }
+.farbpunkt.klein { width:11px; height:11px; border-radius:3px; }
+.besatz-status { display:flex; align-items:center; gap:8px; border-radius:10px; padding:8px 10px; font:inherit; font-size:12.5px;
+  font-weight:600; text-align:left; border:none; width:100%; }
+.besatz-status.ok { background:rgba(58,209,122,.14); color:#5fe09a; }
+.besatz-status.fehlt { background:rgba(232,180,68,.14); color:#f0c468; cursor:pointer; }
+.besatz-status .kb { width:22px; height:22px; display:grid; place-items:center; flex:0 0 auto; font-family:ui-monospace,monospace; }
+.besatz-status .kb .kennblock { width:22px; height:22px; }
+.besatz-status .weiter { margin-left:auto; font-size:16px; }
+.bedarf { gap:8px; }
+.bedarf-zeile { display:flex; align-items:center; gap:10px; font-size:13px; color:var(--text-dim); }
+.bedarf-zeile .item-bild { width:24px; height:24px; }
+.bedarf-zeile > span:not(.pill) { flex:1; min-width:0; }
+.bedarf-zeile b { color:var(--text); font-variant-numeric:tabular-nums; }
+.bedarf-zeile small { display:block; font-size:11px; color:var(--text-faint); }
+
+/* Verzauberung am Amboss */
+.verz { padding:0; gap:0; overflow:hidden; }
+.verz.offen { border-color:var(--accent); }
+.verz-kopf { display:flex; align-items:center; gap:10px; width:100%; background:none; border:none; color:var(--text);
+  font:inherit; text-align:left; cursor:pointer; padding:10px 12px; }
+.verz-kopf .item-bild { width:28px; height:28px; }
+.verz-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.verz-text b { font-size:14px; }
+.verz-text small { font-size:11.5px; color:var(--text-faint); line-height:1.4; }
+.verz.offen .ach-cat-chevron { transform:rotate(180deg); }
+.verz-schritte { padding:0 10px 12px; }
+.amboss { gap:8px; }
+.amboss-seite { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; font-size:12.5px; }
+.amboss-seite small { font-size:11px; color:var(--text-faint); line-height:1.3; }
+.amboss .plus { color:var(--text-faint); font-weight:800; }
+.amboss .xp { font:800 14px ui-monospace,monospace; color:#9be36a; text-align:right; flex:0 0 auto; }
+.amboss .xp small { font-size:9px; margin-left:1px; }
+.amboss.erledigt .amboss-seite, .amboss.erledigt .xp { opacity:.5; }
+
+/* Editor */
+.ruestung-editor-kopf { position:sticky; top:-1px; z-index:2; background:var(--surface); padding:2px 0 8px; margin-bottom:-8px; }
+.teil-reiter { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+.teil-knopf { display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 2px 7px; border-radius:12px;
+  background:var(--surface-2); border:1.5px solid var(--border-soft); color:var(--text-dim); font:inherit; font-size:11px; font-weight:700; cursor:pointer; }
+.teil-knopf .item-bild { width:30px; height:30px; }
+.teil-knopf.aktiv { border-color:var(--accent); background:var(--accent-soft); color:var(--text); }
+.schmiede { gap:12px; }
+.schmiedetisch { display:flex; align-items:center; justify-content:center; gap:8px; padding:12px 6px; border-radius:6px;
+  background:#c6c6c6; border:2px solid; border-color:#fff #555 #555 #fff; }
+.schmiedetisch .slot { cursor:pointer; }
+.schmiedetisch .slot.aktiv { outline:3px solid var(--accent); outline-offset:1px; }
+.schmiedetisch .slot:disabled { cursor:default; opacity:.55; }
+.schmiedetisch .rezept-pfeil { color:#555; }
+.schmiede-text { display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center; }
+.schmiede-text b { font-size:15px; }
+.schmiede-text small { font-size:12px; color:var(--text-faint); }
+.wahl-bereich { display:flex; flex-direction:column; gap:8px; }
+.wahl-raster { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+.wahl { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; padding:8px 2px 6px; border-radius:10px;
+  background:var(--surface); border:1.5px solid var(--border-soft); color:var(--text-dim); font:inherit; font-size:10.5px;
+  font-weight:600; line-height:1.2; text-align:center; cursor:pointer; min-width:0; }
+.wahl span { overflow-wrap:break-word; hyphens:auto; max-width:100%; }
+.wahl-raster.drei { grid-template-columns:repeat(3, 1fr); }
+.wahl .item-bild { width:30px; height:30px; }
+.wahl.aktiv { border-color:var(--accent); background:var(--accent-soft); color:var(--text); }
+.wahl .haken { position:absolute; top:3px; right:5px; font-style:normal; font-size:11px; font-weight:800; color:#5fe09a; }
+.wahl-leer { width:30px; height:30px; display:grid; place-items:center; font-size:18px; color:var(--text-faint); }
+.schmiede .farbraster { grid-template-columns:repeat(9, 1fr); }
+.schmiede .farbraster .farbfeld:first-child { box-shadow:inset 0 0 0 1px rgba(0,0,0,.35), inset 0 0 0 3px rgba(255,255,255,.18); }
+.verz-schalter { padding:6px 2px 2px; border-bottom:none; }
+.verz-schalter .oname { font-size:14px; }
+.verz-schalter .oname, .verz-schalter .odesc { display:block; }
 
 /* ---- Portal-Verwaltung  ·  Umrechner, Verbindungen, Infokarte ------------- */
 .portal-stage { padding-top:2px; }
@@ -1008,6 +1150,20 @@ button.switch { padding:0; }
       </nav>
     </section>
 
+    <!-- === Modul: Rüstung · Sets am Schmiedetisch =========================== -->
+    <section class="module" data-module="ruestung" id="moduleRuestung">
+      <div class="orte-stage ruestung-stage">
+        <div class="list-stack" id="ruestungListe"></div>
+      </div>
+      <nav class="bottombar">
+        <div class="bb-placeholder">Sets gelten für alle Welten · ✓ = Besatz in dieser Welt gefunden</div>
+        <button class="bb-item active" id="ruestungNeuBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+          <span class="lab">Neues Set</span>
+        </button>
+      </nav>
+    </section>
+
   </main>
 
   <!-- EBENE 1 · Sidebar – wird aus BEREICHE gebaut -->
@@ -1175,6 +1331,13 @@ function kennblockBild(kategorie){
   return img.complete && img.naturalWidth ? img : null;
 }
 
+/* Rüstungs-Baukasten (ruestungs-baukasten/, Bedrock-Texturen): Schmiedevorlagen, Zutaten und
+   1116 fertige Rüstungs-Icons als <img> – das geht auch als Datei. Umfärben und 3D-Figur
+   brauchen Canvas-Pixel und laufen nur über http (siehe 9g). */
+const BAUKASTEN = "ruestungs-baukasten/";
+const vorlageDatei = (o) => `${BAUKASTEN}vorlagen/${o.aufwertung ? "netherite_upgrade" : `${o.id}_armor_trim`}_smithing_template.png`;
+const itemBild = (datei, alt = "") => `<img class="item-bild" src="${datei}" alt="${esc(alt)}" draggable="false">`;
+
 const SAM_ZAEHLT = SAMMELOBJEKTE.filter((o) => !o.aufwertung);
 // Fundorte in fester Reihenfolge (Oberwelt → Nether → End)
 const FUNDORTE = SAMMELOBJEKTE.reduce((liste, o) => {
@@ -1279,6 +1442,14 @@ function koordinatenErkennen(text){
    DELETE /banner/:id                         → { ok:true }
    banner = { id, name, basis, ebenen:[{ muster, farbe }], von, am }
 
+   Rüstungs-Sets (für alle Welten gleich, Regeln siehe ruestungPruefen()):
+   GET    /ruestung                          → { sets:[set] }
+   POST   /ruestung      { name, teile }     → { set }
+   PUT    /ruestung/:id  { name, teile }     → { set }
+   DELETE /ruestung/:id                      → { ok:true }
+   set = { id, name, teile:{ helmet|chestplate|leggings|boots:
+             { ruestung, muster|null, material|null, farbe|null, verzaubert } | null }, von, am }
+
    Portal-Verbindungen (je Welt, für alle gemeinsam, Regeln siehe verbindungRegelPruefen()):
    GET    /portale/welten/:id                                  → { verbindungen:[verbindung] }
    POST   /portale/welten/:id   { name, oberwelt, nether }     → { verbindung }
@@ -1368,6 +1539,16 @@ const MOCK = (() => {
         { muster:"gradient", farbe:"black" }, { muster:"rhombus", farbe:"magenta" }, { muster:"stripe_center", farbe:"purple" }, { muster:"border", farbe:"black" }], von:"Max", am:"2026-09-23" },
     { id:"b_4", name:"Prüfungskammer", basis:"cyan", ebenen:[{ muster:"bricks", farbe:"gray" }, { muster:"flow", farbe:"white" }, { muster:"border", farbe:"black" }], von:"Tom", am:"2026-09-25" },
   ];
+  // Rüstungs-Sets (weltunabhängig) – nach den Vorlagen in referenz/ruestung/
+  const teil = (ruestung, muster, material, verzaubert = true, farbe = null) => ({ ruestung, muster, material, farbe, verzaubert });
+  const ruestung = [
+    { id:"r_1", name:"Amethyst-Netherit", teile:{ helmet:teil("netherite", "flow", "amethyst"), chestplate:teil("netherite", "silence", "amethyst"),
+        leggings:teil("netherite", "tide", "amethyst"), boots:teil("netherite", "silence", "amethyst") }, von:"Lena", am:"2026-09-20" },
+    { id:"r_2", name:"Umbreon", teile:{ helmet:teil("netherite", "eye", "redstone"), chestplate:teil("netherite", "ward", "gold"),
+        leggings:teil("netherite", "ward", "gold"), boots:teil("netherite", "host", "gold") }, von:"Max", am:"2026-09-23" },
+    { id:"r_3", name:"Taucher", teile:{ helmet:teil("turtle", "coast", "lapis", false), chestplate:teil("leather", null, null, false, "cyan"),
+        leggings:teil("leather", "tide", "diamond", false, "blue"), boots:null }, von:"Tom", am:"2026-09-26" },
+  ];
   // Portal-Verbindungen der Beispielwelt: passt · einseitig · Nether-Portal zu weit weg
   const portale = {
     w_1: [
@@ -1376,7 +1557,7 @@ const MOCK = (() => {
       { id:"p_3", name:"Dorf", oberwelt:{ x:640, y:64, z:-1120 }, nether:{ x:100, y:70, z:-150 }, von:"Lena", am:"2026-09-24" },
     ],
   };
-  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, banner, portale, ich:"Max" };
+  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, banner, ruestung, portale, ich:"Max" };
 })();
 
 function mockApi(path, opts){
@@ -1503,6 +1684,26 @@ function mockApi(path, opts){
       const problem = bannerPruefen(body); if(problem) return fehler(422, problem);
       Object.assign(b, bannerSauber(body));
       return ok({ banner:structuredClone(b) });
+    }
+  }
+
+  if(path === "/ruestung"){
+    if(method === "GET") return ok({ sets:MOCK.ruestung.map((x) => structuredClone(x)) });
+    if(method === "POST"){
+      const problem = ruestungPruefen(body); if(problem) return fehler(422, problem);
+      const x = { id:MOCK.neueId("r"), ...ruestungSauber(body), von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
+      MOCK.ruestung.unshift(x);
+      return ok({ set:structuredClone(x) }, 201);
+    }
+  }
+  if((m = path.match(/^\/ruestung\/([\w-]+)$/))){
+    const x = MOCK.ruestung.find((y) => y.id === m[1]);
+    if(!x) return fehler(404, "Rüstungs-Set nicht gefunden");
+    if(method === "DELETE"){ MOCK.ruestung.splice(MOCK.ruestung.indexOf(x), 1); return ok({ ok:true }); }
+    if(method === "PUT"){
+      const problem = ruestungPruefen(body); if(problem) return fehler(422, problem);
+      Object.assign(x, ruestungSauber(body));
+      return ok({ set:structuredClone(x) });
     }
   }
 
@@ -1654,6 +1855,11 @@ function renderKopf(){
     $sub.innerHTML = `<b>${bn.liste.length} ${bn.liste.length === 1 ? "Bauplan" : "Baupläne"}</b> · für alle Welten`;
     return;
   }
+  if(aktivesModul === "ruestung"){
+    // Sets gelten für alle Welten, „gefunden“ bezieht sich auf die aktuelle
+    $sub.innerHTML = `<b>${rs.sets.length} ${rs.sets.length === 1 ? "Set" : "Sets"}</b> · Besätze aus Welt ${seed}`;
+    return;
+  }
   $sub.innerHTML = `Welt ${seed} · <b>${dimLabel(st.dim)}</b>`;
   $tabs.querySelectorAll(".tab").forEach((b) => {
     b.classList.toggle("active", b.dataset.dim === st.dim);
@@ -1745,6 +1951,7 @@ function render(){
   renderKopf();
   if(aktivesModul === "sammelobjekte"){ renderSammel(); return; }
   if(aktivesModul === "banner"){ renderBanner(); return; }
+  if(aktivesModul === "ruestung"){ renderRuestung(); return; }
   if(aktivesModul === "portale"){ renderPortale(); return; }
   if(st.ansicht === "liste"){ renderHud(); renderFilter(); renderListe(); }
   else karte.zeichnen();
@@ -2387,7 +2594,7 @@ function toast(text, fehler){
    des iOS-Kontrollzentrums (siehe README → Dashboard-Ansichten).
    Bereiche: Karte (Live-Karte + Koordinaten-Sammlung), Sammelobjekte,
    Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung.
-   Umgesetzt sind Karte, Sammelobjekte, Portal-Verwaltung und Banner; ohne mount()
+   Umgesetzt sind Karte, Sammelobjekte, Portal-Verwaltung, Banner und Rüstung; ohne mount()
    erscheint ein Bereich in der Sidebar als „geplant“.
    ========================================================================== */
 const ICON = Object.freeze({
@@ -2415,7 +2622,9 @@ const BEREICHE = [
   { key:"banner",        titel:"Banner",              // Baupläne für Banner (Grundfarbe + Muster-Ebenen)
     mount:() => { applyTheme("overworld"); render(); bannerLaden(); },
     unmount:() => alleSchliessen() },
-  { key:"ruestung",      titel:"Rüstung" },           // Rüstungs-Sets: Material, Besatz, Verzauberungen
+  { key:"ruestung",      titel:"Rüstung",             // Rüstungs-Sets am Schmiedetisch, 3D-Figur, Besätze der Welt
+    mount:() => { applyTheme("overworld"); render(); ruestungLaden(); if(sam.weltId !== st.weltId) samLaden(); },
+    unmount:() => alleSchliessen() },
 ];
 let aktivesModul = "karte";
 function modulWechseln(key){
@@ -2468,7 +2677,8 @@ async function samLaden(){
   if(!r.ok){ toast(meldungAus(r), true); return; }
   sam.status = r.data.status || {};
   sam.weltId = st.weltId;
-  if(aktivesModul === "sammelobjekte") render();
+  if(aktivesModul === "sammelobjekte" || aktivesModul === "ruestung") render();
+  if(st.sheet === "ruestung") ruestungDetailOeffnen(rs.detail);   // „gefunden“ im offenen Set auffrischen
 }
 
 /** Bottom-Bar der Sammelobjekte: mit Board-Verbindung „Fortschritt aufs Board“, sonst der Hinweis */
@@ -2510,7 +2720,7 @@ function renderSammel(){
     const items = sichtbar.map((o) => {
       const s = sam.status[o.id];
       return `<div class="ach-item sam-item ${s ? "earned" : ""}" data-sam="${o.id}">
-        <div class="ach-icon">${esc(o.name.charAt(0))}</div>
+        <div class="ach-icon">${itemBild(vorlageDatei(o))}</div>
         <div class="ach-body">
           <div class="ach-name">${esc(o.name)}<span class="en">${esc(o.en)}</span></div>
           <div class="ach-desc">${esc(o.quelle)}</div>
@@ -2558,7 +2768,7 @@ function samDetailOeffnen(id){
       ${fund.length > 5 ? `<div class="result-hint">+ ${fund.length - 5} weitere auf der Karte</div>` : ""}`
     : `<div class="banner info">In dieser Welt noch nicht auf der Karte. Screenshot aus der Seed Map in der Karte hinzufügen.</div>
        <button class="btn-secondary" data-aktion="sam-zur-karte" data-dim="${o.dim}">Zur Karte</button>`;
-  const html = kopfHtml(esc(o.name), `${esc(o.en)} · ${o.aufwertung ? "Schmiedevorlage" : "Rüstungsbesatz"}`) + `<div class="orte-inhalt">
+  const html = kopfHtml(esc(o.name), `${esc(o.en)} · ${o.aufwertung ? "Schmiedevorlage" : "Rüstungsbesatz"}`, itemBild(vorlageDatei(o))) + `<div class="orte-inhalt">
     <div class="result-card">
       <div class="result-label">Fundort · <b>${dimLabel(o.dim)}</b></div>
       <div class="sam-fundort-kopf">
@@ -3462,6 +3672,7 @@ function anmeldungAbgelaufen(){
 async function liveAktualisieren({ bereich, weltId }){
   if(DEMO.enabled) return;
   if(bereich === "banner") return bannerLaden();
+  if(bereich === "ruestung") return ruestungLaden();
   if(bereich === "einstellungen") return boardEinstellungenLaden();
   if(bereich === "welten"){ await weltenAuffrischen(); return boardEinstellungenLaden(); }
   if(weltId && weltId !== st.weltId) return weltenAuffrischen();
@@ -3552,6 +3763,7 @@ const BOARD_KARTEN = {
   sammelstand: { titel:"Sammel-Fortschritt", karte:sammelStandKarte },  // Stand der Welt (ohne id)
   portal:      { titel:"Portal-Verbindung",  karte:portalKarte },       // beide Portale + Prüfung
   banner:      { titel:"Banner-Bauplan",     karte:bannerKarte },       // Vorschau + Material
+  ruestung:    { titel:"Rüstungs-Set",       karte:ruestungKarte },     // Figur + Teile + Besätze der Welt (async)
 };
 const koordBlock = (label, p, dim) => ({ art:"koordinaten", label, x:p.x, y:p.y ?? null, z:p.z, dimension:BOARD_DIM[dim] });
 
@@ -3617,7 +3829,7 @@ function ortKarte(id){
 }
 async function boardZeigen(quelle){
   const [art, ...rest] = quelle.split(":");
-  const karte = BOARD_KARTEN[art]?.karte(rest.join(":"));
+  const karte = await BOARD_KARTEN[art]?.karte(rest.join(":"));   // karte() darf async sein (Rüstung rendert die Figur)
   if(!karte) return toast("Das lässt sich nicht aufs Board legen", true);
   try { await boardSenden({ art:"zeigen", karte }); toast("Liegt auf dem Board"); }
   catch(f){ toast(String(f), true); }
@@ -3783,6 +3995,547 @@ document.addEventListener("visibilitychange", () => {
 });
 
 /* ============================================================================
+   9g · RÜSTUNG  ·  Sets am Schmiedetisch (Vorlage + Rüstung + Material je Teil),
+                    Figur auf dem Rüstungsständer, Besätze der aktuellen Welt
+   ----------------------------------------------------------------------------
+   Sets gelten für alle Welten (wie Banner), „gefunden“ kommt aus den
+   Sammelobjekten der aktuellen Welt. Grafik aus ruestungs-baukasten/:
+   · Icons: fertig/items/<ruestung>_<teil>[_<farbe|standard>][__<material>].png
+     als <img> – geht überall, auch als Datei.
+   · Figur: baukasten.js färbt die Texturen um (Canvas-Pixel), figur3d.js baut
+     daraus mit three.js (CDN) die drehbare 3D-Figur. Canvas-Pixel gibt es nur
+     über http (Board-Server). Ohne three.js → flache 2D-Figur, als Datei → Icons.
+   ========================================================================== */
+const THREE_URL = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+const rs = { sets:[], geladen:false, detail:null, entwurf:null, teil:"helmet", slot:"vorlage", offen:null };
+const $ruestungListe = document.getElementById("ruestungListe");
+const PFEIL = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h14M13 6l6 6-6 6"/></svg>';
+const BUEHNE_DIMS = Object.freeze([
+  { id:"oberwelt", name:"Oberwelt", hintergrund:"bloecke/deepslate.png" },
+  { id:"nether",   name:"Nether",   hintergrund:"bloecke/netherrack.png" },
+  { id:"end",      name:"End",      hintergrund:"bloecke/obsidian.png" },
+]);
+
+const teilName = (teilId) => RUESTUNGS_TEILE.find((t) => t.id === teilId)?.name || teilId;
+/** Name im Spiel, z. B. „Netherithelm“ */
+const itemName = (teilId, t) => ruestungsArt(t?.ruestung)?.teile[teilId] || teilName(teilId);
+const zutatDatei = (m) => `${BAUKASTEN}zutaten/${m.icon}.png`;
+/** Leerer Slot am Schmiedetisch: blasser Platzhalter wie im Spiel */
+const GEIST = { vorlage:`${BAUKASTEN}vorlagen/sentry_armor_trim_smithing_template.png`, material:`${BAUKASTEN}zutaten/iron_ingot.png` };
+const geistBild = (art) => `<span class="geist">${itemBild(GEIST[art])}</span>`;
+const ohneBesatz = (t) => t && { ...t, muster:null, material:null, verzaubert:false };
+function teilIconDatei(teilId, t){
+  if(!t) return `${BAUKASTEN}slots/empty_armor_slot_${teilId}.png`;
+  const farbe = ruestungsArt(t.ruestung)?.faerbbar ? `_${t.farbe || "standard"}` : "";
+  return `${BAUKASTEN}fertig/items/${t.ruestung}_${teilId}${farbe}${t.muster && t.material ? `__${t.material}` : ""}.png`;
+}
+/** Item-Icon eines Teils; verzauberte Teile schimmern. Über http mit dem Icon als Maske,
+    als Datei nur mit violettem Schein (Masken-Bilder brauchen CORS, file:// hat keins). */
+const MASKE_GEHT = location.protocol.startsWith("http");
+function teilIcon(teilId, t){
+  const datei = teilIconDatei(teilId, t);
+  return `<span class="item-rahmen ${t ? "" : "leer"} ${t?.verzaubert ? "glanz" : ""}">${itemBild(datei, t ? itemName(teilId, t) : teilName(teilId))}${t?.verzaubert && MASKE_GEHT
+    ? `<span class="glanz-schicht" style="--maske:url('${datei}')"></span>` : ""}</span>`;
+}
+const vorlageMini = (id) => {
+  const o = besatzMuster(id);
+  return `<span class="vorlage-mini ${sam.status[id] ? "gefunden" : ""}" title="${esc(o.name)}${sam.status[id] ? " – gefunden" : ""}">${itemBild(vorlageDatei(o), o.name)}</span>`;
+};
+
+/** Welche Rüstungsbesätze braucht das Set, welche sind in dieser Welt schon gefunden? */
+function besatzStand(s){
+  const muster = RUESTUNGS_TEILE.map(({ id }) => s.teile[id]?.muster).filter(Boolean);
+  const verschieden = [...new Set(muster)];
+  return {
+    muster, verschieden,
+    gefunden: verschieden.filter((m) => sam.status[m]),
+    netherit: RUESTUNGS_TEILE.filter(({ id }) => s.teile[id]?.ruestung === "netherite").length,
+  };
+}
+const zaehlen = (liste) => [...liste.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map())];
+
+async function ruestungLaden(){
+  const r = await api("/ruestung");
+  if(!r.ok){ toast(meldungAus(r), true); return; }
+  rs.sets = r.data.sets;
+  rs.geladen = true;
+  if(aktivesModul === "ruestung") render();
+  if(st.sheet === "ruestung") rs.sets.some((x) => x.id === rs.detail) ? ruestungDetailOeffnen(rs.detail) : alleSchliessen();
+}
+
+function renderRuestung(){
+  if(!rs.geladen){ $ruestungListe.innerHTML = '<div class="empty-list"><span class="dreher"></span>Sets werden geladen …</div>'; return; }
+  $ruestungListe.innerHTML = rs.sets.map((s) => {
+    const b = besatzStand(s);
+    const teile = RUESTUNGS_TEILE.filter(({ id }) => s.teile[id]);
+    const arten = [...new Set(teile.map(({ id }) => ruestungsArt(s.teile[id].ruestung).name))].join(", ");
+    return `<button class="card ruestung-karte" data-set="${s.id}">
+      <span class="ruestung-icons">${RUESTUNGS_TEILE.map(({ id }) => teilIcon(id, s.teile[id])).join("")}</span>
+      <span class="ruestung-text">
+        <span class="card-title">${esc(s.name)}</span>
+        <span class="card-meta">${esc(arten)} · ${teile.length} ${teile.length === 1 ? "Teil" : "Teile"}${s.von ? ` · von ${esc(s.von)}` : ""}</span>
+        ${b.verschieden.length
+          ? `<span class="besatz-reihe">${b.verschieden.map(vorlageMini).join("")}
+              <span class="pill ${b.gefunden.length === b.verschieden.length ? "ok" : "warn"}">${b.gefunden.length}/${b.verschieden.length} gefunden</span></span>`
+          : '<span class="card-meta">Ohne Besatz</span>'}
+      </span>
+    </button>`;
+  }).join("") || '<div class="empty-list">Noch keine Rüstungs-Sets. Unten „Neues Set“ antippen.</div>';
+}
+
+// ---------- Detail ----------
+
+/** Eine Zeile am Schmiedetisch: Vorlage + Rüstung + Material → Ergebnis */
+function rezeptHtml(teilId, t){
+  const o = t.muster ? besatzMuster(t.muster) : null, m = o ? besatzMaterial(t.material) : null;
+  const slot = (inhalt, titel, klasse = "") => `<span class="slot ${klasse}" title="${esc(titel)}">${inhalt}</span>`;
+  const gefunden = o && sam.status[o.id];
+  const leder = ruestungsArt(t.ruestung)?.faerbbar
+    ? ` · <i class="farbpunkt klein" style="background:${t.farbe ? farbe(t.farbe).hex : LEDER_STANDARD}"></i> ${t.farbe ? farbe(t.farbe).de : "ungefärbt"}` : "";
+  return `<div class="card rezept">
+    <div class="rezept-zeile">
+      ${slot(o ? itemBild(vorlageDatei(o), o.name) : geistBild("vorlage"), o ? `Vorlage: ${o.name}` : "Keine Vorlage", o ? "" : "leer")}
+      ${slot(teilIcon(teilId, ohneBesatz(t)), itemName(teilId, t))}
+      ${slot(m ? itemBild(zutatDatei(m), m.zutat) : geistBild("material"), m ? m.zutat : "Kein Material", m ? "" : "leer")}
+      <span class="rezept-pfeil">${PFEIL}</span>
+      ${slot(teilIcon(teilId, t), "Ergebnis", "ergebnis")}
+    </div>
+    <div class="rezept-text">
+      <b>${esc(itemName(teilId, t))}</b>
+      <small>${o ? `${esc(o.name)}<span class="en">${esc(o.en)}</span> · ${esc(m.name)}` : "Ohne Besatz"}${leder}${t.verzaubert ? ' · <span class="verz">verzaubert</span>' : ""}</small>
+    </div>
+    ${!o ? "" : gefunden
+      ? `<div class="besatz-status ok">✓ In dieser Welt gefunden · ${esc(gefunden.von)}</div>`
+      : `<button class="besatz-status fehlt" data-aktion="zum-sammelobjekt" data-id="${o.id}">
+          <span class="kb">${kennblockHtml(o.kategorie)}</span><span>Fehlt noch · ${esc(strukturName(o.kategorie))}${o.dim !== "overworld" ? ` (${dimLabel(o.dim)})` : ""}</span><span class="weiter">›</span></button>`}
+  </div>`;
+}
+
+function bedarfHtml(s, b){
+  const aufwertung = SAMMELOBJEKTE.find((o) => o.aufwertung);
+  const zeile = (bild, text, status) => `<div class="bedarf-zeile">${bild}<span>${text}</span>${status ?? ""}</div>`;
+  const status = (id) => sam.status[id] ? '<span class="pill ok">gefunden</span>' : '<span class="pill warn">fehlt</span>';
+  const vorlagen = zaehlen(b.muster);
+  const materialien = zaehlen(RUESTUNGS_TEILE.map(({ id }) => s.teile[id]?.muster && s.teile[id].material).filter(Boolean));
+  const zeilen = [
+    ...vorlagen.map(([m, n]) => { const o = besatzMuster(m); return zeile(itemBild(vorlageDatei(o)), `<b>${n} ×</b> ${esc(o.name)}`, status(m)); }),
+    ...(b.netherit ? [zeile(itemBild(vorlageDatei(aufwertung)), `<b>${b.netherit} ×</b> Netheritaufwertung <small>+ Diamant-Teil + Netheritbarren</small>`, status(aufwertung.id))] : []),
+    ...materialien.map(([m, n]) => zeile(itemBild(zutatDatei(besatzMaterial(m))), `<b>${n} ×</b> ${esc(besatzMaterial(m).zutat)}`)),
+  ];
+  if(!zeilen.length) return "";
+  const mehrfach = vorlagen.some(([, n]) => n > 1) || b.netherit > 1;
+  return `<div class="result-card bedarf">
+    <div class="result-label">Du brauchst</div>
+    ${zeilen.join("")}
+    ${mehrfach ? '<p class="result-hint">Schmiedevorlagen werden verbraucht. Vervielfältigen an der Werkbank: Vorlage + 7 Diamanten + der Block, aus dem sie besteht (z. B. Netherrack bei Rippenzier).</p>' : ""}
+  </div>`;
+}
+
+/* Verzauberungs-Pläne je Teil – beste Verzauberung mit wenig XP (Vorlage: lighthousepng).
+   XP-Werte gelten für die Java Edition; in Bedrock können sie leicht abweichen.
+   Schritt = [links, rechts, xp]; links/rechts: { teil:true|false, v:[Verzauberungen] } */
+const T = (...v) => ({ teil:true, v }), B = (...v) => ({ teil:false, v });
+const VERZAUBERUNG = Object.freeze({
+  helmet:     { ziel:["Schutz IV", "Haltbarkeit III", "Atmung III", "Wasseraffinität", "Reparatur"], schritte:[
+    [T(), B("Atmung III"), 6], [B("Schutz IV"), B("Reparatur"), 2], [T("Atmung III"), B("Schutz IV", "Reparatur"), 8],
+    [B("Haltbarkeit III"), B("Wasseraffinität"), 2], [T("Atmung III", "Schutz IV", "Reparatur"), B("Haltbarkeit III", "Wasseraffinität"), 9]] },
+  chestplate: { ziel:["Schutz IV", "Haltbarkeit III", "Reparatur"], schritte:[
+    [T(), B("Schutz IV"), 4], [B("Haltbarkeit III"), B("Reparatur"), 4], [T("Schutz IV"), B("Haltbarkeit III", "Reparatur"), 5]] },
+  leggings:   { ziel:["Schutz IV", "Haltbarkeit III", "Reparatur", "Huschen III"], schritte:[
+    [T(), B("Huschen III"), 12], [B("Haltbarkeit III"), B("Reparatur"), 2], [T("Huschen III"), B("Haltbarkeit III", "Reparatur"), 7],
+    [T("Huschen III", "Haltbarkeit III", "Reparatur"), B("Schutz IV"), 7]] },
+  boots:      { ziel:["Schutz IV", "Haltbarkeit III", "Reparatur", "Wasserläufer III", "Seelenläufer III", "Federfall IV"], schritte:[
+    [T(), B("Seelenläufer III"), 12], [B("Wasserläufer III"), B("Federfall IV"), 3], [T("Seelenläufer III"), B("Wasserläufer III", "Federfall IV"), 11],
+    [B("Schutz IV"), B("Haltbarkeit III"), 2], [B("Schutz IV", "Haltbarkeit III"), B("Reparatur"), 10],
+    [T("Seelenläufer III", "Wasserläufer III", "Federfall IV"), B("Schutz IV", "Haltbarkeit III", "Reparatur"), 11]] },
+});
+const xpSumme = (teilId) => VERZAUBERUNG[teilId].schritte.reduce((n, s) => n + s[2], 0);
+const verzSchritte = (setId, teilId) => new Set(lsLesen(`ruestung.schritte.${setId}.${teilId}`) || []);
+const ambossSeite = (seite, name) => seite.teil
+  ? `<b>${esc(name)}</b>${seite.v.length ? `<small>${seite.v.map(esc).join(", ")}</small>` : ""}`
+  : `<b>Buch</b><small>${seite.v.map(esc).join(", ")}</small>`;
+
+function verzauberungHtml(s){
+  const teile = RUESTUNGS_TEILE.filter(({ id }) => s.teile[id]?.verzaubert);
+  if(!teile.length) return "";
+  return `<div class="field-group"><div class="field-group-label">Verzaubern am Amboss</div><div class="list-stack">${teile.map(({ id }) => {
+    const plan = VERZAUBERUNG[id], erledigt = verzSchritte(s.id, id), offen = rs.offen === id, name = itemName(id, s.teile[id]);
+    return `<div class="card verz ${offen ? "offen" : ""}">
+      <button class="verz-kopf" data-aktion="verz-auf" data-teil-id="${id}" aria-expanded="${offen}">
+        ${teilIcon(id, s.teile[id])}
+        <span class="verz-text"><b>${esc(name)}</b><small>${erledigt.size}/${plan.schritte.length} Schritte · ${xpSumme(id)} XP · ${plan.ziel.map(esc).join(" · ")}</small></span>
+        <span class="ach-cat-chevron">${CHEVRON}</span>
+      </button>
+      ${offen ? `<div class="list-stack verz-schritte">${plan.schritte.map(([l, r, xp], n) => `<button class="card schritt amboss ${erledigt.has(n) ? "erledigt" : ""}" data-aktion="verz-schritt" data-id="${s.id}" data-teil-id="${id}" data-n="${n}">
+          <span class="schritt-nr">${erledigt.has(n) ? "✓" : n + 1}</span>
+          <span class="amboss-seite">${ambossSeite(l, name)}</span><span class="plus">+</span><span class="amboss-seite">${ambossSeite(r, name)}</span>
+          <span class="xp">${xp}<small>XP</small></span></button>`).join("")}
+        <p class="result-hint">Reihenfolge mit wenig XP (Vorlage: lighthousepng) · XP-Werte aus der Java Edition, in Bedrock leicht abweichend. Abhaken gilt nur auf diesem Gerät.</p></div>` : ""}
+    </div>`;
+  }).join("")}</div></div>`;
+}
+function verzSchrittUmschalten(setId, teilId, n){
+  const erledigt = verzSchritte(setId, teilId);
+  erledigt.has(n) ? erledigt.delete(n) : erledigt.add(n);
+  lsSchreiben(`ruestung.schritte.${setId}.${teilId}`, erledigt.size ? [...erledigt] : null);
+  ruestungDetailOeffnen(setId);
+}
+
+function ruestungDetailOeffnen(id){
+  const s = rs.sets.find((x) => x.id === id); if(!s) return;
+  const scroll = st.sheet === "ruestung" && rs.detail === id ? $sheet.scrollTop : 0;
+  rs.detail = id;
+  const b = besatzStand(s);
+  const rezepte = RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).map(({ id:t }) => rezeptHtml(t, s.teile[t])).join("");
+  const html = kopfHtml(esc(s.name), `Rüstungs-Set · für alle Welten${s.von ? ` · von ${esc(s.von)}` : ""}`) + `<div class="orte-inhalt">
+    ${buehneHtml()}
+    ${b.verschieden.length ? `<div class="banner ${b.gefunden.length === b.verschieden.length ? "ok" : "warn"}">${b.gefunden.length === b.verschieden.length
+        ? "Alle Rüstungsbesätze sind in dieser Welt gefunden."
+        : `${b.gefunden.length} von ${b.verschieden.length} Rüstungsbesätzen in dieser Welt gefunden.`}</div>` : ""}
+    <div class="field-group"><div class="field-group-label">Am Schmiedetisch</div><div class="list-stack">${rezepte}</div></div>
+    ${bedarfHtml(s, b)}
+    ${verzauberungHtml(s)}
+    ${boardZeigenKnopf(`ruestung:${s.id}`)}
+    <div class="knopf-raster">
+      <button class="btn-primary" data-aktion="set-bearbeiten" data-id="${s.id}">Bearbeiten</button>
+      <button class="btn-danger" data-aktion="set-loeschen" data-id="${s.id}">Löschen</button>
+    </div>
+  </div>`;
+  sheetOeffnen("ruestung", html, "overworld");
+  $sheet.scrollTop = scroll;
+  boardZeigenKnoepfe();
+  buehneZeigen(s.teile);
+}
+
+async function ruestungLoeschen(id){
+  const r = await api(`/ruestung/${id}`, { method:"DELETE" });
+  if(!r.ok) return toast(meldungAus(r), true);
+  rs.sets = rs.sets.filter((x) => x.id !== id);
+  alleSchliessen(); render(); toast("Set gelöscht");
+}
+
+// ---------- Editor: der Schmiedetisch ----------
+
+const neuesTeil = (ruestung = "netherite") => ({ ruestung, muster:null, material:null, farbe:null, verzaubert:false });
+function ruestungEditorOeffnen(id){
+  const s = id ? rs.sets.find((x) => x.id === id) : null;
+  rs.entwurf = s ? structuredClone(s)
+    : { id:null, name:"", teile:Object.fromEntries(RUESTUNGS_TEILE.map(({ id:t }) => [t, { ...neuesTeil(), verzaubert:true }])) };
+  rs.teil = "helmet"; rs.slot = "vorlage";
+  ruestungEditorRendern();
+}
+
+function auswahlHtml(t){
+  const knopf = (attr, wert, aktiv, bild, name, extra = "") =>
+    `<button class="wahl ${aktiv ? "aktiv" : ""}" ${attr}="${wert}" aria-pressed="${aktiv}">${bild}<span>${esc(name)}</span>${extra}</button>`;
+  if(rs.slot === "ruestung"){
+    const arten = RUESTUNGEN.filter((r) => r.teile[rs.teil]);
+    return `<div class="field-group-label">Rüstung · ${esc(t ? itemName(rs.teil, t) : `kein ${teilName(rs.teil)}`)}</div>
+      <div class="wahl-raster">${knopf("data-wahl-ruestung", "", !t, itemBild(teilIconDatei(rs.teil, null)), "Ohne")}
+      ${arten.map((r) => knopf("data-wahl-ruestung", r.id, t?.ruestung === r.id, itemBild(teilIconDatei(rs.teil, neuesTeil(r.id)), r.teile[rs.teil]), r.name)).join("")}</div>`;
+  }
+  if(!t) return '<div class="banner info">Dieses Teil gehört nicht zum Set. Im Slot „Rüstung“ eine Rüstung wählen.</div>';
+  if(rs.slot === "material"){
+    if(!t.muster) return '<div class="banner info">Erst eine Vorlage wählen – ohne Besatz braucht es kein Material.</div>';
+    return `<div class="field-group-label">Material · ${esc(besatzMaterial(t.material)?.zutat || "noch keins")}</div>
+      <div class="wahl-raster drei">${BESATZ_MATERIALIEN.map((m) => knopf("data-wahl-material", m.id, t.material === m.id, itemBild(zutatDatei(m), m.zutat), m.name)).join("")}</div>`;
+  }
+  const gefunden = SAM_ZAEHLT.filter((o) => sam.status[o.id]).length;
+  return `<div class="field-group-label">Vorlage · ✓ in dieser Welt gefunden (${gefunden}/${SAM_ZAEHLT.length})</div>
+    <div class="wahl-raster drei">${knopf("data-wahl-muster", "", !t.muster, '<span class="wahl-leer">–</span>', "Ohne Besatz")}
+    ${SAM_ZAEHLT.map((o) => knopf("data-wahl-muster", o.id, t.muster === o.id, itemBild(vorlageDatei(o)), o.name,
+        sam.status[o.id] ? '<i class="haken" aria-label="gefunden">✓</i>' : "")).join("")}</div>`;
+}
+
+function ruestungEditorRendern(){
+  const e = rs.entwurf;
+  const name = document.getElementById("setName");
+  if(name && st.sheet === "ruestung-editor") e.name = name.value;
+  const scroll = st.sheet === "ruestung-editor" ? $sheet.scrollTop : 0;
+  const t = e.teile[rs.teil];
+  const o = t?.muster ? besatzMuster(t.muster) : null, m = o ? besatzMaterial(t.material) : null;
+  const slot = (art, inhalt, label, aus = false) =>
+    `<button class="slot ${rs.slot === art ? "aktiv" : ""}" data-slot="${art}" aria-label="${esc(label)}" ${aus ? "disabled" : ""}>${inhalt}</button>`;
+  const leder = t && ruestungsArt(t.ruestung)?.faerbbar ? `<div class="field-group">
+      <div class="field-group-label">Lederfarbe · ${t.farbe ? farbe(t.farbe).de : "ungefärbt"}</div>
+      <div class="farbraster">
+        <button class="farbfeld ${t.farbe ? "" : "aktiv"}" data-wahl-farbe="" style="background:${LEDER_STANDARD}" aria-label="Ungefärbt" title="Ungefärbt"></button>
+        ${FARBEN.map((f) => `<button class="farbfeld ${f.id === t.farbe ? "aktiv" : ""}" data-wahl-farbe="${f.id}" style="background:${f.hex}" aria-label="${f.de}" title="${f.de}"></button>`).join("")}
+      </div></div>` : "";
+  const html = kopfHtml(e.id ? "Set bearbeiten" : "Neues Rüstungs-Set", "Am Schmiedetisch: Vorlage + Rüstung + Material") + `<div class="orte-inhalt">
+    <div class="ruestung-editor-kopf">${buehneHtml(true)}</div>
+    <div class="field-group"><div class="field-group-label">Name</div>
+      <input class="orte-eingabe" id="setName" maxlength="60" placeholder="z. B. Amethyst-Netherit" value="${esc(e.name)}" autocomplete="off"></div>
+    <div class="teil-reiter" role="tablist">${RUESTUNGS_TEILE.map(({ id, name:n }) =>
+      `<button class="teil-knopf ${id === rs.teil ? "aktiv" : ""}" data-teil-wahl="${id}" role="tab" aria-selected="${id === rs.teil}">${teilIcon(id, e.teile[id])}<span>${n}</span></button>`).join("")}</div>
+    <div class="card schmiede">
+      <div class="schmiedetisch">
+        ${slot("vorlage", o ? itemBild(vorlageDatei(o), o.name) : geistBild("vorlage"), `Vorlage: ${o?.name || "keine"}`, !t)}
+        ${slot("ruestung", t ? teilIcon(rs.teil, ohneBesatz(t)) : itemBild(teilIconDatei(rs.teil, null)), `Rüstung: ${t ? itemName(rs.teil, t) : "keine"}`)}
+        ${slot("material", m ? itemBild(zutatDatei(m), m.zutat) : geistBild("material"), `Material: ${m?.zutat || "keins"}`, !t)}
+        <span class="rezept-pfeil">${PFEIL}</span>
+        <span class="slot ergebnis">${t ? teilIcon(rs.teil, t) : ""}</span>
+      </div>
+      <div class="schmiede-text">${t
+        ? `<b>${esc(itemName(rs.teil, t))}</b><small>${o ? `${esc(o.name)} · ${esc(m?.name || "Material fehlt")}` : "Ohne Besatz"}${o && sam.status[o.id] ? " · ✓ gefunden" : ""}</small>`
+        : `<b>Kein ${esc(teilName(rs.teil))}</b><small>Dieses Teil gehört nicht zum Set</small>`}</div>
+      <div class="wahl-bereich">${auswahlHtml(t)}</div>
+      ${leder}
+      ${t ? `<label class="opt verz-schalter"><span class="otext"><span class="oname">Verzaubert</span><span class="odesc">${VERZAUBERUNG[rs.teil].ziel.join(" · ")}</span></span>
+        <button class="switch ${t.verzaubert ? "on" : ""}" data-wahl-verzaubert role="switch" aria-checked="${t.verzaubert}" aria-label="Verzaubert"></button></label>` : ""}
+    </div>
+    <div class="banner bad" id="setMeldung" hidden></div>
+    <div class="sheet-fuss"><button class="btn-secondary" data-aktion="set-abbrechen">Abbrechen</button>
+      <button class="btn-primary" data-aktion="set-speichern">Speichern</button></div>
+  </div>`;
+  sheetOeffnen("ruestung-editor", html, "overworld");
+  $sheet.scrollTop = scroll;
+  buehneZeigen(e.teile);
+}
+
+/** Klicks im Schmiedetisch – true, wenn erledigt */
+function ruestungEditorKlick(ziel){
+  const e = rs.entwurf; if(!e) return false;
+  const k = ziel.closest("[data-teil-wahl],[data-slot],[data-wahl-ruestung],[data-wahl-muster],[data-wahl-material],[data-wahl-farbe],[data-wahl-verzaubert]");
+  if(!k || k.disabled) return false;
+  const d = k.dataset, t = e.teile[rs.teil];
+  if(d.teilWahl){ rs.teil = d.teilWahl; if(!e.teile[rs.teil]) rs.slot = "ruestung"; }
+  else if(d.slot) rs.slot = d.slot;
+  else if("wahlRuestung" in d){
+    if(!d.wahlRuestung) e.teile[rs.teil] = null;
+    else {
+      const neu = t ? { ...t, ruestung:d.wahlRuestung } : neuesTeil(d.wahlRuestung);
+      if(!ruestungsArt(neu.ruestung).faerbbar) neu.farbe = null;
+      e.teile[rs.teil] = neu;
+      if(!t) rs.slot = "vorlage";
+    }
+  }
+  else if("wahlMuster" in d){
+    t.muster = d.wahlMuster || null;
+    if(!t.muster) t.material = null;
+    else if(!t.material) rs.slot = "material";   // gleich weiter zum Material
+  }
+  else if("wahlMaterial" in d) t.material = d.wahlMaterial;
+  else if("wahlFarbe" in d) t.farbe = d.wahlFarbe || null;
+  else if("wahlVerzaubert" in d) t.verzaubert = !t.verzaubert;
+  ruestungEditorRendern();
+  return true;
+}
+
+async function ruestungSpeichern(){
+  const e = rs.entwurf;
+  e.name = document.getElementById("setName").value.trim();
+  const $m = document.getElementById("setMeldung");
+  const problem = ruestungPruefen(e);
+  if(problem) return banner($m, "bad", problem);
+  const body = JSON.stringify(ruestungSauber(e));
+  const r = e.id ? await api(`/ruestung/${e.id}`, { method:"PUT", body }) : await api("/ruestung", { method:"POST", body });
+  if(!r.ok) return banner($m, "bad", meldungAus(r));
+  const neu = r.data.set;
+  const i = rs.sets.findIndex((x) => x.id === neu.id);
+  if(i >= 0) rs.sets[i] = neu; else rs.sets.unshift(neu);
+  rs.entwurf = null;
+  render(); ruestungDetailOeffnen(neu.id); toast("Set gespeichert");
+}
+
+// ---------- Figur: 3D (three.js) → 2D (Canvas) → nur Icons ----------
+
+const fig = {
+  modus:null, art:null, bk:null, erstelle3D:null, f3d:null, canvas3d:null, foto3d:null, groesse:null,
+  kette:Promise.resolve(), auftrag:0, teile:null, glanzTimer:null, ansicht:"vorn",
+  dim:lsLesen("ruestung.buehne")?.dim || "oberwelt", traeger:lsLesen("ruestung.buehne")?.traeger || "staender",
+};
+const buehneMerken = () => lsSchreiben("ruestung.buehne", { dim:fig.dim, traeger:fig.traeger });
+const sockelVon = (dim) => fig.bk.manifest.dimensionen.find((x) => x.id === dim)?.sockel;
+/** Set-Teile → Ausrüstung für den Baukasten (Lederfarbe als Hex aus dem Manifest) */
+function ausruestungVon(teile){
+  return Object.fromEntries(RUESTUNGS_TEILE.flatMap(({ id }) => {
+    const t = teile[id]; if(!t) return [];
+    const farbe = t.farbe && ruestungsArt(t.ruestung)?.faerbbar ? fig.bk.manifest.farbstoffe.find((f) => f.id === t.farbe)?.hex : null;
+    return [[id, { ruestung:t.ruestung, muster:t.muster, material:t.material, farbe, glanz:t.verzaubert }]];
+  }));
+}
+
+function threeLaden(){
+  if(window.THREE) return Promise.resolve(window.THREE);
+  return new Promise((fertig) => {
+    const s = document.createElement("script");
+    s.src = THREE_URL; s.crossOrigin = "anonymous"; s.referrerPolicy = "no-referrer";
+    const zeit = setTimeout(() => fertig(null), 8000);   // kein Internet → 2D
+    s.onload = () => { clearTimeout(zeit); fertig(window.THREE || null); };
+    s.onerror = () => { clearTimeout(zeit); fertig(null); };
+    document.head.append(s);
+  });
+}
+
+/** Was die Figur kann: "3d" | "2d" | "icons" – wird einmal ermittelt (fig.art) */
+function figurModus(){
+  fig.modus ??= (async () => {
+    if(!location.protocol.startsWith("http")) return "icons";   // als Datei: Canvas-Pixel gesperrt
+    try {
+      const [{ erstelleBaukasten }, manifest] = await Promise.all([
+        import(`./${BAUKASTEN}baukasten.js`),
+        fetch(`${BAUKASTEN}manifest.json`).then((r) => { if(!r.ok) throw new Error(`manifest.json: ${r.status}`); return r.json(); }),
+      ]);
+      fig.bk = erstelleBaukasten({ manifest, basisPfad:BAUKASTEN });
+      await fig.bk.itemIcon({ ruestung:"leather", teil:"helmet", material:"gold" });   // Probe: Pixel lesbar?
+    } catch(f){ console.warn("Rüstungs-Baukasten nicht verfügbar:", f); return "icons"; }
+    try {
+      const THREE = await threeLaden();
+      if(!THREE) return "2d";
+      const { erstelleFigur3D } = await import(`./${BAUKASTEN}figur3d.js`);
+      fig.erstelle3D = (canvas, breite, hoehe) => erstelleFigur3D({ THREE, baukasten:fig.bk, canvas, breite, hoehe, abstand:118 });
+      fig.canvas3d = document.createElement("canvas");
+      fig.canvas3d.className = "figur-3d";
+      fig.f3d = fig.erstelle3D(fig.canvas3d, 320, 320);
+      drehenEinrichten(fig.canvas3d);
+      return "3d";
+    } catch(f){ console.warn("3D-Figur nicht verfügbar:", f); return "2d"; }
+  })().then((art) => (fig.art = art));
+  return fig.modus;
+}
+
+function buehneHtml(klein = false){
+  const d = BUEHNE_DIMS.find((x) => x.id === fig.dim) || BUEHNE_DIMS[0];
+  return `<div class="buehne ${klein ? "klein" : ""}" style="--hintergrund:url('${BAUKASTEN}${d.hintergrund}')">
+    <div class="buehne-flaeche" id="buehneFlaeche"><span class="dreher"></span></div>
+    <div class="buehne-leiste">
+      ${BUEHNE_DIMS.map((x) => `<button class="buehne-knopf ${x.id === d.id ? "aktiv" : ""}" data-buehne-dim="${x.id}">${x.name}</button>`).join("")}
+      <button class="buehne-knopf traeger" data-buehne-traeger hidden>${fig.traeger === "steve" ? "Steve" : "Ständer"}</button>
+    </div>
+    <div class="buehne-hinweis" id="buehneHinweis"></div>
+  </div>`;
+}
+
+/** Figur in die Bühne des offenen Sheets setzen (Aufträge laufen nacheinander, veraltete fallen weg) */
+async function buehneZeigen(teile){
+  const auftrag = ++fig.auftrag;
+  fig.teile = teile;
+  const modus = await figurModus();
+  const flaeche = document.getElementById("buehneFlaeche"), hinweis = document.getElementById("buehneHinweis");
+  if(auftrag !== fig.auftrag || !flaeche) return;
+  const traeger = flaeche.parentElement.querySelector("[data-buehne-traeger]");
+  if(modus === "icons"){
+    flaeche.innerHTML = `<div class="buehne-icons">${RUESTUNGS_TEILE.map(({ id }) => teilIcon(id, teile[id])).join("")}</div>`;
+    hinweis.textContent = "3D-Figur nur über das Board";
+    return;
+  }
+  fig.kette = fig.kette.then(async () => {
+    if(auftrag !== fig.auftrag || !flaeche.isConnected) return;
+    if(modus === "3d"){
+      if(fig.canvas3d.parentElement !== flaeche) flaeche.replaceChildren(fig.canvas3d);
+      const b = Math.round(flaeche.clientWidth), h = Math.round(flaeche.clientHeight);
+      if(b && h && (fig.groesse?.[0] !== b || fig.groesse?.[1] !== h)){ fig.f3d.groesseSetzen(b, h); fig.groesse = [b, h]; }
+      await fig.f3d.setzen({ ausruestung:ausruestungVon(teile), traeger:fig.traeger, sockel:sockelVon(fig.dim) });
+      traeger.hidden = false;
+      hinweis.textContent = "Zum Drehen ziehen";
+    } else {
+      const c = await fig.bk.figur({ ausruestung:ausruestungVon(teile), ansicht:fig.ansicht, massstab:8 });
+      c.className = "figur-2d";
+      if(auftrag !== fig.auftrag || !flaeche.isConnected) return;
+      flaeche.replaceChildren(c);
+      hinweis.textContent = `${fig.ansicht === "vorn" ? "Vorderseite" : "Rückseite"} · antippen zum Umdrehen`;
+    }
+    glanzStarten();
+  }).catch((f) => { console.warn("Figur:", f); hinweis.textContent = "Figur konnte nicht gezeichnet werden"; });
+}
+
+/** Verzauberte Teile schimmern – nur solange die 3D-Figur zu sehen ist */
+function glanzStarten(){
+  clearInterval(fig.glanzTimer); fig.glanzTimer = null;
+  if(fig.art !== "3d" || !fig.f3d.hatGlanz() || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let phase = 0, laeuft = false;
+  fig.glanzTimer = setInterval(async () => {
+    // Das Sheet bleibt nach dem Schließen im DOM – deshalb am offenen Sheet festmachen
+    if(!fig.canvas3d.isConnected || (st.sheet !== "ruestung" && st.sheet !== "ruestung-editor")){ clearInterval(fig.glanzTimer); fig.glanzTimer = null; return; }
+    if(laeuft || document.hidden) return;
+    laeuft = true; phase = (phase + 0.02) % 1;
+    fig.kette = fig.kette.then(() => fig.f3d.glanzTick(phase)).catch(() => {}).finally(() => { laeuft = false; });
+  }, 110);
+}
+
+/** Ziehen dreht die Figur (waagerecht: Blickwinkel, senkrecht: Neigung) */
+function drehenEinrichten(canvas){
+  let start = null;
+  canvas.addEventListener("pointerdown", (e) => {
+    start = { x:e.clientX, y:e.clientY, d:fig.f3d.drehung, n:fig.f3d.neigung };
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if(!start) return;
+    fig.f3d.drehen(start.d - (e.clientX - start.x) * 0.012, start.n + (e.clientY - start.y) * 0.006);
+  });
+  const ende = () => { start = null; };
+  canvas.addEventListener("pointerup", ende);
+  canvas.addEventListener("pointercancel", ende);
+}
+
+/** Bühnen-Knöpfe (Dimension, Träger, 2D umdrehen) – true, wenn erledigt */
+function buehneKlick(ziel){
+  const dim = ziel.closest("[data-buehne-dim]"), traeger = ziel.closest("[data-buehne-traeger]");
+  const flaeche = ziel.closest(".buehne-flaeche");
+  if(!dim && !traeger && !(flaeche && fig.art === "2d")) return false;
+  if(dim){
+    fig.dim = dim.dataset.buehneDim;
+    const d = BUEHNE_DIMS.find((x) => x.id === fig.dim);
+    const buehne = dim.closest(".buehne");
+    buehne.style.setProperty("--hintergrund", `url('${BAUKASTEN}${d.hintergrund}')`);
+    buehne.querySelectorAll("[data-buehne-dim]").forEach((k) => k.classList.toggle("aktiv", k === dim));
+  } else if(traeger){
+    fig.traeger = fig.traeger === "staender" ? "steve" : "staender";
+    traeger.textContent = fig.traeger === "steve" ? "Steve" : "Ständer";
+  } else fig.ansicht = fig.ansicht === "vorn" ? "hinten" : "vorn";
+  buehneMerken();
+  if(fig.teile) buehneZeigen(fig.teile);
+  return true;
+}
+
+// ---------- Anzeigeschema: Set aufs Board ----------
+
+const BILD_GRENZE = Math.floor(200 * 1024 * 4 / 3);   // wie zeigen.js im Board: 200 KB als Base64
+/** Bild der Figur für die Anzeige: 3D-Aufnahme, sonst 2D-Figur, als Datei null */
+async function ruestungFoto(s){
+  const modus = await figurModus();
+  if(modus === "icons") return null;
+  if(modus === "3d"){
+    fig.foto3d ??= fig.erstelle3D(document.createElement("canvas"), 300, 400);
+    const lauf = fig.kette.then(() => fig.foto3d.setzen({ ausruestung:ausruestungVon(s.teile), traeger:fig.traeger, sockel:sockelVon(fig.dim) }));
+    fig.kette = lauf.catch(() => {});   // die Kette darf nie abgelehnt bleiben
+    await lauf;
+    fig.foto3d.drehen(-0.5, 0.14);
+    for(const typ of ["image/png", "image/webp"]){
+      const daten = fig.foto3d.canvas.toDataURL(typ, 0.9);
+      if(daten.startsWith(`data:${typ}`) && daten.length <= BILD_GRENZE) return { daten, pixelig:false };
+    }
+  }
+  const c = await fig.bk.figur({ ausruestung:ausruestungVon(s.teile), ansicht:"vorn", massstab:6 });
+  return { daten:c.toDataURL("image/png"), pixelig:true };
+}
+async function ruestungKarte(id){
+  const s = rs.sets.find((x) => x.id === id); if(!s) return null;
+  const b = besatzStand(s);
+  const bloecke = [];
+  const foto = await ruestungFoto(s).catch(() => null);
+  if(foto) bloecke.push({ art:"bild", daten:foto.daten, label:"Auf dem Rüstungsständer", pixelig:foto.pixelig });
+  bloecke.push({ art:"zeilen", zeilen:RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).map(({ id:t }) => {
+    const x = s.teile[t], o = besatzMuster(x.muster);
+    const teile = [o ? `${o.name} · ${besatzMaterial(x.material).name}` : "ohne Besatz",
+      ruestungsArt(x.ruestung).faerbbar && (x.farbe ? farbe(x.farbe).de : "ungefärbt"), x.verzaubert && "verzaubert"];
+    return { label:itemName(t, x), wert:teile.filter(Boolean).join(" · ").slice(0, 80) };
+  }) });
+  if(b.verschieden.length){
+    const fehlt = b.verschieden.filter((m) => !sam.status[m]).map((m) => { const o = besatzMuster(m); return `${o.name} (${strukturName(o.kategorie)})`; });
+    bloecke.push({ art:"text", text:(`Rüstungsbesätze in dieser Welt: ${b.gefunden.length} von ${b.verschieden.length} gefunden.`
+      + (fehlt.length ? ` Fehlt noch: ${fehlt.join(", ")}.` : "")).slice(0, 400) });
+  }
+  return { titel:s.name, unter:`Rüstungs-Set · ${RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).length} Teile`, bereich:"Rüstung",
+           quelle:`ruestung:${id}`, dimension:null, bloecke };
+}
+
+$ruestungListe.addEventListener("click", (e) => { const k = e.target.closest("[data-set]"); if(k){ rs.offen = null; ruestungDetailOeffnen(k.dataset.set); } });
+document.getElementById("ruestungNeuBtn").addEventListener("click", () => ruestungEditorOeffnen(null));
+
+/* ============================================================================
    10 · DATEN, EVENTS, INIT
    ========================================================================== */
 function uebernehmen({ instanz, typ }){
@@ -3896,6 +4649,8 @@ $sheet.addEventListener("click", async (e) => {
     return importRendern();
   }
   if(st.sheet === "banner-editor" && bannerEditorKlick(e.target)) return;
+  if((st.sheet === "ruestung" || st.sheet === "ruestung-editor") && buehneKlick(e.target)) return;
+  if(st.sheet === "ruestung-editor" && ruestungEditorKlick(e.target)) return;
   const a = e.target.closest("[data-aktion]"); if(!a) return;
   const id = a.dataset.id;
   switch(a.dataset.aktion){
@@ -3981,6 +4736,20 @@ $sheet.addEventListener("click", async (e) => {
       zurueck ? bannerDetailOeffnen(zurueck) : alleSchliessen();
       break;
     }
+    // Rüstung
+    case "set-bearbeiten": ruestungEditorOeffnen(id); break;
+    case "set-speichern": ruestungSpeichern(); break;
+    case "set-abbrechen": {
+      const zurueck = rs.entwurf?.id; rs.entwurf = null;
+      zurueck ? ruestungDetailOeffnen(zurueck) : alleSchliessen();
+      break;
+    }
+    case "set-loeschen":
+      if(a.dataset.sicher !== "1"){ a.dataset.sicher = "1"; a.textContent = "Wirklich löschen?"; return; }
+      ruestungLoeschen(id); break;
+    case "zum-sammelobjekt": samDetailOeffnen(id); break;
+    case "verz-auf": rs.offen = rs.offen === a.dataset.teilId ? null : a.dataset.teilId; ruestungDetailOeffnen(rs.detail); break;
+    case "verz-schritt": verzSchrittUmschalten(id, a.dataset.teilId, Number(a.dataset.n)); break;
     // Board-Verbindung
     case "board-beitreten": boardBeitretenKlick(); break;
     case "board-kamera": boardScanStarten(); break;

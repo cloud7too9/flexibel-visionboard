@@ -3,11 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node banner.test.mjs && node portale.test.mjs && node sammelobjekte.test.mjs && node kennbloecke.test.mjs && node board.test.mjs && node live.test.mjs && node anzeigeschema.test.mjs"
+    "test": "node banner.test.mjs && node portale.test.mjs && node sammelobjekte.test.mjs && node kennbloecke.test.mjs && node board.test.mjs && node live.test.mjs && node anzeigeschema.test.mjs && node ruestung.test.mjs"
   },
   "devDependencies": {
     "jsqr": "^1.4.0",
     "playwright": "^1.47.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "three": "^0.128.0"
   }
 }

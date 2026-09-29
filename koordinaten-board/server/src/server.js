@@ -284,6 +284,10 @@ const OHNE_CACHE = { 'cache-control': 'no-cache' };
 app.get('/', (req, reply) => reply.headers(OHNE_CACHE).sendFile(COMPANION_DATEI, COMPANION_ORDNER));
 app.get('/regeln.js', (req, reply) => reply.headers(OHNE_CACHE).sendFile('regeln.js', COMPANION_ORDNER));
 await app.register(fastifyStatic, { root: path.join(COMPANION_ORDNER, 'icons'), prefix: '/icons/', maxAge: '7d' });
+// Rüstungs-Baukasten: Texturen, fertige Item-Icons, baukasten.js/figur3d.js (ES-Module) und manifest.json
+await app.register(fastifyStatic, {
+  root: path.join(COMPANION_ORDNER, 'ruestungs-baukasten'), prefix: '/ruestungs-baukasten/', maxAge: '7d', decorateReply: false,
+});
 
 if (existsSync(CLIENT_DIST)) {
   // Baut nur noch die Anzeige; ihre Dateien liegen unter /assets/

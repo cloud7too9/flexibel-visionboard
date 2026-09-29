@@ -112,6 +112,24 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
     return { ok: true };
   });
 
+  // ---- Rüstungs-Sets (für alle Welten) ----
+  app.get('/ruestung', async () => ({ sets: daten.ruestungListe() }));
+  app.post('/ruestung', async (req, reply) => {
+    const set = daten.ruestungAnlegen(req.body, req.nutzer.name);
+    geaendert('ruestung');
+    return reply.code(201).send({ set });
+  });
+  app.put('/ruestung/:id', async (req) => {
+    const set = daten.ruestungAendern(req.params.id, req.body);
+    geaendert('ruestung');
+    return { set };
+  });
+  app.delete('/ruestung/:id', async (req) => {
+    daten.ruestungLoeschen(req.params.id);
+    geaendert('ruestung');
+    return { ok: true };
+  });
+
   // ---- Einstellungen der Anzeige (Titel, QR-Code, aktive Welt) ----
   app.get('/board/einstellungen', async () => daten.einstellungenLesen());
   app.put('/board/einstellungen', async (req) => {

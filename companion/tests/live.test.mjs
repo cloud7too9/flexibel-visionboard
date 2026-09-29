@@ -6,6 +6,7 @@ import { mkdirSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { threeUmleiten, CHROMIUM_OPTIONEN } from "./hilfen.mjs";
 
 const HIER = fileURLToPath(new URL(".", import.meta.url));
 const DIR = path.join(HIER, "bilder");
@@ -42,11 +43,12 @@ async function boardStoppen() {
   await new Promise((r) => b.once("exit", r));
 }
 
-const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
+const browser = await chromium.launch(CHROMIUM_OPTIONEN);
 const fehler = [], antworten = [];
 let boardAus = false;   // absichtlicher Neustart: fehlgeschlagene Wiederverbindungen sind dann erwartet
 async function handy() {
   const kontext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  await threeUmleiten(kontext);   // three.js für die 3D-Figur kommt sonst vom CDN
   const p = await kontext.newPage();
   p.on("pageerror", (e) => fehler.push(e.message));
   // Ladefehler prüft „antworten“ genau; die Konsole meldet sie nur ohne Adresse (auch /favicon.ico)
@@ -127,7 +129,7 @@ try {
   await max.evaluate(() => modulWechseln("sammelobjekte"));
   await lena.evaluate(() => modulWechseln("sammelobjekte"));
   await lena.click('[data-sam-haken="rib"]');
-  pruefe(await warteAuf(max, () => sam.status.rib?.von === "Lena"), "Max sieht: Rippen gefunden von Lena");
+  pruefe(await warteAuf(max, () => sam.status.rib?.von === "Lena"), "Max sieht: Rippenzier gefunden von Lena");
   pruefe(await warteAuf(max, () => document.querySelector('[data-sam="rib"]')?.classList.contains("earned")), "… auch in der Liste");
   await max.screenshot({ path: `${DIR}/l4-max-sammel.png` });
 
@@ -141,6 +143,25 @@ try {
   pruefe(await warteAuf(lena, () => pt.liste.length === 1 && document.querySelector(".verbindung")), "Portal-Verbindung erscheint bei Lena");
   const regel = await max.evaluate(() => api("/banner", { method: "POST", body: JSON.stringify({ name: "Zu viel", basis: "white", ebenen: Array(7).fill({ muster: "cross", farbe: "red" }) }) }));
   pruefe(regel.status === 422 && regel.data.message.includes("höchstens 6"), "Server prüft mit denselben Regeln (7 Muster abgelehnt)");
+
+  // === Rüstung: Sets für alle Welten, Figur vom Board =============================
+  await max.evaluate(() => modulWechseln("ruestung"));
+  await lena.evaluate(() => modulWechseln("ruestung"));
+  pruefe(await warteAuf(max, () => rs.geladen && document.querySelector("#ruestungListe .empty-list")), "Rüstung: noch keine Sets");
+  await lena.evaluate(() => api("/ruestung", { method: "POST", body: JSON.stringify({ name: "Rippen-Set", teile: {
+    helmet: { ruestung: "netherite", muster: "rib", material: "gold", verzaubert: true }, boots: { ruestung: "iron", muster: "eye", material: "amethyst" } } }) }));
+  pruefe(await warteAuf(max, () => rs.sets[0]?.name === "Rippen-Set" && rs.sets[0].von === "Lena"), "Max sieht Lenas Rüstungs-Set live");
+  pruefe(await warteAuf(max, () => document.querySelector(".ruestung-karte .pill")?.textContent.trim() === "1/2 gefunden"), "Rippenzier ist in dieser Welt gefunden → 1/2");
+  await max.click(".ruestung-karte");
+  pruefe(await warteAuf(max, () => fig.art === "3d", null, 15000), "Figur über das Board: 3D (Baukasten vom Board-Server)");
+  await lena.evaluate(() => api(`/sammelobjekte/welten/${st.weltId}/eye`, { method: "PUT", body: JSON.stringify({ gefunden: true }) }));
+  pruefe(await warteAuf(max, () => document.querySelector("#orteSheetInhalt .banner.ok")?.textContent.includes("Alle Rüstungsbesätze")),
+    "Lena findet die Augenzier → Max' offenes Set zeigt: alle gefunden");
+  await max.waitForTimeout(600);
+  await max.screenshot({ path: `${DIR}/l3d-ruestung-live.png` });
+  const falsch = await max.evaluate(() => api("/ruestung", { method: "POST", body: JSON.stringify({ name: "Panzer", teile: { boots: { ruestung: "turtle" } } }) }));
+  pruefe(falsch.status === 422 && falsch.data.message === "Schildkröte gibt es nur als Schildkrötenpanzer", "Server prüft Rüstung mit denselben Regeln");
+  await max.click('#orteSheetInhalt [data-aktion="schliessen"]');
 
   // === Banner aus einem Screenshot (Anleitung „Black Base“, „Cyan Bordure“ …) =======
   await max.evaluate(() => modulWechseln("banner"));
@@ -241,6 +262,7 @@ try {
   await max.reload();
   await max.evaluate(() => modulWechseln("sammelobjekte"));
   pruefe(await warteAuf(max, () => st.instanzen?.length === 3 && sam.status.rib && pt.liste.length === 1), "Nach dem Neustart: Orte, Sammelobjekt, Portal noch da");
+  pruefe((await max.evaluate(() => api("/ruestung"))).data.sets[0]?.name === "Rippen-Set", "… und das Rüstungs-Set");
   pruefe(await warteAuf(anzeige, () => document.querySelector("h1")?.textContent === "Server-Welt" && document.querySelector(".a-zeile .name > span")?.textContent === "End City", null, 12000),
     "Anzeige nach dem Neustart: weiter Welt 2 mit Titel");
 
@@ -258,8 +280,8 @@ try {
   pruefe(await warteAuf(max, () => document.querySelector(".sheet-kopf h2")?.textContent === "Beitreten" && !bd.verbindung), "Abmelden → „Beitreten“");
 
   pruefe(fehler.length === 0, `keine Fehler in der Konsole${fehler.length ? ": " + fehler.join(" | ") : ""}`);
-  // erwartet: 7 Muster abgelehnt, ungültiges Token, falsche PIN
-  const erwartet = ["422 /api/banner", "401 /api/orte/welten", "401 /api/beitreten"];
+  // erwartet: 7 Muster abgelehnt, Schildkröten-Stiefel abgelehnt, ungültiges Token, falsche PIN
+  const erwartet = ["422 /api/banner", "422 /api/ruestung", "401 /api/orte/welten", "401 /api/beitreten"];
   pruefe(JSON.stringify(antworten) === JSON.stringify(erwartet), `nur erwartete HTTP-Fehler: ${antworten.join(", ")}`);
 } catch (e) {
   pruefe(false, "Abbruch: " + e.message);

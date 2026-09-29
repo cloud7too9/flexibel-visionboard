@@ -1,6 +1,6 @@
 // Gemeinsame Daten von Companion und Board in einer JSON-Datei (daten.json):
-// Welten, Orte (Typen + Instanzen), Sammelobjekte, Banner, Portal-Verbindungen
-// und die Einstellungen der Anzeige. Die Abläufe entsprechen dem DEMO-Mock der
+// Welten, Orte (Typen + Instanzen), Sammelobjekte, Banner, Rüstungs-Sets,
+// Portal-Verbindungen und die Einstellungen der Anzeige. Die Abläufe entsprechen dem DEMO-Mock der
 // Companion (mockApi in companion-prototyp.html), geprüft wird mit denselben
 // Regeln (companion/regeln.js).
 import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
@@ -26,6 +26,7 @@ const leer = () => ({
   instanzen: [],     // { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, von, am, geaendert? }
   sammel: {},        // { [weltId]: { [objektId]: { von, am } } }
   banner: [],        // { id, name, basis, ebenen, von, am }
+  ruestung: [],      // { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster, material, farbe, verzaubert }|null }, von, am }
   portale: [],       // { id, weltId, name, oberwelt, nether, von, am }
   einstellungen: { ...STANDARD_EINSTELLUNGEN },
 });
@@ -262,6 +263,40 @@ export class Daten {
   bannerLoeschen(id) {
     const b = this.bannerStueck(id);
     this.inhalt.banner.splice(this.inhalt.banner.indexOf(b), 1);
+    this.speichernVerzoegert();
+  }
+
+  // ---------- Rüstungs-Sets (für alle Welten) ----------
+
+  ruestungListe() {
+    return kopie(this.inhalt.ruestung);
+  }
+
+  ruestungSet(id) {
+    return this.inhalt.ruestung.find((x) => x.id === id) ?? fehler(404, 'Rüstungs-Set nicht gefunden');
+  }
+
+  ruestungAnlegen(body, von) {
+    const problem = regeln.ruestungPruefen(body);
+    if (problem) fehler(422, problem);
+    const s = { id: this.neueId('r'), ...kopie(regeln.ruestungSauber(body)), von, am: tag() };
+    this.inhalt.ruestung.unshift(s);
+    this.speichernVerzoegert();
+    return kopie(s);
+  }
+
+  ruestungAendern(id, body) {
+    const s = this.ruestungSet(id);
+    const problem = regeln.ruestungPruefen(body);
+    if (problem) fehler(422, problem);
+    Object.assign(s, kopie(regeln.ruestungSauber(body)));
+    this.speichernVerzoegert();
+    return kopie(s);
+  }
+
+  ruestungLoeschen(id) {
+    const s = this.ruestungSet(id);
+    this.inhalt.ruestung.splice(this.inhalt.ruestung.indexOf(s), 1);
     this.speichernVerzoegert();
   }
 
