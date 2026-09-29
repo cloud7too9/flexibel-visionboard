@@ -778,6 +778,41 @@ button.switch { padding:0; }
   background:var(--accent-soft); color:var(--accent); font:800 11px/22px ui-monospace,monospace; text-align:center; }
 .info-liste b { color:var(--text); }
 
+/* ---- Board-Verbindung ---- */
+.sb-fuss { margin-top:auto; padding:12px 12px max(14px, env(safe-area-inset-bottom)); border-top:1px solid var(--border-soft); }
+.board-knopf { width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px;
+  background:var(--surface-2); border:1px solid var(--border-soft); color:var(--text); cursor:pointer; text-align:left; font:inherit; }
+.board-knopf:active { background:var(--surface-3); }
+.board-knopf .ico { color:var(--accent); display:flex; }
+.board-knopf .text { flex:1; min-width:0; display:flex; flex-direction:column; }
+.board-knopf .titel { font-size:15px; font-weight:700; }
+.board-knopf .card-meta { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.status-dot { flex:0 0 auto; }
+.status-dot.warte { background:#e8b444; box-shadow:0 0 8px #e8b444; }
+.status-dot.aus { background:var(--text-faint); box-shadow:none; }
+.scanner { position:relative; width:min(100%, 44vh); aspect-ratio:1; margin:0 auto; border-radius:18px; overflow:hidden;
+  background:#000; border:1px solid var(--border-soft); }
+.scanner video { width:100%; height:100%; object-fit:cover; display:block; }
+.scanner .rahmen { position:absolute; inset:17%; border-radius:16px; border:2px solid var(--accent);
+  box-shadow:0 0 0 999px rgba(0,0,0,.38), 0 0 18px var(--accent-soft); transition:inset .25s ease; }
+.scanner .scan-text { position:absolute; left:10px; right:10px; bottom:12px; text-align:center; font-size:12.5px; font-weight:600;
+  color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.8); }
+.scanner.aus { background:var(--surface-2); }
+.scanner.aus .rahmen { box-shadow:none; border-style:dashed; border-color:var(--border); }
+.scanner.aus .scan-text { top:50%; bottom:auto; transform:translateY(-50%); color:var(--text-dim); text-shadow:none; padding:0 14%; }
+.scanner.erkannt .rahmen { inset:6%; background:var(--accent-soft); }
+.board-zeilen { display:flex; flex-direction:column; gap:10px; }
+.board-zeile { display:flex; justify-content:space-between; gap:12px; font-size:13.5px; }
+.board-zeile span:first-child { color:var(--text-dim); }
+.board-zeile b { text-align:right; word-break:break-word; }
+.board-status { display:flex; align-items:center; gap:9px; font-size:16px; }
+.board-zeigen { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
+.board-zeigen svg { color:var(--accent); }
+.board-zeigen.aktiv { border-color:var(--accent); color:var(--accent); }
+.board-gezeigt { display:flex; align-items:center; gap:12px; }
+.board-gezeigt .text { flex:1; min-width:0; }
+.board-gezeigt .btn-secondary { min-height:38px; padding:8px 14px; }
+
 /* Toast */
 .orte-toast { position:absolute; left:50%; bottom:calc(86px + env(safe-area-inset-bottom)); transform:translateX(-50%);
   z-index:30; font-size:13px; font-weight:600; white-space:nowrap; max-width:calc(100% - 32px); overflow:hidden; text-overflow:ellipsis; }
@@ -955,6 +990,8 @@ button.switch { padding:0; }
       <div class="name">Companion</div>
     </div>
     <nav class="sb-nav" id="sbNav"></nav>
+    <!-- Verbindung zum Koordinaten-Board im Zimmer (kein Bereich, gilt fürs Gerät) -->
+    <div class="sb-fuss"><button class="board-knopf" id="boardBtn"></button></div>
   </aside>
 
   <!-- Ein Sheet für alle Ansichten des Moduls – Inhalt wird je nach Aufgabe gerendert -->
@@ -1002,6 +1039,11 @@ const CONFIG = Object.freeze({
   zoomMax: 4,
   toastMs: 2600,
   weltGrenze: 30000000,  // Minecraft-Weltgrenze ±30 Mio.
+  boardPort: 3000,       // Standard-Port des Koordinaten-Boards, falls von Hand ohne Port eingetragen
+  scanTaktMs: 220,       // Kamera-Bild so oft nach einem QR-Code absuchen
+  scanMaxPx: 720,        // Bild vor der Erkennung auf diese Kantenlänge verkleinern
+  // QR-Erkennung für Geräte ohne BarcodeDetector (iPhone, Desktop-Chrome); wird erst beim Scannen geladen
+  qrBibliothek: "https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js",
 });
 
 /* ============================================================================
@@ -1908,6 +1950,7 @@ const $sidebar = document.getElementById("sidebar");
 const X_ICON = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>';
 
 function sheetOeffnen(art, html, dim){
+  boardScanStoppen();
   st.sheet = art;
   $sheetInhalt.innerHTML = html;
   // Sheet in der Farbe „seiner“ Dimension (z. B. Detail eines Nether-Orts)
@@ -1917,6 +1960,7 @@ function sheetOeffnen(art, html, dim){
   $scrim.classList.add("show");
 }
 function alleSchliessen(){
+  boardScanStoppen();
   st.sheet = null;
   $sheet.classList.remove("open");
   $sidebar.classList.remove("open");
@@ -1962,6 +2006,7 @@ function detailOeffnen(id, loeschenFragen){
       ${w ? `<div class="result-row"><span class="rname">Von deinem Standort</span><span><b class="rval mono">${entfernungText(w.meter)}</b><span class="runit">${w.richtung}</span></span></div>` : ""}
     </div>
     ${biom ? `<div class="banner info">Biome stammen aus Screenshots – die Koordinaten sind fest. Falsch erfasst? Löschen und neu auslesen.</div>` : ""}
+    ${boardZeigenKnopf(`ort:${i.id}`)}
     <div class="knopf-raster">
       <button class="btn-secondary" data-aktion="kopieren" data-text="${i.x} ${i.y ?? "~"} ${i.z}">Koordinaten</button>
       <button class="btn-secondary" data-aktion="kopieren" data-text="${esc(tpBefehl(i.x, i.y, i.z, dim))}">/tp-Befehl</button>
@@ -1974,6 +2019,7 @@ function detailOeffnen(id, loeschenFragen){
         </div>`}
   </div>`;
   sheetOeffnen("detail", html, dim);
+  boardZeigenKnoepfe();
 }
 
 function bearbeitenOeffnen(id){
@@ -2246,6 +2292,7 @@ const ICON = Object.freeze({
   bauplaene:'<path d="M3 3h18v18H3z"/><path d="M3 9h18M9 3v18M14 14h4v4h-4z"/>',
   banner:'<path d="M4 3h16"/><path d="M6 3v17l6-3 6 3V3"/><path d="M9 8h6M9 12h6"/>',
   ruestung:'<path d="M9 3 4 5v6h3v10h10V11h3V5l-5-2a3 3 0 0 1-6 0z"/>',
+  board:'<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
 });
 const BEREICHE = [
   { key:"karte",         titel:"Karte",
@@ -3190,6 +3237,409 @@ document.getElementById("portalNeuBtn").addEventListener("click", () => portalEd
 document.getElementById("portalWeltBtn").addEventListener("click", () => weltOeffnen());
 
 /* ============================================================================
+   9f · BOARD-VERBINDUNG  ·  QR-Code der Anzeige scannen, beitreten, live halten
+   ----------------------------------------------------------------------------
+   Das Koordinaten-Board zeigt einen QR-Code mit „http://<ip>:<port>/?pin=1234“.
+   Die Companion liest ihn (Kamera, Foto oder von Hand), tritt mit Name + PIN
+   bei und hält danach die Live-Verbindung offen:
+     POST <board>/api/beitreten  { pin, name }  → { token, name }
+     WS   <board>/ws?token=…                    → { art:"zustand"|"teilnehmer", … }
+   Das Board ist ein eigenes Gerät: Die Verbindung ist auch im DEMO-Modus echt.
+   Sie gilt nur für dieses Gerät (localStorage „board.verbindung“, „board.name“).
+
+   „Aufs Board“ (Inhalte auf die Anzeige werfen), über dieselbe Verbindung:
+     → { art:"zeigen", karte, anfrage }       ← { art:"ok"|"fehler", anfrage }
+     → { art:"verbergen", id, anfrage }       ← an alle: { art:"gezeigt", karte|null }
+     karte = { titel, unter?, bereich?, quelle?, dimension:"oberwelt"|"nether"|"ende"|null,
+               bloecke:[ { art:"koordinaten", label?, x, y|null, z, dimension? }
+                       | { art:"zeilen", zeilen:[{ label, wert }] } | { art:"text", text } ] }
+   Das Board prüft die Karte (koordinaten-board/server/src/zeigen.js) und zeigt
+   sie groß, bis die nächste kommt oder jemand sie wegnimmt. Welche Inhalte es
+   gibt, legt BOARD_KARTEN fest – das Board selbst kennt keine Bereiche.
+   ========================================================================== */
+const bd = {
+  verbindung: lsLesen("board.verbindung"),  // { adresse, token, name } oder null
+  status: "aus",                             // aus · verbindet · verbunden · getrennt
+  teilnehmer: [], orte: null,
+  socket: null, timer: null, wartezeit: 500,
+  scan: null,                                // { stream } solange die Kamera läuft
+  gezeigt: null,                             // Karte, die gerade auf der Anzeige liegt
+  offen: new Map(), zaehler: 0,              // gesendete Nachrichten, die auf „ok“ warten
+};
+const BOARD_DIM = Object.freeze({ overworld:"oberwelt", nether:"nether", end:"ende" });
+const adresseKurz = (a) => String(a || "").replace(/^https?:\/\//, "");
+
+/** Inhalt des Board-QR-Codes lesen: „http://192.168.8.184:3000/?pin=1234“ → { adresse, pin } */
+function boardQrLesen(text){
+  let url;
+  try { url = new URL(String(text || "").trim()); } catch { return null; }
+  const pin = url.searchParams.get("pin") || "";
+  if(!/^https?:$/.test(url.protocol) || !/^\d{4}$/.test(pin)) return null;
+  return { adresse:url.origin, pin };
+}
+/** Adresse von Hand: „192.168.8.184“ oder „192.168.8.184:3000“ → „http://192.168.8.184:3000“ */
+function boardAdresseLesen(text){
+  let t = String(text || "").trim().replace(/\/+$/, "");
+  if(!t) return null;
+  if(!/^https?:\/\//i.test(t)) t = "http://" + t;
+  let url;
+  try { url = new URL(t); } catch { return null; }
+  if(!url.port && url.protocol === "http:") url.port = String(CONFIG.boardPort);
+  return url.origin;
+}
+
+// --- QR-Erkennung: BarcodeDetector (Android-Chrome), sonst jsQR nachladen -----
+let qrLeserZusage = null;
+function skriptLaden(src){
+  return new Promise((ok, fehler) => {
+    const s = document.createElement("script");
+    s.src = src; s.onload = ok; s.onerror = () => { s.remove(); fehler(new Error("Skript nicht geladen")); };
+    document.head.appendChild(s);
+  });
+}
+/** Liefert eine Funktion (Video, Bild oder ImageBitmap) → Text des QR-Codes oder null */
+function qrLeser(){
+  if(!qrLeserZusage) qrLeserZusage = (async () => {
+    if("BarcodeDetector" in window){
+      try {
+        if((await BarcodeDetector.getSupportedFormats()).includes("qr_code")){
+          const d = new BarcodeDetector({ formats:["qr_code"] });
+          return async (quelle) => (await d.detect(quelle))[0]?.rawValue || null;
+        }
+      } catch {}
+    }
+    if(!window.jsQR) await skriptLaden(CONFIG.qrBibliothek);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d", { willReadFrequently:true });
+    return async (quelle) => {
+      const w0 = quelle.videoWidth || quelle.width, h0 = quelle.videoHeight || quelle.height;
+      if(!w0 || !h0) return null;
+      const f = Math.min(1, CONFIG.scanMaxPx / Math.max(w0, h0));
+      const w = Math.round(w0 * f), h = Math.round(h0 * f);
+      canvas.width = w; canvas.height = h;
+      ctx.drawImage(quelle, 0, 0, w, h);
+      return window.jsQR(ctx.getImageData(0, 0, w, h).data, w, h)?.data || null;
+    };
+  })();
+  qrLeserZusage.catch(() => { qrLeserZusage = null; });  // nächster Versuch lädt neu
+  return qrLeserZusage;
+}
+
+// --- Kamera ------------------------------------------------------------------
+async function boardScanStarten(){
+  boardScanStoppen();
+  const $box = document.getElementById("boardScanner"), $text = document.getElementById("boardScanText");
+  const $video = document.getElementById("boardVideo");
+  if(!$box) return;
+  $box.classList.remove("aus", "erkannt");
+  const aus = (text) => { $box.classList.add("aus"); $text.textContent = text; };
+  if(!navigator.mediaDevices?.getUserMedia)
+    return aus(window.isSecureContext ? "Keine Kamera gefunden – Foto oder Adresse nutzen"
+                                      : "Kamera nur über https – Foto oder Adresse nutzen");
+  const scan = { stream:null };
+  bd.scan = scan;
+  $text.textContent = "Kamera startet …";
+  try {
+    scan.stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:"environment" }, audio:false });
+  } catch(e){
+    if(bd.scan !== scan) return;
+    bd.scan = null;
+    return aus(e?.name === "NotAllowedError" ? "Kamera nicht erlaubt – Foto oder Adresse nutzen"
+                                             : "Keine Kamera gefunden – Foto oder Adresse nutzen");
+  }
+  // Sheet inzwischen geschlossen → Kamera gleich wieder aus
+  if(bd.scan !== scan){ scan.stream.getTracks().forEach((t) => t.stop()); return; }
+  $video.srcObject = scan.stream;
+  try { await $video.play(); } catch {}
+  let lesen;
+  try { lesen = await qrLeser(); }
+  catch { boardScanStoppen(); return aus("QR-Erkennung nicht geladen – Foto oder Adresse nutzen"); }
+  if(bd.scan !== scan) return;
+  $text.textContent = "QR-Code der Anzeige in den Rahmen halten";
+  const runde = async () => {
+    if(bd.scan !== scan) return;
+    if($video.readyState >= 2){
+      const text = await lesen($video).catch(() => null);
+      if(bd.scan !== scan) return;
+      if(text && boardTreffer(text)) return;
+    }
+    setTimeout(runde, CONFIG.scanTaktMs);
+  };
+  runde();
+}
+function boardScanStoppen(){
+  const s = bd.scan; bd.scan = null;
+  s?.stream?.getTracks().forEach((t) => t.stop());
+}
+
+/** Gelesener QR-Text – true, wenn es der Code eines Boards war */
+function boardTreffer(text){
+  const qr = boardQrLesen(text);
+  const $text = document.getElementById("boardScanText");
+  if(!qr){
+    if(bd.scan && $text) $text.textContent = "Das ist kein QR-Code vom Board";
+    return false;
+  }
+  boardScanStoppen();
+  document.getElementById("boardScanner")?.classList.add("erkannt");
+  if($text) $text.textContent = "Erkannt";
+  document.getElementById("boardAdresse").value = adresseKurz(qr.adresse);
+  document.getElementById("boardPin").value = qr.pin;
+  banner(document.getElementById("boardBanner"), "ok", `QR-Code erkannt · ${adresseKurz(qr.adresse)}`);
+  const $name = document.getElementById("boardName");
+  if($name.value.trim()) boardBeitretenKlick(); else $name.focus();
+  return true;
+}
+async function boardFotoLesen(datei){
+  const $b = document.getElementById("boardBanner");
+  let text = null;
+  try {
+    const bild = await createImageBitmap(datei);
+    text = await (await qrLeser())(bild);
+    bild.close?.();
+  } catch { return banner($b, "bad", "Foto konnte nicht gelesen werden – Adresse und PIN von Hand eintragen."); }
+  if(!text) return banner($b, "bad", "Auf dem Foto ist kein QR-Code zu erkennen.");
+  if(!boardTreffer(text)) banner($b, "bad", "Das ist kein QR-Code vom Koordinaten-Board.");
+}
+
+// --- Beitreten + Live-Verbindung -----------------------------------------------
+function boardNetzFehler(adresse){
+  if(location.protocol === "https:" && adresse.startsWith("http:"))
+    return "Der Browser blockiert die Verbindung: Die Companion läuft über https, das Board über http.";
+  return "Board nicht erreichbar – gleiches WLAN? Läuft das Board noch?";
+}
+async function boardBeitreten(adresse, pin, name){
+  let res, data = null;
+  try {
+    res = await fetch(`${adresse}/api/beitreten`, { method:"POST",
+      headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ pin, name }) });
+    data = await res.json().catch(() => null);
+  } catch { return { fehler:boardNetzFehler(adresse) }; }
+  if(!res.ok) return { fehler:data?.fehler || `Fehler ${res.status}` };
+  return { verbindung:{ adresse, token:data.token, name:data.name } };
+}
+async function boardBeitretenKlick(){
+  const $b = document.getElementById("boardBanner"), $knopf = $sheet.querySelector('[data-aktion="board-beitreten"]');
+  const roh = document.getElementById("boardAdresse").value;
+  const ausQr = boardQrLesen(roh);
+  const adresse = ausQr?.adresse || boardAdresseLesen(roh);
+  const pin = document.getElementById("boardPin").value.trim() || ausQr?.pin || "";
+  const name = document.getElementById("boardName").value.trim();
+  if(!adresse) return banner($b, "bad", "Adresse fehlt – QR-Code scannen oder eintragen.");
+  if(!/^\d{4}$/.test(pin)) return banner($b, "bad", "Die PIN hat 4 Ziffern und steht auf der Anzeige.");
+  if(!name) return banner($b, "bad", "Wie heißt du? Der Name steht auf dem Board bei deinen Einträgen.");
+  lsSchreiben("board.name", name);
+  $knopf.disabled = true; $knopf.textContent = "Verbinde …";
+  const r = await boardBeitreten(adresse, pin, name);
+  const offen = st.sheet === "board" && $knopf.isConnected;   // Sheet evtl. schon zu
+  if(r.fehler){
+    if(!offen) return;
+    $knopf.disabled = false; $knopf.textContent = "Beitreten";
+    return banner($b, "bad", r.fehler);
+  }
+  bd.verbindung = r.verbindung; lsSchreiben("board.verbindung", r.verbindung);
+  boardVerbinden();
+  if(offen) boardSheetRendern();
+  toast("Mit dem Board verbunden");
+}
+
+function boardVerbinden(){
+  boardSocketZu();
+  const v = bd.verbindung; if(!v) return;
+  bd.status = "verbindet"; boardAnzeigen();
+  let ws;
+  try { ws = new WebSocket(`${v.adresse.replace(/^http/, "ws")}/ws?token=${encodeURIComponent(v.token)}`); }
+  catch { bd.status = "getrennt"; boardAnzeigen(); return; }   // z. B. ws:// von einer https-Seite
+  bd.socket = ws;
+  ws.onopen = () => { if(bd.socket !== ws) return; bd.status = "verbunden"; bd.wartezeit = 500; boardAnzeigen(); };
+  ws.onmessage = (e) => {
+    let n; try { n = JSON.parse(e.data); } catch { return; }
+    if((n.art === "ok" || n.art === "fehler") && n.anfrage){
+      const w = bd.offen.get(n.anfrage); bd.offen.delete(n.anfrage);
+      return n.art === "ok" ? w?.ok() : w?.fehler(n.text || "Board hat abgelehnt");
+    }
+    if(n.art === "teilnehmer") bd.teilnehmer = n.namen || [];
+    else if(n.art === "zustand") bd.orte = n.zustand?.orte?.length ?? null;
+    else if(n.art === "gezeigt") bd.gezeigt = n.karte || null;
+    else return;
+    boardAnzeigen();
+  };
+  ws.onclose = (e) => {
+    if(bd.socket !== ws) return;             // absichtlich geschlossen oder ersetzt
+    bd.socket = null;
+    boardOffeneAbbrechen();
+    if(e.code === 4001){                     // Token abgelehnt, z. B. Board neu eingerichtet
+      boardTrennen();
+      return toast("Das Board kennt dieses Gerät nicht mehr – bitte neu scannen", true);
+    }
+    bd.status = "getrennt"; boardAnzeigen();
+    bd.timer = setTimeout(boardVerbinden, bd.wartezeit);
+    bd.wartezeit = Math.min(bd.wartezeit * 2, 8000);
+  };
+}
+function boardSocketZu(){
+  clearTimeout(bd.timer);
+  const s = bd.socket; bd.socket = null;
+  s?.close();
+  boardOffeneAbbrechen();
+}
+function boardOffeneAbbrechen(){
+  for(const w of bd.offen.values()) w.fehler("Verbindung zum Board unterbrochen");
+  bd.offen.clear();
+  bd.gezeigt = null;                          // nach dem Neuverbinden schickt das Board den Stand
+}
+/** Nachricht ans Board, wartet auf dessen „ok“ (sonst Fehlertext) */
+function boardSenden(op){
+  return new Promise((ok, fehler) => {
+    const s = bd.socket;
+    if(!s || s.readyState !== WebSocket.OPEN) return fehler("Keine Verbindung zum Board");
+    const anfrage = ++bd.zaehler;
+    bd.offen.set(anfrage, { ok, fehler });
+    s.send(JSON.stringify({ ...op, anfrage }));
+    setTimeout(() => { if(bd.offen.delete(anfrage)) fehler("Board antwortet nicht"); }, 8000);
+  });
+}
+
+// --- „Aufs Board“ -----------------------------------------------------------------
+// Welche Inhalte sich zeigen lassen: quelle „<art>:<id>“ → Karte fürs Board
+const BOARD_KARTEN = {
+  ort: ortKarte,                              // Karte: ein Ort aus der Koordinaten-Sammlung
+};
+function ortKarte(id){
+  const i = st.instanzen.find((x) => x.id === id); if(!i) return null;
+  const t = typVon(i), dim = dimTypeVon(i.dimensionId);
+  const biom = t.kategorie === BIOMES ? biomFinden(t.variante) : null;
+  const bloecke = [{ art:"koordinaten", x:i.x, y:i.y ?? null, z:i.z }];
+  const u = umrechnen(i.x, i.z, dim);
+  if(u) bloecke.push({ art:"koordinaten", label:u.dim === "nether" ? "Im Nether" : "In der Oberwelt",
+                       x:u.x, y:null, z:u.z, dimension:BOARD_DIM[u.dim] });
+  const unter = [t.variante ? t.kategorie : null, biom?.gruppe].filter(Boolean).join(" · ");
+  return { titel:t.variante || t.kategorie, unter:unter || undefined, bereich:"Karte",
+           quelle:`ort:${i.id}`, dimension:BOARD_DIM[dim], bloecke };
+}
+async function boardZeigen(quelle){
+  const [art, ...rest] = quelle.split(":");
+  const karte = BOARD_KARTEN[art]?.(rest.join(":"));
+  if(!karte) return toast("Das lässt sich nicht aufs Board legen", true);
+  try { await boardSenden({ art:"zeigen", karte }); toast("Liegt auf dem Board"); }
+  catch(f){ toast(String(f), true); }
+}
+async function boardWegnehmen(){
+  if(!bd.gezeigt) return;
+  try { await boardSenden({ art:"verbergen", id:bd.gezeigt.id }); toast("Vom Board genommen"); }
+  catch(f){ toast(String(f), true); }
+}
+const BOARD_ZEIGEN_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4M12 7v6M9.5 10.5 12 13l2.5-2.5"/></svg>';
+/** Knopf „Aufs Board“ für ein Sheet – nur, wenn dieses Gerät mit einem Board verbunden ist */
+function boardZeigenKnopf(quelle){
+  if(!bd.verbindung) return "";
+  return `<button class="btn-secondary board-zeigen" data-board-quelle="${esc(quelle)}"></button>`;
+}
+/** Knöpfe im offenen Sheet an den Stand anpassen (liegt dieser Inhalt gerade auf dem Board?) */
+function boardZeigenKnoepfe(){
+  $sheet.querySelectorAll("[data-board-quelle]").forEach((k) => {
+    const liegt = bd.gezeigt?.quelle === k.dataset.boardQuelle;
+    k.classList.toggle("aktiv", liegt);
+    k.dataset.aktion = liegt ? "board-wegnehmen" : "board-zeigen";
+    k.innerHTML = BOARD_ZEIGEN_ICON + (liegt ? "Liegt auf dem Board · Wegnehmen" : "Aufs Board");
+  });
+}
+function boardTrennen(){
+  boardSocketZu();
+  Object.assign(bd, { verbindung:null, status:"aus", teilnehmer:[], orte:null, gezeigt:null, wartezeit:500 });
+  lsSchreiben("board.verbindung", null);
+  boardAnzeigen();
+}
+
+// --- Anzeige: Sidebar-Knopf + Sheet --------------------------------------------
+function boardStatus(){
+  const v = bd.verbindung;
+  if(!v) return ["aus", "Nicht verbunden"];
+  return {
+    verbunden: ["", "Verbunden"],
+    verbindet: ["warte", "Verbindet …"],
+  }[bd.status] || ["off", "Getrennt – verbindet neu"];
+}
+function boardKnopfRendern(){
+  const [punkt, text] = boardStatus(), v = bd.verbindung;
+  document.getElementById("boardBtn").innerHTML = `
+    <span class="ico"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${ICON.board}</svg></span>
+    <span class="text"><span class="titel">Board</span>
+      <span class="card-meta">${v ? `${esc(text)} · ${esc(adresseKurz(v.adresse))}` : "Nicht verbunden"}</span></span>
+    <span class="status-dot ${punkt}"></span>`;
+}
+function boardAnzeigen(){
+  boardKnopfRendern();
+  boardZeigenKnoepfe();
+  // Formular nicht neu zeichnen (Eingaben blieben sonst nicht stehen) – nur die Status-Ansicht
+  if(st.sheet === "board" && bd.verbindung) boardSheetRendern();
+}
+function boardOeffnen(){
+  alleSchliessen();
+  boardSheetRendern();
+}
+function boardSheetRendern(){
+  const v = bd.verbindung;
+  if(v){
+    const [punkt, text] = boardStatus();
+    const zeile = (l, w) => `<div class="board-zeile"><span>${l}</span><b>${w}</b></div>`;
+    sheetOeffnen("board", kopfHtml("Board", "Koordinaten-Board im Zimmer") + `<div class="orte-inhalt">
+      <div class="result-card">
+        <div class="result-label">Verbindung</div>
+        <div class="board-status"><span class="status-dot ${punkt}"></span><b id="boardStatusText">${esc(text)}</b></div>
+        <div class="card-meta mono">${esc(adresseKurz(v.adresse))}</div>
+      </div>
+      <div class="card board-zeilen">
+        ${zeile("Angemeldet als", esc(v.name))}
+        ${zeile("Im Raum", bd.teilnehmer.length ? esc(bd.teilnehmer.join(", ")) : "—")}
+        ${zeile("Orte auf dem Board", bd.orte ?? "—")}
+      </div>
+      <div class="field-group"><div class="field-group-label">Auf der Anzeige</div>
+        ${bd.gezeigt ? `<div class="card board-gezeigt" style="flex-direction:row">
+            <span class="text"><span class="card-title">${esc(bd.gezeigt.titel)}</span>
+              <span class="card-meta" style="display:block">${esc([bd.gezeigt.bereich, `von ${bd.gezeigt.von}`].filter(Boolean).join(" · "))}</span></span>
+            <button class="btn-secondary" data-aktion="board-wegnehmen">Wegnehmen</button></div>`
+          : `<div class="banner info">Gerade liegt nichts auf dem Board. Im Detail eines Ortes „Aufs Board“ antippen.</div>`}
+      </div>
+      <div class="sheet-fuss">
+        <button class="btn-secondary" data-aktion="board-trennen">Trennen</button>
+        <button class="btn-primary" data-aktion="schliessen">Fertig</button>
+      </div>
+    </div>`);
+    return;
+  }
+  const name = lsLesen("board.name") || (DEMO.enabled ? MOCK.ich : "");
+  sheetOeffnen("board", kopfHtml("Mit Board verbinden", "QR-Code auf der Anzeige im Zimmer scannen") + `<div class="orte-inhalt">
+    <div class="scanner" id="boardScanner">
+      <video id="boardVideo" playsinline muted></video>
+      <div class="rahmen"></div>
+      <div class="scan-text" id="boardScanText"></div>
+    </div>
+    <div class="knopf-raster">
+      <button class="btn-secondary" data-aktion="board-foto">Foto vom QR-Code</button>
+      <button class="btn-secondary" data-aktion="board-kamera">Kamera neu starten</button>
+    </div>
+    <input type="file" accept="image/*" id="boardFoto" hidden>
+    <div class="banner" id="boardBanner" hidden></div>
+    <div class="field-group"><div class="field-group-label">Oder von Hand – steht unter dem QR-Code</div>
+      <div class="field-grid" style="grid-template-columns:2fr 1fr">
+        <label class="field"><span class="field-label">Adresse</span>
+          <input id="boardAdresse" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="192.168.8.184:3000"></label>
+        <label class="field"><span class="field-label">PIN</span>
+          <input id="boardPin" type="text" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="1234"></label>
+      </div></div>
+    <div class="field-group"><div class="field-group-label">Dein Name</div>
+      <input class="orte-eingabe" id="boardName" maxlength="24" autocomplete="nickname" placeholder="z. B. Max" value="${esc(name)}"></div>
+    <div class="sheet-fuss"><button class="btn-primary" data-aktion="board-beitreten">Beitreten</button></div>
+  </div>`);
+  boardScanStarten();
+}
+// Handy aus dem Standby zurück → sofort neu verbinden statt den Backoff abzuwarten
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && bd.verbindung && !bd.socket){ bd.wartezeit = 500; boardVerbinden(); }
+});
+
+/* ============================================================================
    10 · DATEN, EVENTS, INIT
    ========================================================================== */
 function uebernehmen({ instanz, typ }){
@@ -3263,6 +3713,7 @@ document.getElementById("orteStatusBtn").addEventListener("click", () =>
   toast(DEMO.enabled ? "Demo-Modus – Daten nur in diesem Tab" : "Mit dem Companion-Server verbunden"));
 
 // Sidebar
+document.getElementById("boardBtn").addEventListener("click", boardOeffnen);
 document.getElementById("burgerBtn").addEventListener("click", () => { $sidebar.classList.add("open"); $scrim.classList.add("show"); });
 document.getElementById("sbNav").addEventListener("click", (e) => {
   const item = e.target.closest(".nav-item"); if(!item) return;
@@ -3382,6 +3833,13 @@ $sheet.addEventListener("click", async (e) => {
       zurueck ? bannerDetailOeffnen(zurueck) : alleSchliessen();
       break;
     }
+    // Board-Verbindung
+    case "board-beitreten": boardBeitretenKlick(); break;
+    case "board-kamera": boardScanStarten(); break;
+    case "board-foto": document.getElementById("boardFoto").click(); break;
+    case "board-trennen": boardTrennen(); alleSchliessen(); toast("Vom Board getrennt"); break;
+    case "board-zeigen": boardZeigen(a.dataset.boardQuelle); break;
+    case "board-wegnehmen": boardWegnehmen(); break;
     case "banner-loeschen":
       // Zweimal tippen – ein Bauplan ist schnell weg und für alle
       if(a.dataset.sicher !== "1"){ a.dataset.sicher = "1"; a.textContent = "Wirklich löschen?"; return; }
@@ -3398,6 +3856,13 @@ $sheet.addEventListener("input", (e) => {
     return;
   }
   if(t.id === "formNeu"){ form.neu = t.value; return; }
+  if(t.id === "boardPin"){ t.value = t.value.replace(/\D/g, "").slice(0, 4); return; }
+  if(t.id === "boardAdresse"){
+    // Ganze Beitritts-Adresse eingefügt („…/?pin=1234“) → in Adresse und PIN aufteilen
+    const qr = boardQrLesen(t.value);
+    if(qr){ t.value = adresseKurz(qr.adresse); document.getElementById("boardPin").value = qr.pin; }
+    return;
+  }
   if(t.id === "formEinfuegen" || t.id === "standortEinfuegen"){
     const k = koordinatenErkennen(t.value); if(!k) return;
     const p = t.id === "formEinfuegen" ? "f" : "s";
@@ -3410,6 +3875,7 @@ $sheet.addEventListener("input", (e) => {
   }
 });
 $sheet.addEventListener("change", (e) => {
+  if(e.target.id === "boardFoto"){ const d = e.target.files[0]; e.target.value = ""; if(d) boardFotoLesen(d); return; }
   if(e.target.id === "formKategorie"){ form.kategorie = e.target.value; form.variante = ""; formularRendern(true); }
   if(e.target.id === "formTyp"){ form.variante = e.target.value; formularRendern(true); }
 });
@@ -3419,6 +3885,8 @@ function uhr(){ document.getElementById("uhr").textContent = new Date().toLocale
 
 function init(){
   sidebarBauen("karte");
+  boardKnopfRendern();
+  if(bd.verbindung) boardVerbinden();
   document.getElementById("kopfIcon").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON.karte}</svg>`;
   applyTheme(st.dim);
   ansichtWechseln(st.ansicht);

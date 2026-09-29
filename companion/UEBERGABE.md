@@ -21,6 +21,7 @@ Arbeitsweise, Zusammenspiel mit dem Koordinaten-Board und projektübergreifende 
   - `orte.welt`, `orte.dim`, `orte.ansicht`, `orte.standort`
   - `banner.schritte.<id>`
   - `portale.edition`, `portale.info`, `portale.rechner`
+  - `board.verbindung`, `board.name`
 - **Jeder Bereich endet mit** einem Browser-Test (Playwright), dem Ansehen der Screenshots, einem README-Abschnitt und einem Commit.
 
 ---
@@ -104,6 +105,17 @@ Max hat Bilder geschickt, sie liegen in `referenz/ruestung/`:
 - Gelten Sets pro Welt oder für alle?
 - Gibt es Kupferrüstung und Harzziegel als Besatzmaterial in Bedrock? Beides steht im Entwurf und ist nicht geprüft.
 
+### Board-Verbindung ✅ (Rahmen)
+
+Wunsch von Max: einen Scanner einbauen, mit dem man sich mit dem Board verbindet, **danach** überlegen, wie einzelne Inhalte ans Board gehen.
+
+- Kein Bereich, sondern ein Eintrag **Board** unten in der Sidebar mit Status-Punkt. Details in `README.md` → Board-Verbindung.
+- Kamera-Scanner (BarcodeDetector oder jsQR vom CDN), Foto vom QR-Code, Adresse + PIN von Hand. Danach Beitritt mit Name und PIN und eine offene Live-Verbindung (WebSocket).
+- Auf dem Board sind dafür `/api/beitreten` und `/api/ich` für andere Ursprünge freigegeben (CORS), mit einer Sperre nach 5 falschen PINs.
+- **Aufs Board** (Variante B, von Max gewählt): Inhalte groß auf die Anzeige werfen, wie Chromecast. Das Board speichert nichts; die Karte liegt dort, bis die nächste kommt oder jemand sie wegnimmt.
+  - Allgemeines Kartenformat (Titel, Blöcke `koordinaten`/`zeilen`/`text`), damit neue Inhalte ohne Änderung am Board dazukommen: Eintrag in `BOARD_KARTEN`.
+  - Bisher nur **Orte** („Aufs Board“ im Ort-Detail). Weitere Inhalte legt Max fest.
+
 ### Handbuch, Baupläne ⬜
 
 Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
@@ -125,6 +137,7 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 | JS 9 · SHEETS | `sheetOeffnen(art, html, dim)`, `kopfHtml`, `koordFelder`/`koordLesen`, Karte-Sheets |
 | JS 9b · BEREICHE | `ICON`, `BEREICHE`, `modulWechseln`, `sidebarBauen` |
 | JS 9c–9e | Sammelobjekte, Banner, Portal-Verwaltung |
+| JS 9f · BOARD-VERBINDUNG | `bd`, `boardQrLesen`, `qrLeser`, `boardScanStarten`, `boardBeitreten`, `boardVerbinden`, `boardSheetRendern`; Aufs Board: `boardSenden`, `BOARD_KARTEN`, `ortKarte`, `boardZeigen`, `boardWegnehmen`, `boardZeigenKnopf` |
 | JS 10 | Weltdaten laden, Events, `$sheet`-Klick-Switch (`data-aktion`), `init()` |
 
 ### Checkliste: neuen Bereich einbauen
@@ -176,6 +189,10 @@ Die vollständigen Tabellen stehen in `README.md`.
 2. **Edition**: In der Portal-Verwaltung ist Bedrock/Java zurzeit eine Einstellung auf dem Gerät. Vorschlag: später eine Eigenschaft der Welt, denn auch die Seeds unterscheiden sich je Edition. Dafür braucht es die Zustimmung von Max, weil es das Datenmodell ändert.
 3. **Rüstung, Handbuch, Baupläne**: Inhalte mit Max klären.
 4. **Idee, nicht besprochen**: Portal-Verbindungen auch auf der Karte zeigen.
+5. **Aufs Board**:
+   - Welche Inhalte nach dem Ort kommen (Vorschlag: Portal-Verbindung, Banner-Anleitung – dafür bräuchte die Karte einen Bild-Block), mit Max klären.
+   - Bleibt eine Karte liegen, bis sie jemand wegnimmt (so ist es jetzt), oder verschwindet sie nach einiger Zeit?
+   - https-Companion ↔ http-Board: siehe `../UEBERGABE.md` → Offene Entscheidungen.
 
 Projektübergreifend offen (Datenhaltung, OCR-Anbindung, Dashboard): siehe `../UEBERGABE.md`.
 
@@ -200,8 +217,13 @@ git switch -c bereich/ruestung
 cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist
-npm test                          # banner.test.mjs (23 Prüfungen) + portale.test.mjs (29 Prüfungen)
+npm test                          # banner (23) + portale (29) + board (52 Prüfungen)
 ```
+
+- `board.test.mjs` startet ein **echtes Koordinaten-Board** (Port 3198, eigener Datenordner) und liefert die Companion über `http://localhost` aus. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).
+  - Kamera: Chromiums Fake-Kamera zeigt einen erzeugten QR-Code (Y4M). `BarcodeDetector` wird entfernt, damit der jsQR-Weg wie am iPhone läuft; jsQR kommt aus `node_modules` statt vom CDN.
+  - Außerdem geprüft: Foto, Eingabe von Hand, falsche PIN, Board nicht erreichbar, Neuladen, Board-Neustart, Trennen, Kamera aus beim Schließen.
+  - Aufs Board: Ort auf die echte Anzeige (`/anzeige`, 1600×900) werfen, Layout, Neuladen der Anzeige, ein zweiter Spieler ersetzt die Karte (Zeilen, Text, Nether), ungültige Karte wird abgelehnt, Wegnehmen.
 
 - Mit `CHROMIUM=/pfad/zu/chromium` lässt sich ein vorhandenes Chromium nutzen. Im Claude-Container ist das `/opt/pw-browsers/chromium`.
 - Screenshots landen in `tests/bilder/`. **Immer ansehen**, nicht nur auf Grün verlassen.

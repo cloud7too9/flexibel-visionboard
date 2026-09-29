@@ -25,6 +25,11 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 - Koordinaten oder fertigen `/execute … tp`-Befehl kopieren, anheften, bearbeiten, löschen
 - Export aller Orte als JSON
 
+**Companion-PWA**
+- Die Companion kann per QR-Code-Scan beitreten wie ein Handy. Dafür sind `/api/beitreten` und `/api/ich` für andere Ursprünge freigegeben (CORS, inkl. Private-Network-Access-Antwort für Chrome). `/api/anzeige` mit der PIN bleibt gesperrt.
+- Nach **5 falschen PINs** ist das Gerät **60 s gesperrt** (`server/src/sperre.js`), damit keine Webseite die 4-stellige PIN durchprobieren kann.
+- **Aufs Board**: Die Companion kann eine Karte groß auf die Anzeige werfen (z. B. einen Ort). Sie liegt über den Spalten, Seitenleiste mit QR-Code bleibt frei, im Theme ihrer Dimension, mit Absender. Eine neue Karte ersetzt die alte; gespeichert wird sie nicht. Aufbau und Prüfung der Karte: `server/src/zeigen.js`.
+
 ## Starten
 
 Voraussetzung: [Node.js](https://nodejs.org) 20 oder neuer.
@@ -72,7 +77,9 @@ Aufbau:
 server/src/server.js      Fastify: Beitritt, Upload, Texterkennung, WebSocket-Sync, liefert client/dist aus
 server/src/zustand.js     Orte + Einstellungen, Validierung, Speichern als JSON
 server/src/erkennung.js   OCR (tesseract.js) + Auswertung des Seed-Map-Popups, Feature-Liste
-client/src/anzeige/       Große Anzeige
+server/src/zeigen.js      „Aufs Board“: Karten vom Handy prüfen
+server/src/sperre.js      Sperre nach falschen PINs
+client/src/anzeige/       Große Anzeige (Gezeigt.tsx: geworfene Karte)
 client/src/steuerung/     Handy-Oberfläche
 ```
 

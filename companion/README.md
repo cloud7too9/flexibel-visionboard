@@ -82,6 +82,36 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 - Löschen mit zweitem Tippen („Wirklich löschen?“), weil ein Bauplan für alle weg ist
 - Vorschau ist vereinfacht (Pixel-Masken, keine Original-Texturen)
 
+## Board-Verbindung
+
+Verbindet die Companion mit dem Koordinaten-Board im Zimmer. Das ist kein Bereich, sondern gilt für das ganze Gerät: Eintrag **Board** unten in der Sidebar, der Status-Punkt zeigt den Zustand (grau nicht verbunden, gelb verbindet, grün verbunden, rot getrennt).
+
+- **Scannen**: Das Sheet „Mit Board verbinden“ startet die Kamera und sucht den QR-Code der Anzeige (`http://<ip>:<port>/?pin=1234`). Erkennung per `BarcodeDetector`, wo es ihn gibt (Android-Chrome), sonst per **jsQR** (wird erst beim Scannen vom CDN geladen, `CONFIG.qrBibliothek`).
+- **Ausweichwege**: „Foto vom QR-Code“ und Adresse + PIN von Hand. Die ganze Beitritts-Adresse lässt sich auch einfügen, sie wird in Adresse und PIN aufgeteilt; ohne Port gilt `:3000`.
+- **Beitreten**: Ist der Name schon bekannt, tritt die Companion nach dem Erkennen sofort bei (`POST /api/beitreten`). Danach hält sie `/ws?token=…` offen, verbindet bei Abbruch neu und nach dem Standby sofort. Lehnt das Board das Token ab, vergisst sie die Verbindung.
+- **Verbunden**: Das Sheet zeigt Adresse, „Angemeldet als“, wer im Raum ist und wie viele Orte das Board hat. Die Anzeige des Boards führt die Companion wie ein Handy unter „online“. „Trennen“ vergisst die Verbindung.
+- Gilt pro Gerät (`localStorage` `board.verbindung`, `board.name`) und ist auch im DEMO-Modus echt, weil das Board ein eigenes Gerät ist.
+
+### Aufs Board
+
+Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte liegt dort, bis die nächste kommt oder jemand sie wegnimmt. Das Board speichert sie nicht; nach einem Neustart ist die Anzeige frei.
+
+- **Ort** (bisher der einzige Inhalt): Im Detail eines Ortes „Aufs Board“ antippen. Die Anzeige zeigt Name, Kategorie, die Koordinaten groß und die umgerechnete Position im Nether bzw. in der Oberwelt, im Theme der Dimension, dazu wer es geschickt hat.
+- Liegt der eigene Inhalt auf dem Board, wird der Knopf zu „Liegt auf dem Board · Wegnehmen“. Das Board-Sheet zeigt unter „Auf der Anzeige“, was gerade dort liegt und von wem, mit „Wegnehmen“.
+- Der Knopf erscheint nur, wenn das Gerät mit einem Board verbunden ist.
+- **Neue Inhalte** brauchen keine Änderung am Board: in `BOARD_KARTEN` eine Funktion `quelle-id → karte` eintragen und im Sheet `boardZeigenKnopf("<art>:<id>")` einbauen.
+
+Nachrichten über die bestehende Live-Verbindung: `{ art:"zeigen", karte }` und `{ art:"verbergen", id }`, Antwort `ok`/`fehler`, an alle geht `{ art:"gezeigt", karte|null }`. Das Board prüft die Karte (`koordinaten-board/server/src/zeigen.js`):
+
+```
+karte = { titel, unter?, bereich?, quelle?, dimension: "oberwelt"|"nether"|"ende"|null,
+          bloecke: [ { art:"koordinaten", label?, x, y|null, z, dimension? }
+                   | { art:"zeilen", zeilen:[{ label, wert }] }
+                   | { art:"text", text } ] }            // höchstens 6 Blöcke
+```
+
+**https ↔ http:** Die Companion soll später als PWA über **https** laufen (z. B. Hetzner), das Board liefert nur **http** im Heimnetz. Browser blockieren Anfragen von einer https-Seite an eine http-Adresse (Mixed Content), Safari auf dem iPhone ausnahmslos. Die Kamera wiederum gibt es nur in einem sicheren Kontext (https oder localhost). Heute funktioniert die Verbindung deshalb, wenn die Companion über http oder als Datei geöffnet wird; die Kamera dann nur am Rechner, am Handy bleiben Foto und Eingabe von Hand. Die Companion meldet den Fall ausdrücklich („Der Browser blockiert die Verbindung …“).
+
 ## Regeln (Server muss sie genauso prüfen – siehe `instanzPruefen()`)
 
 1. „Eigene Orte“ ist eine zusätzliche Kategorie; dort legt man Typen (Ortsnamen) selbst an.
@@ -132,7 +162,7 @@ Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`../koo
 
 ## Tests
 
-`tests/` enthält Playwright-Tests für Banner und Portal-Verwaltung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
+`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung und Board-Verbindung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
 
 ## Referenz
 
@@ -145,3 +175,4 @@ Was auch das Koordinaten-Board betrifft, liegt in `../referenz/`: Datenmodell, S
 - Beispiel-Screenshot vom Biom-Popup, um die Erkennung darauf abzustimmen
 - Dashboard-Ansichten pro Bereich (siehe oben): Seiten pro Bereich? Wo bearbeitet man – Handy oder Anzeige?
 - Inhalte der geplanten Bereiche (werden einzeln durchgegangen)
+- Aufs Board: welche Inhalte nach dem Ort (Portal-Verbindung, Banner-Anleitung …); https-Companion ↔ http-Board (siehe oben)
