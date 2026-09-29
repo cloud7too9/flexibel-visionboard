@@ -2,7 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -71,6 +71,19 @@ test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner', async ()
   assert.equal((await anfrage('GET', '/api/banner', lena)).daten.liste[0].name, 'Wappen');
   assert.equal((await anfrage('PUT', '/api/banner/b_99', max, { name: 'x', basis: 'white', ebenen: [] })).status, 404);
   assert.equal((await anfrage('PUT', '/api/board/einstellungen', max, { aktiveWelt: 'w_99' })).status, 404);
+});
+
+test('Screenshot auslesen: Banner-Anleitung liefert banner statt Ort', { timeout: 60_000 }, async () => {
+  const max = await beitreten('Max');
+  const form = new FormData();
+  const bild = readFileSync(fileURLToPath(new URL('../../../referenz/banner/rezept-beispiel.jpg', import.meta.url)));
+  form.append('datei', new Blob([bild], { type: 'image/jpeg' }), 'rezept.jpg');
+  const res = await fetch(`${BASIS}/api/orte/auslesen`, { method: 'POST', headers: { authorization: `Bearer ${max}` }, body: form });
+  const d = await res.json();
+  assert.equal(res.status, 200);
+  assert.equal(d.erkannt, null);
+  assert.equal(d.banner.basis, 'black');
+  assert.deepEqual(d.banner.ebenen.map((e) => e.muster), ['border', 'rhombus', 'border', 'flower', 'square_top_left', 'square_bottom_right']);
 });
 
 test('Änderungen gehen live an alle, Daten überstehen einen Neustart', async () => {
