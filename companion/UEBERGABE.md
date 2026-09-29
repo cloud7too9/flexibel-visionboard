@@ -8,18 +8,18 @@ Arbeitsweise, Zusammenspiel mit dem Koordinaten-Board und projektübergreifende 
 
 ## Prototyp
 
-- **Eine Seite plus zwei Begleiter**: `companion-prototyp.html` (Vanilla JS mit `"use strict"`, ohne Build-Schritt), dazu `regeln.js` (Stammdaten + Regel-Funktionen, klassisches Script) und `icons/` (Kennblöcke).
+- **Eine Seite plus drei Begleiter**: `companion-prototyp.html` (Vanilla JS mit `"use strict"`, ohne Build-Schritt), dazu `regeln.js` (Stammdaten + Regel-Funktionen, klassisches Script), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen, Baukasten für Rüstung und Sammelobjekte).
 - **Direkt öffnen** startet den **DEMO-Mock** (`mockApi`).
   - **Live** läuft die Seite, wenn das Koordinaten-Board sie ausliefert (`http://<board>:3000/`, QR-Code der Anzeige). Erkannt über `GET /api/server`, API unter `/api`, Token aus dem Beitreten. `?demo=1` erzwingt den Mock. Details in `README.md` → Live-Betrieb.
   - `?modul=<key>` startet direkt in einem Bereich.
 - **Demo-Daten**:
   - 2 Welten; `w_1` hat den Seed `6889192652397090698` aus dem Screenshot.
-  - Beispielorte und Biome, 5 abgehakte Sammelobjekte, 4 Banner.
+  - Beispielorte und Biome, 5 abgehakte Sammelobjekte, 4 Banner, 3 Rüstungs-Sets (Amethyst-Netherit, Umbreon, Taucher).
   - 3 Portal-Verbindungen: **Hauptbasis** passt, **Eisenfarm** ist einseitig, beim **Dorf** entsteht ein neues Portal.
   - Angemeldet ist `MOCK.ich = "Max"`.
 - **`localStorage`** speichert nur Bequemlichkeiten pro Gerät:
   - `orte.welt`, `orte.dim`, `orte.ansicht`, `orte.standort`
-  - `banner.schritte.<id>`
+  - `banner.schritte.<id>`, `ruestung.schritte.<set>.<teil>` (Amboss-Schritte), `ruestung.buehne` (Dimension + Träger der Figur)
   - `portale.edition`, `portale.info`, `portale.rechner`
   - `board.verbindung` (live zugleich die Anmeldung), `board.name`
 - **Jeder Bereich endet mit** einem Browser-Test (Playwright), dem Ansehen der Screenshots, einem README-Abschnitt und einem Commit.
@@ -38,9 +38,9 @@ Die Sidebar wird aus der Registry `BEREICHE` gebaut. Bereiche ohne `mount()` zei
 | 4 | Handbuch | ⬜ offen, nichts festgelegt | – | – |
 | 5 | Baupläne | ⬜ offen, nichts festgelegt | – | – |
 | 6 | Banner | ✅ umgesetzt | Oberwelt | alle Welten |
-| 7 | Rüstung | 🟨 Code-Entwurf, noch nicht besprochen | – | – |
+| 7 | Rüstung | ✅ umgesetzt | Oberwelt | alle Welten (Besätze: Welt) |
 
-**Reihenfolge laut Max**: Banner ✓ → Portal-Verwaltung ✓ → Rüstung, Handbuch, Baupläne kommen zuletzt.
+**Reihenfolge laut Max**: Banner ✓ → Portal-Verwaltung ✓ → Rüstung ✓ → Handbuch, Baupläne kommen zuletzt.
 
 Die Bereiche **Zugänge, Backups, Erfolge, Orte und Toolbox** sind entfernt, dafür gibt es andere Lösungen. Der alte Bereich „Orte“ ist in der **Karte** aufgegangen, die vormals „Live-Karte“ hieß.
 
@@ -67,14 +67,16 @@ Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmode
 
 ### Sammelobjekte ✅
 
-- Zurzeit nur **Rüstungsbesätze zum Abhaken plus Fundort**: 18 Besätze einschließlich Fluss und Bolzen, dazu die Netheritaufwertung. Alle mit deutschen Namen, gruppiert nach Fundort-Struktur.
+- Zurzeit nur **Rüstungsbesätze zum Abhaken plus Fundort**: 18 Besätze einschließlich Fluss und Blitz, dazu die Netheritaufwertung. Gruppiert nach Fundort-Struktur.
+- **Namen wie in Bedrock** (Entscheidung von Max, 29.09.2026): aus `texts/de_DE.lang`, z. B. „Wächterzier“, „Mündelzier“, „Wilde Zier“; der englische Name steht klein daneben. Vorher standen die Java-Wiki-Namen da („Wachen“, „Warthof“ …).
+- **Icon je Besatz** ist die Schmiedevorlage aus `ruestungs-baukasten/vorlagen/` (Liste und Detail-Kopf, offene blass).
 - Abhaken gilt **für die ganze Welt** und merkt sich, wer es wann gefunden hat.
 - Verknüpfung zur Karte: Zu jedem Fundort erscheinen die bekannten Strukturen, die nächste mit Entfernung. „Karte“ springt direkt dorthin.
 - **Kennblöcke als PNG** (von Max, Quelle minecraft.wiki): Jede Fundort-Struktur zeigt ihren typischen Block, z. B. Unheilvolles Banner für den Außenposten, Netherziegel für die Netherfestung. Dazu der deutsche Strukturname aus `icons/manifest.json`, klein darunter der Seed-Map-Name.
-  - Die Bilder lagen zuerst in `koordinaten-board/werkzeuge/icons/` und sind nach `companion/icons/` umgezogen, weil kein Projekt in den Ordner des anderen greift. Das Board hat eine **eigene Kopie** in `koordinaten-board/client/public/icons/`; neue Bilder in beide Ordner legen.
+  - Die Bilder liegen in `companion/icons/`. Das Board liefert den Ordner seit der Zusammenführung selbst unter `/icons/` aus (auch für die Anzeige); eine eigene Kopie gibt es nicht mehr.
   - **Überall eingebaut**: Sammelobjekte (Gruppen, Detail), Karte (Liste, Canvas-Marker, Detail, Screenshot-Prüfliste), Aufs Board (die Karte schickt `typ` mit) und im Board selbst (Anzeige, Handy-Liste, Ort-Detail). Kategorien ohne Bild behalten ihr Symbol bzw. Linien-Icon.
   - **Pfadruinen haben noch kein Bild** (Seltsamer Kies fehlt, minecraft.wiki ist aus dem Claude-Container gesperrt). Bis dahin steht das Symbol ⌗ da. Kommt die Datei `trail_ruins.png` dazu, in `STRUKTUREN` das `bild:false` entfernen; der Test meldet den Unterschied.
-  - Die Einträge darunter (die Besätze selbst) zeigen weiter den Anfangsbuchstaben. Das Manifest nennt schon die Item-IDs (`sentry_armor_trim_smithing_template` …), Bilder dafür gibt es noch nicht.
+  - Die Einträge darunter (die Besätze selbst) zeigen ihre Schmiedevorlage (`vorlageDatei()`); die Item-IDs im Manifest (`sentry_armor_trim_smithing_template` …) sind zugleich die Dateinamen.
 
 ### Portal-Verwaltung ✅
 
@@ -97,22 +99,28 @@ Die Wünsche von Max waren: Koordinaten umrechnen, Verbindungen mit den Koordina
   - Schritt 1 „<Farbe> Base“ ist die Grundfarbe; fehlt er, lässt sich nichts speichern. Nicht zugeordnete Zeilen werden gemeldet, derselbe Banner zweimal als „Schon gespeichert“.
   - Der Screenshot aus einem Banner-Editor (`referenz/banner/banner-editor-beispiel.jpg`) geht weiterhin nicht (Schrift zu klein) – dort bleibt der Editor von Hand.
 
-### Rüstung 🟨 (als Nächstes)
+### Rüstung ✅
 
-Max hat Bilder geschickt, sie liegen in `referenz/ruestung/`:
-- 3 Netherit-Sets mit Besätzen: „Giratina“, „Umbreon“ und ein Amethyst-Set
-- 4 Grafiken „beste Verzauberung mit wenigsten XP“ als Amboss-Reihenfolge für Helm, Brustpanzer, Hose und Stiefel
+Max hat einen **Rüstungs-Baukasten** geschickt (Zip „ruestung“, jetzt `ruestungs-baukasten/`): Bedrock-Texturen aus Mojangs `bedrock-samples`, Namen aus `de_DE.lang`, ein Manifest, `baukasten.js` (Umfärben, Item-Icons, 2D-Figur), `figur3d.js` (3D mit three.js) und 1116 fertige Item-Icons. Die Showcase-HTML fehlte im Zip, deshalb ist der Bereich im Stil der Companion **neu gebaut** (Entscheidung von Max).
 
-**Der Entwurf** `entwuerfe/banner-ruestung.js` ist **nicht eingebaut**, und sein Banner-Teil ist überholt. Er enthält:
-- ein Set aus 4 Teilen, je mit Material, Rüstungsbesatz, Besatzmaterial und „verzaubern ja/nein“
-- Amboss-Pläne nach den Bildern: Helm 27, Brust 13, Hose 28, Stiefel 49 XP-Level. **Diese Werte gelten für Java; die Bedrock-Werte müssen noch geprüft werden.**
-- eine Vorschau als Rüstungsständer-SVG
-- `besatzStand()`: Es zeigt, welche Besätze in der Welt laut Sammelobjekten schon gefunden sind.
+**Entscheidungen von Max (29.09.2026):**
+- **Sets für alle Welten**, wie Banner, auf dem Board gespeichert. Je Teil: Rüstung, Besatz, Besatz-Material, Lederfarbe, verzaubert ja/nein.
+- **Welche Besätze in der aktuellen Welt schon gefunden sind**, zeigt der Bereich überall (aus den Sammelobjekten).
+- **Bedrock-Namen** in Rüstung und Sammelobjekten, englisch klein daneben.
+- Ein **eigenes Anzeigeschema** fürs Board.
 
-**Noch mit Max klären:**
-- Was genau soll der Bereich? Sets planen, eigene Sets festhalten, Abhaken beim Verzaubern?
-- Gelten Sets pro Welt oder für alle?
-- Gibt es Kupferrüstung und Harzziegel als Besatzmaterial in Bedrock? Beides steht im Entwurf und ist nicht geprüft.
+**Gebaut:**
+- Liste (vier Icons, nötige Vorlagen, „2/3 gefunden“), Detail (Figur, Schmiedetisch je Teil, „Du brauchst“, Verzaubern am Amboss, Aufs Board), Editor als **Schmiedetisch** mit den Slots Vorlage + Rüstung + Material wie in den Vorlagen von Max (`referenz/ruestung/`).
+- **Figur**: 3D über http mit three.js r128 vom CDN (drehbar, Ständer oder Steve, Sockel und Hintergrund je Dimension); ohne three.js 2D; als Datei nur die Icons, weil `file://` Canvas-Pixel und ES-Module sperrt. Icons immer aus `fertig/items/` (gehen auch als Datei).
+- **Anpassung am Baukasten**: `figur3d.js` hat eine Option `abstand` (Kamera-Abstand, Standard wie vorher 104), damit der Helm nicht am Rand klebt. Sonst ist der Baukasten unverändert.
+- **Amboss-Pläne** aus dem alten Entwurf (Helm 27, Harnisch 13, Beinschutz 28, Stiefel 49 XP-Level) – **Java-Werte, Bedrock noch nicht geprüft**.
+- `entwuerfe/banner-ruestung.js` ist damit überholt.
+
+**Noch offen:**
+- Die Showcase-Ansicht (`ruestungs-showcase.html`) fehlte im Zip. Schickt Max sie nach, lässt sich vergleichen, ob etwas fehlt.
+- Bedrock-XP-Werte für die Amboss-Pläne prüfen; deutsche Bedrock-Namen der Verzauberungen („Huschen“ …) gegen `de_DE.lang` prüfen.
+- Name der Netheritaufwertung in Bedrock nicht aus dem Manifest bestätigt (steht nicht drin).
+- three.js kommt vom CDN: Ohne Internet im Heimnetz gibt es die 2D-Figur. Falls das stört, könnte das Board three.js selbst ausliefern.
 
 ### Board-Verbindung und Live-Betrieb ✅
 
@@ -123,7 +131,7 @@ Wunsch von Max: einen Scanner einbauen, mit dem man sich mit dem Board verbindet
 - **Woanders geöffnet** (Datei, anderer Server): Kamera-Scanner (BarcodeDetector oder jsQR vom CDN), Foto vom QR-Code, Adresse + PIN von Hand; die Daten bleiben dann im DEMO-Mock, nur „Aufs Board“ geht ans echte Board. Dafür sind `/api/beitreten` und `/api/ich` per CORS offen, mit einer Sperre nach 5 falschen PINs.
 - **Aufs Board** (Variante B, von Max gewählt): Inhalte groß auf die Anzeige werfen, wie Chromecast. Das Board speichert nichts; die Karte liegt dort, bis die nächste kommt oder jemand sie wegnimmt.
   - **Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): Verzeichnis `BOARD_KARTEN`, je Inhaltsart `{ titel, karte(id) }` → allgemeines Kartenformat (Titel, Blöcke `koordinaten`/`zeilen`/`text`/`bild`, optional `typ` für den Kennblock).
-  - Schemas: Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner-Bauplan. Tabelle in `README.md` → Aufs Board · Anzeigeschema.
+  - Schemas: Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner-Bauplan, Rüstungs-Set. Tabelle in `README.md` → Aufs Board · Anzeigeschema.
 
 ### Handbuch, Baupläne ⬜
 
@@ -135,19 +143,20 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 
 | Abschnitt | Inhalt |
 |---|---|
-| CSS oben | Basis 1:1 aus Modul A, danach ein eigener Block je Bereich: Karte, Sammelobjekte, Banner, Portal-Verwaltung |
+| CSS oben | Basis 1:1 aus Modul A, danach ein eigener Block je Bereich: Karte, Sammelobjekte, Banner, Rüstung, Portal-Verwaltung |
 | HTML | Header, `main.module-stack` mit je einer `<section class="module" data-module="…">` pro Bereich, Sidebar, ein gemeinsames Sheet `#orteSheet`, Toast |
 | JS 0 · KONFIG | `CONFIG` (Weltgrenze, Biom-Radius, Zoom …) |
 | JS 1 · THEMES | UI-Tokens der drei Dimensionen |
-| `regeln.js` (eigene Datei) | Dimensionen, Kategorien, Biome, `SAMMELOBJEKTE`, Banner-Farben/-Muster, `instanzPruefen`, `bannerPruefen`, `verbindungRegelPruefen` – lädt auch der Board-Server |
-| JS 2 · STAMMDATEN | Kartenfarben, Symbole, `STRUKTUREN` + `kennblockHtml`/`kennblockBild` (Kategorie → Kennblock) |
+| `regeln.js` (eigene Datei) | Dimensionen, Kategorien, Biome, `SAMMELOBJEKTE`, Banner-Farben/-Muster, `RUESTUNGS_TEILE`/`RUESTUNGEN`/`BESATZ_MATERIALIEN`, `instanzPruefen`, `bannerPruefen`, `ruestungPruefen`, `verbindungRegelPruefen` – lädt auch der Board-Server |
+| JS 2 · STAMMDATEN | Kartenfarben, Symbole, `STRUKTUREN` + `kennblockHtml`/`kennblockBild` (Kategorie → Kennblock), `BAUKASTEN`, `vorlageDatei`, `itemBild` |
 | JS 3 · KOORDINATEN | `zahl`, `umrechnen`, `entfernung`, `tpBefehl`, `koordinatenErkennen` |
 | JS 4 · API + MOCK | API-Vertrag als Kommentar, `betriebErkennen` (live oder DEMO), `MOCK`, `mockApi`, `api()` |
 | JS 5–8 | State, Theme (`applyTheme`), Liste, Canvas-Karte |
 | JS 9 · SHEETS | `sheetOeffnen(art, html, dim)`, `kopfHtml`, `koordFelder`/`koordLesen`, Karte-Sheets |
 | JS 9b · BEREICHE | `ICON`, `BEREICHE`, `modulWechseln`, `sidebarBauen` |
 | JS 9c–9e | Sammelobjekte, Banner, Portal-Verwaltung |
-| JS 9f · BOARD-VERBINDUNG | `bd`, `boardQrLesen`, `qrLeser`, `boardScanStarten`, `boardBeitreten`, `boardVerbinden`, `boardSheetRendern`; live: `anmeldungAbgelaufen`, `liveAktualisieren`, `boardEinstellungen…`; Aufs Board: `boardSenden`, `BOARD_KARTEN` (Anzeigeschemas `ortKarte`, `sammelKarte`, `sammelStandKarte`, `portalKarte`, `bannerKarte`), `boardZeigen`, `boardWegnehmen`, `boardZeigenKnopf` |
+| JS 9f · BOARD-VERBINDUNG | `bd`, `boardQrLesen`, `qrLeser`, `boardScanStarten`, `boardBeitreten`, `boardVerbinden`, `boardSheetRendern`; live: `anmeldungAbgelaufen`, `liveAktualisieren`, `boardEinstellungen…`; Aufs Board: `boardSenden`, `BOARD_KARTEN` (Anzeigeschemas `ortKarte`, `sammelKarte`, `sammelStandKarte`, `portalKarte`, `bannerKarte`, `ruestungKarte`), `boardZeigen`, `boardWegnehmen`, `boardZeigenKnopf` |
+| JS 9g · RÜSTUNG | `rs`, `teilIcon`/`teilIconDatei`, `besatzStand`, `ruestungLaden`, `renderRuestung`, `ruestungDetailOeffnen` (`rezeptHtml`, `bedarfHtml`, `verzauberungHtml`), Editor `ruestungEditorOeffnen`/`…Rendern`/`…Klick`, `ruestungSpeichern`; Figur `fig`, `figurModus` (3d/2d/icons), `buehneZeigen`, `glanzStarten`, `drehenEinrichten`; Board `ruestungFoto`, `ruestungKarte` |
 | JS 10 | Weltdaten laden, Events, `$sheet`-Klick-Switch (`data-aktion`), `datenStarten()`, `init()` |
 
 ### Checkliste: neuen Bereich einbauen
@@ -179,6 +188,7 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 |---|---|---|
 | Sammelobjekte | Status je Welt: `{ [objektId]: { von, am } }` | `GET/PUT /sammelobjekte/welten/:id[/:objektId]` |
 | Banner | `{ id, name, basis, ebenen:[{ muster, farbe }], von, am }` | `GET/POST /banner`, `PUT/DELETE /banner/:id` |
+| Rüstung | `{ id, name, teile:{ helmet…boots: { ruestung, muster, material, farbe, verzaubert } \| null }, von, am }` für alle Welten | `GET/POST /ruestung`, `PUT/DELETE /ruestung/:id` |
 | Portale | `{ id, name, oberwelt:{x,y,z}, nether:{x,y,z}, von, am }` je Welt | `GET/POST /portale/welten/:id`, `PUT/DELETE /portale/:id` |
 | Karte (Board) | Instanz zusätzlich `quelle`, `von`, `am`, `angeheftet` | `PUT /orte/instanzen/:id/angeheftet` |
 | Anzeige (Board) | Einstellungen `{ titel, qrZeigen, aktiveWelt }` | `GET/PUT /board/einstellungen` |
@@ -188,6 +198,7 @@ Die vollständigen Tabellen stehen in `README.md`.
 **Regel-Funktionen** stehen in `regeln.js`; der Board-Server lädt genau diese Datei (`koordinaten-board/server/src/regeln.js`):
 - `instanzPruefen()` für die Karte
 - `bannerPruefen()` für Banner
+- `ruestungPruefen()` für Rüstungs-Sets
 - `verbindungRegelPruefen()` für Portale
 
 ---
@@ -201,7 +212,7 @@ Die vollständigen Tabellen stehen in `README.md`.
    - `regeln.js` und `icons/` kommen neben die Hauptdatei; das Board liefert dann sie aus (`COMPANION_DATEI`).
    - **Der alte Portal-Linker dort sagt „Bedrock sucht im Nether ±16“. Das ist falsch**, Bedrock sucht ±128. Er wird durch die Portal-Verwaltung ersetzt oder korrigiert.
 2. **Edition**: In der Portal-Verwaltung ist Bedrock/Java zurzeit eine Einstellung auf dem Gerät. Vorschlag: später eine Eigenschaft der Welt, denn auch die Seeds unterscheiden sich je Edition. Dafür braucht es die Zustimmung von Max, weil es das Datenmodell ändert.
-3. **Rüstung, Handbuch, Baupläne**: Inhalte mit Max klären.
+3. **Handbuch, Baupläne**: Inhalte mit Max klären. Rüstung: offene Punkte siehe oben.
 4. **Idee, nicht besprochen**: Portal-Verbindungen auch auf der Karte zeigen.
 5. **Aufs Board**: Bleibt eine Karte liegen, bis sie jemand wegnimmt (so ist es jetzt), oder verschwindet sie nach einiger Zeit? Neue Bereiche bekommen ihr Anzeigeschema (Checkliste Punkt 8).
 6. **Aus der früheren Board-Steuerung noch nicht übernommen**: Notiz zu einem Ort, Kartenausschnitt als Bild, Export als JSON. Erweitert das Datenmodell – Details geht Max einzeln durch.
@@ -214,12 +225,7 @@ Projektübergreifend offen (Dashboard, Biom-Erkennung, Hetzner): siehe `../UEBER
 
 Der Companion-Verlauf ist mit allen Commits im Repo erhalten (Ordner `companion/`). Die früheren Branches `bereich/banner` und `bereich/portale` sind in `main` aufgegangen.
 
-**Nächster Git-Schritt** für den Bereich Rüstung:
-
-```bash
-git switch main && git pull
-git switch -c bereich/ruestung
-```
+Der Bereich Rüstung liegt auf `bereich/ruestung` (zweigt von `bereich/banner-screenshot` ab). Nächster Bereich: `bereich/<name>` von `main`, sobald die offenen Branches gemergt sind.
 
 ---
 
@@ -228,18 +234,20 @@ git switch -c bereich/ruestung
 ```bash
 cd companion/tests
 npm install                       # Playwright
-npx playwright install chromium   # einmalig, falls kein Chromium da ist
-npm test                          # banner (23) + portale (29) + sammelobjekte (64) + kennbloecke (14) + board (57) + live (58) + anzeigeschema (22) = 267 Prüfungen
+npx playwright install chromium   # einmalig, falls kein Chromium da ist (three.js für die 3D-Tests kommt mit npm install)
+npm test                          # banner (23) + portale (29) + sammelobjekte (64) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (52) = 332 Prüfungen
 ```
 
-- `board.test.mjs`, `live.test.mjs` und `anzeigeschema.test.mjs` starten je ein **echtes Koordinaten-Board** (Ports 3198, 3195, 3194, eigener Datenordner). Board-Test: Companion über einen eigenen `http://localhost`-Server (DEMO) mit Kamera, Foto, Hand-Eingabe und „Aufs Board“. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).
+- `board.test.mjs`, `live.test.mjs` und `anzeigeschema.test.mjs` starten je ein **echtes Koordinaten-Board** (Ports 3198, 3195, 3194, eigener Datenordner); Anzeigeschema und Rüstung liefern die Companion zusätzlich selbst über http aus (3193, 3192). Board-Test: Companion über einen eigenen `http://localhost`-Server (DEMO) mit Kamera, Foto, Hand-Eingabe und „Aufs Board“. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).
   - Kamera: Chromiums Fake-Kamera zeigt einen erzeugten QR-Code (Y4M). `BarcodeDetector` wird entfernt, damit der jsQR-Weg wie am iPhone läuft; jsQR kommt aus `node_modules` statt vom CDN.
   - Außerdem geprüft: Foto, Eingabe von Hand, falsche PIN, Board nicht erreichbar, Neuladen, Board-Neustart, Trennen, Kamera aus beim Schließen.
   - Aufs Board: Ort auf die echte Anzeige (`/anzeige`, 1600×900) werfen, Layout, Neuladen der Anzeige, ein zweiter Spieler ersetzt die Karte (Zeilen, Text, Nether), ungültige Karte wird abgelehnt, Wegnehmen, Stronghold mit Kennblock.
   - Kennblöcke in den Spalten der Anzeige (Tim legt seine Orte über die Companion-API des Boards an).
 
-- `live.test.mjs`: Das Board liefert die Companion aus. Max und Lena treten per `/?pin=…` bei, erste Welt anlegen, Ort von Hand, **echter Screenshot** (`referenz/seedmap/stronghold-popup.png`) über die OCR des Boards, **Banner aus der Anleitung** `referenz/banner/rezept-beispiel.jpg` (Knopf im Banner-Bereich, Name, speichern, Duplikat beim zweiten Mal), Änderungen kommen live beim anderen Handy an (Orte, Sammelobjekt, Banner, Portal), Server prüft mit `regeln.js`, Anzeige zeigt die aktive Welt mit Kennblock, Anheften, Umschalten der Welt, Titel, QR-Code, Neuladen und Server-Neustart, falsche PIN, ungültiges Token, Abmelden. Prüft auch, dass nur die erwarteten HTTP-Fehler vorkommen.
-- `anzeigeschema.test.mjs`: Für alle DEMO-Inhalte (Orte, Sammelobjekte, Fortschritt, Portale, Banner) die Karte bauen und mit `kartePruefen` aus `koordinaten-board/server/src/zeigen.js` prüfen; je Schema über den Knopf „Aufs Board“ eine Karte auf die echte Anzeige werfen (Screenshots `a1`–`a4`).
+- `live.test.mjs`: Das Board liefert die Companion aus. Max und Lena treten per `/?pin=…` bei, erste Welt anlegen, Ort von Hand, **echter Screenshot** (`referenz/seedmap/stronghold-popup.png`) über die OCR des Boards, **Banner aus der Anleitung** `referenz/banner/rezept-beispiel.jpg` (Knopf im Banner-Bereich, Name, speichern, Duplikat beim zweiten Mal), Änderungen kommen live beim anderen Handy an (Orte, Sammelobjekt, Banner, Portal, Rüstungs-Set – mit 3D-Figur vom Board und Auffrischen, wenn ein Besatz gefunden wird), Server prüft mit `regeln.js`, Anzeige zeigt die aktive Welt mit Kennblock, Anheften, Umschalten der Welt, Titel, QR-Code, Neuladen und Server-Neustart, falsche PIN, ungültiges Token, Abmelden. Prüft auch, dass nur die erwarteten HTTP-Fehler vorkommen.
+- `anzeigeschema.test.mjs`: Für alle DEMO-Inhalte (Orte, Sammelobjekte, Fortschritt, Portale, Banner, Rüstungs-Sets) die Karte bauen und mit `kartePruefen` aus `koordinaten-board/server/src/zeigen.js` prüfen; je Schema über den Knopf „Aufs Board“ eine Karte auf die echte Anzeige werfen (Screenshots `a1`–`a5`). Läuft über http (DEMO), damit das Rüstungs-Set seine 3D-Figur mitschickt.
+- `ruestung.test.mjs`: Sammelobjekte mit Bedrock-Namen und Vorlagen-Icons; Rüstung über http (DEMO): Liste, Icons nach Schema, 3D-Figur (deckende Pixel gezählt), Drehen, Nether + Steve, Schmiedetisch, Bedarf, Amboss-Schritt, Sprung zum fehlenden Sammelobjekt, Editor (Vorlage → Material, Leder rot, Teil entfernen, Name fehlt), Speichern, Abbrechen, Löschen, Board-Karte mit 3D-Aufnahme; als Datei: nur Icons, three.js wird nicht geladen, keine Konsolenfehler.
+- **3D im Test**: `hilfen.mjs` liefert den Ordner über http aus, beantwortet die CDN-Adresse von three.js mit `node_modules/three` (das CDN ist im Claude-Container gesperrt) und startet Chromium mit Software-WebGL (`--use-angle=swiftshader --enable-unsafe-swiftshader`).
 - `kennbloecke.test.mjs` prüft die Kennblöcke der Karte: Canvas-Marker je Dimension (zählt `drawImage`), Listen-Köpfe, Detail-Kopf, Screenshot-Prüfliste (DEMO-Texterkennung) und dass Kategorien ohne Bild ihr Symbol behalten.
 - `sammelobjekte.test.mjs` prüft `STRUKTUREN` und `SAMMELOBJEKTE` gegen `icons/manifest.json` (Namen, Besätze, vorhandene Bilder), die Kennblöcke in Liste und Detail, Abhaken, den Sprung zur Karte und den Ersatz durch Symbole, wenn `icons/` fehlt.
 
@@ -259,7 +267,8 @@ npm test                          # banner (23) + portale (29) + sammelobjekte (
   - 16 Farben, höchstens 6 Muster im Webstuhl
   - 42 Muster-IDs mit deutschen Namen, davon 10 mit Bannervorlage
   - **Mauerung** und **Spickelbord** brauchen seit Java 1.21.2 auch eine Vorlage, wie in Bedrock.
-- **Sammelobjekte**: 18 Rüstungsbesätze (einschließlich Fluss und Bolzen aus 1.21) plus die Netheritaufwertung. Deutsche Namen und Fundorte stehen in `SAMMELOBJEKTE`.
+- **Sammelobjekte**: 18 Rüstungsbesätze (einschließlich Fluss und Blitz aus 1.21) plus die Netheritaufwertung. Bedrock-Namen und Fundorte stehen in `SAMMELOBJEKTE`.
+- **Rüstung** (aus dem Baukasten, `LIESMICH.md`): Besatz umfärben über 8 Grauwerte → Material-Palette; gleiches Material wie die Rüstung → `_darker`-Palette; Leder = Graustufen × Farbe + Overlay, ungefärbt `#A06540`, Bedrock-Weiß `#F0F0F0`; Reihenfolge Grundtextur → Besatz → Glanz; das Inventar-Icon zeigt nur die Besatz-Farbe; Schildkröte gibt es nur als Helm. Kupferrüstung und Harz als Material sind im Baukasten enthalten.
 - **Verzauberungen**, deutsche Namen: Schutz, Haltbarkeit, Reparatur, Atmung, Wasseraffinität, Huschen (nur Hose), Wasserläufer, Seelenläufer, Federfall.
 - **Seed-Map-Screenshot**: siehe `../UEBERGABE.md` → Gemeinsame Referenz.
 
@@ -273,7 +282,10 @@ companion/
 ├── README.md                  ← Technik: Funktionen, Regeln, API-Tabellen, Einbau
 ├── companion-prototyp.html    ← der Prototyp (live vom Board ausgeliefert, sonst DEMO)
 ├── regeln.js                  ← Stammdaten + Regeln, lädt auch der Board-Server
-├── entwuerfe/banner-ruestung.js   ← Rüstung-Entwurf (Banner-Teil überholt)
+├── entwuerfe/banner-ruestung.js   ← alter Entwurf, überholt (Banner + Rüstung sind eingebaut)
+├── ruestungs-baukasten/       ← von Max: Bedrock-Texturen, manifest.json, baukasten.js, figur3d.js, LIESMICH.md
+│   ├── vorlagen/, zutaten/   Icons der Schmiedevorlagen und Besatz-Materialien
+│   └── fertig/items/         1116 fertige Rüstungs-Icons
 ├── icons/
 │   ├── manifest.json         Fundort-Strukturen: ID, deutscher Name, Kennblock, Besätze
 │   └── struktur_kennbloecke/ Kennblock-PNGs der Fundorte (Pfadruinen fehlt noch)
@@ -281,7 +293,7 @@ companion/
 │   ├── sammelobjekte/  Trails-&-Tales-Übersicht der Fundorte
 │   ├── banner/         Beispiel aus einem Banner-Editor
 │   └── ruestung/       3 Sets + 4 Verzauberungs-Reihenfolgen
-└── tests/              Playwright-Tests: Banner, Portale, Sammelobjekte, Kennblöcke, Board, Live-Betrieb, Anzeigeschema
+└── tests/              Playwright-Tests: Banner, Portale, Sammelobjekte, Kennblöcke, Board, Live-Betrieb, Anzeigeschema, Rüstung
 ```
 
 Datenmodell, Seed-Map-Screenshots und das Dashboard-Vorbild liegen in `../referenz/`.

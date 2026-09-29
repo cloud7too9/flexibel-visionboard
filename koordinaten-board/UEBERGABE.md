@@ -19,9 +19,10 @@ Ein Gerät im Zimmer zeigt die Orte der aktiven Welt groß an. Alle anderen öff
   - Anmeldung: PIN + HMAC-Token
   - Texterkennung: tesseract.js lokal (`eng`, best_int), Feature-Namen per Levenshtein unscharf zugeordnet
 - **Starten**: `start.bat` auf Windows (Node 20+) oder `start.sh`. Die Anzeige unter `/anzeige` ist nur vom Board-Rechner selbst erreichbar.
-- **Tests**: `npm test` → 37 Tests (Erkennung 13, Banner-Erkennung 4 mit echter OCR am Referenzbild, Companion-API 4, Daten + Anzeige-Sicht 4, Regeln 3, Karten 4, Netzwerk 3, PIN-Sperre 2), alle grün. Die API-Tests starten einen echten Server-Prozess mit leerem Datenordner.
+- **Tests**: `npm test` → 40 Tests (Erkennung 13, Banner-Erkennung 4 mit echter OCR am Referenzbild, Companion-API 5, Daten + Anzeige-Sicht 4, Regeln 5 – davon einer, der die Rüstungs-Stammdaten gegen das Baukasten-Manifest prüft, Karten 4, Netzwerk 3, PIN-Sperre 2), alle grün. Die API-Tests starten einen echten Server-Prozess mit leerem Datenordner.
 - **Server-Aufbau**:
-  - `daten.js`: Welten, Typen, Instanzen, Sammelobjekte, Banner, Portale, Einstellungen (`titel`, `qrZeigen`, `aktiveWelt`). Abläufe wie der DEMO-Mock der Companion.
+  - `daten.js`: Welten, Typen, Instanzen, Sammelobjekte, Banner, Rüstungs-Sets (`ruestung`, für alle Welten, Branch `bereich/ruestung`), Portale, Einstellungen (`titel`, `qrZeigen`, `aktiveWelt`). Abläufe wie der DEMO-Mock der Companion.
+  - `server.js` liefert zusätzlich `companion/ruestungs-baukasten/` unter `/ruestungs-baukasten/` aus (Texturen, fertige Icons, ES-Module für Umfärben und 3D-Figur).
   - `companion-api.js`: REST unter `/api` nach dem Vertrag in `companion-prototyp.html` (Abschnitt 4), Bearer-Token aus dem Beitreten. Dazu `/api/board/einstellungen` und `PUT /api/orte/instanzen/:id/angeheftet`. Jede Änderung meldet per WebSocket `{ art:"geaendert", bereich, weltId }`.
   - `regeln.js`: lädt `companion/regeln.js` per `node:vm` – dieselben Regeln wie am Handy, nichts nachgebaut.
   - `sicht.js`: Orte der aktiven Welt (ohne Biome) in der alten `Ort`-Form für die Anzeige.

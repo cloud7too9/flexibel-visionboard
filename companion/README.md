@@ -1,4 +1,4 @@
-# Companion · Prototyp – Karte, Sammelobjekte, Portale, Banner
+# Companion · Prototyp – Karte, Sammelobjekte, Portale, Banner, Rüstung
 
 Koordinaten-Sammlung für das Modul **Karte** (vormals Live-Karte) der Minecraft Companion PWA, nach dem minimalen Datenmodell (`../referenz/minecraft_tool_datenmodell.md`)
 (`World → Dimension → FeatureInstance → FeatureType → FeatureCategory`).
@@ -6,9 +6,9 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 
 **Neuer Chat / Weitermachen:** zuerst `../UEBERGABE.md` (projektübergreifend), dann `UEBERGABE.md` lesen – Stand, Entscheidungen, offene Punkte.
 
-**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop) – dann läuft der DEMO-Mock mit Beispielwelt. **Live** läuft die Companion, wenn das Koordinaten-Board sie ausliefert: Board starten, `http://<board>:3000/?pin=<PIN>` öffnen oder den QR-Code der Anzeige mit der Kamera-App scannen (siehe „Live-Betrieb“). Mit `?modul=sammelobjekte`, `?modul=portale` oder `?modul=banner` startet man direkt im jeweiligen Bereich, `?demo=1` erzwingt den Mock.
+**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop) – dann läuft der DEMO-Mock mit Beispielwelt. **Live** läuft die Companion, wenn das Koordinaten-Board sie ausliefert: Board starten, `http://<board>:3000/?pin=<PIN>` öffnen oder den QR-Code der Anzeige mit der Kamera-App scannen (siehe „Live-Betrieb“). Mit `?modul=sammelobjekte`, `?modul=portale`, `?modul=banner` oder `?modul=ruestung` startet man direkt im jeweiligen Bereich, `?demo=1` erzwingt den Mock.
 
-Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-Server lädt) und `icons/` (Kennblöcke) in denselben Ordner.
+Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-Server lädt), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen für Rüstung und Sammelobjekte) in denselben Ordner.
 
 ## Was drin ist
 
@@ -34,11 +34,11 @@ Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-
 | Handbuch | geplant | – |
 | Baupläne | geplant | – |
 | Banner | umgesetzt | Baupläne für Banner mit Anleitung |
-| Rüstung | geplant | Rüstungs-Sets |
+| Rüstung | umgesetzt | Rüstungs-Sets am Schmiedetisch, 3D-Figur, Besätze der Welt |
 
 Neue Bereiche: Eintrag in `BEREICHE` + Icon in `ICON`. Ohne `mount()` zeigt die Sidebar den Bereich als „geplant“.
-Die Details jedes Bereichs werden einzeln festgelegt. Reihenfolge: Banner ✓ → Portal-Verwaltung ✓ → Rüstung, Handbuch, Baupläne.
-Für Rüstung liegt ein erster Code-Entwurf in `entwuerfe/banner-ruestung.js` (nicht eingebaut; der Banner-Teil darin ist überholt).
+Die Details jedes Bereichs werden einzeln festgelegt. Reihenfolge: Banner ✓ → Portal-Verwaltung ✓ → Rüstung ✓ → Handbuch, Baupläne.
+`entwuerfe/banner-ruestung.js` ist überholt (Banner und Rüstung sind eingebaut); die Verzauberungs-Pläne daraus stecken jetzt in der Rüstung.
 
 ## Dashboard-Ansichten (später)
 
@@ -54,7 +54,8 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 
 ## Sammelobjekte
 
-- 18 Rüstungsbesätze + Netheritaufwertung (deutsche Spielnamen, englischer Name daneben), Stand inkl. Fluss/Bolzen aus 1.21
+- 18 Rüstungsbesätze + Netheritaufwertung mit den **Namen aus Bedrock** (`texts/de_DE.lang`, z. B. „Wächterzier“, „Mündelzier“), englischer Name klein daneben, Stand inkl. Fluss/Blitz aus 1.21
+- **Icon je Besatz**: die Schmiedevorlage aus `ruestungs-baukasten/vorlagen/` (`vorlageDatei()`), in der Liste und im Kopf des Details; offene blass
 - Gruppiert nach Fundort-Struktur, Karten nach Dimension eingefärbt; Fundort-Hinweis (Truhe, Seltsamer Kies, Tresor, Großer Wächter)
 - **Kennblock je Struktur** als Bild (`icons/struktur_kennbloecke/<id>.png`, z. B. Netherziegel für die Netherfestung) im Kopf jeder Gruppe und im Detail. Dazu der deutsche Strukturname, darunter klein der Name aus der Seed Map („Nether Fortress“), über den die Verknüpfung zur Karte läuft
   - `STRUKTUREN` (Abschnitt 2) ordnet jeder FeatureCategory die Struktur-ID und den deutschen Namen aus `icons/manifest.json` zu
@@ -62,6 +63,22 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 - **Abhaken gilt für die ganze Welt** und merkt sich, wer es wann gefunden hat
 - Fortschritt: gefunden / 18, Fundorte bekannt / 13, Prozent
 - Verknüpfung zur Karte: pro Fundort die bekannten Strukturen aus der Koordinaten-Sammlung, nächste mit Entfernung; „Karte“ springt direkt hin
+
+## Rüstung
+
+Rüstungs-Sets wie in den Vorlagen (`referenz/ruestung/`): je Teil **Vorlage + Rüstung + Material** am Schmiedetisch. Grundlage ist der **Rüstungs-Baukasten** (`ruestungs-baukasten/`, Bedrock-Texturen aus Mojangs `bedrock-samples`, Regeln in dessen `LIESMICH.md`).
+
+- **Sets gelten für alle Welten** (wie Banner), alle im Raum sehen und bearbeiten dieselben. Ein Set hat bis zu vier Teile (Helm, Harnisch, Beinschutz, Stiefel); je Teil Rüstung (Leder, Kette, Kupfer, Eisen, Gold, Diamant, Netherit, Schildkröte nur als Helm), Rüstungsbesatz + Material (11 Materialien), Lederfarbe (16 Farbstoffe oder ungefärbt) und verzaubert ja/nein
+- **Besätze der Welt**: Was das Set braucht, wird mit den Sammelobjekten der aktuellen Welt abgeglichen – in der Liste „2/3 gefunden“, im Detail je Teil „✓ In dieser Welt gefunden · Lena“ oder „Fehlt noch · Pfadruinen ›“ (springt zum Sammelobjekt)
+- **Liste**: vier Item-Icons je Set (verzauberte schimmern), die nötigen Vorlagen, Stand in dieser Welt
+- **Detail**: Figur auf dem Rüstungsständer, darunter je Teil der Schmiedetisch (Vorlage + Rüstung + Material → Ergebnis), „Du brauchst“ (Vorlagen gezählt mit Stand, Netheritaufwertungen, Materialien, Hinweis zum Vervielfältigen), Verzaubern am Amboss (Pläne mit wenig XP, Schritte abhaken nur auf dem Gerät), Aufs Board, Bearbeiten, Löschen (zweimal tippen)
+- **Editor = Schmiedetisch**: oben die Figur (bleibt stehen), Reiter für die vier Teile, darunter die drei Slots. Ein Slot öffnet sein Raster: Vorlagen (✓ = in dieser Welt gefunden), Rüstungen, Materialien. Nach der Vorlage geht es gleich zum Material. Bei Leder die Farben, dazu der Schalter „Verzaubert“
+- **Figur**, je nachdem, was geht:
+  - **3D** (über http, three.js r128 vom CDN): `figur3d.js` – drehbar per Ziehen, Rüstungsständer oder Steve, Sockel und Hintergrund der Dimension (Oberwelt, Nether, End; auf dem Gerät gemerkt), verzauberte Teile schimmern
+  - **2D** (über http ohne three.js, z. B. ohne Internet): flache Figur aus `baukasten.js`, antippen dreht sie um
+  - **Nur Icons** (als Datei geöffnet): Canvas-Pixel und ES-Module sind bei `file://` gesperrt, deshalb zeigt die Bühne die vier Icons
+- **Icons** kommen immer aus `fertig/items/` (1116 vorgerenderte Kombinationen, `<ruestung>_<teil>[_<farbe|standard>][__<material>].png`) – das geht auch als Datei. Das Inventar-Icon zeigt wie im Spiel nur die Besatz-Farbe, das Muster sieht man an der Figur
+- IDs wie im Baukasten-Manifest (`helmet`, `netherite`, `amethyst` …), Namen wie in Bedrock. `RUESTUNGS_TEILE`, `RUESTUNGEN`, `BESATZ_MATERIALIEN` stehen in `regeln.js`; ein Server-Test prüft, dass sie zum Manifest passen
 
 ## Portal-Verwaltung
 
@@ -124,10 +141,11 @@ Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte li
 | Sammel-Fortschritt | `sammelstand` | Bottom-Bar der Sammelobjekte | gefunden, Fortschritt, Fundorte auf der Karte, was noch offen ist |
 | Portal-Verbindung | `portal:<id>` | Portal-Detail | beide Portale mit Dimension, Status, Abstand zum Idealpunkt, Vorschlag |
 | Banner-Bauplan | `banner:<id>` | Banner-Detail | Vorschau als Bild (pixelgenau), Material, Bannervorlagen |
+| Rüstungs-Set | `ruestung:<id>` | Rüstungs-Detail | Figur als Bild (3D-Aufnahme, sonst 2D; als Datei ohne Bild), je Teil Besatz · Material · Farbe · verzaubert, welche Besätze in der Welt noch fehlen |
 
 - Liegt der eigene Inhalt auf dem Board, wird der Knopf zu „Liegt auf dem Board · Wegnehmen“. Das Board-Sheet zeigt unter „Auf der Anzeige“, was gerade dort liegt und von wem, mit „Wegnehmen“.
 - Die Knöpfe erscheinen nur, wenn das Gerät mit einem Board verbunden ist.
-- **Neuer Bereich**: Schema in `BOARD_KARTEN` eintragen und im Detail `boardZeigenKnopf("<art>:<id>")` einbauen, danach `boardZeigenKnoepfe()` aufrufen. Das Board bleibt unverändert.
+- **Neuer Bereich**: Schema in `BOARD_KARTEN` eintragen und im Detail `boardZeigenKnopf("<art>:<id>")` einbauen, danach `boardZeigenKnoepfe()` aufrufen. Das Board bleibt unverändert. `karte(id)` darf async sein (die Rüstung rendert erst die Figur).
 
 Nachrichten über die bestehende Live-Verbindung: `{ art:"zeigen", karte }` und `{ art:"verbergen", id }`, Antwort `ok`/`fehler`, an alle geht `{ art:"gezeigt", karte|null }`. Das Board prüft die Karte (`koordinaten-board/server/src/zeigen.js`):
 
@@ -151,6 +169,7 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 4. Biom-Instanzen sind fest (nur löschen, nicht bearbeiten).
 5. Portal-Verbindungen (`verbindungRegelPruefen()`): Name 1–60 Zeichen, X/Z ganze Zahlen innerhalb der Welt (Nether: Weltgrenze ÷ 8), Y leer oder Oberwelt −64…320 / Nether 0…256.
 6. Banner (`bannerPruefen()`): Name 1–60 Zeichen, Grundfarbe und Farben aus den 16 Farbstoffen, Muster aus der Musterliste, höchstens 6 Ebenen.
+7. Rüstungs-Sets (`ruestungPruefen()`): Name 1–60 Zeichen, mindestens ein Teil. Die Rüstung muss es als dieses Teil geben (Schildkröte nur als Helm). Ein Besatz ist einer der 18 Rüstungsbesätze und braucht ein Material. Farbe nur bei Leder, aus den 16 Farbstoffen. `ruestungSauber()` lässt Material ohne Besatz und Farbe bei anderer Rüstung weg.
 
 ## API-Vertrag
 
@@ -174,12 +193,18 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | POST | `/banner` | `{ name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
 | PUT | `/banner/:id` | `{ name, basis, ebenen }` | `{ banner }` |
 | DELETE | `/banner/:id` | – | `{ ok:true }` |
+| GET | `/ruestung` | – | `{ sets:[set] }` |
+| POST | `/ruestung` | `{ name, teile }` | `{ set }` – `von`/`am` setzt der Server |
+| PUT | `/ruestung/:id` | `{ name, teile }` | `{ set }` |
+| DELETE | `/ruestung/:id` | – | `{ ok:true }` |
 | GET | `/board/einstellungen` | – | `{ titel, qrZeigen, aktiveWelt, aktiv }` – nur Board |
 | PUT | `/board/einstellungen` | `{ titel?, qrZeigen?, aktiveWelt? }` | wie GET |
 
 `verbindung = { id, name, oberwelt:{ x, y|null, z }, nether:{ x, y|null, z }, von, am }`
 
 `banner = { id, name, basis, ebenen:[{ muster, farbe }], von, am }` (Farb- und Muster-IDs wie im Spiel, z. B. `light_blue`, `stripe_bottom`)
+
+`set = { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster|null, material|null, farbe|null, verzaubert } | null }, von, am }` (IDs wie im Rüstungs-Baukasten, `muster` = ID des Sammelobjekts)
 
 `typ = { id, kategorie, variante|null }` · `instanz = { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, von, am }` · `quelle = "screenshot" | "manuell"`
 
@@ -195,11 +220,12 @@ Live gelten alle Pfade mit Präfix `/api` und Bearer-Token. Die Texterkennung (`
 - Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung)
 - `regeln.js` neben die Hauptdatei legen und vor dem Haupt-Script einbinden (`<script src="regeln.js">`); das Board liefert dann statt der Prototyp-Datei die Hauptdatei aus (`COMPANION_DATEI`)
 - Ordner `icons/` neben die Hauptdatei legen (Kennblöcke für Karte und Sammelobjekte, Pfad `KENNBLOCK_PFAD`). Fehlt er, stehen überall die Symbole
+- Ordner `ruestungs-baukasten/` neben die Hauptdatei legen (Pfad `BAUKASTEN`); das Board liefert ihn unter `/ruestungs-baukasten/` aus
 - Die Canvas-Marker zeichnet dort der bestehende Renderer: Kennblock über `kennblockBild(kategorie)` holen (liefert das geladene Bild oder `null`, dann das Symbol)
 
 ## Tests
 
-`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung, Sammelobjekte, Kennblöcke in der Karte, Board-Verbindung, den Live-Betrieb am echten Board und die Anzeigeschemas (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
+`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung, Sammelobjekte, Kennblöcke in der Karte, Board-Verbindung, den Live-Betrieb am echten Board, die Anzeigeschemas und die Rüstung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`. Rüstung, Anzeigeschema und Live laufen über http (`hilfen.mjs`: kleiner Server für den Ordner, three.js aus `node_modules` statt vom CDN, Chromium mit Software-WebGL).
 
 ## Referenz
 
