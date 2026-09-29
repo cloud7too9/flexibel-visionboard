@@ -1,64 +1,12 @@
 # Übergabe · Minecraft Companion PWA
 
-Stand: 27.09.2026 · Einstieg für einen neuen Chat
+Stand: 29.09.2026 · Einstieg für einen neuen Chat
 
-Diese Datei fasst zusammen, was gebaut ist, was entschieden wurde und was als Nächstes kommt. Technische Einzelheiten (Funktionen, Regeln, API-Tabellen) stehen in `README.md`.
-
----
-
-## Neuen Chat starten
-
-**Anhängen:**
-
-1. **`companion-orte.zip`**: Prototyp, README, diese Übergabe, Tests, Entwürfe, Referenzbilder, Datenmodell und den Git-Verlauf als `companion-orte.bundle`
-2. **`modul-a-live-karte.html`**: die aktuelle Hauptdatei der Companion-PWA (Stilvorlage und Ziel für den späteren Einbau). Sie liegt bewusst nicht im Zip, weil Max sie selbst weiterpflegt.
-3. **`koordinaten-board.zip`**: nur wenn es ums Raum-Board geht
-
-**Erste Nachricht, zum Beispiel:**
-
-> Lies `UEBERGABE.md` im Zip, danach `README.md`. Wir machen mit der Companion-PWA weiter: Bereich **Rüstung**.
-
-Git-Verlauf mit allen Branches wiederherstellen: `git clone companion-orte.bundle companion-orte`
+Arbeitsweise, Zusammenspiel mit dem Koordinaten-Board und projektübergreifende Entscheidungen stehen in der [Übergabe im Repo-Wurzelordner](../UEBERGABE.md). **Die zuerst lesen.** Diese Datei fasst zusammen, was in der Companion gebaut ist, was entschieden wurde und was als Nächstes kommt. Technische Einzelheiten (Funktionen, Regeln, API-Tabellen) stehen in `README.md`.
 
 ---
 
-## So arbeiten wir
-
-- **Deutsch** in Kommunikation, UI-Texten und Code: Variablen- und Funktionsnamen wie `bannerSpeichern` oder `verbindungPruefen`. Spielbegriffe tragen den deutschen Spielnamen. Wo es beim Nachschlagen hilft, steht der englische Name klein daneben.
-- **Git**: Bei jedem Schritt sagen, wann committet und gepusht wird. Nach einem eigenen Commit kurz bestätigen, z. B. „Commit erstellt: …“. Jeder Bereich bekommt einen eigenen Branch `bereich/<name>`.
-- **Bereiche geht Max einzeln durch.** Erst steht der Rahmen, dann folgen die Details. Nichts ausbauen, was nicht besprochen ist.
-- **Datenmodell minimal halten.** Es wird nur erweitert, wenn ein Bereich es konkret braucht. FeatureTypes werden nicht erfunden.
-- **Bedrock ist die Hauptedition.** Die Seed-Map-Screenshots zeigen „Bedrock 26.50“. Java-Unterschiede kommen nur dort vor, wo sie zählen (Portale).
-- **Optik 1:1 aus `modul-a-live-karte.html`**:
-  - Dimensions-Themes: Oberwelt grün, Nether rot, End violett
-  - Header mit Hamburger, darüber die Sidebar
-  - Bottom-Bar je Bereich, Bottom-Sheets, Karten und Pills
-- **Mobile first**, bedient am Handy.
-- **Jeder Bereich endet mit** einem Browser-Test (Playwright), dem Ansehen der Screenshots, einem README-Abschnitt und einem Commit.
-
----
-
-## Die zwei Projekte
-
-### 1. Koordinaten-Board: fertig, läuft eigenständig
-
-Ein Gerät im Zimmer zeigt Minecraft-Koordinaten groß an. Alle anderen verbinden sich per Handy (QR-Code mit PIN), tragen Orte ein und lesen dafür **Chunkbase-Seed-Map-Screenshots per OCR** aus.
-
-- **Technik**:
-  - Server: Fastify 5 (+ websocket/multipart/static)
-  - Client: Vite + React 19 + TypeScript
-  - Speicher: JSON-Datei mit atomarem Speichern
-  - Anmeldung: PIN + HMAC-Token
-  - Texterkennung: tesseract.js lokal (`eng`, best_int), Feature-Namen per Levenshtein unscharf zugeordnet
-- **Starten**: `start.bat` auf Windows (Node 20+) oder `start.sh`. Die Anzeige unter `/anzeige` ist nur vom Board-Rechner selbst erreichbar.
-- **Tests**: `npm test` → 15 Tests (Erkennung 11, Netzwerk 4), alle grün.
-- **Git**: `main` bei `0b1d2f4`, sauber.
-- **Gelöst bei Max**:
-  - Der QR-Code zeigte die Hyper-V-Adresse `172.24.0.1` statt WLAN `192.168.8.184`. Jetzt wird die Adresse über die Route gewählt, und das Board merkt sich die tatsächlich erreichbare Adresse (`daten/adresse.txt`).
-  - Die Firewall-Freigabe braucht ein **Admin-Terminal**.
-- **Bezug zur Companion**: Das Board ist das Raum-Dashboard. Die Bereiche der Companion sollen später als Widgets darauf laufen (siehe „Dashboard“). Die OCR aus `server/src/erkennung.js` soll `/orte/auslesen` der Companion bedienen.
-
-### 2. Companion-Prototyp (`companion-orte`): aktuelle Arbeit
+## Prototyp
 
 - **Eine Datei**: `companion-prototyp.html`, rund 200 KB, Vanilla JS mit `"use strict"`, ohne Build-Schritt.
 - **Direkt öffnen** startet den **DEMO-Mock** (`mockApi`).
@@ -73,6 +21,7 @@ Ein Gerät im Zimmer zeigt Minecraft-Koordinaten groß an. Alle anderen verbinde
   - `orte.welt`, `orte.dim`, `orte.ansicht`, `orte.standort`
   - `banner.schritte.<id>`
   - `portale.edition`, `portale.info`, `portale.rechner`
+- **Jeder Bereich endet mit** einem Browser-Test (Playwright), dem Ansehen der Screenshots, einem README-Abschnitt und einem Commit.
 
 ---
 
@@ -96,7 +45,7 @@ Die Bereiche **Zugänge, Backups, Erfolge, Orte und Toolbox** sind entfernt, daf
 
 ### Karte ✅
 
-Koordinaten-Sammlung nach dem Datenmodell. Dazu gehören:
+Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmodell.md`). Dazu gehören:
 - Dimensions-Reiter und ein Umschalter Karte | Liste
 - Liste als Akkordion: Kategorie → Variante → Orte
 - Canvas-Karte
@@ -161,21 +110,6 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 
 ---
 
-## Dashboard (später)
-
-- Jeder Bereich bekommt **eigene Dashboard-Ansichten (Widgets)**.
-- Vorbild ist das **iOS-Kontrollzentrum**, siehe `referenz/dashboard/`:
-  - Ansichten in festen Rastergrößen 1×1, 2×1 und 2×2 auf einem Raster mit 4 Spalten
-  - Galerie „Ansicht hinzufügen“, nach Bereich gruppiert, mit Suche
-  - Bearbeiten-Modus: „−“ entfernt eine Ansicht, der Griff an der Ecke ändert die Größe
-- Im Code vorbereitet: Der Modul-Vertrag in `BEREICHE` sieht das Feld `ansichten: [{ key, titel, groessen, render(el, groesse) }]` vor. Bisher nur dokumentiert.
-- **Offen**:
-  - Eine Seite pro Bereich (wie die Kontrollzentrum-Seiten)?
-  - Wird am Handy oder an der Anzeige im Zimmer bearbeitet?
-  - Welche Ansichten bekommt jeder Bereich?
-
----
-
 ## Aufbau von `companion-prototyp.html`
 
 | Abschnitt | Inhalt |
@@ -207,14 +141,13 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 6. Sheet-Aktionen im `$sheet`-Klick-Switch ergänzen. Löschen immer mit zweitem Tippen („Wirklich löschen?“).
 7. Hängen die Daten an einer Welt, `…Laden()` in `weltLaden()` aufrufen.
 8. `tests/<bereich>.test.mjs` schreiben, den README-Abschnitt ergänzen und committen.
+9. Dashboard-Ansichten des Bereichs mit Max klären (siehe `../UEBERGABE.md` → Zusammenspiel).
 
 ---
 
 ## Datenmodell und API
 
-**Kern** (`referenz/minecraft_tool_datenmodell.md`):
-- DATABASE: World (id, seed) → Dimension (overworld/nether/end) → FeatureInstance (x, y?, z)
-- STATIC: Biome, Group, FeatureCategory, FeatureType
+**Kern**: siehe `../referenz/minecraft_tool_datenmodell.md` (gemeinsame Referenz).
 
 **Erweiterungen durch die Bereiche** (je ein konkreter Anwendungsfall):
 
@@ -233,53 +166,38 @@ Die vollständigen Tabellen stehen in `README.md`.
 
 ---
 
-## Offene Entscheidungen und Aufgaben
+## Offene Aufgaben (Companion)
 
-1. **Datenhaltung**: Companion-Server (Hetzner) oder das Board im Heimnetz?
-2. **Einbau in `modul-a-live-karte.html`**:
+1. **Einbau in `modul-a-live-karte.html`**:
    - Die Karte-Liste wird ein zweiter Bereich neben dem Canvas.
    - Marker und Biome zeichnet der bestehende Renderer.
    - Die Sidebar wird auf `BEREICHE` umgestellt.
    - **Der alte Portal-Linker dort sagt „Bedrock sucht im Nether ±16“. Das ist falsch**, Bedrock sucht ±128. Er wird durch die Portal-Verwaltung ersetzt oder korrigiert.
-3. **Biom-Popup-Screenshot** fehlt noch, um die OCR darauf abzustimmen. `/orte/auslesen` muss auf das neue Antwortformat umgestellt und um die Biom-Liste erweitert werden.
-4. **Edition**: In der Portal-Verwaltung ist Bedrock/Java zurzeit eine Einstellung auf dem Gerät. Vorschlag: später eine Eigenschaft der Welt, denn auch die Seeds unterscheiden sich je Edition. Dafür braucht es die Zustimmung von Max, weil es das Datenmodell ändert.
-5. **Dashboard**: siehe die offenen Punkte oben.
-6. **Rüstung, Handbuch, Baupläne**: Inhalte mit Max klären.
-7. **Idee, nicht besprochen**: Portal-Verbindungen auch auf der Karte zeigen.
+2. **Edition**: In der Portal-Verwaltung ist Bedrock/Java zurzeit eine Einstellung auf dem Gerät. Vorschlag: später eine Eigenschaft der Welt, denn auch die Seeds unterscheiden sich je Edition. Dafür braucht es die Zustimmung von Max, weil es das Datenmodell ändert.
+3. **Rüstung, Handbuch, Baupläne**: Inhalte mit Max klären.
+4. **Idee, nicht besprochen**: Portal-Verbindungen auch auf der Karte zeigen.
+
+Projektübergreifend offen (Datenhaltung, OCR-Anbindung, Dashboard): siehe `../UEBERGABE.md`.
 
 ---
 
-## Git-Stand
+## Git
 
-**companion-orte** (im Zip als `companion-orte.bundle`):
+Der Companion-Verlauf ist mit allen Commits im Repo erhalten (Ordner `companion/`). Die früheren Branches `bereich/banner` und `bereich/portale` sind in `main` aufgegangen.
 
-```
-* bereich/portale  Übergabe: UEBERGABE.md, Tests, Referenzbilder
-*                  c78d432 Bereich Portal-Verwaltung
-* bereich/banner   458fee6 Bereich Banner
-* main             a6f0ba6 Rahmen: Dashboard-Ansichten pro Bereich vorgemerkt
-*                  08759aa Bereiche Banner und Rüstung im Rahmen ergänzt
-*                  4fc553f Modul Sammelobjekte
-*                  7250423 Orte wird Teil der Karte, neue Bereiche in der Sidebar
-*                  08b5154 Modul Orte: mobiler Prototyp mit DEMO-Mock
-```
-
-**Nächster Git-Schritt**: `bereich/portale` enthält auch den Banner. Ein einziger Merge bringt beides nach `main`:
+**Nächster Git-Schritt** für den Bereich Rüstung:
 
 ```bash
-git switch main && git merge bereich/portale && git push
-git branch -d bereich/banner bereich/portale
+git switch main && git pull
 git switch -c bereich/ruestung
 ```
-
-**koordinaten-board**: `main` bei `0b1d2f4`, sauber.
 
 ---
 
 ## Tests
 
 ```bash
-cd tests
+cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist
 npm test                          # banner.test.mjs (23 Prüfungen) + portale.test.mjs (29 Prüfungen)
@@ -303,28 +221,23 @@ npm test                          # banner.test.mjs (23 Prüfungen) + portale.te
   - **Mauerung** und **Spickelbord** brauchen seit Java 1.21.2 auch eine Vorlage, wie in Bedrock.
 - **Sammelobjekte**: 18 Rüstungsbesätze (einschließlich Fluss und Bolzen aus 1.21) plus die Netheritaufwertung. Deutsche Namen und Fundorte stehen in `SAMMELOBJEKTE`.
 - **Verzauberungen**, deutsche Namen: Schutz, Haltbarkeit, Reparatur, Atmung, Wasseraffinität, Huschen (nur Hose), Wasserläufer, Seelenläufer, Federfall.
-- **Seed-Map-Screenshot** (Chunkbase, siehe `referenz/seedmap/`):
-  - Das Popup zeigt den Titel „Stronghold (Stairway)“, darunter X / (Y) / Z.
-  - Die Dimension steht im Dropdown oben.
-  - Werbung kann das Popup verdecken. Die OCR meldet dann „kein Popup“, statt zu raten.
+- **Seed-Map-Screenshot**: siehe `../UEBERGABE.md` → Gemeinsame Referenz.
 
 ---
 
-## Inhalt des Zips
+## Inhalt des Ordners
 
 ```
-companion-orte/
+companion/
 ├── UEBERGABE.md               ← diese Datei
 ├── README.md                  ← Technik: Funktionen, Regeln, API-Tabellen, Einbau
 ├── companion-prototyp.html    ← der Prototyp
 ├── entwuerfe/banner-ruestung.js   ← Rüstung-Entwurf (Banner-Teil überholt)
 ├── referenz/
-│   ├── minecraft_tool_datenmodell.md
-│   ├── seedmap/        Chunkbase-Screenshots (Oberwelt, Nether, End, Feature-Liste)
 │   ├── sammelobjekte/  Trails-&-Tales-Übersicht der Fundorte
 │   ├── banner/         Beispiel aus einem Banner-Editor
-│   ├── ruestung/       3 Sets + 4 Verzauberungs-Reihenfolgen
-│   └── dashboard/      iOS-Kontrollzentrum als Vorbild
+│   └── ruestung/       3 Sets + 4 Verzauberungs-Reihenfolgen
 └── tests/              Playwright-Tests für Banner und Portale
-companion-orte.bundle        ← Git-Verlauf mit allen Branches
 ```
+
+Datenmodell, Seed-Map-Screenshots und das Dashboard-Vorbild liegen in `../referenz/`.

@@ -1,10 +1,10 @@
 # Companion · Prototyp – Karte, Sammelobjekte, Portale, Banner
 
-Koordinaten-Sammlung für das Modul **Karte** (vormals Live-Karte) der Minecraft Companion PWA, nach dem minimalen Datenmodell
+Koordinaten-Sammlung für das Modul **Karte** (vormals Live-Karte) der Minecraft Companion PWA, nach dem minimalen Datenmodell (`../referenz/minecraft_tool_datenmodell.md`)
 (`World → Dimension → FeatureInstance → FeatureType → FeatureCategory`).
 Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte.html`.
 
-**Neuer Chat / Weitermachen:** zuerst `UEBERGABE.md` lesen – Stand, Entscheidungen, offene Punkte.
+**Neuer Chat / Weitermachen:** zuerst `../UEBERGABE.md` (projektübergreifend), dann `UEBERGABE.md` lesen – Stand, Entscheidungen, offene Punkte.
 
 **Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt. Mit `?modul=sammelobjekte`, `?modul=portale` oder `?modul=banner` startet man direkt im jeweiligen Bereich.
 
@@ -40,7 +40,7 @@ Für Rüstung liegt ein erster Code-Entwurf in `entwuerfe/banner-ruestung.js` (n
 ## Dashboard-Ansichten (später)
 
 Jeder Bereich bekommt eigene Ansichten fürs Dashboard. Vorbild ist das iOS-Kontrollzentrum
-(`referenz/dashboard/kontrollzentrum-galerie.png`, `referenz/dashboard/kontrollzentrum-bearbeiten.png`):
+(`../referenz/dashboard/kontrollzentrum-galerie.png`, `../referenz/dashboard/kontrollzentrum-bearbeiten.png`):
 
 - **Ansichten in festen Rastergrößen**: klein 1×1, breit 2×1, groß 2×2. Das Raster hat 4 Spalten. Ein Bereich kann dieselbe Ansicht in mehreren Größen anbieten.
 - **Galerie** „Ansicht hinzufügen“: nach Bereich gruppiert, mit Suche
@@ -119,7 +119,7 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 
 `typ = { id, kategorie, variante|null }` · `instanz = { id, dimensionId, featureTypeId, x, y|null, z }` · `quelle = "screenshot" | "manuell"`
 
-Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`server/src/erkennung.js`) – sie muss nur auf dieses Antwortformat umgestellt und um die Biom-Liste erweitert werden.
+Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`../koordinaten-board/server/src/erkennung.js`) – sie muss nur auf dieses Antwortformat umgestellt und um die Biom-Liste erweitert werden.
 
 ## Einbau ins Modul Karte (modul-a-live-karte.html)
 
@@ -136,7 +136,8 @@ Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`server
 
 ## Referenz
 
-`referenz/` enthält das Datenmodell und die Bilder, auf denen die Bereiche beruhen (Seed-Map, Fundorte, Banner-Editor, Rüstungs-Sets und Verzauberungen, Kontrollzentrum als Dashboard-Vorbild).
+`referenz/` enthält die Bilder, auf denen einzelne Bereiche beruhen (Fundorte, Banner-Editor, Rüstungs-Sets und Verzauberungen).
+Was auch das Koordinaten-Board betrifft, liegt in `../referenz/`: Datenmodell, Seed-Map-Screenshots und das Kontrollzentrum als Dashboard-Vorbild.
 
 ## Offen
 
