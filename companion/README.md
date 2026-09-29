@@ -18,6 +18,7 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 - **Welt**: Welten per Seed anlegen und wechseln
 - **Standort** (nur lokal): Entfernung + Himmelsrichtung, Nether/Oberwelt umgerechnet
 - Nether↔Oberwelt-Umrechnung, `/execute in … run tp`-Befehl zum Kopieren
+- **Kennblöcke**: Strukturen mit Bild (`icons/struktur_kennbloecke/`, Zuordnung `STRUKTUREN`) zeigen ihren typischen Block statt des Symbols – im Kopf der Listen-Gruppe, als Marker auf der Canvas-Karte, im Kopf des Detail-Sheets und in der Screenshot-Prüfliste. Alle anderen Kategorien (Dorf, eigene Orte, Biome …) behalten ihr Symbol aus `SYMBOL`
 - **Sidebar** aus einer Bereichs-Registry (`BEREICHE`) – Vorbereitung für Dashboard-Widgets:
   Karte · Sammelobjekte · Portal-Verwaltung · Handbuch · Baupläne · Banner · Rüstung
 
@@ -99,7 +100,7 @@ Verbindet die Companion mit dem Koordinaten-Board im Zimmer. Das ist kein Bereic
 
 Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte liegt dort, bis die nächste kommt oder jemand sie wegnimmt. Das Board speichert sie nicht; nach einem Neustart ist die Anzeige frei.
 
-- **Ort** (bisher der einzige Inhalt): Im Detail eines Ortes „Aufs Board“ antippen. Die Anzeige zeigt Name, Kategorie, die Koordinaten groß und die umgerechnete Position im Nether bzw. in der Oberwelt, im Theme der Dimension, dazu wer es geschickt hat.
+- **Ort** (bisher der einzige Inhalt): Im Detail eines Ortes „Aufs Board“ antippen. Die Anzeige zeigt Name, Kategorie, die Koordinaten groß und die umgerechnete Position im Nether bzw. in der Oberwelt, im Theme der Dimension, dazu wer es geschickt hat. Bei Strukturen schickt die Companion den Seed-Map-Typ mit (`typ`), die Anzeige zeigt dann den Kennblock neben dem Titel.
 - Liegt der eigene Inhalt auf dem Board, wird der Knopf zu „Liegt auf dem Board · Wegnehmen“. Das Board-Sheet zeigt unter „Auf der Anzeige“, was gerade dort liegt und von wem, mit „Wegnehmen“.
 - Der Knopf erscheint nur, wenn das Gerät mit einem Board verbunden ist.
 - **Neue Inhalte** brauchen keine Änderung am Board: in `BOARD_KARTEN` eine Funktion `quelle-id → karte` eintragen und im Sheet `boardZeigenKnopf("<art>:<id>")` einbauen.
@@ -107,10 +108,11 @@ Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte li
 Nachrichten über die bestehende Live-Verbindung: `{ art:"zeigen", karte }` und `{ art:"verbergen", id }`, Antwort `ok`/`fehler`, an alle geht `{ art:"gezeigt", karte|null }`. Das Board prüft die Karte (`koordinaten-board/server/src/zeigen.js`):
 
 ```
-karte = { titel, unter?, bereich?, quelle?, dimension: "oberwelt"|"nether"|"ende"|null,
+karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"|"ende"|null,
           bloecke: [ { art:"koordinaten", label?, x, y|null, z, dimension? }
                    | { art:"zeilen", zeilen:[{ label, wert }] }
                    | { art:"text", text } ] }            // höchstens 6 Blöcke
+// typ: Feature-Typ der Seed Map („Nether Fortress“), höchstens 40 Zeichen → Kennblock auf der Anzeige
 ```
 
 **https ↔ http:** Die Companion soll später als PWA über **https** laufen (z. B. Hetzner), das Board liefert nur **http** im Heimnetz. Browser blockieren Anfragen von einer https-Seite an eine http-Adresse (Mixed Content), Safari auf dem iPhone ausnahmslos. Die Kamera wiederum gibt es nur in einem sicheren Kontext (https oder localhost). Heute funktioniert die Verbindung deshalb, wenn die Companion über http oder als Datei geöffnet wird; die Kamera dann nur am Rechner, am Handy bleiben Foto und Eingabe von Hand. Die Companion meldet den Fall ausdrücklich („Der Browser blockiert die Verbindung …“).
@@ -162,11 +164,12 @@ Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`../koo
   statt im eigenen Canvas – Spieler-Positionen und Sammlung auf einer Karte
 - JS-Abschnitte 2–9 übernehmen; `api()`, `esc()`, `THEMES` gibt es dort schon
 - Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung)
-- Ordner `icons/` neben die Hauptdatei legen (Kennblöcke der Sammelobjekte, Pfad `KENNBLOCK_PFAD`). Fehlt er, zeigen die Sammelobjekte die Symbole
+- Ordner `icons/` neben die Hauptdatei legen (Kennblöcke für Karte und Sammelobjekte, Pfad `KENNBLOCK_PFAD`). Fehlt er, stehen überall die Symbole
+- Die Canvas-Marker zeichnet dort der bestehende Renderer: Kennblock über `kennblockBild(kategorie)` holen (liefert das geladene Bild oder `null`, dann das Symbol)
 
 ## Tests
 
-`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung, Sammelobjekte und Board-Verbindung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
+`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung, Sammelobjekte, Kennblöcke in der Karte und Board-Verbindung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
 
 ## Referenz
 

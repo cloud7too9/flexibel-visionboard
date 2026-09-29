@@ -43,6 +43,8 @@ export interface GezeigteKarte {
   unter?: string;
   bereich?: string;
   quelle?: string;
+  /** Feature-Typ der Seed Map – die Anzeige zeigt dazu den Kennblock, falls sie einen hat */
+  typ?: string;
   dimension: Dimension | null;
   bloecke: KartenBlock[];
   von: string;

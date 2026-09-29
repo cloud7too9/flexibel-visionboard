@@ -14,6 +14,7 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 - Lange Listen scrollen von selbst langsam durch
 - Neue und geänderte Orte leuchten kurz auf und sind mit „NEU“ markiert
 - QR-Code + PIN zum Beitreten, wer online ist, zuletzt gespeicherte Orte
+- Strukturen mit Kennblock (z. B. Netherziegel für „Nether Fortress“) zeigen das Bild statt des Linien-Icons, auch in der Handy-Liste und im Ort-Detail. Bilder: `client/public/icons/struktur_kennbloecke/`, Zuordnung Typ → Bild: `client/src/lib/kennbloecke.ts`
 
 **Handy** (Startseite)
 - **Screenshot auslesen**: Ein oder mehrere Seed-Map-Screenshots mit aufgeklapptem Popup auswählen → Name, Typ, X/(Y)/Z und Dimension werden erkannt → prüfen → speichern. Optional wird ein Kartenausschnitt (Popup + Marker, ohne Werbung) als Bild gespeichert.
@@ -28,7 +29,7 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 **Companion-PWA**
 - Die Companion kann per QR-Code-Scan beitreten wie ein Handy. Dafür sind `/api/beitreten` und `/api/ich` für andere Ursprünge freigegeben (CORS, inkl. Private-Network-Access-Antwort für Chrome). `/api/anzeige` mit der PIN bleibt gesperrt.
 - Nach **5 falschen PINs** ist das Gerät **60 s gesperrt** (`server/src/sperre.js`), damit keine Webseite die 4-stellige PIN durchprobieren kann.
-- **Aufs Board**: Die Companion kann eine Karte groß auf die Anzeige werfen (z. B. einen Ort). Sie liegt über den Spalten, Seitenleiste mit QR-Code bleibt frei, im Theme ihrer Dimension, mit Absender. Eine neue Karte ersetzt die alte; gespeichert wird sie nicht. Aufbau und Prüfung der Karte: `server/src/zeigen.js`.
+- **Aufs Board**: Die Companion kann eine Karte groß auf die Anzeige werfen (z. B. einen Ort). Sie liegt über den Spalten, Seitenleiste mit QR-Code bleibt frei, im Theme ihrer Dimension, mit Absender. Eine neue Karte ersetzt die alte; gespeichert wird sie nicht. Bringt die Karte einen Seed-Map-Typ mit (`typ`), steht der Kennblock neben dem Titel. Aufbau und Prüfung der Karte: `server/src/zeigen.js`.
 
 ## Starten
 

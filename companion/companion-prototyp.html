@@ -556,6 +556,10 @@ select.orte-eingabe { padding-right:34px;
 .ort-kat-icon { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; flex:0 0 auto;
   background:var(--accent-soft); color:var(--accent); font-family:ui-monospace,monospace; font-weight:700; font-size:15px;
   transition:background .45s ease, color .45s ease; }
+/* Kennblock der Struktur (PNG, STRUKTUREN); ohne Bild steht das Symbol im selben Kasten */
+.kennblock { width:30px; height:30px; object-fit:contain; display:block;
+  filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
+.ort-kat-icon .kennblock { width:24px; height:24px; }
 .ort-kat-name { flex:1; font-size:14.5px; font-weight:700; }
 .ort-kat-count { font-size:12px; color:var(--text-dim); font-weight:700; font-variant-numeric:tabular-nums; margin-right:6px; }
 .ort-kat-chevron { color:var(--text-faint); transition:transform .25s; display:flex; }
@@ -595,6 +599,9 @@ select.orte-eingabe { padding-right:34px;
 .sheet-kopf h2 { margin-bottom:2px; word-break:break-word; }
 .sheet-kopf .sub { margin-bottom:0; }
 .sheet-kopf .icon-btn { position:static; transform:none; margin:-8px -10px 0 0; }
+.sheet-kopf-bild { width:44px; height:44px; border-radius:12px; flex:0 0 auto; display:grid; place-items:center;
+  background:var(--accent-soft); color:var(--accent); font:700 19px ui-monospace,monospace; }
+.sheet-kopf-bild .kennblock { width:34px; height:34px; }
 .orte-inhalt { display:flex; flex-direction:column; gap:16px; padding-bottom:16px; }
 .sheet-fuss { position:sticky; bottom:0; display:flex; gap:8px; align-items:stretch;
   padding:12px 0 max(16px, env(safe-area-inset-bottom)); background:var(--surface);
@@ -617,9 +624,12 @@ select.orte-eingabe { padding-right:34px;
 /* Screenshot-Prüfliste */
 .card.aus { opacity:.55; }
 .imp-kopf { display:flex; gap:11px; align-items:center; }
-.imp-kopf img { width:52px; height:52px; border-radius:10px; object-fit:cover; background:var(--surface-3);
+.imp-kopf > img { width:52px; height:52px; border-radius:10px; object-fit:cover; background:var(--surface-3);
   border:1px solid var(--border-soft); flex:0 0 auto; }
 .imp-kopf .text { flex:1; min-width:0; }
+.imp-kennblock { display:inline-grid; place-items:center; width:20px; height:20px; margin-right:6px; vertical-align:-4px;
+  color:var(--accent); font:700 13px ui-monospace,monospace; }
+.imp-kennblock .kennblock { width:20px; height:20px; }
 .imp-kopf .card-meta { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:4px; }
 .pill { font-size:10px; font-weight:800; padding:3px 8px; border-radius:7px; text-transform:uppercase; letter-spacing:.1em;
   background:var(--accent-soft); color:var(--accent); }
@@ -637,9 +647,6 @@ button.switch { padding:0; }
 .ach-cat .ach-cat-icon { width:38px; height:38px; border-radius:10px; background:var(--accent-soft); color:var(--accent); font-family:ui-monospace,monospace; font-weight:700; }
 .ach-cat .ach-cat-dim { font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-left:8px; }
 .ach-cat .ach-cat-name .en { display:block; font-size:11.5px; font-weight:600; color:var(--text-faint); margin-top:1px; }
-/* Kennblock der Fundort-Struktur (PNG); ohne Bild steht das Symbol im selben Kasten */
-.kennblock { width:30px; height:30px; object-fit:contain; display:block;
-  filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
 .sam-fundort-bild .kennblock { width:40px; height:40px; }
 .sam-fundort-kopf { display:flex; align-items:center; gap:12px; }
 .sam-fundort-kopf .card-title { font-size:17px; }
@@ -1160,6 +1167,34 @@ const STRUKTUREN = Object.freeze({
   "End City":        { id:"end_city",         name:"Endsiedlung" },
 });
 const strukturName = (kat) => STRUKTUREN[kat]?.name || kat;
+const kennblockDatei = (kat) => { const s = STRUKTUREN[kat]; return s && s.bild !== false ? `${KENNBLOCK_PFAD}${s.id}.png` : null; };
+
+/** Kennblock einer Kategorie als <img> – ohne Bild (oder wenn es nicht lädt) das Symbol */
+function kennblockHtml(kategorie){
+  const datei = kennblockDatei(kategorie);
+  return datei
+    ? `<img class="kennblock" src="${datei}" alt="" data-symbol="${esc(symbol(kategorie))}">`
+    : esc(symbol(kategorie));
+}
+// error bubbelt nicht → in der Capture-Phase abfangen
+document.addEventListener("error", (e) => {
+  if(e.target instanceof HTMLImageElement && e.target.classList.contains("kennblock")) e.target.replaceWith(e.target.dataset.symbol);
+}, true);
+
+/** Kennblock für die Canvas-Karte: das geladene Bild oder null (lädt noch, fehlt) → dann das Symbol.
+    Ist ein Bild fertig geladen, wird die Karte neu gezeichnet. */
+const kennblockBilder = new Map();
+function kennblockBild(kategorie){
+  const datei = kennblockDatei(kategorie); if(!datei) return null;
+  let img = kennblockBilder.get(datei);
+  if(!img){
+    img = new Image();
+    img.onload = () => { if(aktivesModul === "karte" && st.ansicht === "karte") karte.zeichnen(); };
+    img.src = datei;
+    kennblockBilder.set(datei, img);
+  }
+  return img.complete && img.naturalWidth ? img : null;
+}
 
 /* Sammelobjekte: Rüstungs-Modifikationen (Schmiedevorlagen). Deutsche Spielnamen laut
    Minecraft-Wiki, Fundort = FeatureCategory der Karte → Verknüpfung zu bekannten Orten.
@@ -1731,7 +1766,7 @@ function renderListe(){
     }).join("");
     return `<div class="ort-kat ${offen ? "open" : ""}" data-kat="${esc(kat)}">
       <div class="ort-kat-head">
-        <span class="ort-kat-icon">${symbol(kat)}</span>
+        <span class="ort-kat-icon">${kennblockHtml(kat)}</span>
         <span class="ort-kat-name">${esc(kat)}</span>
         <span class="ort-kat-count">${summe}</span>
         <span class="ort-kat-chevron">${CHEVRON}</span>
@@ -1857,20 +1892,31 @@ const karte = (() => {
       const [px, py] = zuBild(i.x, i.z);
       if(px < -20 || py < -20 || px > w + 20 || py > h + 20) continue;
       const eigen = t.kategorie === EIGENE_ORTE;
-      ctx.beginPath(); ctx.arc(px, py, 11, 0, Math.PI * 2);
-      ctx.fillStyle = eigen ? akzent : "rgba(0,0,0,.6)"; ctx.fill();
+      const bild = kennblockBild(t.kategorie), r = bild ? 14 : 11;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+      // heller Grund unter dem Kennblock, sonst gehen dunkle Blöcke (Netherziegel, Sculk) unter
+      ctx.fillStyle = eigen ? akzent : bild ? "rgba(214,222,230,.34)" : "rgba(0,0,0,.6)"; ctx.fill();
       ctx.strokeStyle = akzent; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = eigen ? var_("--accent-ink") : akzent;
-      ctx.font = "700 12px ui-monospace, monospace"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(symbol(t.kategorie), px, py + 1);
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      if(bild){
+        // Kennblock eingepasst (hohe Bilder wie das Banner bleiben schmal)
+        const f = 19 / Math.max(bild.naturalWidth, bild.naturalHeight);
+        const bw = bild.naturalWidth * f, bh = bild.naturalHeight * f;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(bild, px - bw / 2, py - bh / 2, bw, bh);
+      } else {
+        ctx.fillStyle = eigen ? var_("--accent-ink") : akzent;
+        ctx.font = "700 12px ui-monospace, monospace";
+        ctx.fillText(symbol(t.kategorie), px, py + 1);
+      }
       if(sicht.zoom >= 0.12 || eigen){
         const text = t.variante || t.kategorie;
         ctx.font = "600 11px -apple-system, system-ui, sans-serif";
-        const tw = ctx.measureText(text).width;
-        if(frei(px - tw / 2 - 5, py + 14, tw + 10, 17)){
+        const tw = ctx.measureText(text).width, ty = py + r + 3;
+        if(frei(px - tw / 2 - 5, ty, tw + 10, 17)){
           ctx.fillStyle = "rgba(0,0,0,.55)";
-          ctx.fillRect(px - tw / 2 - 5, py + 14, tw + 10, 17);
-          ctx.fillStyle = "#fff"; ctx.fillText(text, px, py + 23);
+          ctx.fillRect(px - tw / 2 - 5, ty, tw + 10, 17);
+          ctx.fillStyle = "#fff"; ctx.fillText(text, px, ty + 9);
         }
       }
       marker.push({ id:i.id, px, py, r:16 });
@@ -1996,7 +2042,7 @@ function alleSchliessen(){
   $sidebar.classList.remove("open");
   $scrim.classList.remove("show");
 }
-const kopfHtml = (titel, sub) => `<div class="sheet-kopf"><div class="titel"><h2>${titel}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
+const kopfHtml = (titel, sub, bild) => `<div class="sheet-kopf">${bild ? `<span class="sheet-kopf-bild">${bild}</span>` : ""}<div class="titel"><h2>${titel}</h2>${sub ? `<div class="sub">${sub}</div>` : ""}</div>
   <button class="icon-btn" data-aktion="schliessen" aria-label="Schließen">${X_ICON}</button></div>`;
 
 function koordFelder(prefix, x, y, z){
@@ -2024,7 +2070,7 @@ function detailOeffnen(id, loeschenFragen){
   const biom = t.kategorie === BIOMES ? biomFinden(t.variante) : null;
   const titel = esc(t.variante || t.kategorie);
   const sub = `${t.variante ? `${esc(t.kategorie)} · ` : ""}${dimLabel(dim)}${biom ? ` · ${esc(biom.gruppe)}` : ""}`;
-  const html = kopfHtml(titel, sub) + `<div class="orte-inhalt">
+  const html = kopfHtml(titel, sub, kennblockHtml(t.kategorie)) + `<div class="orte-inhalt">
     <div class="result-card">
       <div class="result-label">Koordinaten</div>
       <div class="result-coords mono">
@@ -2193,7 +2239,7 @@ function importRendern(){
     const titel = e.status === "wartet" ? "Wartet …"
       : e.status === "lese" ? '<span class="dreher"></span>Lese Text …'
       : e.status === "gespeichert" ? `${esc(k.titel)} ✓`
-      : k ? esc(k.variante ? `${k.kategorie} · ${k.variante}` : k.kategorie)
+      : k ? `<span class="imp-kennblock">${kennblockHtml(k.kategorie)}</span>${esc(k.variante ? `${k.kategorie} · ${k.variante}` : k.kategorie)}`
       : "Nicht erkannt";
     const meta = k ? `<span class="pill">${dimLabel(e.dim)}</span>${biom ? '<span class="pill">Biom</span>' : ""}` : "";
     const bearbeitbar = e.status === "fertig";
@@ -2376,17 +2422,6 @@ const themaStil = (dim) => Object.entries(THEMES[dim].ui).map(([k, v]) => `${k}:
 const samGefundenAnzahl = () => SAM_ZAEHLT.filter((o) => sam.status[o.id]).length;
 const datumKurz = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-DE", { day:"numeric", month:"numeric" }); };
 
-/** Kennblock der Fundort-Struktur als Bild – ohne Bild (oder wenn es nicht lädt) das Symbol */
-function kennblockHtml(kategorie){
-  const s = STRUKTUREN[kategorie];
-  return s && s.bild !== false
-    ? `<img class="kennblock" src="${KENNBLOCK_PFAD}${s.id}.png" alt="" data-symbol="${esc(symbol(kategorie))}">`
-    : esc(symbol(kategorie));
-}
-// error bubbelt nicht → in der Capture-Phase abfangen
-document.addEventListener("error", (e) => {
-  if(e.target instanceof HTMLImageElement && e.target.classList.contains("kennblock")) e.target.replaceWith(e.target.dataset.symbol);
-}, true);
 
 /** Bekannte Instanzen einer Fundort-Kategorie in der aktuellen Welt – nächste zuerst */
 function bekannteFundorte(kategorie, dim){
@@ -3559,8 +3594,10 @@ function ortKarte(id){
   if(u) bloecke.push({ art:"koordinaten", label:u.dim === "nether" ? "Im Nether" : "In der Oberwelt",
                        x:u.x, y:null, z:u.z, dimension:BOARD_DIM[u.dim] });
   const unter = [t.variante ? t.kategorie : null, biom?.gruppe].filter(Boolean).join(" · ");
+  // typ = Feature-Typ der Seed Map → die Anzeige zeigt dazu den Kennblock (eigene Orte, Biome: keiner)
+  const typ = t.kategorie === EIGENE_ORTE || t.kategorie === BIOMES ? undefined : t.kategorie;
   return { titel:t.variante || t.kategorie, unter:unter || undefined, bereich:"Karte",
-           quelle:`ort:${i.id}`, dimension:BOARD_DIM[dim], bloecke };
+           quelle:`ort:${i.id}`, typ, dimension:BOARD_DIM[dim], bloecke };
 }
 async function boardZeigen(quelle){
   const [art, ...rest] = quelle.split(":");
