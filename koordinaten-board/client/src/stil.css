@@ -215,6 +215,14 @@ select.eingabe {
 .sheet-kopf .titel { flex: 1; min-width: 0; padding-top: 6px; }
 .sheet-kopf h2 { font-size: 17px; font-weight: 800; }
 .sheet-kopf .sub { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
+.sheet-kopf-bild {
+  width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; margin-top: 2px; display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent);
+}
+.sheet-kopf-bild .kennblock { width: 34px; height: 34px; }
+
+/* Kennblock einer Struktur (public/icons/struktur_kennbloecke) statt des Linien-Icons */
+.kennblock { display: block; width: 24px; height: 24px; object-fit: contain; filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.45)); }
 .sheet-inhalt { overflow-y: auto; padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 18px; }
 .sheet-fuss { display: flex; gap: 8px; padding: 12px 18px max(14px, env(safe-area-inset-bottom)); border-top: 1px solid var(--border-soft); }
 @keyframes einblenden { from { opacity: 0; } }
@@ -292,6 +300,7 @@ select.eingabe {
   width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
   background: var(--accent-soft); color: var(--accent); border: 1px solid var(--border-soft);
 }
+.ort .ort-icon .kennblock { width: 28px; height: 28px; }
 .ort .ort-name { font-size: 14.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; min-width: 0; }
 .ort .ort-name span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ort .ort-name svg { color: var(--accent); flex-shrink: 0; }
@@ -370,6 +379,7 @@ select.eingabe {
 .a-gross > *:not(.bildgrund) { position: relative; }
 .a-gross .kopfzeile { display: flex; align-items: center; gap: 0.7em; }
 .a-gross .ort-icon { width: 2.4em; height: 2.4em; border-radius: 0.75em; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex-shrink: 0; }
+.a-gross .ort-icon .kennblock { width: 1.85em; height: 1.85em; }
 .a-gross .name { font-size: 1.35em; font-weight: 800; line-height: 1.15; }
 .a-gross .meta { font-size: 0.85em; color: var(--text-faint); font-weight: 600; }
 .a-gross .kopfzeile .pill { margin-left: auto; }
@@ -398,6 +408,7 @@ select.eingabe {
   padding: 0.6em 0.75em; background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 0.9em;
 }
 .a-zeile .ort-icon { grid-row: 1 / 3; width: 2.1em; height: 2.1em; border-radius: 0.65em; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.a-zeile .ort-icon .kennblock { width: 1.6em; height: 1.6em; }
 .a-zeile .name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.5em; min-width: 0; }
 .a-zeile .name span:first-child { overflow: hidden; text-overflow: ellipsis; }
 .a-zeile .coord { font-size: 1.05em; text-align: right; white-space: nowrap; }
@@ -452,7 +463,14 @@ select.eingabe {
 .g-von { margin-left: auto; padding: 0.4em 0.85em; border-radius: 0.8em; font-size: 0.95em; box-shadow: none; background: var(--surface-2); color: var(--text-dim); }
 .g-von b { color: var(--text); }
 .g-karte h2 { font-size: 3.4em; font-weight: 800; line-height: 1.05; letter-spacing: -0.01em; word-break: break-word; }
-.g-unter { font-size: 1.3em; color: var(--text-dim); font-weight: 600; margin-top: -0.5em; }
+.g-titel { display: flex; align-items: center; gap: 1em; min-width: 0; }
+.g-titel-text { flex: 1; min-width: 0; }
+.g-kennblock {
+  width: 5em; height: 5em; border-radius: 1.2em; flex-shrink: 0; display: grid; place-items: center;
+  background: var(--accent-soft); border: 1px solid var(--border-soft);
+}
+.g-kennblock .kennblock { width: 3.8em; height: 3.8em; }
+.g-unter { font-size: 1.3em; color: var(--text-dim); font-weight: 600; margin-top: 0.35em; }
 .g-bloecke { display: flex; flex-direction: column; gap: 1em; min-height: 0; }
 .g-koord { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 1.1em; padding: 1em 1.1em; }
 .g-koord .kicker { color: var(--accent); margin-bottom: 0.55em; }

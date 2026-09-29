@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sheet } from '../komponenten/Sheet';
 import { Icon } from '../komponenten/Icon';
+import { OrtIcon } from '../komponenten/OrtIcon';
 import { entfernung, entfernungText, tpBefehl, umrechnen, zahl, type Position } from '../lib/koordinaten';
 import { kopieren } from '../lib/upload';
 import { dimensionLabel, kategorieLabel, thema, type Ort } from '../lib/typen';
@@ -46,6 +47,7 @@ export function OrtDetail({ ort, standort, bearbeiten, schliessen, senden, meldu
     <Sheet
       titel={ort.name}
       sub={<>{dimensionLabel(ort.dimension)} · {ort.typ || kategorieLabel(ort.kategorie)}</>}
+      bild={<OrtIcon typ={ort.typ} kategorie={ort.kategorie} groesse={22} />}
       thema={thema(ort.dimension)}
       schliessen={schliessen}
     >

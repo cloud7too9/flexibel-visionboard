@@ -4,6 +4,7 @@ import { useBoard } from '../lib/verbindung';
 import { DIMENSIONEN, KATEGORIEN, dimensionLabel, kategorieLabel, thema, type Ort } from '../lib/typen';
 import { umrechnen, zahl } from '../lib/koordinaten';
 import { Icon } from '../komponenten/Icon';
+import { OrtIcon } from '../komponenten/OrtIcon';
 import { KoordChip } from '../komponenten/Eingaben';
 import { Gezeigt } from './Gezeigt';
 
@@ -169,7 +170,7 @@ export function Anzeige() {
                 <article key={o.id} className={`a-gross ${thema(o.dimension)} ${istNeu(o) ? 'neu' : ''}`}>
                   {o.datei && <div className="bildgrund" style={{ backgroundImage: `url(/medien/${o.datei})` }} />}
                   <div className="kopfzeile">
-                    <span className="ort-icon"><Icon name={o.kategorie} groesse={24} /></span>
+                    <span className="ort-icon"><OrtIcon typ={o.typ} kategorie={o.kategorie} groesse={24} /></span>
                     <div style={{ minWidth: 0 }}>
                       <div className="name">{o.name}</div>
                       <div className="meta">{dimensionLabel(o.dimension)} · {o.typ || kategorieLabel(o.kategorie)}</div>
@@ -200,7 +201,7 @@ export function Anzeige() {
                     <AutoScroll>
                       {liste.map((o) => (
                         <div key={o.id} className={`a-zeile ${istNeu(o) ? 'neu' : ''}`}>
-                          <span className="ort-icon"><Icon name={o.kategorie} groesse={18} /></span>
+                          <span className="ort-icon"><OrtIcon typ={o.typ} kategorie={o.kategorie} groesse={18} /></span>
                           <span className="name">
                             <span>{o.name}</span>
                             {istNeu(o) && <span className="pill">Neu</span>}

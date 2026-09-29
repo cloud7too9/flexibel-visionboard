@@ -4,7 +4,7 @@
 // Blöcken, damit neue Inhalte ohne Änderung am Board dazukommen können.
 //
 // karte = {
-//   titel, unter?, bereich?, quelle?, dimension: 'oberwelt'|'nether'|'ende'|null,
+//   titel, unter?, bereich?, quelle?, typ?, dimension: 'oberwelt'|'nether'|'ende'|null,
 //   bloecke: [
 //     { art:'koordinaten', label?, x, y|null, z, dimension? },
 //     { art:'zeilen', zeilen:[{ label, wert }] },
@@ -13,10 +13,12 @@
 // }
 // quelle: frei wählbare Kennung des Absenders (z. B. „ort:<id>“), damit er
 // erkennt, dass gerade sein Inhalt gezeigt wird.
+// typ: Feature-Typ der Seed Map (z. B. „Nether Fortress“) – hat die Anzeige dafür
+// einen Kennblock, zeigt sie ihn neben dem Titel.
 
 const DIMENSIONEN = ['oberwelt', 'nether', 'ende'];
 const WELTGRENZE = 30_000_000;
-const GRENZEN = { titel: 80, unter: 120, bereich: 40, quelle: 80, label: 40, wert: 80, text: 400, bloecke: 6, zeilen: 8 };
+const GRENZEN = { titel: 80, unter: 120, bereich: 40, quelle: 80, typ: 40, label: 40, wert: 80, text: 400, bloecke: 6, zeilen: 8 };
 
 class Ungueltig extends Error {}
 
@@ -85,6 +87,7 @@ export function kartePruefen(roh) {
         unter: text(roh.unter, GRENZEN.unter, 'Untertitel'),
         bereich: text(roh.bereich, GRENZEN.bereich, 'Bereich'),
         quelle: text(roh.quelle, GRENZEN.quelle, 'Quelle'),
+        typ: text(roh.typ, GRENZEN.typ, 'Typ'),
         dimension: dimension(roh.dimension),
         bloecke: roh.bloecke.map(block),
       },

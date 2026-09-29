@@ -1,6 +1,8 @@
 import type { GezeigteKarte, KartenBlock } from '../lib/typen';
 import { dimensionLabel, thema } from '../lib/typen';
 import { zahl } from '../lib/koordinaten';
+import { kennblockDatei } from '../lib/kennbloecke';
+import { OrtIcon } from '../komponenten/OrtIcon';
 
 /**
  * Karte, die ein Handy auf die Anzeige geworfen hat („Aufs Board“).
@@ -19,8 +21,13 @@ export function Gezeigt({ karte, seit }: { karte: GezeigteKarte; seit: string })
             <b>{karte.von}</b> · {seit}
           </span>
         </div>
-        <h2>{karte.titel}</h2>
-        {karte.unter && <div className="g-unter">{karte.unter}</div>}
+        <div className="g-titel">
+          {kennblockDatei(karte.typ) && <span className="g-kennblock"><OrtIcon typ={karte.typ} groesse={0} /></span>}
+          <div className="g-titel-text">
+            <h2>{karte.titel}</h2>
+            {karte.unter && <div className="g-unter">{karte.unter}</div>}
+          </div>
+        </div>
         <div className="g-bloecke">
           {karte.bloecke.map((b, i) => <Block key={i} block={b} />)}
         </div>

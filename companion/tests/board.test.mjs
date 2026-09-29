@@ -220,15 +220,38 @@ try {
     const antworten = [];
     timWs.onmessage = (e) => { const n = JSON.parse(e.data); if (n.anfrage) antworten.push(n); };
     await new Promise((r) => { timWs.onopen = r; });
-    for (const [name, x, y, z, dimension, kategorie] of [["Hauptbasis", 212, 71, -388, "oberwelt", "basis"], ["Dorf am See", 1040, 64, 310, "oberwelt", "dorf"],
-      ["Festung", 180, 70, -95, "nether", "struktur"], ["End-Stadt", 1300, 60, -820, "ende", "struktur"]]) {
-      timWs.send(JSON.stringify({ art: "hinzufuegen", ort: { name, x, y, z, dimension, kategorie } }));
+    for (const [name, x, y, z, dimension, kategorie, typ] of [["Hauptbasis", 212, 71, -388, "oberwelt", "basis"], ["Dorf am See", 1040, 64, 310, "oberwelt", "dorf", "Village"],
+      ["Festung", 180, 70, -95, "nether", "struktur", "Nether Fortress"], ["End-Stadt", 1300, 60, -820, "ende", "struktur", "End City"]]) {
+      timWs.send(JSON.stringify({ art: "hinzufuegen", ort: { name, x, y, z, dimension, kategorie, typ } }));
     }
     await schlafen(300);
     const anzeige = await browser.newPage({ viewport: { width: 1600, height: 900 } });
     await anzeige.goto(`${BOARD}/anzeige`);
     await anzeige.waitForSelector(".anzeige");
     pruefe(await anzeige.$(".a-gezeigt") === null, "Anzeige: noch keine Karte");
+
+    // Kennblöcke: Strukturen mit Bild zeigen es, alle anderen das Linien-Icon der Kategorie
+    const iconsLesen = (seite, sel) => seite.$$eval(sel, (l) => l.map((z) => {
+      const img = z.querySelector(".ort-icon img.kennblock");
+      return `${z.querySelector(".name > span, .ort-name > span").textContent.trim()}=${img ? (img.naturalWidth ? img.getAttribute("src").split("/").pop() : "lädt nicht") : "Linie"}`;
+    }).sort().join(", "));
+    await anzeige.waitForFunction(() => [...document.querySelectorAll("img.kennblock")].every((i) => i.complete));
+    const anzeigeIcons = await iconsLesen(anzeige, ".a-zeile");
+    console.log("     Anzeige-Icons:", anzeigeIcons);
+    pruefe(anzeigeIcons === "Dorf am See=Linie, End-Stadt=end_city.png, Festung=fortress.png, Hauptbasis=Linie", "Anzeige: Kennblöcke bei Netherfestung und Endsiedlung, sonst Linien-Icon");
+    await anzeige.screenshot({ path: `${DIR}/v7b-anzeige-kennbloecke.png` });
+
+    // Handy-Steuerung des Boards (als Tim): Liste und Ort-Detail
+    const handy = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    await handy.addInitScript(([t]) => { localStorage.setItem("kb-sitzung", JSON.stringify({ token: t, name: "Tim" })); localStorage.setItem("kb-dimension", JSON.stringify("nether")); }, [tim.token]);
+    await handy.goto(`${BOARD}/`);
+    await handy.waitForSelector(".ort");
+    await handy.waitForFunction(() => [...document.querySelectorAll("img.kennblock")].every((i) => i.complete));
+    pruefe(await iconsLesen(handy, ".ort") === "Festung=fortress.png", "Steuerung Nether: Festung mit Kennblock");
+    await handy.click(".ort"); await handy.waitForSelector(".sheet-kopf-bild img.kennblock");
+    pruefe(await handy.$eval(".sheet-kopf-bild img.kennblock", (i) => i.complete && i.naturalWidth > 0), "Steuerung: Ort-Detail mit Kennblock im Kopf");
+    await handy.screenshot({ path: `${DIR}/v7c-steuerung-detail.png` });
+    await handy.close();
 
     await p.click('[data-aktion="schliessen"]'); await p.waitForTimeout(250);
     await p.click('#orteAnsicht [data-ansicht="liste"]'); await p.waitForTimeout(300);
@@ -284,6 +307,17 @@ try {
     await p.click('[data-aktion="board-wegnehmen"]');
     pruefe(await warteAuf(anzeige, () => !document.querySelector(".a-gezeigt")), "Wegnehmen → Anzeige wieder frei");
     pruefe(await warteAuf(p, () => document.getElementById("orteSheetInhalt")?.textContent.includes("Gerade liegt nichts")), "Board-Sheet: wieder leer");
+
+    // Struktur aufs Board → die Anzeige zeigt den Kennblock neben dem Titel
+    await p.evaluate(() => detailOeffnen(st.instanzen.find((i) => typVon(i).kategorie === "Stronghold").id)); await p.waitForTimeout(350);
+    await p.click(".board-zeigen");
+    pruefe(await warteAuf(anzeige, () => document.querySelector(".g-kennblock img.kennblock")?.naturalWidth > 0), "Anzeige: Stronghold mit Kennblock neben dem Titel");
+    await anzeige.waitForTimeout(600);
+    pruefe(await anzeige.$eval(".g-kennblock img", (i) => i.getAttribute("src")) === "/icons/struktur_kennbloecke/stronghold.png", "Anzeige: Kennblock stronghold.png");
+    pruefe(await anzeige.evaluate(() => { const k = document.querySelector(".g-karte").getBoundingClientRect(); return k.bottom <= innerHeight; }), "Anzeige: Karte mit Kennblock vollständig sichtbar");
+    await anzeige.screenshot({ path: `${DIR}/v12-anzeige-kennblock.png` });
+    await p.evaluate(() => boardWegnehmen());
+    pruefe(await warteAuf(anzeige, () => !document.querySelector(".a-gezeigt")), "Stronghold wieder vom Board genommen");
     timWs.close();
     await anzeige.close();
 

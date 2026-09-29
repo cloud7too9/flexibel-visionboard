@@ -3,6 +3,7 @@ import { useBoard } from '../lib/verbindung';
 import { DIMENSIONEN, KATEGORIEN, dimensionLabel, inDimension, thema, type Dimension, type FeatureTyp, type Kategorie, type Ort } from '../lib/typen';
 import { entfernung, entfernungText, umrechnen, zahl, type Position } from '../lib/koordinaten';
 import { Icon } from '../komponenten/Icon';
+import { OrtIcon } from '../komponenten/OrtIcon';
 import { KoordChip } from '../komponenten/Eingaben';
 import { Sheet } from '../komponenten/Sheet';
 import { Beitreten } from './Beitreten';
@@ -264,7 +265,7 @@ function Board({ token, name, abmelden }: { token: string; name: string; abmelde
 function OrtZeile({ ort, weg, oeffnen }: { ort: Ort; weg: ReturnType<typeof entfernung>; oeffnen: () => void }) {
   return (
     <button className="ort" onClick={oeffnen}>
-      <span className="ort-icon"><Icon name={ort.kategorie} groesse={20} /></span>
+      <span className="ort-icon"><OrtIcon typ={ort.typ} kategorie={ort.kategorie} groesse={20} /></span>
       <span style={{ minWidth: 0 }}>
         <span className="ort-name">
           {ort.angeheftet && <Icon name="pin" groesse={14} />}
