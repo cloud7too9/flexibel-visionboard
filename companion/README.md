@@ -54,7 +54,7 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 
 ## Welt-Import: Biome aus `.mcworld` (in Arbeit, Branch `bereich/karte-mcworld`)
 
-Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch aus einer hochgeladenen Bedrock-Welt; die App liest sie im Browser (Web Worker) und zeigt sie flächig auf der Karte. Stand: **Phase 1 (Dekoder in Node)** – die Oberfläche ist noch unverändert.
+Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch aus einer hochgeladenen Bedrock-Welt; die App liest sie im Browser (Web Worker) und zeigt sie flächig auf der Karte. Stand: **Phase 1 abgeschlossen** – Dekoder an der Fixture-Welt von Max geprüft (Höhenkarte an seiner Stelle, 8 von 8 Chunkbase-Stichproben, ID 195 = Dappled Forest). Die Oberfläche ist noch unverändert.
 
 | Datei | Inhalt |
 |---|---|

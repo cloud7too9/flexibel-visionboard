@@ -57,7 +57,7 @@ Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmode
 - Umrechnung Nether ↔ Oberwelt und `/execute in … run tp`-Befehl
 - Kennblöcke (PNG) statt Symbol bei Strukturen mit Bild: Listen-Gruppe, Canvas-Marker, Detail-Kopf, Screenshot-Prüfliste. Siehe Sammelobjekte → Kennblöcke.
 
-**In Arbeit: Biome aus `.mcworld`** (Bauplan `PLAN-welt-import-biome.md`, Branch `bereich/karte-mcworld`). Phase 1 (Dekoder in Node) ist gebaut und getestet; es fehlen die Prüfungen an echten Welten von Max (Haltepunkt). Danach ändern sich die Biom-Regeln unten (nur noch per Welt-Import, Chunk-Raster statt Kreise). Stand und Befehle in `README.md` → Welt-Import.
+**In Arbeit: Biome aus `.mcworld`** (Bauplan `PLAN-welt-import-biome.md`, Branch `bereich/karte-mcworld`). Phase 1 (Dekoder in Node) ist gebaut und an der Fixture-Welt von Max geprüft (`tests/daten/fixture-seed.mcworld`: Höhenkarte, Chunkbase 8/8, ID 195 = Dappled Forest). Haltepunkt: Phase 2 (Worker im Browser) erst nach dem OK von Max. Danach ändern sich die Biom-Regeln unten (nur noch per Welt-Import, Chunk-Raster statt Kreise). Stand und Befehle in `README.md` → Welt-Import.
 
 **Regeln von Max** (prüft `instanzPruefen()`, der Server muss sie genauso prüfen):
 

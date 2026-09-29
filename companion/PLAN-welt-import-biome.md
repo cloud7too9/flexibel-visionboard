@@ -117,7 +117,8 @@ Dafür einen kleinen eigenen NBT-Leser schreiben (nur lesen; alle 13 Tag-Typen �
 - ✔ `minecraft-data` → `data/bedrock/1.20.0/biomes.json` enthält die echten gespeicherten IDs 0–191, z. B. `ocean 0`, `plains 1`, `river 7`, `ice_plains_spikes 140`, `soulsand_valley 178`, `deep_dark 190`, `mangrove_swamp 191`. Das Feld `displayName` entspricht der Chunkbase-Schreibweise („Ice Spikes“, „Badlands“, „Dark Forest“, „Windswept Hills“), dazu gibt es `color`.
 - ✔ **Nicht** `bedrock/1.21.60/biomes.json` verwenden. Dort sind die IDs alphabetisch durchnummeriert (`plains 64`) und passen nicht zu den gespeicherten Daten.
 - ⚠ Neuere Biome fehlen in 1.20.0: Cherry Grove (vermutlich 192), Pale Garden (vermutlich 193), Dappled Forest (195 laut BedrockMapper), Sulfur Caves (unbekannt). In Phase 1 an der Testwelt bestätigen.
-  - Fixture-Welt: **ID 195** kommt vor (24 von 30 Chunks, Spawn X 0 / Z 0, Herbstwald mit roten und orangen Blättern). Passt zu Dappled Forest; der Name wird mit der Chunkbase-Stichprobe an X 0 / Z 0 bestätigt.
+  - ✔ **195 = Dappled Forest**: Fixture-Welt, 24 von 30 Chunks, Spawn X 0 / Z 0 (Herbstwald mit roten und orangen Blättern); Max hat den Namen in Chunkbase bestätigt. Nachgetragen in `tools/biom-ids-bauen.mjs`.
+  - ⚠ Cherry Grove, Pale Garden, Sulfur Caves kommen in der Fixture-Welt nicht vor – bleiben offen, bis eine Welt sie enthält (der Import meldet sie als unbekannt).
 - Zuordnung zur bestehenden Biom-Liste in STAMMDATEN über den Anzeigenamen. Farbe aus der Biom-Liste, sonst `color` aus minecraft-data.
 - Die Tabelle wird einmal per Skript erzeugt und eingecheckt, nicht zur Laufzeit geladen.
 
@@ -334,6 +335,12 @@ Prüfungen an echten Daten:
 4. **Laufzeit und Spitzenspeicher** (`process.memoryUsage().rss`) für beide Wege und beide Welten notieren.
 
 An Max: Zahlen, PNGs, Liste der unbekannten IDs.
+
+**Ergebnis Phase 1 (29.09.2026):**
+1. ✔ Höhenkarte: `z*16 + x`, erste Luft über −64 (siehe 3.4).
+2. ✔ Chunkbase: alle 8 Stichproben passen (Dappled Forest, Stony Shore, Snowy Slopes, Plains, Cold Ocean).
+3. ✔ ID 195 = Dappled Forest nachgetragen; Cherry Grove, Pale Garden, Sulfur Caves weiter offen.
+4. Laufzeit/Speicher: Fixture-Welt 0,1 s und ~70 MB (beide Wege). Synthetische Welt mit 152 MB: Streaming 134 MB Spitzenspeicher, `readMcworld()` 529 MB, je ~4,5 s. Die Realm-Welt testet Max in Phase 2 am iPhone.
 
 Commit: `Biom-Dekoder für .mcworld mit Prüfskript und Tests`
 
