@@ -20,10 +20,11 @@ export const MIN_Y = Object.freeze({ overworld: -64, nether: 0, end: 0 });
 /** Nether und End haben keine Oberfläche – dort gilt eine feste Höhe (CONFIG der Seite) */
 export const STANDARD_OPTIONEN = Object.freeze({ netherBiomY: 64, endBiomY: 64 });
 
-/* ⚠ Reihenfolge der Höhenkarte (z*16+x oder x*16+z) und Bezug der Werte (relativ zu minY,
-   erste Luft) stehen noch nicht an einer echten Welt fest – Phase 1 des Bauplans. Beide
-   Annahmen stecken nur hier. Auf den Wert pro Chunk wirken sie sich kaum aus, weil die
-   Mehrheit der 256 Spalten zählt. */
+/* Höhenkarte ✔ an der Welt von Max bestätigt (Bedrock 1.26.51, tests/daten/fixture-seed.mcworld):
+   · Reihenfolge z*16+x: Die Höhen springen über Chunk-Grenzen im Mittel um 1,35 Blöcke
+     (innerhalb eines Chunks 1,19); mit x*16+z wären es 9,66.
+   · Wert = erste Luft relativ zu −64: Bei X 0 / Z 0 steht 138 → oberster Block y 73,
+     Max stand dort mit den Füßen auf y 74. */
 export const hoehenIndex = (x, z) => z * 16 + x;
 export const oberflaecheY = (hoehe) => MIN_Y.overworld + hoehe - 1;
 

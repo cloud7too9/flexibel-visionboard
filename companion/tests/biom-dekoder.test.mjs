@@ -1,10 +1,13 @@
-// Welt-Import (Biome aus .mcworld): Dekoder mit handgebauten Bytes und der Ablauf über ganze
-// synthetische Welten (welt-bauen.mjs). Lauf: node --test biom-dekoder.test.mjs
+// Welt-Import (Biome aus .mcworld): Dekoder mit handgebauten Bytes, der Ablauf über ganze
+// synthetische Welten (welt-bauen.mjs) und die echte Fixture-Welt von Max (daten/fixture-seed.mcworld).
+// Lauf: node --test biom-dekoder.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { openAsBlob } from "node:fs";
 import {
   chunkSchluesselLesen, data3dLesen, biomAn, oberflaechenBiom, chunkBiom, levelDatLesen, kachelIndex,
   kachelnBauen, kachelWert, kachelZuBase64, kachelAusBase64, chunksAuswerten, KACHEL_CHUNKS,
+  hoehenIndex, oberflaecheY,
 } from "../biom-dekoder.js";
 import { weltLesen, weltPruefen, WeltFehler, FEHLER } from "../biom-welt.js";
 import "../biom-ids.js";
@@ -238,4 +241,52 @@ test("Fehler: keine ZIP, kein Weltordner (level.dat oder db/ fehlt), Java-Welt, 
     assert.equal(await fehler(zipBauen([["Welt/level.dat", text("gzip")], ["Welt/region/r.0.0.mca", text("x")]])), FEHLER.JAVA, lesen.name);
     assert.equal(await fehler(zipBauen([["db/CURRENT", text("MANIFEST-000001\n")], ["level.dat", text("kaputt")]])), FEHLER.LESEN, lesen.name);
   }
+});
+
+// ---------- Fixture-Welt von Max: Bedrock 1.26.51, Seed 6889…698, einmal betreten ----------
+// Aus dem Weltordner zusammengesetzt (level.dat, levelname.txt, db/CURRENT, MANIFEST-000002, 000003.log).
+// Frisch betreten: noch keine .ldb, alle Chunks stehen im Log.
+
+const FIXTURE = new URL("./daten/fixture-seed.mcworld", import.meta.url);
+
+test("Fixture-Welt: level.dat, 30 Chunks, Biome, beide Wege gleich", async () => {
+  const welt = await openAsBlob(FIXTURE);
+  const a = await weltLesen(welt, { biomIds: BEKANNT });
+  assert.deepEqual([a.meta.seed, a.meta.weltname, a.meta.spielversion], [SEED, "Meine Welt (1)", "1.26.51"]);
+  assert.deepEqual(a.meta.chunks, { overworld: 30, nether: 0, end: 0 });
+  const zaehler = {};
+  for (const id of ausKacheln(a.kacheln).values()) zaehler[id] = (zaehler[id] || 0) + 1;
+  // 195 = Herbstwald am Spawn (vermutlich Dappled Forest), 25 Stony Shore, 184 Snowy Slopes, 1 Plains
+  assert.deepEqual(zaehler, { 1: 1, 25: 4, 184: 1, 195: 24 });
+  const b = await weltLesen(welt, { weg: "komplett", biomIds: BEKANNT });
+  assert.deepEqual(a.kacheln.map((k) => kachelZuBase64(k.daten)), b.kacheln.map((k) => kachelZuBase64(k.daten)));
+});
+
+test("Fixture-Welt: Höhenkarte an der Stelle von Max, Reihenfolge z*16+x", async () => {
+  const welt = await openAsBlob(FIXTURE);
+  const { kacheln } = await weltLesen(welt);
+  const ids = [...ausKacheln(kacheln).keys()];
+  const { roh } = await weltLesen(welt, { roh: ids });
+  const hoehen = new Map(ids.map((k) => [k.replace("overworld:", ""), data3dLesen(roh[k]).hoehen]));
+
+  // Max stand bei X 0 / Z 0 mit den Füßen auf y 74 → oberster Block y 73 → Wert 138 (erste Luft über −64)
+  const spawn = hoehen.get("0:0")[hoehenIndex(0, 0)];
+  assert.equal(spawn, 138);
+  assert.equal(oberflaecheY(spawn), 73);
+
+  // Die richtige Lesart ist über Chunk-Grenzen hinweg so glatt wie innerhalb eines Chunks
+  const sprung = (index) => {
+    let summe = 0, n = 0;
+    for (const [k, h] of hoehen) {
+      const [cx, cz] = k.split(":").map(Number);
+      const ost = hoehen.get(`${cx + 1}:${cz}`), sued = hoehen.get(`${cx}:${cz + 1}`);
+      for (let i = 0; i < 16; i++) {
+        if (ost) { summe += Math.abs(h[index(15, i)] - ost[index(0, i)]); n++; }
+        if (sued) { summe += Math.abs(h[index(i, 15)] - sued[index(i, 0)]); n++; }
+      }
+    }
+    return summe / n;
+  };
+  const richtig = sprung(hoehenIndex), falsch = sprung((x, z) => x * 16 + z);
+  assert.ok(richtig < 2 && falsch > 5, `Sprung z*16+x ${richtig.toFixed(2)}, x*16+z ${falsch.toFixed(2)}`);
 });
