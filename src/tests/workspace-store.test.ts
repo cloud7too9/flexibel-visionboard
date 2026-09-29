@@ -118,6 +118,16 @@ describe("widgets act on the active layer only", () => {
     expect(store().moveItem("panel-toolstart", 0, 0)).toBe(false);
   });
 
+  it("resizes a widget and respects minimum size and collisions", () => {
+    // Dateien liegt bei (0,2) mit 4×2, darunter ist frei.
+    expect(store().resizeItem("panel-dateien", 4, 3)).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ w: 4, h: 3 });
+    // Aufgaben hat minHoehe 2: kleiner geht nicht, also keine Änderung.
+    expect(store().resizeItem("panel-aufgaben", 3, 1)).toBe(false);
+    // Breiter würde in Projektstatus hineinragen.
+    expect(store().resizeItem("panel-aufgaben", 4, 2)).toBe(false);
+  });
+
   it("persists widget changes of the active layer", () => {
     const second = store().addLayer();
     store().addItem("dateien");
