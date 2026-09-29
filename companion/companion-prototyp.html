@@ -821,10 +821,14 @@ button.switch { padding:0; }
 .board-zeile { display:flex; justify-content:space-between; gap:12px; font-size:13.5px; }
 .board-zeile span:first-child { color:var(--text-dim); }
 .board-zeile b { text-align:right; word-break:break-word; }
+.board-einstellungen { gap:12px; }
+.anheften.aktiv { border-color:var(--accent); color:var(--accent); }
+.sam-board { flex:1; margin:8px 14px; }
+.board-schalter { align-items:center; }
 .board-status { display:flex; align-items:center; gap:9px; font-size:16px; }
-.board-zeigen { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
-.board-zeigen svg { color:var(--accent); }
-.board-zeigen.aktiv { border-color:var(--accent); color:var(--accent); }
+.board-zeigen, .sam-board { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
+.board-zeigen svg, .sam-board svg { color:var(--accent); }
+.board-zeigen.aktiv, .sam-board.aktiv { border-color:var(--accent); color:var(--accent); }
 .board-gezeigt { display:flex; align-items:center; gap:12px; }
 .board-gezeigt .text { flex:1; min-width:0; }
 .board-gezeigt .btn-secondary { min-height:38px; padding:8px 14px; }
@@ -955,7 +959,7 @@ button.switch { padding:0; }
         <div class="ach-list" id="samListe"></div>
       </div>
       <nav class="bottombar">
-        <div class="bb-placeholder">Gilt für die ganze Welt · alle können abhaken</div>
+        <div class="bb-placeholder" id="samFuss">Gilt für die ganze Welt · alle können abhaken</div>
       </nav>
     </section>
 
@@ -1019,6 +1023,7 @@ button.switch { padding:0; }
   <div class="orte-toast chip" id="orteToast" hidden></div>
 </div>
 
+<script src="regeln.js"></script>
 <script>
 "use strict";
 /* ============================================================================
@@ -1054,7 +1059,7 @@ const CONFIG = Object.freeze({
   zoomMin: 0.02,         // Pixel pro Block
   zoomMax: 4,
   toastMs: 2600,
-  weltGrenze: 30000000,  // Minecraft-Weltgrenze ±30 Mio.
+  weltGrenze: WELTGRENZE,  // Minecraft-Weltgrenze ±30 Mio. (regeln.js)
   boardPort: 3000,       // Standard-Port des Koordinaten-Boards, falls von Hand ohne Port eingetragen
   scanTaktMs: 220,       // Kamera-Bild so oft nach einem QR-Code absuchen
   scanMaxPx: 720,        // Bild vor der Erkennung auf diese Kantenlänge verkleinern
@@ -1082,48 +1087,14 @@ const THEMES = Object.freeze({
     "--text":"#f1eef8", "--text-dim":"#948aab", "--text-faint":"#5f5775",
     "--accent":"#b274e6", "--accent-ink":"#160a20", "--accent-soft":"rgba(178,116,230,.16)" } },
 });
-const DIM_ORDER = Object.freeze(["overworld", "nether", "end"]);
-const dimLabel = (d) => THEMES[d]?.label ?? d;
-const inDim = (d) => (d === "overworld" ? "in der Oberwelt" : `im ${dimLabel(d)}`);
 
 /* ============================================================================
    2 · STAMMDATEN  ·  aus „Minecraft Tool – Minimales Datenmodell“
+   ----------------------------------------------------------------------------
+   Kategorien, Biome, Sammelobjekte, Banner-Farben/-Muster und die Regel-Funktionen
+   stehen in regeln.js – der Board-Server prüft mit genau derselben Datei.
+   Hier bleibt nur, was die Oberfläche braucht (Farben, Symbole, Kennblöcke).
    ========================================================================== */
-const EIGENE_ORTE = "Eigene Orte";
-const BIOMES = "Biomes";
-
-// FeatureCategory je Dimension (Reihenfolge wie in der Seed Map)
-const FEATURE_KATEGORIEN = Object.freeze({
-  overworld: ["Biomes", "Slime Chunk", "Spawn Point", "Village", "Ancient City", "Dungeon", "Stronghold",
-    "Mansion", "Monument", "Mineshaft", "Outpost", "Ruined Portal", "Jungle Temple", "Desert Temple",
-    "Witch Hut", "Shipwreck", "Ocean Ruins", "Cave", "Lava Pool", "Treasure", "Igloo", "Fossil", "Ravine",
-    "Geode", "Apple", "Ore Veins", "Desert Well", "Trail Ruins", "Trial Chamber", "Camp"],
-  nether: ["Biomes", "Nether Fortress", "Bastion", "Ruined Portal", "Nether Fossil"],
-  end: ["Biomes", "End City", "End Gateway"],
-});
-
-// Biome nach Kategorie-Gruppe; Nether/End bestimmen die Dimension
-const BIOM_GRUPPEN = Object.freeze({
-  Plains: ["Plains", "Snowy Plains", "Mushroom Fields", "Savanna", "Sunflower Plains", "Ice Spikes"],
-  Woodlands: ["Forest", "Taiga", "Jungle", "Sparse Jungle", "Birch Forest", "Dark Forest", "Snowy Taiga",
-    "Old Growth Pine Taiga", "Flower Forest", "Old Growth Birch Forest", "Old Growth Spruce Taiga",
-    "Bamboo Jungle", "Grove", "Cherry Grove", "Pale Garden", "Dappled Forest"],
-  Caves: ["Dripstone Caves", "Lush Caves", "Deep Dark", "Sulfur Caves"],
-  Mountains: ["Windswept Hills", "Windswept Forest", "Stony Shore", "Savanna Plateau", "Windswept Gravelly Hills",
-    "Windswept Savanna", "Meadow", "Snowy Slopes", "Frozen Peaks", "Jagged Peaks", "Stony Peaks"],
-  Swamps: ["Swamp", "Mangrove Swamp"],
-  Sandy: ["Desert", "Beach", "Snowy Beach", "Badlands", "Wooded Badlands", "Eroded Badlands"],
-  Water: ["Ocean", "River", "Frozen Ocean", "Frozen River", "Deep Ocean", "Warm Ocean", "Lukewarm Ocean",
-    "Cold Ocean", "Deep Lukewarm Ocean", "Deep Cold Ocean", "Deep Frozen Ocean"],
-  Nether: ["Nether Wastes", "Soul Sand Valley", "Crimson Forest", "Warped Forest", "Basalt Deltas"],
-  End: ["The End", "Small End Islands", "End Midlands", "End Highlands", "End Barrens"],
-});
-const BIOME = Object.freeze(Object.entries(BIOM_GRUPPEN).flatMap(([gruppe, namen]) =>
-  namen.map((name) => Object.freeze({
-    name, gruppe, dimension: gruppe === "Nether" ? "nether" : gruppe === "End" ? "end" : "overworld",
-  }))));
-const biomFinden = (name) => BIOME.find((b) => b.name.toLowerCase() === String(name || "").trim().toLowerCase()) || null;
-
 // Kartenfarben – reine Darstellung, keine Spieldaten
 const GRUPPEN_FARBE = Object.freeze({
   Plains:"#8fbf5a", Woodlands:"#3f8a3c", Caves:"#8a6e5c", Mountains:"#9aa0a6", Swamps:"#5b7a45",
@@ -1196,30 +1167,6 @@ function kennblockBild(kategorie){
   return img.complete && img.naturalWidth ? img : null;
 }
 
-/* Sammelobjekte: Rüstungs-Modifikationen (Schmiedevorlagen). Deutsche Spielnamen laut
-   Minecraft-Wiki, Fundort = FeatureCategory der Karte → Verknüpfung zu bekannten Orten.
-   Stand: 18 Rüstungsbesätze (inkl. Fluss/Bolzen aus 1.21) + Netheritaufwertung. */
-const SAMMELOBJEKTE = Object.freeze([
-  { id:"sentry",    name:"Wachen",      en:"Sentry",    kategorie:"Outpost",         dim:"overworld", quelle:"Truhe im Plünderer-Außenposten" },
-  { id:"dune",      name:"Dünen",       en:"Dune",      kategorie:"Desert Temple",   dim:"overworld", quelle:"Truhe im Wüstentempel" },
-  { id:"wild",      name:"Wildnis",     en:"Wild",      kategorie:"Jungle Temple",   dim:"overworld", quelle:"Truhe im Dschungeltempel" },
-  { id:"coast",     name:"Küsten",      en:"Coast",     kategorie:"Shipwreck",       dim:"overworld", quelle:"Schatz-, Karten- oder Vorratstruhe im Schiffswrack" },
-  { id:"wayfinder", name:"Wegfinder",   en:"Wayfinder", kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
-  { id:"raiser",    name:"Aufzieher",   en:"Raiser",    kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
-  { id:"shaper",    name:"Gestalter",   en:"Shaper",    kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
-  { id:"host",      name:"Gastwirts",   en:"Host",      kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
-  { id:"vex",       name:"Plagegeist",  en:"Vex",       kategorie:"Mansion",         dim:"overworld", quelle:"Truhe im Waldanwesen" },
-  { id:"tide",      name:"Gezeiten",    en:"Tide",      kategorie:"Monument",        dim:"overworld", quelle:"Drop vom Großen Wächter im Ozeanmonument" },
-  { id:"ward",      name:"Warthof",     en:"Ward",      kategorie:"Ancient City",    dim:"overworld", quelle:"Truhe in der Antiken Stätte" },
-  { id:"silence",   name:"Stille",      en:"Silence",   kategorie:"Ancient City",    dim:"overworld", quelle:"Truhe in der Antiken Stätte – sehr selten" },
-  { id:"bolt",      name:"Bolzen",      en:"Bolt",      kategorie:"Trial Chamber",   dim:"overworld", quelle:"Tresor in der Prüfungskammer" },
-  { id:"flow",      name:"Fluss",       en:"Flow",      kategorie:"Trial Chamber",   dim:"overworld", quelle:"Unheilvoller Tresor in der Prüfungskammer" },
-  { id:"eye",       name:"Augen",       en:"Eye",       kategorie:"Stronghold",      dim:"overworld", quelle:"Truhe am Altar oder in der Bibliothek der Festung" },
-  { id:"rib",       name:"Rippen",      en:"Rib",       kategorie:"Nether Fortress", dim:"nether",    quelle:"Truhe in der Netherfestung" },
-  { id:"snout",     name:"Schnauzen",   en:"Snout",     kategorie:"Bastion",         dim:"nether",    quelle:"Truhe in der Bastionsruine" },
-  { id:"netherite", name:"Netheritaufwertung", en:"Netherite Upgrade", kategorie:"Bastion", dim:"nether", quelle:"Truhe in der Bastionsruine, in der Schatzkammer am häufigsten", aufwertung:true },
-  { id:"spire",     name:"Turmspitzen", en:"Spire",     kategorie:"End City",        dim:"end",       quelle:"Truhe in der Endsiedlung" },
-]);
 const SAM_ZAEHLT = SAMMELOBJEKTE.filter((o) => !o.aufwertung);
 // Fundorte in fester Reihenfolge (Oberwelt → Nether → End)
 const FUNDORTE = SAMMELOBJEKTE.reduce((liste, o) => {
@@ -1292,6 +1239,12 @@ function koordinatenErkennen(text){
 /* ============================================================================
    4 · API-VERTRAG  ·  + DEMO-Mock
    ----------------------------------------------------------------------------
+   Live liefert das Koordinaten-Board die Companion selbst aus (http://<board>/).
+   Die Pfade liegen dann unter /api, angemeldet wird per Bearer-Token aus dem
+   Beitreten (Name + PIN, siehe 9f). Umsetzung: koordinaten-board/server/src/
+   companion-api.js + daten.js, geprüft mit denselben Regeln aus regeln.js.
+   Nach jeder Änderung meldet das Board per WebSocket { art:"geaendert", bereich,
+   weltId } – die Companion lädt dann den Bereich neu (liveAktualisieren).
    GET    /orte/welten                → { welten:[{ id, seed, anzahl }] }
    POST   /orte/welten   { seed }     → { welt }            (legt 3 Dimensionen an)
    GET    /orte/welten/:id            → { welt, dimensionen, typen, instanzen }
@@ -1299,6 +1252,7 @@ function koordinatenErkennen(text){
                                         quelle:"screenshot"|"manuell" }
                                       → { instanz, typ }   (Typ wird gefunden oder angelegt)
    PATCH  /orte/instanzen/:id  { x, y, z }   → { instanz }  (Biome: 403)
+   PUT    /orte/instanzen/:id/angeheftet { angeheftet } → { instanz }  (groß auf der Anzeige; Biome: 403)
    DELETE /orte/instanzen/:id                → { ok:true }
    POST   /orte/auslesen  (multipart „datei“) → { erkannt:{ titel, kategorie, variante, dimension,
                                                   x, y|null, z } | null }
@@ -1323,27 +1277,17 @@ function koordinatenErkennen(text){
    verbindung = { id, name, oberwelt:{ x, y|null, z }, nether:{ x, y|null, z }, von, am }
    ========================================================================== */
 const DEMO = {
-  // Wie Modul A: ohne Backend (file://) oder ohne ?live=1 läuft der Mock
-  enabled: !location.protocol.startsWith("http") || new URLSearchParams(location.search).get("live") !== "1",
+  // Mock, bis init() das Board als Server erkannt hat (betriebErkennen)
+  enabled: true,
 };
-
-/** Regeln für neue Instanzen – identisch im Server umzusetzen. Gibt Fehlertext oder null zurück. */
-function instanzPruefen(e, dimType, typVorhanden){
-  const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= CONFIG.weltGrenze;
-  if(!ganz(e.x) || !ganz(e.z) || (e.y != null && !ganz(e.y))) return "Ungültige Koordinaten";
-  if(e.kategorie !== EIGENE_ORTE && !FEATURE_KATEGORIEN[dimType].includes(e.kategorie))
-    return `„${e.kategorie}“ gibt es ${inDim(dimType)} nicht`;
-  if(e.kategorie === BIOMES){
-    if(e.quelle !== "screenshot") return "Biome können nur per Screenshot hinzugefügt werden";
-    const b = biomFinden(e.variante);
-    if(!b) return `„${e.variante}“ steht nicht in der Biom-Liste`;
-    if(b.dimension !== dimType) return `${b.name} liegt ${inDim(b.dimension)}`;
-  }
-  if(e.kategorie === EIGENE_ORTE && !String(e.variante || "").trim()) return "Eigene Orte brauchen einen Namen";
-  // Neue Varianten nur aus Screenshots – außer bei „Eigene Orte“
-  if(!typVorhanden && e.variante && e.quelle !== "screenshot" && e.kategorie !== EIGENE_ORTE)
-    return "Neue Varianten entstehen nur aus Screenshots";
-  return null;
+const API_BASIS = "/api";
+/** Live-Betrieb, wenn das Board diese Seite ausliefert – sonst (Datei, fremder Server, ?demo=1) der Mock */
+async function betriebErkennen(){
+  if(!location.protocol.startsWith("http") || new URLSearchParams(location.search).get("demo") === "1") return false;
+  try {
+    const r = await fetch(`${API_BASIS}/server`, { cache:"no-store" });
+    return r.ok && (await r.json())?.name === "koordinaten-board";
+  } catch { return false; }
 }
 
 const MOCK = (() => {
@@ -1470,6 +1414,13 @@ function mockApi(path, opts){
     return ok({ instanz:{ ...instanz }, typ }, 201);
   }
 
+  if(method === "PUT" && (m = path.match(/^\/orte\/instanzen\/([\w-]+)\/angeheftet$/))){
+    const i = MOCK.instanzen.find((x) => x.id === m[1]);
+    if(!i) return fehler(404, "Ort nicht gefunden");
+    if(MOCK.typen.find((x) => x.id === i.featureTypeId)?.kategorie === BIOMES) return fehler(403, "Biome zeigt die Anzeige nicht");
+    i.angeheftet = Boolean(body?.angeheftet);
+    return ok({ instanz:{ ...i } });
+  }
   if((m = path.match(/^\/orte\/instanzen\/([\w-]+)$/))){
     const i = MOCK.instanzen.find((x) => x.id === m[1]);
     if(!i) return fehler(404, "Ort nicht gefunden");
@@ -1551,7 +1502,7 @@ function mockApi(path, opts){
 
 // --- Auth + fetch-Wrapper (gleiches Muster wie Modul A) --------------------
 function authHeaders(){
-  const t = new URLSearchParams(location.search).get("token");
+  const t = bd.verbindung?.token;
   return t ? { "Authorization":"Bearer " + t } : {};
 }
 async function api(path, opts){
@@ -1561,13 +1512,14 @@ async function api(path, opts){
     await new Promise((r) => setTimeout(r, path === "/orte/auslesen" ? 900 + Math.random()*700 : 80 + Math.random()*120));
     return mockApi(path, opts);
   }
-  const istFormular = opts.body instanceof FormData;
-  const headers = Object.assign(istFormular ? {} : { "Content-Type":"application/json" }, authHeaders(), opts.headers || {});
+  const json = opts.body != null && !(opts.body instanceof FormData);
+  const headers = Object.assign(json ? { "Content-Type":"application/json" } : {}, authHeaders(), opts.headers || {});
   let res;
-  try { res = await fetch(path, Object.assign({}, opts, { headers })); }
+  try { res = await fetch(API_BASIS + path, Object.assign({}, opts, { headers })); }
   catch(e){ return { ok:false, status:0, data:{ error:"network", message:"Keine Verbindung" } }; }
   let data = null;
   try { data = await res.json(); } catch {}
+  if(res.status === 401) anmeldungAbgelaufen();
   return { ok:res.ok, status:res.status, data };
 }
 const meldungAus = (r) => r?.data?.message || (r?.status === 0 ? "Keine Verbindung" : `Fehler ${r?.status}`);
@@ -2083,6 +2035,8 @@ function detailOeffnen(id, loeschenFragen){
     </div>
     ${biom ? `<div class="banner info">Biome stammen aus Screenshots – die Koordinaten sind fest. Falsch erfasst? Löschen und neu auslesen.</div>` : ""}
     ${boardZeigenKnopf(`ort:${i.id}`)}
+    ${DEMO.enabled || biom ? "" : `<button class="btn-secondary anheften ${i.angeheftet ? "aktiv" : ""}" data-aktion="anheften" data-id="${i.id}">
+      ${i.angeheftet ? "Groß auf der Anzeige · Lösen" : "Auf der Anzeige anheften"}</button>`}
     <div class="knopf-raster">
       <button class="btn-secondary" data-aktion="kopieren" data-text="${i.x} ${i.y ?? "~"} ${i.z}">Koordinaten</button>
       <button class="btn-secondary" data-aktion="kopieren" data-text="${esc(tpBefehl(i.x, i.y, i.z, dim))}">/tp-Befehl</button>
@@ -2441,6 +2395,19 @@ async function samLaden(){
   if(aktivesModul === "sammelobjekte") render();
 }
 
+/** Bottom-Bar der Sammelobjekte: mit Board-Verbindung „Fortschritt aufs Board“, sonst der Hinweis */
+function samFussRendern(){
+  const $f = document.getElementById("samFuss"); if(!$f) return;
+  $f.innerHTML = bd.verbindung
+    ? `<button class="btn-secondary sam-board" data-board-quelle="sammelstand"></button>`
+    : "Gilt für die ganze Welt · alle können abhaken";
+  boardZeigenKnoepfe();
+}
+document.getElementById("samFuss").addEventListener("click", (e) => {
+  const k = e.target.closest("[data-board-quelle]"); if(!k) return;
+  k.dataset.aktion === "board-wegnehmen" ? boardWegnehmen() : boardZeigen(k.dataset.boardQuelle);
+});
+
 function renderSammel(){
   const gefunden = samGefundenAnzahl(), gesamt = SAM_ZAEHLT.length;
   const bekannt = FUNDORTE.filter((f) => bekannteFundorte(f.kategorie, f.dim).length).length;
@@ -2528,9 +2495,11 @@ function samDetailOeffnen(id){
       ? `<div class="banner ok">Gefunden von ${esc(s.von)} am ${datumKurz(s.am)}</div>
          <button class="btn-secondary" data-aktion="sam-umschalten" data-id="${o.id}">Zurücksetzen</button>`
       : `<button class="btn-primary" data-aktion="sam-umschalten" data-id="${o.id}">Als gefunden abhaken</button>`}
+    ${boardZeigenKnopf(`sammel:${o.id}`)}
     <div class="field-group"><div class="field-group-label">Auf der Karte in dieser Welt</div>${fundHtml}</div>
   </div>`;
   sheetOeffnen("sam", html, o.dim);
+  boardZeigenKnoepfe();
 }
 
 /** Aus den Sammelobjekten auf die Karte springen */
@@ -2569,125 +2538,6 @@ $samListe.addEventListener("click", (e) => {
    Vorschau: vereinfachte Pixel-Darstellung auf dem 20×40-Raster des Banners.
    Der Fortschritt der Anleitung (abgehakte Schritte) bleibt auf dem Gerät.
    ========================================================================== */
-const FARBEN = Object.freeze([
-  { id:"white",      de:"Weiß",     wolle:"Weiße Wolle",     farbstoff:"Weißer Farbstoff",     hex:"#f9fffe" },
-  { id:"light_gray", de:"Hellgrau", wolle:"Hellgraue Wolle", farbstoff:"Hellgrauer Farbstoff", hex:"#9d9d97" },
-  { id:"gray",       de:"Grau",     wolle:"Graue Wolle",     farbstoff:"Grauer Farbstoff",     hex:"#474f52" },
-  { id:"black",      de:"Schwarz",  wolle:"Schwarze Wolle",  farbstoff:"Schwarzer Farbstoff",  hex:"#1d1d21" },
-  { id:"brown",      de:"Braun",    wolle:"Braune Wolle",    farbstoff:"Brauner Farbstoff",    hex:"#835432" },
-  { id:"red",        de:"Rot",      wolle:"Rote Wolle",      farbstoff:"Roter Farbstoff",      hex:"#b02e26" },
-  { id:"orange",     de:"Orange",   wolle:"Orange Wolle",    farbstoff:"Oranger Farbstoff",    hex:"#f9801d" },
-  { id:"yellow",     de:"Gelb",     wolle:"Gelbe Wolle",     farbstoff:"Gelber Farbstoff",     hex:"#fed83d" },
-  { id:"lime",       de:"Hellgrün", wolle:"Hellgrüne Wolle", farbstoff:"Hellgrüner Farbstoff", hex:"#80c71f" },
-  { id:"green",      de:"Grün",     wolle:"Grüne Wolle",     farbstoff:"Grüner Farbstoff",     hex:"#5e7c16" },
-  { id:"cyan",       de:"Türkis",   wolle:"Türkise Wolle",   farbstoff:"Türkiser Farbstoff",   hex:"#169c9c" },
-  { id:"light_blue", de:"Hellblau", wolle:"Hellblaue Wolle", farbstoff:"Hellblauer Farbstoff", hex:"#3ab3da" },
-  { id:"blue",       de:"Blau",     wolle:"Blaue Wolle",     farbstoff:"Blauer Farbstoff",     hex:"#3c44aa" },
-  { id:"purple",     de:"Violett",  wolle:"Violette Wolle",  farbstoff:"Violetter Farbstoff",  hex:"#8932b8" },
-  { id:"magenta",    de:"Magenta",  wolle:"Magenta Wolle",   farbstoff:"Magenta Farbstoff",    hex:"#c74ebd" },
-  { id:"pink",       de:"Rosa",     wolle:"Rosa Wolle",      farbstoff:"Rosa Farbstoff",       hex:"#f38baa" },
-]);
-const farbe = (id) => FARBEN.find((f) => f.id === id) || FARBEN[0];
-const HELLE_FARBEN = new Set(["white", "light_gray", "yellow", "lime", "pink", "light_blue", "orange"]);
-const kontrast = (id) => HELLE_FARBEN.has(id) ? "black" : "white";
-
-// Bannervorlagen – werden im Webstuhl nicht verbraucht (Java seit 1.21.2 wie Bedrock)
-const BANNERVORLAGEN = Object.freeze({
-  flower:       { de:"Blumen-Bannervorlage",      herkunft:"Werkbank: Papier + Margerite" },
-  creeper:      { de:"Creeper-Bannervorlage",     herkunft:"Werkbank: Papier + Creeperkopf" },
-  skull:        { de:"Schädel-Bannervorlage",     herkunft:"Werkbank: Papier + Witherskelettschädel" },
-  mojang:       { de:"Mojang-Logo-Bannervorlage", herkunft:"Werkbank: Papier + Verzauberter Goldener Apfel" },
-  curly_border: { de:"Spickelbord-Bannervorlage", herkunft:"Werkbank: Papier + Ranken" },
-  bricks:       { de:"Mauerung-Bannervorlage",    herkunft:"Werkbank: Papier + Ziegelsteine" },
-  globe:        { de:"Globus-Bannervorlage",      herkunft:"Handel: Kartograf (Meister)" },
-  piglin:       { de:"Schnauzen-Bannervorlage",   herkunft:"Truhe in der Bastionsruine" },
-  flow:         { de:"Fluss-Bannervorlage",       herkunft:"Unheilvoller Tresor (Prüfungskammer)" },
-  guster:       { de:"Windstoßer-Bannervorlage",  herkunft:"Tresor (Prüfungskammer)" },
-});
-
-// Pixel-Motive der Figuren (1 Zelle = 2×2 Banner-Pixel) – bewusst vereinfacht
-const MOTIVE = Object.freeze({
-  creeper: { x:4, y:12, z:["##..##", "##..##", "..##..", ".####.", ".####.", ".#..#."] },
-  skull:   { x:4, y:10, z:[".####.", "######", "#.##.#", "######", "..##..", "#....#", ".#..#.", "#....#"] },
-  flower:  { x:3, y:12, z:["..###..", ".#...#.", "#.###.#", "#.#.#.#", "#.###.#", ".#...#.", "..###.."] },
-  mojang:  { x:3, y:12, z:["..####.", ".#....#", "#.###..", "#.#..#.", "#.#.##.", ".#....#", "..####."] },
-  globe:   { x:3, y:12, z:["..###..", ".#.##.#", "#.###.#", "#..#..#", "##...##", ".#.#.#.", "..###.."] },
-  piglin:  { x:4, y:16, z:["######", "#.##.#", "#.##.#", "######"] },
-  flow:    { x:3, y:12, z:["#######", "#.....#", "#.###.#", "#.#.#.#", "#.#...#", "#.#####", "#......"] },
-  guster:  { x:3, y:12, z:[".#####.", "#.....#", "..###.#", ".#...#.", "#.##...", "#....#.", ".####.."] },
-});
-function motivMaske(m){
-  return (x, y) => {
-    const cx = Math.floor((x - m.x) / 2), cy = Math.floor((y - m.y) / 2);
-    return m.z[cy]?.[cx] === "#" ? 1 : 0;
-  };
-}
-const yn = (y) => y / 2;                               // Höhe auf Breitenmaß (40 → 20) für Diagonalen
-const zahn = (x) => 2.5 - Math.abs((x % 5) - 2);       // Sägezahn für die gespickelten Muster
-
-// Alle Muster: id (wie im Spiel intern), de (Spielname), en, m = Maske (x, y) → Deckkraft 0…1
-const MUSTER = Object.freeze([
-  { id:"stripe_bottom",          de:"Gefärbter Bannerfuß",               en:"Base",                       m:(x, y) => y >= 27 },
-  { id:"stripe_top",             de:"Gefärbtes Bannerhaupt",             en:"Chief",                      m:(x, y) => y < 13 },
-  { id:"stripe_left",            de:"Linke Flanke",                      en:"Pale Dexter",                m:(x) => x < 6 },
-  { id:"stripe_right",           de:"Rechte Flanke",                     en:"Pale Sinister",              m:(x) => x >= 14 },
-  { id:"stripe_center",          de:"Pfahl",                             en:"Pale",                       m:(x) => x >= 7 && x < 13 },
-  { id:"stripe_middle",          de:"Balken",                            en:"Fess",                       m:(x, y) => y >= 15 && y < 25 },
-  { id:"stripe_downright",       de:"Schrägbalken",                      en:"Bend",                       m:(x, y) => Math.abs(yn(y) - x) < 3.2 },
-  { id:"stripe_downleft",        de:"Schräglinksbalken",                 en:"Bend Sinister",              m:(x, y) => Math.abs(yn(y) - (19 - x)) < 3.2 },
-  { id:"small_stripes",          de:"Vier Pfähle",                       en:"Paly",                       m:(x) => x % 4 === 1 || x % 4 === 2 },
-  { id:"cross",                  de:"Andreaskreuz",                      en:"Saltire",                    m:(x, y) => Math.abs(yn(y) - x) < 2 || Math.abs(yn(y) - (19 - x)) < 2 },
-  { id:"straight_cross",         de:"Kreuz",                             en:"Cross",                      m:(x, y) => (x >= 8 && x < 12) || (y >= 18 && y < 22) },
-  { id:"diagonal_left",          de:"Schräglinks geteilt",               en:"Per Bend Sinister",          m:(x, y) => x + yn(y) < 20 },
-  { id:"diagonal_right",         de:"Schrägrechts geteilt",              en:"Per Bend",                   m:(x, y) => yn(y) < x },
-  { id:"diagonal_up_left",       de:"Schrägrechts geteilt (invertiert)", en:"Per Bend Inverted",          m:(x, y) => yn(y) > x },
-  { id:"diagonal_up_right",      de:"Schräglinks geteilt (invertiert)",  en:"Per Bend Sinister Inverted", m:(x, y) => x + yn(y) >= 20 },
-  { id:"half_vertical",          de:"Rechts gespalten",                  en:"Per Pale",                   m:(x) => x < 10 },
-  { id:"half_vertical_right",    de:"Links gespalten",                   en:"Per Pale Inverted",          m:(x) => x >= 10 },
-  { id:"half_horizontal",        de:"Oben geteilt",                      en:"Per Fess",                   m:(x, y) => y < 20 },
-  { id:"half_horizontal_bottom", de:"Unten geteilt",                     en:"Per Fess Inverted",          m:(x, y) => y >= 20 },
-  { id:"square_bottom_left",     de:"Gefärbtes rechtes Untereck",        en:"Base Dexter Canton",         m:(x, y) => x < 10 && y >= 27 },
-  { id:"square_bottom_right",    de:"Gefärbtes linkes Untereck",         en:"Base Sinister Canton",       m:(x, y) => x >= 10 && y >= 27 },
-  { id:"square_top_left",        de:"Gefärbtes rechtes Obereck",         en:"Chief Dexter Canton",        m:(x, y) => x < 10 && y < 13 },
-  { id:"square_top_right",       de:"Gefärbtes linkes Obereck",          en:"Chief Sinister Canton",      m:(x, y) => x >= 10 && y < 13 },
-  { id:"triangle_bottom",        de:"Halbe Spitze",                      en:"Chevron",                    m:(x, y) => (39 - y) < 10 - Math.abs(x - 9.5) },
-  { id:"triangle_top",           de:"Gestürzte halbe Spitze",            en:"Inverted Chevron",           m:(x, y) => y < 10 - Math.abs(x - 9.5) },
-  { id:"triangles_bottom",       de:"Gespickelter Bannerfuß",            en:"Base Indented",              m:(x, y) => y >= 36 - zahn(x) },
-  { id:"triangles_top",          de:"Gespickeltes Bannerhaupt",          en:"Chief Indented",             m:(x, y) => y < 3 + zahn(x) },
-  { id:"circle",                 de:"Kugel",                             en:"Roundel",                    m:(x, y) => (x - 9.5) ** 2 + (y - 19.5) ** 2 < 25 },
-  { id:"rhombus",                de:"Raute",                             en:"Lozenge",                    m:(x, y) => Math.abs(x - 9.5) / 6.5 + Math.abs(y - 19.5) / 13 < 1 },
-  { id:"border",                 de:"Bord",                              en:"Bordure",                    m:(x, y) => x < 1 || x > 18 || y < 1 || y > 38 },
-  { id:"gradient",               de:"Farbverlauf",                       en:"Gradient",                   m:(x, y) => 1 - y / 39 },
-  { id:"gradient_up",            de:"Farbverlauf (invertiert)",          en:"Base Gradient",              m:(x, y) => y / 39 },
-  { id:"curly_border",           de:"Spickelbord",                       en:"Bordure Indented",           m:(x, y) => { const d = Math.min(x, 19 - x, y, 39 - y); return d < 1 || (d < 3 && (x + y) % 3 === 0); } },
-  { id:"bricks",                 de:"Feld gemauert",                     en:"Field Masoned",              m:(x, y) => y % 4 === 3 || (x + (Math.floor(y / 4) % 2) * 3) % 6 === 0 },
-  { id:"creeper",                de:"Creeper",                           en:"Creeper Charge",             m:motivMaske(MOTIVE.creeper) },
-  { id:"skull",                  de:"Schädel",                           en:"Skull Charge",               m:motivMaske(MOTIVE.skull) },
-  { id:"flower",                 de:"Blume",                             en:"Flower Charge",              m:motivMaske(MOTIVE.flower) },
-  { id:"mojang",                 de:"Mojang-Logo",                       en:"Thing",                      m:motivMaske(MOTIVE.mojang) },
-  { id:"globe",                  de:"Globus",                            en:"Globe",                      m:motivMaske(MOTIVE.globe) },
-  { id:"piglin",                 de:"Schnauze",                          en:"Snout",                      m:motivMaske(MOTIVE.piglin) },
-  { id:"flow",                   de:"Fluss",                             en:"Flow",                       m:motivMaske(MOTIVE.flow) },
-  { id:"guster",                 de:"Windstoßer",                        en:"Guster",                     m:motivMaske(MOTIVE.guster) },
-]);
-const muster = (id) => MUSTER.find((m) => m.id === id) || MUSTER[0];
-const MAX_EBENEN = 6;   // so viele Muster nimmt der Webstuhl
-
-/** Regeln für einen Bauplan – identisch im Server umzusetzen. Gibt Fehlertext oder null zurück. */
-function bannerPruefen(b){
-  const name = String(b?.name ?? "").trim();
-  if(!name) return "Bitte einen Namen eingeben";
-  if(name.length > 60) return "Name ist zu lang (max. 60 Zeichen)";
-  if(!FARBEN.some((f) => f.id === b.basis)) return "Unbekannte Grundfarbe";
-  if(!Array.isArray(b.ebenen)) return "Ebenen fehlen";
-  if(b.ebenen.length > MAX_EBENEN) return `Im Webstuhl passen höchstens ${MAX_EBENEN} Muster auf ein Banner`;
-  for(const e of b.ebenen){
-    if(!MUSTER.some((m) => m.id === e?.muster)) return "Unbekanntes Muster";
-    if(!FARBEN.some((f) => f.id === e?.farbe)) return "Unbekannte Farbe";
-  }
-  return null;
-}
-const bannerSauber = (b) => ({ name:String(b.name).trim(), basis:b.basis, ebenen:b.ebenen.map(({ muster, farbe }) => ({ muster, farbe })) });
 
 /** Zeichnet ein Banner auf 20×40 Pixel → Data-URL (mit Cache) */
 const bannerCache = new Map();
@@ -2789,12 +2639,14 @@ function bannerDetailOeffnen(id){
         ${bannerImg(s.bild, "mini")}</button>`).join("")}</div>
       ${erledigt.size ? `<button class="btn-secondary" data-aktion="banner-schritte-weg" data-id="${b.id}">Haken zurücksetzen</button>` : ""}
     </div>
+    ${boardZeigenKnopf(`banner:${b.id}`)}
     <div class="knopf-raster">
       <button class="btn-primary" data-aktion="banner-bearbeiten" data-id="${b.id}">Bearbeiten</button>
       <button class="btn-danger" data-aktion="banner-loeschen" data-id="${b.id}">Löschen</button>
     </div>
   </div>`;
   sheetOeffnen("banner", html, "overworld");
+  boardZeigenKnoepfe();
   $sheet.scrollTop = scroll;
 }
 
@@ -3025,26 +2877,6 @@ const pruefZeile = (von, s, art) => `<div class="pruef-zeile ${art === "ok" ? "o
   <span><b>${dimLabel(von)} → ${dimLabel(andereDim(von))}:</b> ${richtungText(s, art)}</span></div>`;
 const pruefZeilen = (p) => pruefZeile("overworld", p.hin, p.artHin) + pruefZeile("nether", p.rueck, p.artRueck);
 
-/** Regeln für eine Verbindung – identisch im Server umzusetzen. Gibt Fehlertext oder null zurück. */
-function verbindungRegelPruefen(v){
-  const name = String(v?.name ?? "").trim();
-  if(!name) return "Bitte einen Namen eingeben";
-  if(name.length > 60) return "Name ist zu lang (max. 60 Zeichen)";
-  const seite = (s, dim) => {
-    const grenze = dim === "overworld" ? CONFIG.weltGrenze : CONFIG.weltGrenze / 8;
-    const [ymin, ymax] = dim === "overworld" ? [-64, 320] : [0, 256];
-    if(!s || !Number.isInteger(s.x) || !Number.isInteger(s.z)) return `${dimLabel(dim)}: X und Z als ganze Zahlen eintragen`;
-    if(Math.abs(s.x) > grenze || Math.abs(s.z) > grenze) return `${dimLabel(dim)}: Koordinaten liegen außerhalb der Welt`;
-    if(s.y != null && (!Number.isInteger(s.y) || s.y < ymin || s.y > ymax)) return `${dimLabel(dim)}: Y muss zwischen ${ymin} und ${ymax} liegen`;
-    return null;
-  };
-  return seite(v.oberwelt, "overworld") || seite(v.nether, "nether");
-}
-const verbindungSauber = (v) => ({
-  name:String(v.name).trim(),
-  oberwelt:{ x:v.oberwelt.x, y:v.oberwelt.y ?? null, z:v.oberwelt.z },
-  nether:{ x:v.nether.x, y:v.nether.y ?? null, z:v.nether.z },
-});
 
 async function portaleLaden(){
   if(!st.weltId) return;
@@ -3178,12 +3010,14 @@ function portalDetailOeffnen(id){
       ${e ? `<div class="banner ${e.art}">${esc(e.text)}</div>` : ""}
       <p class="result-hint">Geprüft wird nur mit den hier erfassten Portalen.</p>
     </div>
+    ${boardZeigenKnopf(`portal:${v.id}`)}
     <div class="knopf-raster">
       <button class="btn-primary" data-aktion="portal-bearbeiten" data-id="${v.id}">Bearbeiten</button>
       <button class="btn-danger" data-aktion="portal-loeschen" data-id="${v.id}">Löschen</button>
     </div>
   </div>`;
   sheetOeffnen("portal", html, "nether");
+  boardZeigenKnoepfe();
 }
 
 function portalEditorOeffnen(id, vorlage){
@@ -3326,6 +3160,9 @@ document.getElementById("portalWeltBtn").addEventListener("click", () => weltOef
      WS   <board>/ws?token=…                    → { art:"zustand"|"teilnehmer", … }
    Das Board ist ein eigenes Gerät: Die Verbindung ist auch im DEMO-Modus echt.
    Sie gilt nur für dieses Gerät (localStorage „board.verbindung“, „board.name“).
+   Live-Betrieb (das Board liefert diese Seite aus): Beitreten ist die Anmeldung
+   für alle Daten. Das Board ist dann immer location.origin – ohne Scanner, die
+   PIN kommt aus dem QR-Code (?pin=…), den die Kamera-App geöffnet hat.
 
    „Aufs Board“ (Inhalte auf die Anzeige werfen), über dieselbe Verbindung:
      → { art:"zeigen", karte, anfrage }       ← { art:"ok"|"fehler", anfrage }
@@ -3333,9 +3170,13 @@ document.getElementById("portalWeltBtn").addEventListener("click", () => weltOef
      karte = { titel, unter?, bereich?, quelle?, dimension:"oberwelt"|"nether"|"ende"|null,
                bloecke:[ { art:"koordinaten", label?, x, y|null, z, dimension? }
                        | { art:"zeilen", zeilen:[{ label, wert }] } | { art:"text", text } ] }
+       Blöcke außerdem { art:"bild", daten:"data:image/png;base64,…", label?, pixelig? },
+       optional typ (Seed-Map-Typ) → die Anzeige zeigt den Kennblock neben dem Titel.
    Das Board prüft die Karte (koordinaten-board/server/src/zeigen.js) und zeigt
-   sie groß, bis die nächste kommt oder jemand sie wegnimmt. Welche Inhalte es
-   gibt, legt BOARD_KARTEN fest – das Board selbst kennt keine Bereiche.
+   sie groß, bis die nächste kommt oder jemand sie wegnimmt.
+   ANZEIGESCHEMA: Jeder Inhalt, der aufs Board kann, hat in BOARD_KARTEN eine
+   Funktion id → Karte. Das Board selbst kennt keine Bereiche; ein neuer Bereich
+   trägt dort sein Schema ein und baut boardZeigenKnopf("<art>:<id>") in sein Detail.
    ========================================================================== */
 const bd = {
   verbindung: lsLesen("board.verbindung"),  // { adresse, token, name } oder null
@@ -3344,6 +3185,7 @@ const bd = {
   socket: null, timer: null, wartezeit: 500,
   scan: null,                                // { stream } solange die Kamera läuft
   gezeigt: null,                             // Karte, die gerade auf der Anzeige liegt
+  einstellungen: null,                       // Live: { titel, qrZeigen, aktiveWelt, aktiv } der Anzeige
   offen: new Map(), zaehler: 0,              // gesendete Nachrichten, die auf „ok“ warten
 };
 const BOARD_DIM = Object.freeze({ overworld:"oberwelt", nether:"nether", end:"ende" });
@@ -3518,9 +3360,53 @@ async function boardBeitretenKlick(){
     return banner($b, "bad", r.fehler);
   }
   bd.verbindung = r.verbindung; lsSchreiben("board.verbindung", r.verbindung);
+  if(!DEMO.enabled){
+    // PIN nicht in der Adresszeile stehen lassen; Sheet zu, bevor die Verbindung es neu zeichnen würde
+    const q = new URLSearchParams(location.search); q.delete("pin");
+    history.replaceState(null, "", location.pathname + (q.toString() ? `?${q}` : ""));
+    alleSchliessen();
+    boardVerbinden();
+    toast(`Willkommen, ${r.verbindung.name}`);
+    return datenStarten();
+  }
   boardVerbinden();
   if(offen) boardSheetRendern();
   toast("Mit dem Board verbunden");
+}
+
+/** Live: Token abgelehnt (Board neu eingerichtet, Geheimnis gelöscht) → neu beitreten */
+function anmeldungAbgelaufen(){
+  if(DEMO.enabled || !bd.verbindung) return;
+  boardTrennen();
+  toast("Bitte neu beitreten – das Board kennt dieses Gerät nicht mehr", true);
+  boardSheetRendern();
+}
+
+/** Live: Ein Handy hat etwas geändert (auch dieses) → nur den betroffenen Bereich neu laden */
+async function liveAktualisieren({ bereich, weltId }){
+  if(DEMO.enabled) return;
+  if(bereich === "banner") return bannerLaden();
+  if(bereich === "einstellungen") return boardEinstellungenLaden();
+  if(bereich === "welten"){ await weltenAuffrischen(); return boardEinstellungenLaden(); }
+  if(weltId && weltId !== st.weltId) return weltenAuffrischen();
+  if(bereich === "orte") return orteAuffrischen();
+  if(bereich === "sammelobjekte") return samLaden();
+  if(bereich === "portale") return portaleLaden();
+}
+async function weltenAuffrischen(){
+  const r = await api("/orte/welten"); if(!r.ok) return;
+  st.welten = r.data.welten;
+  if(!st.weltId && st.welten[0]) return weltLaden(st.welten[0].id);
+  if(st.sheet === "welt") weltOeffnen();
+  render();
+}
+/** Orte der aktuellen Welt neu holen, ohne Ansicht, Filter oder Kartenausschnitt zu verändern */
+async function orteAuffrischen(){
+  if(!st.weltId) return;
+  const r = await api(`/orte/welten/${st.weltId}`); if(!r.ok) return;
+  Object.assign(st, { typen:r.data.typen, instanzen:r.data.instanzen });
+  const w = st.welten.find((x) => x.id === st.weltId); if(w) w.anzahl = st.instanzen.length;
+  render();
 }
 
 function boardVerbinden(){
@@ -3538,6 +3424,7 @@ function boardVerbinden(){
       const w = bd.offen.get(n.anfrage); bd.offen.delete(n.anfrage);
       return n.art === "ok" ? w?.ok() : w?.fehler(n.text || "Board hat abgelehnt");
     }
+    if(n.art === "geaendert") return liveAktualisieren(n);
     if(n.art === "teilnehmer") bd.teilnehmer = n.namen || [];
     else if(n.art === "zustand") bd.orte = n.zustand?.orte?.length ?? null;
     else if(n.art === "gezeigt") bd.gezeigt = n.karte || null;
@@ -3549,6 +3436,7 @@ function boardVerbinden(){
     bd.socket = null;
     boardOffeneAbbrechen();
     if(e.code === 4001){                     // Token abgelehnt, z. B. Board neu eingerichtet
+      if(!DEMO.enabled) return anmeldungAbgelaufen();
       boardTrennen();
       return toast("Das Board kennt dieses Gerät nicht mehr – bitte neu scannen", true);
     }
@@ -3581,10 +3469,62 @@ function boardSenden(op){
 }
 
 // --- „Aufs Board“ -----------------------------------------------------------------
-// Welche Inhalte sich zeigen lassen: quelle „<art>:<id>“ → Karte fürs Board
+// Anzeigeschema je Inhalt: quelle „<art>:<id>“ → Karte im allgemeinen Kartenformat des Boards
 const BOARD_KARTEN = {
-  ort: ortKarte,                              // Karte: ein Ort aus der Koordinaten-Sammlung
+  ort:         { titel:"Ort",                karte:ortKarte },          // Karte: ein Ort der Sammlung
+  sammel:      { titel:"Sammelobjekt",       karte:sammelKarte },       // ein Rüstungsbesatz mit Fundort
+  sammelstand: { titel:"Sammel-Fortschritt", karte:sammelStandKarte },  // Stand der Welt (ohne id)
+  portal:      { titel:"Portal-Verbindung",  karte:portalKarte },       // beide Portale + Prüfung
+  banner:      { titel:"Banner-Bauplan",     karte:bannerKarte },       // Vorschau + Material
 };
+const koordBlock = (label, p, dim) => ({ art:"koordinaten", label, x:p.x, y:p.y ?? null, z:p.z, dimension:BOARD_DIM[dim] });
+
+function sammelKarte(id){
+  const o = SAMMELOBJEKTE.find((x) => x.id === id); if(!o) return null;
+  const s = sam.status[id], naechster = bekannteFundorte(o.kategorie, o.dim)[0];
+  const bloecke = [{ art:"zeilen", zeilen:[
+    { label:"Fundort", wert:`${strukturName(o.kategorie)} · ${dimLabel(o.dim)}` },
+    { label:"Status", wert:s ? `gefunden von ${s.von}${datumKurz(s.am) ? ` am ${datumKurz(s.am)}` : ""}` : "noch offen" },
+  ] }];
+  if(naechster) bloecke.push(koordBlock("Nächster bekannter Fundort", naechster.i, o.dim));
+  bloecke.push({ art:"text", text:o.quelle });
+  return { titel:o.name, unter:`${o.en} · ${o.aufwertung ? "Schmiedevorlage" : "Rüstungsbesatz"}`, bereich:"Sammelobjekte",
+           quelle:`sammel:${id}`, typ:o.kategorie, dimension:BOARD_DIM[o.dim], bloecke };
+}
+function sammelStandKarte(){
+  if(!st.welt) return null;
+  const gefunden = samGefundenAnzahl(), gesamt = SAM_ZAEHLT.length;
+  const bekannt = FUNDORTE.filter((f) => bekannteFundorte(f.kategorie, f.dim).length).length;
+  const offen = SAM_ZAEHLT.filter((o) => !sam.status[o.id]).map((o) => o.name);
+  const bloecke = [{ art:"zeilen", zeilen:[
+    { label:"Gefunden", wert:`${gefunden} von ${gesamt}` },
+    { label:"Fortschritt", wert:`${Math.round(gefunden / gesamt * 100)} %` },
+    { label:"Fundorte auf der Karte", wert:`${bekannt} von ${FUNDORTE.length}` },
+  ] }];
+  bloecke.push({ art:"text", text:offen.length ? `Noch offen: ${offen.join(", ")}`.slice(0, 400) : "Alle Rüstungsbesätze gefunden!" });
+  return { titel:"Rüstungsbesätze", unter:`Sammelobjekte der Welt ${kurzSeed(st.welt.seed)}`, bereich:"Sammelobjekte",
+           quelle:"sammelstand", dimension:null, bloecke };
+}
+function portalKarte(id){
+  const v = pt.liste.find((x) => x.id === id); if(!v) return null;
+  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  const zeilen = [{ label:"Status", wert:p.label }];
+  if(p.abweichung) zeilen.push({ label:"Abstand zum Idealpunkt", wert:`${p.abweichung} ${p.abweichung === 1 ? "Block" : "Blöcke"}` });
+  const bloecke = [koordBlock("Oberwelt-Portal", v.oberwelt, "overworld"), koordBlock("Nether-Portal", v.nether, "nether"), { art:"zeilen", zeilen }];
+  if(e) bloecke.push({ art:"text", text:e.text });
+  return { titel:v.name, unter:`Portal-Verbindung · Regeln ${regelLabel()}`, bereich:"Portal-Verwaltung",
+           quelle:`portal:${id}`, dimension:"nether", bloecke };
+}
+function bannerKarte(id){
+  const b = bn.liste.find((x) => x.id === id); if(!b) return null;
+  const { farbstoffe, vorlagen } = bannerAnleitung(b);
+  const zeilen = [{ label:farbe(b.basis).wolle, wert:"6 ×" }, { label:"Stock", wert:"1 ×" },
+    ...[...farbstoffe].map(([f, n]) => ({ label:farbe(f).farbstoff, wert:`${n} ×` }))].slice(0, 8);
+  const bloecke = [{ art:"bild", daten:bannerBild(b), label:"Vorschau", pixelig:true }, { art:"zeilen", zeilen }];
+  if(vorlagen.length) bloecke.push({ art:"text", text:`Bannervorlagen (werden nicht verbraucht): ${vorlagen.map((v) => BANNERVORLAGEN[v].de).join(", ")}` });
+  return { titel:b.name, unter:`Banner-Bauplan · ${b.ebenen.length} Muster · Grundfarbe ${farbe(b.basis).de}`,
+           bereich:"Banner", quelle:`banner:${id}`, dimension:null, bloecke };
+}
 function ortKarte(id){
   const i = st.instanzen.find((x) => x.id === id); if(!i) return null;
   const t = typVon(i), dim = dimTypeVon(i.dimensionId);
@@ -3601,7 +3541,7 @@ function ortKarte(id){
 }
 async function boardZeigen(quelle){
   const [art, ...rest] = quelle.split(":");
-  const karte = BOARD_KARTEN[art]?.(rest.join(":"));
+  const karte = BOARD_KARTEN[art]?.karte(rest.join(":"));
   if(!karte) return toast("Das lässt sich nicht aufs Board legen", true);
   try { await boardSenden({ art:"zeigen", karte }); toast("Liegt auf dem Board"); }
   catch(f){ toast(String(f), true); }
@@ -3619,7 +3559,7 @@ function boardZeigenKnopf(quelle){
 }
 /** Knöpfe im offenen Sheet an den Stand anpassen (liegt dieser Inhalt gerade auf dem Board?) */
 function boardZeigenKnoepfe(){
-  $sheet.querySelectorAll("[data-board-quelle]").forEach((k) => {
+  document.querySelectorAll("[data-board-quelle]").forEach((k) => {
     const liegt = bd.gezeigt?.quelle === k.dataset.boardQuelle;
     k.classList.toggle("aktiv", liegt);
     k.dataset.aktion = liegt ? "board-wegnehmen" : "board-zeigen";
@@ -3628,7 +3568,7 @@ function boardZeigenKnoepfe(){
 }
 function boardTrennen(){
   boardSocketZu();
-  Object.assign(bd, { verbindung:null, status:"aus", teilnehmer:[], orte:null, gezeigt:null, wartezeit:500 });
+  Object.assign(bd, { verbindung:null, status:"aus", teilnehmer:[], orte:null, gezeigt:null, einstellungen:null, wartezeit:500 });
   lsSchreiben("board.verbindung", null);
   boardAnzeigen();
 }
@@ -3652,13 +3592,42 @@ function boardKnopfRendern(){
 }
 function boardAnzeigen(){
   boardKnopfRendern();
+  samFussRendern();
   boardZeigenKnoepfe();
-  // Formular nicht neu zeichnen (Eingaben blieben sonst nicht stehen) – nur die Status-Ansicht
-  if(st.sheet === "board" && bd.verbindung) boardSheetRendern();
+  // Formular nicht neu zeichnen (Eingaben blieben sonst nicht stehen) – nur die Status-Ansicht,
+  // und die auch nicht, solange jemand den Titel der Anzeige tippt
+  if(st.sheet === "board" && bd.verbindung && document.activeElement?.id !== "boardTitel") boardSheetRendern();
 }
 function boardOeffnen(){
   alleSchliessen();
   boardSheetRendern();
+  boardEinstellungenLaden();
+}
+
+// --- Live: Einstellungen der Anzeige im Zimmer (aktive Welt, Titel, QR-Code) ------
+async function boardEinstellungenLaden(){
+  if(DEMO.enabled || !bd.verbindung) return;
+  const r = await api("/board/einstellungen");
+  if(r.ok){ bd.einstellungen = r.data; boardAnzeigen(); }
+}
+async function boardEinstellungenAendern(felder){
+  const r = await api("/board/einstellungen", { method:"PUT", body:JSON.stringify(felder) });
+  if(!r.ok) return toast(meldungAus(r), true);
+  bd.einstellungen = r.data; boardAnzeigen();
+}
+function boardEinstellungenHtml(){
+  const e = bd.einstellungen;
+  if(DEMO.enabled || !e) return "";
+  const welten = st.welten.map((w) => `<option value="${esc(w.id)}" ${w.id === e.aktiv ? "selected" : ""}>Seed ${esc(kurzSeed(w.seed))} · ${w.anzahl ?? 0} Orte</option>`).join("");
+  return `<div class="field-group"><div class="field-group-label">Anzeige im Zimmer</div>
+    <div class="card board-einstellungen">
+      <label class="field"><span class="field-label">Welt auf der Anzeige</span>
+        <select class="orte-eingabe" id="boardWelt" ${welten ? "" : "disabled"}>${welten || "<option>Noch keine Welt</option>"}</select></label>
+      <label class="field"><span class="field-label">Titel</span>
+        <input class="orte-eingabe" id="boardTitel" maxlength="60" autocomplete="off" value="${esc(e.titel)}"></label>
+      <div class="board-zeile board-schalter"><span>QR-Code zum Beitreten zeigen</span>
+        <button class="switch ${e.qrZeigen ? "on" : ""}" data-aktion="board-qr" role="switch" aria-checked="${e.qrZeigen}" aria-label="QR-Code zeigen"></button></div>
+    </div></div>`;
 }
 function boardSheetRendern(){
   const v = bd.verbindung;
@@ -3676,21 +3645,37 @@ function boardSheetRendern(){
         ${zeile("Im Raum", bd.teilnehmer.length ? esc(bd.teilnehmer.join(", ")) : "—")}
         ${zeile("Orte auf dem Board", bd.orte ?? "—")}
       </div>
+      ${boardEinstellungenHtml()}
       <div class="field-group"><div class="field-group-label">Auf der Anzeige</div>
         ${bd.gezeigt ? `<div class="card board-gezeigt" style="flex-direction:row">
             <span class="text"><span class="card-title">${esc(bd.gezeigt.titel)}</span>
               <span class="card-meta" style="display:block">${esc([bd.gezeigt.bereich, `von ${bd.gezeigt.von}`].filter(Boolean).join(" · "))}</span></span>
             <button class="btn-secondary" data-aktion="board-wegnehmen">Wegnehmen</button></div>`
-          : `<div class="banner info">Gerade liegt nichts auf dem Board. Im Detail eines Ortes „Aufs Board“ antippen.</div>`}
+          : `<div class="banner info">Gerade liegt nichts auf dem Board. Im Detail eines Ortes, Sammelobjekts, Portals oder Banners „Aufs Board“ antippen.</div>`}
       </div>
       <div class="sheet-fuss">
-        <button class="btn-secondary" data-aktion="board-trennen">Trennen</button>
+        <button class="btn-secondary" data-aktion="board-trennen">${DEMO.enabled ? "Trennen" : "Abmelden"}</button>
         <button class="btn-primary" data-aktion="schliessen">Fertig</button>
       </div>
     </div>`);
     return;
   }
   const name = lsLesen("board.name") || (DEMO.enabled ? MOCK.ich : "");
+  if(!DEMO.enabled){
+    const pin = new URLSearchParams(location.search).get("pin") || "";
+    sheetOeffnen("board", kopfHtml("Beitreten", `Koordinaten-Board · ${esc(adresseKurz(location.origin))}`) + `<div class="orte-inhalt">
+      <div class="banner info">Alle im Raum sehen dieselben Orte, Sammelobjekte, Portale und Banner. Die PIN steht auf der Anzeige unter dem QR-Code.</div>
+      <div class="banner" id="boardBanner" hidden></div>
+      <input type="hidden" id="boardAdresse" value="${esc(location.origin)}">
+      <div class="field-group"><div class="field-group-label">PIN</div>
+        <input class="orte-eingabe mono" id="boardPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="1234" value="${esc(pin)}"></div>
+      <div class="field-group"><div class="field-group-label">Dein Name</div>
+        <input class="orte-eingabe" id="boardName" maxlength="24" autocomplete="nickname" placeholder="z. B. Max" value="${esc(name)}"></div>
+      <div class="sheet-fuss"><button class="btn-primary" data-aktion="board-beitreten">Beitreten</button></div>
+    </div>`);
+    document.getElementById(pin ? "boardName" : "boardPin").focus();
+    return;
+  }
   sheetOeffnen("board", kopfHtml("Mit Board verbinden", "QR-Code auf der Anzeige im Zimmer scannen") + `<div class="orte-inhalt">
     <div class="scanner" id="boardScanner">
       <video id="boardVideo" playsinline muted></video>
@@ -3732,12 +3717,14 @@ function uebernehmen({ instanz, typ }){
     const w = st.welten.find((x) => x.id === st.weltId); if(w && alt < 0) w.anzahl = (w.anzahl || 0) + 1;
   }
 }
+/** Welten holen und die zuletzt gewählte laden – false, wenn das nicht ging (z. B. abgemeldet) */
 async function weltenLaden(){
   const r = await api("/orte/welten");
-  if(!r.ok){ toast(meldungAus(r), true); return; }
+  if(!r.ok){ if(r.status !== 401) toast(meldungAus(r), true); return false; }
   st.welten = r.data.welten;
   if(!st.welten.some((w) => w.id === st.weltId)) st.weltId = st.welten[0]?.id || null;
   if(st.weltId) await weltLaden(st.weltId);
+  return true;
 }
 async function weltLaden(id){
   const r = await api(`/orte/welten/${id}`);
@@ -3792,7 +3779,7 @@ $datei.addEventListener("change", () => { const d = [...$datei.files]; $datei.va
 document.getElementById("orteEintragenBtn").addEventListener("click", formularOeffnen);
 document.getElementById("orteWeltBtn").addEventListener("click", () => weltOeffnen());
 document.getElementById("orteStatusBtn").addEventListener("click", () =>
-  toast(DEMO.enabled ? "Demo-Modus – Daten nur in diesem Tab" : "Mit dem Companion-Server verbunden"));
+  toast(DEMO.enabled ? "Demo-Modus – Daten nur in diesem Tab" : "Live – Daten liegen auf dem Board"));
 
 // Sidebar
 document.getElementById("boardBtn").addEventListener("click", boardOeffnen);
@@ -3872,7 +3859,8 @@ $sheet.addEventListener("click", async (e) => {
       const seed = document.getElementById("weltSeed").value.trim();
       const r = await api("/orte/welten", { method:"POST", body:JSON.stringify({ seed }) });
       if(!r.ok) return weltOeffnen(["bad", meldungAus(r)]);
-      st.welten.push({ ...r.data.welt, anzahl:0 });
+      // Live kann die Meldung „geaendert“ schneller gewesen sein – dann steht die Welt schon drin
+      if(!st.welten.some((w) => w.id === r.data.welt.id)) st.welten.push({ ...r.data.welt, anzahl:0 });
       await weltLaden(r.data.welt.id);
       alleSchliessen(); toast("Welt angelegt");
       break;
@@ -3919,8 +3907,21 @@ $sheet.addEventListener("click", async (e) => {
     case "board-beitreten": boardBeitretenKlick(); break;
     case "board-kamera": boardScanStarten(); break;
     case "board-foto": document.getElementById("boardFoto").click(); break;
-    case "board-trennen": boardTrennen(); alleSchliessen(); toast("Vom Board getrennt"); break;
+    case "board-trennen":
+      boardTrennen();
+      if(!DEMO.enabled) return location.replace(location.pathname);   // abgemeldet → neu beitreten
+      alleSchliessen(); toast("Vom Board getrennt"); break;
     case "board-zeigen": boardZeigen(a.dataset.boardQuelle); break;
+    case "board-qr": boardEinstellungenAendern({ qrZeigen:!bd.einstellungen?.qrZeigen }); break;
+    case "anheften": {
+      const i = st.instanzen.find((x) => x.id === id); if(!i) break;
+      const r = await api(`/orte/instanzen/${id}/angeheftet`, { method:"PUT", body:JSON.stringify({ angeheftet:!i.angeheftet }) });
+      if(!r.ok){ toast(meldungAus(r), true); break; }
+      uebernehmen({ instanz:r.data.instanz });
+      detailOeffnen(id);
+      toast(r.data.instanz.angeheftet ? "Liegt groß auf der Anzeige" : "Nicht mehr angeheftet");
+      break;
+    }
     case "board-wegnehmen": boardWegnehmen(); break;
     case "banner-loeschen":
       // Zweimal tippen – ein Bauplan ist schnell weg und für alle
@@ -3958,6 +3959,8 @@ $sheet.addEventListener("input", (e) => {
 });
 $sheet.addEventListener("change", (e) => {
   if(e.target.id === "boardFoto"){ const d = e.target.files[0]; e.target.value = ""; if(d) boardFotoLesen(d); return; }
+  if(e.target.id === "boardWelt") return boardEinstellungenAendern({ aktiveWelt:e.target.value });
+  if(e.target.id === "boardTitel") return boardEinstellungenAendern({ titel:e.target.value });
   if(e.target.id === "formKategorie"){ form.kategorie = e.target.value; form.variante = ""; formularRendern(true); }
   if(e.target.id === "formTyp"){ form.variante = e.target.value; formularRendern(true); }
 });
@@ -3965,18 +3968,30 @@ $sheet.addEventListener("change", (e) => {
 // Statusleiste: echte Uhrzeit
 function uhr(){ document.getElementById("uhr").textContent = new Date().toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit" }); }
 
-function init(){
+/** Daten laden und in den gewünschten Bereich springen (?modul=…) */
+async function datenStarten(){
+  if(!(await weltenLaden())) return;
+  const start = new URLSearchParams(location.search).get("modul");
+  if(start && start !== "karte") modulWechseln(start);
+  // Live und noch keine Welt: gleich eine anlegen lassen
+  if(!DEMO.enabled && !st.welten.length) weltOeffnen(["info", "Noch keine Welt auf dem Board – leg die erste mit ihrem Seed an."]);
+}
+async function init(){
   sidebarBauen("karte");
-  boardKnopfRendern();
-  if(bd.verbindung) boardVerbinden();
   document.getElementById("kopfIcon").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON.karte}</svg>`;
   applyTheme(st.dim);
   ansichtWechseln(st.ansicht);
   uhr(); setInterval(uhr, 30000);
-  weltenLaden().then(() => {
-    const start = new URLSearchParams(location.search).get("modul");
-    if(start && start !== "karte") modulWechseln(start);
-  });
+  DEMO.enabled = !(await betriebErkennen());
+  if(!DEMO.enabled){
+    // Live: Das Board ist dieser Server – eine Verbindung zu einem anderen gilt hier nicht
+    if(bd.verbindung && bd.verbindung.adresse !== location.origin) bd.verbindung = null;
+    renderStatus();
+  }
+  boardKnopfRendern();
+  if(bd.verbindung) boardVerbinden();
+  if(!DEMO.enabled && !bd.verbindung) return boardSheetRendern();   // erst beitreten, dann Daten
+  datenStarten();
 }
 init();
 </script>

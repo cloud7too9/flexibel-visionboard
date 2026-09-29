@@ -37,7 +37,7 @@ async function boardStarten() {
   for (let i = 0; i < 60; i++) {
     // Beendet sich sofort, wenn der Port noch belegt ist (z. B. altes Board aus einem abgebrochenen Lauf)
     if (board.exitCode !== null) throw new Error(`Board beendet sich sofort – Port ${BOARD_PORT} belegt?`);
-    try { if ((await fetch(`${BOARD}/api/typen`)).ok) return; } catch {}
+    try { if ((await fetch(`${BOARD}/api/server`)).ok) return; } catch {}
     await schlafen(200);
   }
   throw new Error("Board startet nicht (npm --prefix koordinaten-board/server install?)");
@@ -59,9 +59,18 @@ function teilnehmerImRaum() {
 }
 
 // --- Companion über http://localhost ausliefern (sicherer Kontext → Kamera erlaubt) ---
+// Ausgeliefert werden die Seite, regeln.js und icons/ – alles andere ist die Seite selbst
+const COMPANION = path.join(HIER, "..");
+const TYPEN = { ".js": "text/javascript; charset=utf-8", ".png": "image/png" };
 const seite = createServer((req, res) => {
+  const pfad = decodeURIComponent(new URL(req.url, "http://x").pathname);
+  const datei = path.join(COMPANION, pfad);
+  if (pfad !== "/" && datei.startsWith(COMPANION + path.sep) && existsSync(datei) && TYPEN[path.extname(datei)]) {
+    res.setHeader("content-type", TYPEN[path.extname(datei)]);
+    return res.end(readFileSync(datei));
+  }
   res.setHeader("content-type", "text/html; charset=utf-8");
-  res.end(readFileSync(path.join(HIER, "../companion-prototyp.html")));
+  res.end(readFileSync(path.join(COMPANION, "companion-prototyp.html")));
 }).listen(SEITE_PORT);
 const URL_SEITE = `http://localhost:${SEITE_PORT}/`;
 
@@ -220,9 +229,13 @@ try {
     const antworten = [];
     timWs.onmessage = (e) => { const n = JSON.parse(e.data); if (n.anfrage) antworten.push(n); };
     await new Promise((r) => { timWs.onopen = r; });
-    for (const [name, x, y, z, dimension, kategorie, typ] of [["Hauptbasis", 212, 71, -388, "oberwelt", "basis"], ["Dorf am See", 1040, 64, 310, "oberwelt", "dorf", "Village"],
-      ["Festung", 180, 70, -95, "nether", "struktur", "Nether Fortress"], ["End-Stadt", 1300, 60, -820, "ende", "struktur", "End City"]]) {
-      timWs.send(JSON.stringify({ art: "hinzufuegen", ort: { name, x, y, z, dimension, kategorie, typ } }));
+    // Daten gehen über die Companion-API des Boards (gemeinsames Datenmodell)
+    const timApi = (methode, pfad, body) => fetch(`${BOARD}/api${pfad}`, { method: methode,
+      headers: { "content-type": "application/json", authorization: `Bearer ${tim.token}` }, body: JSON.stringify(body) }).then((r) => r.json());
+    const timWelt = (await timApi("POST", "/orte/welten", { seed: "6889192652397090698" })).welt;
+    for (const [kategorie, variante, x, y, z, dim] of [["Eigene Orte", "Hauptbasis", 212, 71, -388, "overworld"], ["Village", null, 1040, 64, 310, "overworld"],
+      ["Nether Fortress", null, 180, 70, -95, "nether"], ["End City", null, 1300, 60, -820, "end"]]) {
+      await timApi("POST", "/orte/instanzen", { dimensionId: `d_${timWelt.id}_${dim}`, kategorie, variante, x, y, z, quelle: "manuell" });
     }
     await schlafen(300);
     const anzeige = await browser.newPage({ viewport: { width: 1600, height: 900 } });
@@ -238,20 +251,9 @@ try {
     await anzeige.waitForFunction(() => [...document.querySelectorAll("img.kennblock")].every((i) => i.complete));
     const anzeigeIcons = await iconsLesen(anzeige, ".a-zeile");
     console.log("     Anzeige-Icons:", anzeigeIcons);
-    pruefe(anzeigeIcons === "Dorf am See=Linie, End-Stadt=end_city.png, Festung=fortress.png, Hauptbasis=Linie", "Anzeige: Kennblöcke bei Netherfestung und Endsiedlung, sonst Linien-Icon");
+    pruefe(anzeigeIcons === "End City=end_city.png, Hauptbasis=Linie, Nether Fortress=fortress.png, Village=Linie", "Anzeige: Kennblöcke bei Netherfestung und Endsiedlung, sonst Linien-Icon");
     await anzeige.screenshot({ path: `${DIR}/v7b-anzeige-kennbloecke.png` });
 
-    // Handy-Steuerung des Boards (als Tim): Liste und Ort-Detail
-    const handy = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
-    await handy.addInitScript(([t]) => { localStorage.setItem("kb-sitzung", JSON.stringify({ token: t, name: "Tim" })); localStorage.setItem("kb-dimension", JSON.stringify("nether")); }, [tim.token]);
-    await handy.goto(`${BOARD}/`);
-    await handy.waitForSelector(".ort");
-    await handy.waitForFunction(() => [...document.querySelectorAll("img.kennblock")].every((i) => i.complete));
-    pruefe(await iconsLesen(handy, ".ort") === "Festung=fortress.png", "Steuerung Nether: Festung mit Kennblock");
-    await handy.click(".ort"); await handy.waitForSelector(".sheet-kopf-bild img.kennblock");
-    pruefe(await handy.$eval(".sheet-kopf-bild img.kennblock", (i) => i.complete && i.naturalWidth > 0), "Steuerung: Ort-Detail mit Kennblock im Kopf");
-    await handy.screenshot({ path: `${DIR}/v7c-steuerung-detail.png` });
-    await handy.close();
 
     await p.click('[data-aktion="schliessen"]'); await p.waitForTimeout(250);
     await p.click('#orteAnsicht [data-ansicht="liste"]'); await p.waitForTimeout(300);

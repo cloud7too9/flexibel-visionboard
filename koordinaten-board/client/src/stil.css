@@ -483,6 +483,13 @@ select.eingabe {
 .g-zeile { display: flex; justify-content: space-between; gap: 1.5em; font-size: 1.25em; }
 .g-zeile span { color: var(--text-dim); }
 .g-text { font-size: 1.25em; line-height: 1.5; color: var(--text-dim); }
+/* Bild-Block (z. B. Banner): links neben den übrigen Blöcken */
+.g-bloecke:has(> .g-bild) { display: grid; grid-template-columns: auto 1fr; column-gap: 1.4em; align-items: start; }
+.g-bloecke:has(> .g-bild) > :not(.g-bild) { grid-column: 2; }
+.g-bild { grid-column: 1; grid-row: 1 / span 6; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 0.5em; }
+.g-bild img { display: block; max-height: 18em; max-width: 14em; min-height: 8em; object-fit: contain; border-radius: 0.4em; background: var(--surface-2); }
+.g-bild img.pixelig { image-rendering: pixelated; height: 18em; width: auto; }
+.g-bild .kicker { color: var(--text-faint); font-size: 0.85em; }
 
 .a-leer-gross { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8em; text-align: center; color: var(--text-dim); }
 .a-leer-gross .me-ico { width: 4.5em; height: 4.5em; border-radius: 1.4em; background: var(--surface-2); border: 1px solid var(--border-soft); display: grid; place-items: center; color: var(--accent); }

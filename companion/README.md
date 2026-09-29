@@ -6,7 +6,9 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 
 **Neuer Chat / Weitermachen:** zuerst `../UEBERGABE.md` (projektübergreifend), dann `UEBERGABE.md` lesen – Stand, Entscheidungen, offene Punkte.
 
-**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop). Ohne `?live=1` läuft der DEMO-Mock mit Beispielwelt. Mit `?modul=sammelobjekte`, `?modul=portale` oder `?modul=banner` startet man direkt im jeweiligen Bereich.
+**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop) – dann läuft der DEMO-Mock mit Beispielwelt. **Live** läuft die Companion, wenn das Koordinaten-Board sie ausliefert: Board starten, `http://<board>:3000/?pin=<PIN>` öffnen oder den QR-Code der Anzeige mit der Kamera-App scannen (siehe „Live-Betrieb“). Mit `?modul=sammelobjekte`, `?modul=portale` oder `?modul=banner` startet man direkt im jeweiligen Bereich, `?demo=1` erzwingt den Mock.
+
+Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-Server lädt) und `icons/` (Kennblöcke) in denselben Ordner.
 
 ## Was drin ist
 
@@ -86,6 +88,18 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 - Löschen mit zweitem Tippen („Wirklich löschen?“), weil ein Bauplan für alle weg ist
 - Vorschau ist vereinfacht (Pixel-Masken, keine Original-Texturen)
 
+## Live-Betrieb am Koordinaten-Board
+
+Seit der Zusammenführung (Entscheidung von Max, 29.09.2026) ist das **Koordinaten-Board der Server der Companion**: Es liefert die Seite unter `/` aus, speichert alle Daten (`koordinaten-board/server/daten/daten.json`) und hält die Anzeige im Zimmer aktuell.
+
+- **Erkennung**: `init()` fragt `GET /api/server`. Antwortet das Board, läuft die Companion live, sonst (Datei, anderer Server, `?demo=1`) der DEMO-Mock.
+- **Anmeldung = Beitreten**: Das Handy scannt den QR-Code mit der Kamera-App und landet auf `/?pin=…`. Das Sheet „Beitreten“ hat die PIN schon, es fehlt nur der Name. Danach nimmt `api()` den Token aus `board.verbindung`; bei 401 oder abgelehntem Token geht es zurück zum Beitreten. Die PIN verschwindet aus der Adresszeile. „Abmelden“ im Board-Sheet.
+- **API**: dieselben Pfade wie im API-Vertrag, mit Präfix `/api` (Umsetzung `koordinaten-board/server/src/companion-api.js` + `daten.js`). Der Server prüft mit **derselben Datei `regeln.js`**, die die Seite lädt.
+- **Live-Updates**: Nach jeder Änderung meldet das Board `{ art:"geaendert", bereich, weltId }`. `liveAktualisieren()` lädt nur den betroffenen Bereich neu (Orte ohne Ansicht, Filter oder Kartenausschnitt zu verändern).
+- **Leeres Board**: Nach dem ersten Beitreten öffnet sich „Welt“, um die erste Welt mit Seed anzulegen.
+- **Screenshot**: `/api/orte/auslesen` nutzt die Texterkennung des Boards.
+- **Anzeige im Zimmer** (Board-Sheet, nur live): Welt auf der Anzeige (aktive Welt, gilt für das Board – die eigene Welt am Handy bleibt davon unberührt), Titel, QR-Code zeigen. Im Ort-Detail „Auf der Anzeige anheften“ (groß oben auf der Anzeige).
+
 ## Board-Verbindung
 
 Verbindet die Companion mit dem Koordinaten-Board im Zimmer. Das ist kein Bereich, sondern gilt für das ganze Gerät: Eintrag **Board** unten in der Sidebar, der Status-Punkt zeigt den Zustand (grau nicht verbunden, gelb verbindet, grün verbunden, rot getrennt).
@@ -96,28 +110,39 @@ Verbindet die Companion mit dem Koordinaten-Board im Zimmer. Das ist kein Bereic
 - **Verbunden**: Das Sheet zeigt Adresse, „Angemeldet als“, wer im Raum ist und wie viele Orte das Board hat. Die Anzeige des Boards führt die Companion wie ein Handy unter „online“. „Trennen“ vergisst die Verbindung.
 - Gilt pro Gerät (`localStorage` `board.verbindung`, `board.name`) und ist auch im DEMO-Modus echt, weil das Board ein eigenes Gerät ist.
 
-### Aufs Board
+### Aufs Board · Anzeigeschema
 
 Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte liegt dort, bis die nächste kommt oder jemand sie wegnimmt. Das Board speichert sie nicht; nach einem Neustart ist die Anzeige frei.
 
-- **Ort** (bisher der einzige Inhalt): Im Detail eines Ortes „Aufs Board“ antippen. Die Anzeige zeigt Name, Kategorie, die Koordinaten groß und die umgerechnete Position im Nether bzw. in der Oberwelt, im Theme der Dimension, dazu wer es geschickt hat. Bei Strukturen schickt die Companion den Seed-Map-Typ mit (`typ`), die Anzeige zeigt dann den Kennblock neben dem Titel.
+**Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): `BOARD_KARTEN` ist das Verzeichnis, je Inhaltsart `{ titel, karte(id) }`. Die Funktion übersetzt den Inhalt in das allgemeine Kartenformat des Boards; das Board kennt keine Bereiche.
+
+| Schema | Quelle | Knopf | Inhalt der Karte |
+|---|---|---|---|
+| Ort | `ort:<id>` | Ort-Detail | Name, Kategorie, Koordinaten groß, umgerechnete Position, Kennblock (`typ`) |
+| Sammelobjekt | `sammel:<id>` | Sammelobjekt-Detail | Besatz, Fundort-Struktur mit Kennblock, gefunden von/am oder offen, nächster bekannter Fundort, Hinweis zur Truhe |
+| Sammel-Fortschritt | `sammelstand` | Bottom-Bar der Sammelobjekte | gefunden, Fortschritt, Fundorte auf der Karte, was noch offen ist |
+| Portal-Verbindung | `portal:<id>` | Portal-Detail | beide Portale mit Dimension, Status, Abstand zum Idealpunkt, Vorschlag |
+| Banner-Bauplan | `banner:<id>` | Banner-Detail | Vorschau als Bild (pixelgenau), Material, Bannervorlagen |
+
 - Liegt der eigene Inhalt auf dem Board, wird der Knopf zu „Liegt auf dem Board · Wegnehmen“. Das Board-Sheet zeigt unter „Auf der Anzeige“, was gerade dort liegt und von wem, mit „Wegnehmen“.
-- Der Knopf erscheint nur, wenn das Gerät mit einem Board verbunden ist.
-- **Neue Inhalte** brauchen keine Änderung am Board: in `BOARD_KARTEN` eine Funktion `quelle-id → karte` eintragen und im Sheet `boardZeigenKnopf("<art>:<id>")` einbauen.
+- Die Knöpfe erscheinen nur, wenn das Gerät mit einem Board verbunden ist.
+- **Neuer Bereich**: Schema in `BOARD_KARTEN` eintragen und im Detail `boardZeigenKnopf("<art>:<id>")` einbauen, danach `boardZeigenKnoepfe()` aufrufen. Das Board bleibt unverändert.
 
 Nachrichten über die bestehende Live-Verbindung: `{ art:"zeigen", karte }` und `{ art:"verbergen", id }`, Antwort `ok`/`fehler`, an alle geht `{ art:"gezeigt", karte|null }`. Das Board prüft die Karte (`koordinaten-board/server/src/zeigen.js`):
 
 ```
 karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"|"ende"|null,
           bloecke: [ { art:"koordinaten", label?, x, y|null, z, dimension? }
-                   | { art:"zeilen", zeilen:[{ label, wert }] }
-                   | { art:"text", text } ] }            // höchstens 6 Blöcke
+                   | { art:"zeilen", zeilen:[{ label, wert }] }            // höchstens 8 Zeilen
+                   | { art:"text", text }
+                   | { art:"bild", daten:"data:image/png;base64,…", label?, pixelig? } ] }   // höchstens 6 Blöcke
 // typ: Feature-Typ der Seed Map („Nether Fortress“), höchstens 40 Zeichen → Kennblock auf der Anzeige
+// bild: PNG, JPEG oder WebP als Data-URL, höchstens 200 KB, kein SVG; pixelig = Pixelkunst scharf vergrößern
 ```
 
-**https ↔ http:** Die Companion soll später als PWA über **https** laufen (z. B. Hetzner), das Board liefert nur **http** im Heimnetz. Browser blockieren Anfragen von einer https-Seite an eine http-Adresse (Mixed Content), Safari auf dem iPhone ausnahmslos. Die Kamera wiederum gibt es nur in einem sicheren Kontext (https oder localhost). Heute funktioniert die Verbindung deshalb, wenn die Companion über http oder als Datei geöffnet wird; die Kamera dann nur am Rechner, am Handy bleiben Foto und Eingabe von Hand. Die Companion meldet den Fall ausdrücklich („Der Browser blockiert die Verbindung …“).
+**https ↔ http:** Im Live-Betrieb stellt sich die Frage nicht mehr: Companion und Board kommen vom selben Server (http im Heimnetz), das Handy braucht keine Kamera in der Seite. Sie gilt nur noch, wenn die Companion woanders über **https** läuft (z. B. später Hetzner) und sich mit dem Board im Heimnetz verbinden soll. Browser blockieren Anfragen von einer https-Seite an eine http-Adresse (Mixed Content), Safari auf dem iPhone ausnahmslos. Die Kamera wiederum gibt es nur in einem sicheren Kontext (https oder localhost). Heute funktioniert die Verbindung deshalb, wenn die Companion über http oder als Datei geöffnet wird; die Kamera dann nur am Rechner, am Handy bleiben Foto und Eingabe von Hand. Die Companion meldet den Fall ausdrücklich („Der Browser blockiert die Verbindung …“).
 
-## Regeln (Server muss sie genauso prüfen – siehe `instanzPruefen()`)
+## Regeln (`regeln.js` – Handy und Board-Server prüfen mit derselben Datei)
 
 1. „Eigene Orte“ ist eine zusätzliche Kategorie; dort legt man Typen (Ortsnamen) selbst an.
 2. In allen anderen Kategorien entstehen neue Typen nur aus Screenshots (Variante aus dem Popup, z. B. Stronghold → „Stairway“).
@@ -135,6 +160,7 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | GET | `/orte/welten/:id` | – | `{ welt, dimensionen, typen, instanzen }` |
 | POST | `/orte/instanzen` | `{ dimensionId, kategorie, variante, x, y, z, quelle }` | `{ instanz, typ }` – Typ wird gefunden oder angelegt |
 | PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` – 403 bei Biomen |
+| PUT | `/orte/instanzen/:id/angeheftet` | `{ angeheftet }` | `{ instanz }` – groß auf der Anzeige, 403 bei Biomen |
 | DELETE | `/orte/instanzen/:id` | – | `{ ok:true }` |
 | POST | `/orte/auslesen` | multipart `datei` | `{ erkannt:{ titel, kategorie, variante, dimension, x, y, z } \| null }` |
 | GET | `/sammelobjekte/welten/:id` | – | `{ status:{ [objektId]:{ von, am } } }` |
@@ -147,14 +173,16 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | POST | `/banner` | `{ name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
 | PUT | `/banner/:id` | `{ name, basis, ebenen }` | `{ banner }` |
 | DELETE | `/banner/:id` | – | `{ ok:true }` |
+| GET | `/board/einstellungen` | – | `{ titel, qrZeigen, aktiveWelt, aktiv }` – nur Board |
+| PUT | `/board/einstellungen` | `{ titel?, qrZeigen?, aktiveWelt? }` | wie GET |
 
 `verbindung = { id, name, oberwelt:{ x, y|null, z }, nether:{ x, y|null, z }, von, am }`
 
 `banner = { id, name, basis, ebenen:[{ muster, farbe }], von, am }` (Farb- und Muster-IDs wie im Spiel, z. B. `light_blue`, `stripe_bottom`)
 
-`typ = { id, kategorie, variante|null }` · `instanz = { id, dimensionId, featureTypeId, x, y|null, z }` · `quelle = "screenshot" | "manuell"`
+`typ = { id, kategorie, variante|null }` · `instanz = { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, von, am }` · `quelle = "screenshot" | "manuell"`
 
-Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`../koordinaten-board/server/src/erkennung.js`) – sie muss nur auf dieses Antwortformat umgestellt und um die Biom-Liste erweitert werden.
+Live gelten alle Pfade mit Präfix `/api` und Bearer-Token. Die Texterkennung (`/orte/auslesen`) läuft im Board (`../koordinaten-board/server/src/erkennung.js`, `fuerCompanion()`); Biome ordnet sie über die Biom-Liste zu, an einem echten Biom-Popup ist das noch nicht geprüft.
 
 ## Einbau ins Modul Karte (modul-a-live-karte.html)
 
@@ -164,12 +192,13 @@ Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`../koo
   statt im eigenen Canvas – Spieler-Positionen und Sammlung auf einer Karte
 - JS-Abschnitte 2–9 übernehmen; `api()`, `esc()`, `THEMES` gibt es dort schon
 - Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung)
+- `regeln.js` neben die Hauptdatei legen und vor dem Haupt-Script einbinden (`<script src="regeln.js">`); das Board liefert dann statt der Prototyp-Datei die Hauptdatei aus (`COMPANION_DATEI`)
 - Ordner `icons/` neben die Hauptdatei legen (Kennblöcke für Karte und Sammelobjekte, Pfad `KENNBLOCK_PFAD`). Fehlt er, stehen überall die Symbole
 - Die Canvas-Marker zeichnet dort der bestehende Renderer: Kennblock über `kennblockBild(kategorie)` holen (liefert das geladene Bild oder `null`, dann das Symbol)
 
 ## Tests
 
-`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung, Sammelobjekte, Kennblöcke in der Karte und Board-Verbindung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
+`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung, Sammelobjekte, Kennblöcke in der Karte, Board-Verbindung, den Live-Betrieb am echten Board und die Anzeigeschemas (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
 
 ## Referenz
 
@@ -178,8 +207,8 @@ Was auch das Koordinaten-Board betrifft, liegt in `../referenz/`: Datenmodell, S
 
 ## Offen
 
-- Datenhaltung: Companion-Server (Hetzner) oder Board im Heimnetz
 - Beispiel-Screenshot vom Biom-Popup, um die Erkennung darauf abzustimmen
+- Aus der früheren Board-Steuerung noch nicht übernommen: Notiz, Kartenausschnitt als Bild, Export als JSON
 - Dashboard-Ansichten pro Bereich (siehe oben): Seiten pro Bereich? Wo bearbeitet man – Handy oder Anzeige?
 - Inhalte der geplanten Bereiche (werden einzeln durchgegangen)
-- Aufs Board: welche Inhalte nach dem Ort (Portal-Verbindung, Banner-Anleitung …); https-Companion ↔ http-Board (siehe oben)
+- Aufs Board: bleibt eine Karte liegen, bis jemand sie wegnimmt, oder verschwindet sie nach einiger Zeit?

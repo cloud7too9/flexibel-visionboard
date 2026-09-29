@@ -1,29 +1,32 @@
-// Koordinaten-Board – lokaler Server für Anzeige (im Raum) und Steuerung (Handys im WLAN).
+// Koordinaten-Board – der eine Server für Companion (Handys im WLAN) und Anzeige (im Raum):
+// liefert die Companion aus, hält die gemeinsamen Daten (daten.json) und synchronisiert live.
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyWebsocket from '@fastify/websocket';
 import { createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
-import { createWriteStream, existsSync } from 'node:fs';
-import { readFile, writeFile, readdir, unlink, mkdir } from 'node:fs/promises';
-import { pipeline } from 'node:stream/promises';
+import { existsSync } from 'node:fs';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Zustand } from './zustand.js';
+import { Daten } from './daten.js';
+import { companionApi } from './companion-api.js';
+import { anzeigeSicht } from './sicht.js';
+import { COMPANION_ORDNER } from './regeln.js';
 import { besteAdresse } from './netzwerk.js';
 import { fehlversuchSperre } from './sperre.js';
 import { kartePruefen } from './zeigen.js';
-import { FEATURES, screenshotAuslesen, erkennungBeenden } from './erkennung.js';
+import { erkennungBeenden } from './erkennung.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
 const DATEN = path.resolve(process.env.DATEN_ORDNER ?? path.join(HIER, '..', 'daten'));
-const MEDIEN = path.join(DATEN, 'medien');
 const CLIENT_DIST = path.resolve(HIER, '..', '..', 'client', 'dist');
+// Seite der Companion, die unter / ausgeliefert wird (später z. B. modul-a-live-karte.html)
+const COMPANION_DATEI = process.env.COMPANION_DATEI ?? 'companion-prototyp.html';
 // Anzeige darf standardmäßig nur vom Gerät selbst geöffnet werden (localhost).
 // Läuft die Anzeige auf einem anderen Gerät (z. B. Smart-TV-Browser): ANZEIGE_OFFEN=1
 const ANZEIGE_OFFEN = process.env.ANZEIGE_OFFEN === '1';
-const ERLAUBTE_BILDER = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' };
 const FARBEN = ['#00e5ff', '#7cff6b', '#ffd23f', '#b98cff', '#ff9f43', '#4dabff'];
 
 // ---------- PIN + Sitzungs-Signatur (bleiben über Neustarts erhalten) ----------
@@ -39,7 +42,7 @@ async function dauerwertLaden(datei, erzeugen) {
   }
 }
 
-await mkdir(MEDIEN, { recursive: true });
+await mkdir(DATEN, { recursive: true });
 const PIN = process.env.RAUM_PIN ?? (await dauerwertLaden('pin.txt', () => String(randomInt(1000, 10000))));
 const GEHEIM = await dauerwertLaden('geheim.txt', () => randomBytes(32).toString('hex'));
 
@@ -95,22 +98,11 @@ function adresseLernen(req) {
   console.log(`  QR-Code nutzt jetzt ${lanAdresse()} – darüber hat sich gerade ein Gerät verbunden.`);
 }
 
-// ---------- Zustand + aufräumen ----------
+// ---------- Daten ----------
 
-const zustand = new Zustand(DATEN);
-await zustand.laden();
-
-async function dateiLoeschen(name) {
-  try {
-    await unlink(path.join(MEDIEN, path.basename(name)));
-  } catch { /* schon weg */ }
-}
-
-// Verwaiste Uploads entfernen (hochgeladen, aber nie gespeichert)
-{
-  const benutzt = new Set(zustand.orte.map((o) => o.datei).filter(Boolean));
-  for (const datei of await readdir(MEDIEN)) if (!benutzt.has(datei)) await dateiLoeschen(datei);
-}
+// Die alte zustand.json (Orte der früheren Board-Steuerung) bleibt als Sicherung liegen.
+const daten = new Daten(DATEN);
+await daten.laden();
 
 // ---------- Server ----------
 
@@ -140,7 +132,16 @@ for (const pfad of FUER_COMPANION) {
 }
 await app.register(fastifyMultipart, { limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
 await app.register(fastifyWebsocket);
-await app.register(fastifyStatic, { root: MEDIEN, prefix: '/medien/', decorateReply: false, maxAge: '7d' });
+// Leerer Rumpf bei „Content-Type: application/json“ (z. B. DELETE) ist kein Fehler
+app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, rumpf, fertig) => {
+  if (!rumpf) return fertig(null, {});
+  try {
+    fertig(null, JSON.parse(rumpf));
+  } catch (f) {
+    f.statusCode = 400;
+    fertig(f);
+  }
+});
 
 function nutzerAusAnfrage(req) {
   const kopf = req.headers.authorization ?? '';
@@ -181,46 +182,18 @@ app.get('/api/anzeige', async (req, reply) => {
   };
 });
 
-app.post('/api/upload', async (req, reply) => {
-  if (!nutzerAusAnfrage(req)) return reply.code(401).send({ fehler: 'Nicht angemeldet' });
-  const teil = await req.file();
-  if (!teil) return reply.code(400).send({ fehler: 'Keine Datei' });
-  const endung = ERLAUBTE_BILDER[teil.mimetype];
-  if (!endung) {
-    teil.file.resume();
-    return reply.code(415).send({ fehler: 'Nur Bilder (JPG, PNG, WebP, GIF)' });
-  }
-  const name = `${randomUUID()}.${endung}`;
-  const ziel = path.join(MEDIEN, name);
-  await pipeline(teil.file, createWriteStream(ziel));
-  if (teil.file.truncated) {
-    await dateiLoeschen(name);
-    return reply.code(413).send({ fehler: 'Datei zu groß (max. 25 MB)' });
-  }
-  return { datei: name };
-});
+// Daran erkennt die Companion, dass sie vom Board ausgeliefert wird (Live-Betrieb statt DEMO)
+app.get('/api/server', async () => ({ name: 'koordinaten-board' }));
 
-// Seed-Map-Screenshot auslesen – wird NICHT gespeichert, nur ausgewertet
-app.post('/api/auslesen', async (req, reply) => {
-  if (!nutzerAusAnfrage(req)) return reply.code(401).send({ fehler: 'Nicht angemeldet' });
-  const teil = await req.file();
-  if (!teil) return reply.code(400).send({ fehler: 'Keine Datei' });
-  if (!ERLAUBTE_BILDER[teil.mimetype]) {
-    teil.file.resume();
-    return reply.code(415).send({ fehler: 'Nur Bilder (JPG, PNG, WebP)' });
-  }
-  const bild = await teil.toBuffer();
-  try {
-    return await screenshotAuslesen(bild);
-  } catch (fehler) {
-    req.log.error(fehler);
-    return reply.code(500).send({ fehler: 'Texterkennung fehlgeschlagen' });
-  }
+await app.register(companionApi, {
+  prefix: '/api',
+  daten,
+  nutzer: nutzerAusAnfrage,
+  geaendert: (bereich, weltId = null) => {
+    anAlle({ art: 'geaendert', bereich, weltId });
+    if (['welten', 'orte', 'einstellungen'].includes(bereich)) anAlle({ art: 'zustand', zustand: anzeigeSicht(daten) });
+  },
 });
-
-// Feature-Typen der Seed Map (für Auswahl und Filter auf dem Handy)
-const TYPEN = [...new Map(FEATURES.map((f) => [f.typ, { typ: f.typ, kategorie: f.kategorie, dimension: f.dimension }])).values()];
-app.get('/api/typen', async () => TYPEN);
 
 // ---------- Echtzeit-Sync ----------
 
@@ -277,11 +250,11 @@ app.get('/ws', { websocket: true }, (socket, req) => {
   }
 
   verbindungen.add(verbindung);
-  senden(socket, { art: 'zustand', zustand: zustand.momentaufnahme() });
+  senden(socket, { art: 'zustand', zustand: anzeigeSicht(daten) });
   senden(socket, { art: 'gezeigt', karte: gezeigt });
   teilnehmerMelden();
 
-  socket.on('message', async (roh) => {
+  socket.on('message', (roh) => {
     if (verbindung.rolle !== 'steuerung') return; // Anzeige ist nur lesend
     let op;
     try {
@@ -290,13 +263,8 @@ app.get('/ws', { websocket: true }, (socket, req) => {
       return;
     }
     if (!op || typeof op !== 'object') return;
-    if (zeigenBearbeiten(op, verbindung)) return;
-    const ergebnis = zustand.anwenden(op, verbindung.nutzer.name);
-    if (ergebnis.fehler) senden(socket, { art: 'fehler', text: ergebnis.fehler, anfrage: op.anfrage });
-    if (!ergebnis.geaendert) return;
-    for (const datei of ergebnis.entfernteDateien) await dateiLoeschen(datei);
-    anAlle({ art: 'zustand', zustand: zustand.momentaufnahme() });
-    senden(socket, { art: 'ok', anfrage: op.anfrage });
+    // Daten ändern die Handys über die REST-API, hier bleibt nur „Aufs Board“
+    if (!zeigenBearbeiten(op, verbindung)) senden(socket, { art: 'fehler', text: 'Unbekannte Operation', anfrage: op.anfrage });
   });
 
   socket.on('close', () => {
@@ -310,22 +278,28 @@ setInterval(() => {
   for (const v of verbindungen) if (v.socket.readyState === 1) v.socket.ping();
 }, 25_000).unref();
 
-// ---------- Client ausliefern (Produktion) ----------
+// ---------- Ausliefern: Companion unter /, Anzeige unter /anzeige ----------
+
+const OHNE_CACHE = { 'cache-control': 'no-cache' };
+app.get('/', (req, reply) => reply.headers(OHNE_CACHE).sendFile(COMPANION_DATEI, COMPANION_ORDNER));
+app.get('/regeln.js', (req, reply) => reply.headers(OHNE_CACHE).sendFile('regeln.js', COMPANION_ORDNER));
+await app.register(fastifyStatic, { root: path.join(COMPANION_ORDNER, 'icons'), prefix: '/icons/', maxAge: '7d' });
 
 if (existsSync(CLIENT_DIST)) {
-  await app.register(fastifyStatic, { root: CLIENT_DIST, prefix: '/' });
-  app.setNotFoundHandler((req, reply) => {
-    if (req.method === 'GET' && !req.url.startsWith('/api') && !req.url.startsWith('/medien')) {
-      return reply.sendFile('index.html');
-    }
-    return reply.code(404).send({ fehler: 'Nicht gefunden' });
-  });
+  // Baut nur noch die Anzeige; ihre Dateien liegen unter /assets/
+  await app.register(fastifyStatic, { root: CLIENT_DIST, prefix: '/', index: false, wildcard: false, decorateReply: false });
 }
+app.setNotFoundHandler((req, reply) => {
+  if (req.method === 'GET' && /^\/anzeige(\/|$)/.test(req.url.split('?')[0]) && existsSync(CLIENT_DIST)) {
+    return reply.sendFile('index.html', CLIENT_DIST);
+  }
+  return reply.code(404).send({ fehler: 'Nicht gefunden' });
+});
 
 // Sauber speichern beim Beenden
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, async () => {
-    await zustand.speichern().catch(() => {});
+    await daten.speichern().catch(() => {});
     await erkennungBeenden().catch(() => {});
     process.exit(0);
   });
@@ -334,7 +308,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 await app.listen({ port: PORT, host: '0.0.0.0' });
 console.log('\n  Koordinaten-Board läuft');
 console.log(`  Anzeige (dieses Gerät):  http://localhost:${PORT}/anzeige`);
-console.log(`  Handys im WLAN:          ${lanAdresse()}   PIN ${PIN}`);
+console.log(`  Companion (Handys):      ${lanAdresse()}   PIN ${PIN}`);
 if (netz.kandidaten.length > 1) {
   console.log('\n  Weitere Adressen dieses Geräts (falls die obere vom Handy nicht erreichbar ist):');
   for (const k of netz.kandidaten) if (k.adresse !== qrIp()) console.log(`    ${lanAdresse(k.adresse).padEnd(28)} ${k.name}`);

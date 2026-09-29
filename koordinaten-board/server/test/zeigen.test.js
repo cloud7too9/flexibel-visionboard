@@ -36,6 +36,16 @@ test('Zeilen und Text', () => {
   ]);
 });
 
+test('Bild-Block: PNG als Data-URL, kein SVG, nicht zu groß', () => {
+  const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const { karte } = kartePruefen({ titel: 'Wappen', dimension: null, bloecke: [{ art: 'bild', daten: png, label: 'Vorschau', pixelig: 1 }] });
+  assert.deepEqual(karte.bloecke[0], { art: 'bild', daten: png, label: 'Vorschau', pixelig: true });
+  const mit = (daten) => kartePruefen({ titel: 'x', dimension: null, bloecke: [{ art: 'bild', daten }] }).fehler;
+  assert.equal(mit('data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='), 'Bild muss PNG, JPEG oder WebP als Data-URL sein');
+  assert.equal(mit('https://example.org/bild.png'), 'Bild muss PNG, JPEG oder WebP als Data-URL sein');
+  assert.equal(mit(`data:image/png;base64,${'A'.repeat(300_000)}`), 'Bild ist zu groß (höchstens 200 KB)');
+});
+
 test('Ungültige Karten werden mit Grund abgelehnt', () => {
   const mit = (aenderung) => kartePruefen({ ...ort, ...aenderung }).fehler;
   assert.equal(kartePruefen(null).fehler, 'Karte fehlt');

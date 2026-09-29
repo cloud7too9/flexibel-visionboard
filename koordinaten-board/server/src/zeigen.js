@@ -9,16 +9,21 @@
 //     { art:'koordinaten', label?, x, y|null, z, dimension? },
 //     { art:'zeilen', zeilen:[{ label, wert }] },
 //     { art:'text', text },
+//     { art:'bild', daten:'data:image/png;base64,…', label?, pixelig? },
 //   ]
 // }
 // quelle: frei wählbare Kennung des Absenders (z. B. „ort:<id>“), damit er
 // erkennt, dass gerade sein Inhalt gezeigt wird.
 // typ: Feature-Typ der Seed Map (z. B. „Nether Fortress“) – hat die Anzeige dafür
 // einen Kennblock, zeigt sie ihn neben dem Titel.
+// bild: nur PNG, JPEG oder WebP als Data-URL (kein SVG – das könnte Skript enthalten),
+// höchstens 200 KB. pixelig: Pixelkunst (z. B. Banner 20×40) scharf vergrößern.
 
 const DIMENSIONEN = ['oberwelt', 'nether', 'ende'];
 const WELTGRENZE = 30_000_000;
-const GRENZEN = { titel: 80, unter: 120, bereich: 40, quelle: 80, typ: 40, label: 40, wert: 80, text: 400, bloecke: 6, zeilen: 8 };
+const GRENZEN = { titel: 80, unter: 120, bereich: 40, quelle: 80, typ: 40, label: 40, wert: 80, text: 400, bloecke: 6, zeilen: 8,
+  bild: Math.ceil((200 * 1024 * 4) / 3) + 32 };   // 200 KB als Base64 samt Präfix
+const DATA_URL = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
 
 class Ungueltig extends Error {}
 
@@ -70,6 +75,11 @@ function block(b) {
     }
     case 'text':
       return { art: 'text', text: text(b.text, GRENZEN.text, 'Text', true) };
+    case 'bild': {
+      if (typeof b.daten !== 'string' || !DATA_URL.test(b.daten)) throw new Ungueltig('Bild muss PNG, JPEG oder WebP als Data-URL sein');
+      if (b.daten.length > GRENZEN.bild) throw new Ungueltig('Bild ist zu groß (höchstens 200 KB)');
+      return { art: 'bild', daten: b.daten, label: text(b.label, GRENZEN.label, 'Beschriftung'), pixelig: Boolean(b.pixelig) };
+    }
     default:
       throw new Ungueltig('Unbekannter Block');
   }

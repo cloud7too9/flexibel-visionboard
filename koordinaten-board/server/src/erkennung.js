@@ -5,6 +5,7 @@
 //   X: -1,884 Z: -524            ← Koordinaten, manchmal mit Y dazwischen
 // Die Dimension steht oben im Dropdown „Dimension: Overworld“.
 import { createWorker } from 'tesseract.js';
+import { regeln } from './regeln.js';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
@@ -182,6 +183,30 @@ export function seedMapAuswerten(zeilen) {
     };
   }
   return null;
+}
+
+const DIM_COMPANION = { oberwelt: 'overworld', nether: 'nether', ende: 'end' };
+
+/**
+ * Ergebnis im Format der Companion (API-Vertrag /orte/auslesen):
+ * Seed-Map-Typ → kategorie, Klammer im Titel → variante („Stronghold (Stairway)“ → Stairway).
+ * Unbekannte Titel bleiben als Kategorie stehen – die Regeln der Companion melden sie dann.
+ * Biome: Ist der Titel ein Name aus der Biom-Liste, wird es ein Biom-Ort. Das ist noch nicht
+ * an einem echten Biom-Popup geprüft (Screenshot fehlt).
+ */
+export function fuerCompanion(e) {
+  if (!e) return null;
+  const koord = { x: e.x, y: e.y ?? null, z: e.z };
+  const biom = !e.typ && regeln.biomFinden(e.name);
+  if (biom) return { titel: biom.name, kategorie: regeln.BIOMES, variante: biom.name, dimension: biom.dimension, ...koord };
+  const klammer = /\(([^()]+)\)\s*$/.exec(e.name);
+  return {
+    titel: e.name,
+    kategorie: e.typ || e.name.replace(/\s*\([^()]*\)\s*$/, '').trim(),
+    variante: klammer ? klammer[1].trim() : null,
+    dimension: DIM_COMPANION[e.dimension] ?? 'overworld',
+    ...koord,
+  };
 }
 
 // ---------- OCR-Worker (einmal starten, dann wiederverwenden) ----------
