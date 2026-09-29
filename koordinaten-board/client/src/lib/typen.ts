@@ -37,7 +37,8 @@ export interface BoardZustand {
 export type KartenBlock =
   | { art: 'koordinaten'; label?: string; x: number; y: number | null; z: number; dimension: Dimension | null }
   | { art: 'zeilen'; zeilen: { label: string; wert: string }[] }
-  | { art: 'text'; text: string };
+  | { art: 'text'; text: string }
+  | { art: 'bild'; daten: string; label?: string; pixelig?: boolean };
 
 /** Karte, die ein Handy groß auf die Anzeige geworfen hat */
 export interface GezeigteKarte {

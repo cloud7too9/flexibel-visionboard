@@ -61,5 +61,12 @@ function Block({ block }: { block: KartenBlock }) {
       );
     case 'text':
       return <p className="g-text">{block.text}</p>;
+    case 'bild':
+      return (
+        <figure className="g-bild">
+          <img src={block.daten} alt={block.label ?? ''} className={block.pixelig ? 'pixelig' : undefined} />
+          {block.label && <figcaption className="kicker">{block.label}</figcaption>}
+        </figure>
+      );
   }
 }

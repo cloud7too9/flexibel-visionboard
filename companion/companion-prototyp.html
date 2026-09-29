@@ -822,11 +822,12 @@ button.switch { padding:0; }
 .board-zeile span:first-child { color:var(--text-dim); }
 .board-zeile b { text-align:right; word-break:break-word; }
 .board-einstellungen { gap:12px; }
+.sam-board { flex:1; margin:8px 14px; }
 .board-schalter { align-items:center; }
 .board-status { display:flex; align-items:center; gap:9px; font-size:16px; }
-.board-zeigen { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
-.board-zeigen svg { color:var(--accent); }
-.board-zeigen.aktiv { border-color:var(--accent); color:var(--accent); }
+.board-zeigen, .sam-board { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
+.board-zeigen svg, .sam-board svg { color:var(--accent); }
+.board-zeigen.aktiv, .sam-board.aktiv { border-color:var(--accent); color:var(--accent); }
 .board-gezeigt { display:flex; align-items:center; gap:12px; }
 .board-gezeigt .text { flex:1; min-width:0; }
 .board-gezeigt .btn-secondary { min-height:38px; padding:8px 14px; }
@@ -957,7 +958,7 @@ button.switch { padding:0; }
         <div class="ach-list" id="samListe"></div>
       </div>
       <nav class="bottombar">
-        <div class="bb-placeholder">Gilt für die ganze Welt · alle können abhaken</div>
+        <div class="bb-placeholder" id="samFuss">Gilt für die ganze Welt · alle können abhaken</div>
       </nav>
     </section>
 
@@ -2383,6 +2384,19 @@ async function samLaden(){
   if(aktivesModul === "sammelobjekte") render();
 }
 
+/** Bottom-Bar der Sammelobjekte: mit Board-Verbindung „Fortschritt aufs Board“, sonst der Hinweis */
+function samFussRendern(){
+  const $f = document.getElementById("samFuss"); if(!$f) return;
+  $f.innerHTML = bd.verbindung
+    ? `<button class="btn-secondary sam-board" data-board-quelle="sammelstand"></button>`
+    : "Gilt für die ganze Welt · alle können abhaken";
+  boardZeigenKnoepfe();
+}
+document.getElementById("samFuss").addEventListener("click", (e) => {
+  const k = e.target.closest("[data-board-quelle]"); if(!k) return;
+  k.dataset.aktion === "board-wegnehmen" ? boardWegnehmen() : boardZeigen(k.dataset.boardQuelle);
+});
+
 function renderSammel(){
   const gefunden = samGefundenAnzahl(), gesamt = SAM_ZAEHLT.length;
   const bekannt = FUNDORTE.filter((f) => bekannteFundorte(f.kategorie, f.dim).length).length;
@@ -2470,9 +2484,11 @@ function samDetailOeffnen(id){
       ? `<div class="banner ok">Gefunden von ${esc(s.von)} am ${datumKurz(s.am)}</div>
          <button class="btn-secondary" data-aktion="sam-umschalten" data-id="${o.id}">Zurücksetzen</button>`
       : `<button class="btn-primary" data-aktion="sam-umschalten" data-id="${o.id}">Als gefunden abhaken</button>`}
+    ${boardZeigenKnopf(`sammel:${o.id}`)}
     <div class="field-group"><div class="field-group-label">Auf der Karte in dieser Welt</div>${fundHtml}</div>
   </div>`;
   sheetOeffnen("sam", html, o.dim);
+  boardZeigenKnoepfe();
 }
 
 /** Aus den Sammelobjekten auf die Karte springen */
@@ -2612,12 +2628,14 @@ function bannerDetailOeffnen(id){
         ${bannerImg(s.bild, "mini")}</button>`).join("")}</div>
       ${erledigt.size ? `<button class="btn-secondary" data-aktion="banner-schritte-weg" data-id="${b.id}">Haken zurücksetzen</button>` : ""}
     </div>
+    ${boardZeigenKnopf(`banner:${b.id}`)}
     <div class="knopf-raster">
       <button class="btn-primary" data-aktion="banner-bearbeiten" data-id="${b.id}">Bearbeiten</button>
       <button class="btn-danger" data-aktion="banner-loeschen" data-id="${b.id}">Löschen</button>
     </div>
   </div>`;
   sheetOeffnen("banner", html, "overworld");
+  boardZeigenKnoepfe();
   $sheet.scrollTop = scroll;
 }
 
@@ -2981,12 +2999,14 @@ function portalDetailOeffnen(id){
       ${e ? `<div class="banner ${e.art}">${esc(e.text)}</div>` : ""}
       <p class="result-hint">Geprüft wird nur mit den hier erfassten Portalen.</p>
     </div>
+    ${boardZeigenKnopf(`portal:${v.id}`)}
     <div class="knopf-raster">
       <button class="btn-primary" data-aktion="portal-bearbeiten" data-id="${v.id}">Bearbeiten</button>
       <button class="btn-danger" data-aktion="portal-loeschen" data-id="${v.id}">Löschen</button>
     </div>
   </div>`;
   sheetOeffnen("portal", html, "nether");
+  boardZeigenKnoepfe();
 }
 
 function portalEditorOeffnen(id, vorlage){
@@ -3139,9 +3159,13 @@ document.getElementById("portalWeltBtn").addEventListener("click", () => weltOef
      karte = { titel, unter?, bereich?, quelle?, dimension:"oberwelt"|"nether"|"ende"|null,
                bloecke:[ { art:"koordinaten", label?, x, y|null, z, dimension? }
                        | { art:"zeilen", zeilen:[{ label, wert }] } | { art:"text", text } ] }
+       Blöcke außerdem { art:"bild", daten:"data:image/png;base64,…", label?, pixelig? },
+       optional typ (Seed-Map-Typ) → die Anzeige zeigt den Kennblock neben dem Titel.
    Das Board prüft die Karte (koordinaten-board/server/src/zeigen.js) und zeigt
-   sie groß, bis die nächste kommt oder jemand sie wegnimmt. Welche Inhalte es
-   gibt, legt BOARD_KARTEN fest – das Board selbst kennt keine Bereiche.
+   sie groß, bis die nächste kommt oder jemand sie wegnimmt.
+   ANZEIGESCHEMA: Jeder Inhalt, der aufs Board kann, hat in BOARD_KARTEN eine
+   Funktion id → Karte. Das Board selbst kennt keine Bereiche; ein neuer Bereich
+   trägt dort sein Schema ein und baut boardZeigenKnopf("<art>:<id>") in sein Detail.
    ========================================================================== */
 const bd = {
   verbindung: lsLesen("board.verbindung"),  // { adresse, token, name } oder null
@@ -3434,10 +3458,62 @@ function boardSenden(op){
 }
 
 // --- „Aufs Board“ -----------------------------------------------------------------
-// Welche Inhalte sich zeigen lassen: quelle „<art>:<id>“ → Karte fürs Board
+// Anzeigeschema je Inhalt: quelle „<art>:<id>“ → Karte im allgemeinen Kartenformat des Boards
 const BOARD_KARTEN = {
-  ort: ortKarte,                              // Karte: ein Ort aus der Koordinaten-Sammlung
+  ort:         { titel:"Ort",                karte:ortKarte },          // Karte: ein Ort der Sammlung
+  sammel:      { titel:"Sammelobjekt",       karte:sammelKarte },       // ein Rüstungsbesatz mit Fundort
+  sammelstand: { titel:"Sammel-Fortschritt", karte:sammelStandKarte },  // Stand der Welt (ohne id)
+  portal:      { titel:"Portal-Verbindung",  karte:portalKarte },       // beide Portale + Prüfung
+  banner:      { titel:"Banner-Bauplan",     karte:bannerKarte },       // Vorschau + Material
 };
+const koordBlock = (label, p, dim) => ({ art:"koordinaten", label, x:p.x, y:p.y ?? null, z:p.z, dimension:BOARD_DIM[dim] });
+
+function sammelKarte(id){
+  const o = SAMMELOBJEKTE.find((x) => x.id === id); if(!o) return null;
+  const s = sam.status[id], naechster = bekannteFundorte(o.kategorie, o.dim)[0];
+  const bloecke = [{ art:"zeilen", zeilen:[
+    { label:"Fundort", wert:`${strukturName(o.kategorie)} · ${dimLabel(o.dim)}` },
+    { label:"Status", wert:s ? `gefunden von ${s.von}${datumKurz(s.am) ? ` am ${datumKurz(s.am)}` : ""}` : "noch offen" },
+  ] }];
+  if(naechster) bloecke.push(koordBlock("Nächster bekannter Fundort", naechster.i, o.dim));
+  bloecke.push({ art:"text", text:o.quelle });
+  return { titel:o.name, unter:`${o.en} · ${o.aufwertung ? "Schmiedevorlage" : "Rüstungsbesatz"}`, bereich:"Sammelobjekte",
+           quelle:`sammel:${id}`, typ:o.kategorie, dimension:BOARD_DIM[o.dim], bloecke };
+}
+function sammelStandKarte(){
+  if(!st.welt) return null;
+  const gefunden = samGefundenAnzahl(), gesamt = SAM_ZAEHLT.length;
+  const bekannt = FUNDORTE.filter((f) => bekannteFundorte(f.kategorie, f.dim).length).length;
+  const offen = SAM_ZAEHLT.filter((o) => !sam.status[o.id]).map((o) => o.name);
+  const bloecke = [{ art:"zeilen", zeilen:[
+    { label:"Gefunden", wert:`${gefunden} von ${gesamt}` },
+    { label:"Fortschritt", wert:`${Math.round(gefunden / gesamt * 100)} %` },
+    { label:"Fundorte auf der Karte", wert:`${bekannt} von ${FUNDORTE.length}` },
+  ] }];
+  bloecke.push({ art:"text", text:offen.length ? `Noch offen: ${offen.join(", ")}`.slice(0, 400) : "Alle Rüstungsbesätze gefunden!" });
+  return { titel:"Rüstungsbesätze", unter:`Sammelobjekte der Welt ${kurzSeed(st.welt.seed)}`, bereich:"Sammelobjekte",
+           quelle:"sammelstand", dimension:null, bloecke };
+}
+function portalKarte(id){
+  const v = pt.liste.find((x) => x.id === id); if(!v) return null;
+  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  const zeilen = [{ label:"Status", wert:p.label }];
+  if(p.abweichung) zeilen.push({ label:"Abstand zum Idealpunkt", wert:`${p.abweichung} ${p.abweichung === 1 ? "Block" : "Blöcke"}` });
+  const bloecke = [koordBlock("Oberwelt-Portal", v.oberwelt, "overworld"), koordBlock("Nether-Portal", v.nether, "nether"), { art:"zeilen", zeilen }];
+  if(e) bloecke.push({ art:"text", text:e.text });
+  return { titel:v.name, unter:`Portal-Verbindung · Regeln ${regelLabel()}`, bereich:"Portal-Verwaltung",
+           quelle:`portal:${id}`, dimension:"nether", bloecke };
+}
+function bannerKarte(id){
+  const b = bn.liste.find((x) => x.id === id); if(!b) return null;
+  const { farbstoffe, vorlagen } = bannerAnleitung(b);
+  const zeilen = [{ label:farbe(b.basis).wolle, wert:"6 ×" }, { label:"Stock", wert:"1 ×" },
+    ...[...farbstoffe].map(([f, n]) => ({ label:farbe(f).farbstoff, wert:`${n} ×` }))].slice(0, 8);
+  const bloecke = [{ art:"bild", daten:bannerBild(b), label:"Vorschau", pixelig:true }, { art:"zeilen", zeilen }];
+  if(vorlagen.length) bloecke.push({ art:"text", text:`Bannervorlagen (werden nicht verbraucht): ${vorlagen.map((v) => BANNERVORLAGEN[v].de).join(", ")}` });
+  return { titel:b.name, unter:`Banner-Bauplan · ${b.ebenen.length} Muster · Grundfarbe ${farbe(b.basis).de}`,
+           bereich:"Banner", quelle:`banner:${id}`, dimension:null, bloecke };
+}
 function ortKarte(id){
   const i = st.instanzen.find((x) => x.id === id); if(!i) return null;
   const t = typVon(i), dim = dimTypeVon(i.dimensionId);
@@ -3454,7 +3530,7 @@ function ortKarte(id){
 }
 async function boardZeigen(quelle){
   const [art, ...rest] = quelle.split(":");
-  const karte = BOARD_KARTEN[art]?.(rest.join(":"));
+  const karte = BOARD_KARTEN[art]?.karte(rest.join(":"));
   if(!karte) return toast("Das lässt sich nicht aufs Board legen", true);
   try { await boardSenden({ art:"zeigen", karte }); toast("Liegt auf dem Board"); }
   catch(f){ toast(String(f), true); }
@@ -3472,7 +3548,7 @@ function boardZeigenKnopf(quelle){
 }
 /** Knöpfe im offenen Sheet an den Stand anpassen (liegt dieser Inhalt gerade auf dem Board?) */
 function boardZeigenKnoepfe(){
-  $sheet.querySelectorAll("[data-board-quelle]").forEach((k) => {
+  document.querySelectorAll("[data-board-quelle]").forEach((k) => {
     const liegt = bd.gezeigt?.quelle === k.dataset.boardQuelle;
     k.classList.toggle("aktiv", liegt);
     k.dataset.aktion = liegt ? "board-wegnehmen" : "board-zeigen";
@@ -3505,6 +3581,7 @@ function boardKnopfRendern(){
 }
 function boardAnzeigen(){
   boardKnopfRendern();
+  samFussRendern();
   boardZeigenKnoepfe();
   // Formular nicht neu zeichnen (Eingaben blieben sonst nicht stehen) – nur die Status-Ansicht,
   // und die auch nicht, solange jemand den Titel der Anzeige tippt
@@ -3563,7 +3640,7 @@ function boardSheetRendern(){
             <span class="text"><span class="card-title">${esc(bd.gezeigt.titel)}</span>
               <span class="card-meta" style="display:block">${esc([bd.gezeigt.bereich, `von ${bd.gezeigt.von}`].filter(Boolean).join(" · "))}</span></span>
             <button class="btn-secondary" data-aktion="board-wegnehmen">Wegnehmen</button></div>`
-          : `<div class="banner info">Gerade liegt nichts auf dem Board. Im Detail eines Ortes „Aufs Board“ antippen.</div>`}
+          : `<div class="banner info">Gerade liegt nichts auf dem Board. Im Detail eines Ortes, Sammelobjekts, Portals oder Banners „Aufs Board“ antippen.</div>`}
       </div>
       <div class="sheet-fuss">
         <button class="btn-secondary" data-aktion="board-trennen">${DEMO.enabled ? "Trennen" : "Abmelden"}</button>
