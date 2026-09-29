@@ -69,6 +69,10 @@ Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmode
 - Zurzeit nur **Rüstungsbesätze zum Abhaken plus Fundort**: 18 Besätze einschließlich Fluss und Bolzen, dazu die Netheritaufwertung. Alle mit deutschen Namen, gruppiert nach Fundort-Struktur.
 - Abhaken gilt **für die ganze Welt** und merkt sich, wer es wann gefunden hat.
 - Verknüpfung zur Karte: Zu jedem Fundort erscheinen die bekannten Strukturen, die nächste mit Entfernung. „Karte“ springt direkt dorthin.
+- **Kennblöcke als PNG** (von Max, Quelle minecraft.wiki): Jede Fundort-Struktur zeigt ihren typischen Block, z. B. Unheilvolles Banner für den Außenposten, Netherziegel für die Netherfestung. Dazu der deutsche Strukturname aus `icons/manifest.json`, klein darunter der Seed-Map-Name.
+  - Die Bilder lagen zuerst in `koordinaten-board/werkzeuge/icons/` und sind nach `companion/icons/` umgezogen, weil kein Projekt in den Ordner des anderen greift.
+  - **Pfadruinen haben noch kein Bild** (Seltsamer Kies fehlt, minecraft.wiki ist aus dem Claude-Container gesperrt). Bis dahin steht das Symbol ⌗ da. Kommt die Datei `trail_ruins.png` dazu, in `STRUKTUREN` das `bild:false` entfernen; der Test meldet den Unterschied.
+  - Die Einträge darunter (die Besätze selbst) zeigen weiter den Anfangsbuchstaben. Das Manifest nennt schon die Item-IDs (`sentry_armor_trim_smithing_template` …), Bilder dafür gibt es noch nicht.
 
 ### Portal-Verwaltung ✅
 
@@ -130,7 +134,7 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 | HTML | Header, `main.module-stack` mit je einer `<section class="module" data-module="…">` pro Bereich, Sidebar, ein gemeinsames Sheet `#orteSheet`, Toast |
 | JS 0 · KONFIG | `CONFIG` (Weltgrenze, Biom-Radius, Zoom …) |
 | JS 1 · THEMES | UI-Tokens der drei Dimensionen |
-| JS 2 · STAMMDATEN | Kategorien, Biome, Symbole, `SAMMELOBJEKTE` |
+| JS 2 · STAMMDATEN | Kategorien, Biome, Symbole, `STRUKTUREN` (Fundort → Kennblock), `SAMMELOBJEKTE` |
 | JS 3 · KOORDINATEN | `zahl`, `umrechnen`, `entfernung`, `tpBefehl`, `koordinatenErkennen` |
 | JS 4 · API + MOCK | API-Vertrag als Kommentar, `instanzPruefen`, `MOCK`, `mockApi`, `api()` |
 | JS 5–8 | State, Theme (`applyTheme`), Liste, Canvas-Karte |
@@ -217,13 +221,15 @@ git switch -c bereich/ruestung
 cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist
-npm test                          # banner (23) + portale (29) + board (52 Prüfungen)
+npm test                          # banner (23) + portale (29) + sammelobjekte (64) + board (52 Prüfungen)
 ```
 
 - `board.test.mjs` startet ein **echtes Koordinaten-Board** (Port 3198, eigener Datenordner) und liefert die Companion über `http://localhost` aus. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).
   - Kamera: Chromiums Fake-Kamera zeigt einen erzeugten QR-Code (Y4M). `BarcodeDetector` wird entfernt, damit der jsQR-Weg wie am iPhone läuft; jsQR kommt aus `node_modules` statt vom CDN.
   - Außerdem geprüft: Foto, Eingabe von Hand, falsche PIN, Board nicht erreichbar, Neuladen, Board-Neustart, Trennen, Kamera aus beim Schließen.
   - Aufs Board: Ort auf die echte Anzeige (`/anzeige`, 1600×900) werfen, Layout, Neuladen der Anzeige, ein zweiter Spieler ersetzt die Karte (Zeilen, Text, Nether), ungültige Karte wird abgelehnt, Wegnehmen.
+
+- `sammelobjekte.test.mjs` prüft `STRUKTUREN` und `SAMMELOBJEKTE` gegen `icons/manifest.json` (Namen, Besätze, vorhandene Bilder), die Kennblöcke in Liste und Detail, Abhaken, den Sprung zur Karte und den Ersatz durch Symbole, wenn `icons/` fehlt.
 
 - Mit `CHROMIUM=/pfad/zu/chromium` lässt sich ein vorhandenes Chromium nutzen. Im Claude-Container ist das `/opt/pw-browsers/chromium`.
 - Screenshots landen in `tests/bilder/`. **Immer ansehen**, nicht nur auf Grün verlassen.
@@ -255,11 +261,14 @@ companion/
 ├── README.md                  ← Technik: Funktionen, Regeln, API-Tabellen, Einbau
 ├── companion-prototyp.html    ← der Prototyp
 ├── entwuerfe/banner-ruestung.js   ← Rüstung-Entwurf (Banner-Teil überholt)
+├── icons/
+│   ├── manifest.json         Fundort-Strukturen: ID, deutscher Name, Kennblock, Besätze
+│   └── struktur_kennbloecke/ Kennblock-PNGs der Fundorte (Pfadruinen fehlt noch)
 ├── referenz/
 │   ├── sammelobjekte/  Trails-&-Tales-Übersicht der Fundorte
 │   ├── banner/         Beispiel aus einem Banner-Editor
 │   └── ruestung/       3 Sets + 4 Verzauberungs-Reihenfolgen
-└── tests/              Playwright-Tests für Banner und Portale
+└── tests/              Playwright-Tests für Banner, Portale, Sammelobjekte, Board
 ```
 
 Datenmodell, Seed-Map-Screenshots und das Dashboard-Vorbild liegen in `../referenz/`.

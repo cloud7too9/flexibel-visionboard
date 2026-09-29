@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node banner.test.mjs && node portale.test.mjs && node board.test.mjs"
+    "test": "node banner.test.mjs && node portale.test.mjs && node sammelobjekte.test.mjs && node board.test.mjs"
   },
   "devDependencies": {
     "jsqr": "^1.4.0",

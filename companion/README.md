@@ -53,6 +53,9 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 
 - 18 Rüstungsbesätze + Netheritaufwertung (deutsche Spielnamen, englischer Name daneben), Stand inkl. Fluss/Bolzen aus 1.21
 - Gruppiert nach Fundort-Struktur, Karten nach Dimension eingefärbt; Fundort-Hinweis (Truhe, Seltsamer Kies, Tresor, Großer Wächter)
+- **Kennblock je Struktur** als Bild (`icons/struktur_kennbloecke/<id>.png`, z. B. Netherziegel für die Netherfestung) im Kopf jeder Gruppe und im Detail. Dazu der deutsche Strukturname, darunter klein der Name aus der Seed Map („Nether Fortress“), über den die Verknüpfung zur Karte läuft
+  - `STRUKTUREN` (Abschnitt 2) ordnet jeder FeatureCategory die Struktur-ID und den deutschen Namen aus `icons/manifest.json` zu
+  - Ohne Bild (`bild:false`, zurzeit **Pfadruinen**: Seltsamer Kies fehlt noch) oder wenn die Datei nicht lädt, steht das Symbol aus `SYMBOL` im Kasten
 - **Abhaken gilt für die ganze Welt** und merkt sich, wer es wann gefunden hat
 - Fortschritt: gefunden / 18, Fundorte bekannt / 13, Prozent
 - Verknüpfung zur Karte: pro Fundort die bekannten Strukturen aus der Koordinaten-Sammlung, nächste mit Entfernung; „Karte“ springt direkt hin
@@ -159,10 +162,11 @@ Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`../koo
   statt im eigenen Canvas – Spieler-Positionen und Sammlung auf einer Karte
 - JS-Abschnitte 2–9 übernehmen; `api()`, `esc()`, `THEMES` gibt es dort schon
 - Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung)
+- Ordner `icons/` neben die Hauptdatei legen (Kennblöcke der Sammelobjekte, Pfad `KENNBLOCK_PFAD`). Fehlt er, zeigen die Sammelobjekte die Symbole
 
 ## Tests
 
-`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung und Board-Verbindung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
+`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung, Sammelobjekte und Board-Verbindung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
 
 ## Referenz
 

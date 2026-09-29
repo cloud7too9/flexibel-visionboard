@@ -634,8 +634,17 @@ button.switch { padding:0; }
 .welt-zeile .seed { font-family:ui-monospace,monospace; font-size:13.5px; font-weight:600; word-break:break-all; }
 
 /* ---- Sammelobjekte (nutzt .ach-* aus dem Erfolge-Modul) ------------------ */
-.ach-cat .ach-cat-icon { background:var(--accent-soft); color:var(--accent); font-family:ui-monospace,monospace; font-weight:700; }
+.ach-cat .ach-cat-icon { width:38px; height:38px; border-radius:10px; background:var(--accent-soft); color:var(--accent); font-family:ui-monospace,monospace; font-weight:700; }
 .ach-cat .ach-cat-dim { font-size:10px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin-left:8px; }
+.ach-cat .ach-cat-name .en { display:block; font-size:11.5px; font-weight:600; color:var(--text-faint); margin-top:1px; }
+/* Kennblock der Fundort-Struktur (PNG); ohne Bild steht das Symbol im selben Kasten */
+.kennblock { width:30px; height:30px; object-fit:contain; display:block;
+  filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
+.sam-fundort-bild .kennblock { width:40px; height:40px; }
+.sam-fundort-kopf { display:flex; align-items:center; gap:12px; }
+.sam-fundort-kopf .card-title { font-size:17px; }
+.sam-fundort-bild { width:52px; height:52px; border-radius:12px; flex:0 0 auto; display:grid; place-items:center;
+  background:var(--accent-soft); color:var(--accent); font:700 22px ui-monospace,monospace; }
 .sam-item { cursor:pointer; align-items:center; }
 .sam-item:active { background:var(--surface-3); }
 .sam-item .en { font-weight:600; color:var(--text-faint); font-size:11.5px; margin-left:6px; }
@@ -1131,12 +1140,33 @@ const SYMBOL = Object.freeze({
 });
 const symbol = (kat) => SYMBOL[kat] || "•";
 
+/* Fundort-Strukturen der Sammelobjekte: FeatureCategory der Karte → Struktur mit deutschem Namen
+   und Kennblock-Bild (icons/manifest.json, Bilder von minecraft.wiki). bild:false = noch keine Datei,
+   dann steht das Symbol aus SYMBOL da. */
+const KENNBLOCK_PFAD = "icons/struktur_kennbloecke/";
+const STRUKTUREN = Object.freeze({
+  "Outpost":         { id:"pillager_outpost", name:"Plünderer-Außenposten" },
+  "Desert Temple":   { id:"desert_pyramid",   name:"Wüstentempel" },
+  "Jungle Temple":   { id:"jungle_pyramid",   name:"Dschungeltempel" },
+  "Shipwreck":       { id:"shipwreck",        name:"Schiffswrack" },
+  "Trail Ruins":     { id:"trail_ruins",      name:"Pfadruinen", bild:false },
+  "Mansion":         { id:"mansion",          name:"Waldanwesen" },
+  "Monument":        { id:"monument",         name:"Ozeanmonument" },
+  "Ancient City":    { id:"ancient_city",     name:"Antike Stätte" },
+  "Trial Chamber":   { id:"trial_chambers",   name:"Prüfungskammern" },
+  "Stronghold":      { id:"stronghold",       name:"Festung" },
+  "Nether Fortress": { id:"fortress",         name:"Netherfestung" },
+  "Bastion":         { id:"bastion_remnant",  name:"Bastionsruine" },
+  "End City":        { id:"end_city",         name:"Endsiedlung" },
+});
+const strukturName = (kat) => STRUKTUREN[kat]?.name || kat;
+
 /* Sammelobjekte: Rüstungs-Modifikationen (Schmiedevorlagen). Deutsche Spielnamen laut
    Minecraft-Wiki, Fundort = FeatureCategory der Karte → Verknüpfung zu bekannten Orten.
    Stand: 18 Rüstungsbesätze (inkl. Fluss/Bolzen aus 1.21) + Netheritaufwertung. */
 const SAMMELOBJEKTE = Object.freeze([
   { id:"sentry",    name:"Wachen",      en:"Sentry",    kategorie:"Outpost",         dim:"overworld", quelle:"Truhe im Plünderer-Außenposten" },
-  { id:"dune",      name:"Dünen",       en:"Dune",      kategorie:"Desert Temple",   dim:"overworld", quelle:"Truhe in der Wüstenpyramide" },
+  { id:"dune",      name:"Dünen",       en:"Dune",      kategorie:"Desert Temple",   dim:"overworld", quelle:"Truhe im Wüstentempel" },
   { id:"wild",      name:"Wildnis",     en:"Wild",      kategorie:"Jungle Temple",   dim:"overworld", quelle:"Truhe im Dschungeltempel" },
   { id:"coast",     name:"Küsten",      en:"Coast",     kategorie:"Shipwreck",       dim:"overworld", quelle:"Schatz-, Karten- oder Vorratstruhe im Schiffswrack" },
   { id:"wayfinder", name:"Wegfinder",   en:"Wayfinder", kategorie:"Trail Ruins",     dim:"overworld", quelle:"Seltsamer Kies – mit dem Pinsel freilegen" },
@@ -2346,6 +2376,18 @@ const themaStil = (dim) => Object.entries(THEMES[dim].ui).map(([k, v]) => `${k}:
 const samGefundenAnzahl = () => SAM_ZAEHLT.filter((o) => sam.status[o.id]).length;
 const datumKurz = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-DE", { day:"numeric", month:"numeric" }); };
 
+/** Kennblock der Fundort-Struktur als Bild – ohne Bild (oder wenn es nicht lädt) das Symbol */
+function kennblockHtml(kategorie){
+  const s = STRUKTUREN[kategorie];
+  return s && s.bild !== false
+    ? `<img class="kennblock" src="${KENNBLOCK_PFAD}${s.id}.png" alt="" data-symbol="${esc(symbol(kategorie))}">`
+    : esc(symbol(kategorie));
+}
+// error bubbelt nicht → in der Capture-Phase abfangen
+document.addEventListener("error", (e) => {
+  if(e.target instanceof HTMLImageElement && e.target.classList.contains("kennblock")) e.target.replaceWith(e.target.dataset.symbol);
+}, true);
+
 /** Bekannte Instanzen einer Fundort-Kategorie in der aktuellen Welt – nächste zuerst */
 function bekannteFundorte(kategorie, dim){
   const dimId = dimIdVon(dim);
@@ -2401,8 +2443,8 @@ function renderSammel(){
     }).join("");
     return `<div class="ach-cat ${sam.zu.has(key) ? "" : "open"}" data-sam-kat="${esc(key)}" style="${themaStil(f.dim)}">
       <div class="ach-cat-head">
-        <span class="ach-cat-icon">${symbol(f.kategorie)}</span>
-        <span class="ach-cat-name">${esc(f.kategorie)}${f.dim !== "overworld" ? `<span class="ach-cat-dim">${dimLabel(f.dim)}</span>` : ""}</span>
+        <span class="ach-cat-icon">${kennblockHtml(f.kategorie)}</span>
+        <span class="ach-cat-name">${esc(strukturName(f.kategorie))}${f.dim !== "overworld" ? `<span class="ach-cat-dim">${dimLabel(f.dim)}</span>` : ""}<span class="en">${esc(f.kategorie)}</span></span>
         <span class="ach-cat-count">${zaehlbar.filter((o) => sam.status[o.id]).length}/${zaehlbar.length}</span>
         <span class="ach-cat-chevron">${CHEVRON}</span>
       </div>
@@ -2436,19 +2478,22 @@ function samDetailOeffnen(id){
         <button class="btn-secondary" data-aktion="sam-auf-karte" data-id="${i.id}">Karte</button>
       </div>`).join("")}</div>
       ${fund.length > 5 ? `<div class="result-hint">+ ${fund.length - 5} weitere auf der Karte</div>` : ""}`
-    : `<div class="banner info">Noch keine ${esc(o.kategorie)} ${inDim(o.dim)} erfasst. Screenshot aus der Seed Map in der Karte hinzufügen.</div>
+    : `<div class="banner info">In dieser Welt noch nicht auf der Karte. Screenshot aus der Seed Map in der Karte hinzufügen.</div>
        <button class="btn-secondary" data-aktion="sam-zur-karte" data-dim="${o.dim}">Zur Karte</button>`;
   const html = kopfHtml(esc(o.name), `${esc(o.en)} · ${o.aufwertung ? "Schmiedevorlage" : "Rüstungsbesatz"}`) + `<div class="orte-inhalt">
     <div class="result-card">
       <div class="result-label">Fundort · <b>${dimLabel(o.dim)}</b></div>
-      <div class="card-title" style="font-size:17px">${symbol(o.kategorie)} ${esc(o.kategorie)}</div>
+      <div class="sam-fundort-kopf">
+        <span class="sam-fundort-bild">${kennblockHtml(o.kategorie)}</span>
+        <div><div class="card-title">${esc(strukturName(o.kategorie))}</div><div class="card-meta">${esc(o.kategorie)} in der Seed Map</div></div>
+      </div>
       <p class="result-hint">${esc(o.quelle)}</p>
     </div>
     ${s
       ? `<div class="banner ok">Gefunden von ${esc(s.von)} am ${datumKurz(s.am)}</div>
          <button class="btn-secondary" data-aktion="sam-umschalten" data-id="${o.id}">Zurücksetzen</button>`
       : `<button class="btn-primary" data-aktion="sam-umschalten" data-id="${o.id}">Als gefunden abhaken</button>`}
-    <div class="field-group"><div class="field-group-label">Bekannte ${esc(o.kategorie)} in dieser Welt</div>${fundHtml}</div>
+    <div class="field-group"><div class="field-group-label">Auf der Karte in dieser Welt</div>${fundHtml}</div>
   </div>`;
   sheetOeffnen("sam", html, o.dim);
 }

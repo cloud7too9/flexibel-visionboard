@@ -65,7 +65,7 @@ Was wohin gehört:
 | Zweck | PWA am Handy: Karte, Sammelobjekte, Portale, Banner, später Rüstung, Handbuch, Baupläne | Gerät im Zimmer zeigt Koordinaten groß an, Handys tragen per QR/PIN ein |
 | Technik | eine HTML-Datei, Vanilla JS, kein Build, DEMO-Mock | Fastify 5, Vite + React 19 + TypeScript, JSON-Speicher, tesseract.js |
 | Stand | 4 von 7 Bereichen umgesetzt, Rüstung als Nächstes | fertig |
-| Tests | Playwright: Banner, Portale, Board-Verbindung (104 Prüfungen) | `node --test`: Erkennung, Netzwerk, PIN-Sperre, Karten (19 Tests) |
+| Tests | Playwright: Banner, Portale, Sammelobjekte, Board-Verbindung (168 Prüfungen) | `node --test`: Erkennung, Netzwerk, PIN-Sperre, Karten (19 Tests) |
 
 ---
 
