@@ -95,14 +95,25 @@ try {
   pruefe(await warteAuf(max, () => st.instanzen.length === 1), "Ort „Hauptbasis“ gespeichert");
   await max.evaluate(() => ansichtWechseln("liste"));
 
+  // Screenshot aus der Seed Map: echte Texterkennung des Boards
+  await max.setInputFiles("#orteDatei", path.join(HIER, "../../referenz/seedmap/stronghold-popup.png"));
+  pruefe(await warteAuf(max, () => st.importe?.length === 1 && st.importe[0].status === "fertig", null, 60000), "Board liest den Screenshot aus");
+  const erkannt = await max.evaluate(() => st.importe[0].erkannt);
+  console.log("     Erkannt:", JSON.stringify(erkannt));
+  pruefe(erkannt?.kategorie === "Stronghold" && erkannt?.variante === "Stairway" && erkannt?.dimension === "overworld", "Stronghold · Stairway in der Oberwelt");
+  pruefe(erkannt?.x === -1884 && erkannt?.z === -524, "Koordinaten X −1884 · Z −524");
+  await max.screenshot({ path: `${DIR}/l2b-screenshot-ocr.png` });
+  await max.click('[data-aktion="import-speichern"]');
+  pruefe(await warteAuf(max, () => st.instanzen.length === 2 && st.typen.some((t) => t.variante === "Stairway")), "Aus dem Screenshot gespeichert (neue Variante erlaubt)");
+
   // === Zweites Handy sieht alles, Änderungen kommen live ==========================
   const lena = await handy();
   pruefe(await beitreten(lena, "Lena"), "Lena tritt bei");
-  pruefe(await warteAuf(lena, () => st.instanzen.length === 1 && st.welten.length === 1), "Lena sieht Welt und Ort von Max");
+  pruefe(await warteAuf(lena, () => st.instanzen.length === 2 && st.welten.length === 1), "Lena sieht Welt und Orte von Max");
   await lena.evaluate(() => ansichtWechseln("liste"));
   await max.evaluate(() => api("/orte/instanzen", { method: "POST", body: JSON.stringify({
     dimensionId: `d_${st.weltId}_overworld`, kategorie: "Village", variante: null, x: 1040, y: 64, z: 310, quelle: "manuell" }) }));
-  pruefe(await warteAuf(lena, () => st.instanzen.length === 2 && document.querySelector('.ort-kat[data-kat="Village"]')), "Neuer Ort von Max erscheint bei Lena ohne Neuladen");
+  pruefe(await warteAuf(lena, () => st.instanzen.length === 3 && document.querySelector('.ort-kat[data-kat="Village"]')), "Neuer Ort von Max erscheint bei Lena ohne Neuladen");
   await lena.waitForTimeout(500);   // Sheet-Animation abwarten
   await lena.screenshot({ path: `${DIR}/l3-lena-live.png` });
 
@@ -127,14 +138,14 @@ try {
 
   // === Neuladen und Server-Neustart =============================================
   await max.reload();
-  pruefe(await warteAuf(max, () => !DEMO.enabled && st.instanzen?.length === 2 && bd.status === "verbunden"), "Neuladen: angemeldet, Daten da, live verbunden");
+  pruefe(await warteAuf(max, () => !DEMO.enabled && st.instanzen?.length === 3 && bd.status === "verbunden"), "Neuladen: angemeldet, Daten da, live verbunden");
   await boardStoppen();
   pruefe(await warteAuf(max, () => bd.status === "getrennt"), "Board aus → getrennt");
   await boardStarten();
   pruefe(await warteAuf(max, () => bd.status === "verbunden", null, 12000), "Board wieder da → verbindet neu");
   await max.reload();
   await max.evaluate(() => modulWechseln("sammelobjekte"));
-  pruefe(await warteAuf(max, () => st.instanzen?.length === 2 && sam.status.rib && pt.liste.length === 1), "Nach dem Neustart: Orte, Sammelobjekt, Portal noch da");
+  pruefe(await warteAuf(max, () => st.instanzen?.length === 3 && sam.status.rib && pt.liste.length === 1), "Nach dem Neustart: Orte, Sammelobjekt, Portal noch da");
 
   // === Abmelden, abgelaufene Anmeldung ==========================================
   await lena.evaluate(() => { bd.verbindung.token = "kaputt.token"; lsSchreiben("board.verbindung", bd.verbindung); });

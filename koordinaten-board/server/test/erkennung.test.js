@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { seedMapAuswerten, titelBereinigen, kategorieRaten } from '../src/erkennung.js';
+import { seedMapAuswerten, titelBereinigen, kategorieRaten, fuerCompanion } from '../src/erkennung.js';
 
 const zeilen = (...texte) => texte.map((text) => ({ text }));
 
@@ -86,4 +86,23 @@ test('Nether-Features aus der Feature-Liste', () => {
   assert.equal(seedMapAuswerten(zeilen('Fortress', 'X: 1 Z: 2')).typ, 'Nether Fortress');
   const e = seedMapAuswerten(zeilen('End Gateway', 'X: 1 Z: 2'));
   assert.deepEqual([e.typ, e.kategorie, e.dimension], ['End Gateway', 'portal', 'ende']);
+});
+
+test('Für die Companion: Kategorie, Variante aus der Klammer, Dimension', () => {
+  const alsCompanion = (...texte) => fuerCompanion(seedMapAuswerten(zeilen(...texte)));
+  assert.deepEqual(alsCompanion('Dimension: | Overworld cs', 'Stronghold (Stairway) (1)', 'X:-1,884 Z: -524'), {
+    titel: 'Stronghold (Stairway)', kategorie: 'Stronghold', variante: 'Stairway', dimension: 'overworld', x: -1884, y: null, z: -524,
+  });
+  assert.deepEqual(alsCompanion('Dimension: Nether', 'Bastion Remnant @', 'X: 312 Y: 64 Z: -1,040'), {
+    titel: 'Bastion Remnant', kategorie: 'Bastion', variante: null, dimension: 'nether', x: 312, y: 64, z: -1040,
+  });
+  assert.equal(alsCompanion('The End', 'End City', 'X: 1,300 Z: -820').dimension, 'end');
+  assert.equal(alsCompanion('Kein Popup', '-2,304 X→ -1,792'), null);
+  // Unbekannter Titel bleibt stehen – die Regeln der Companion lehnen ihn dann mit Namen ab
+  assert.equal(alsCompanion('Mystery Tower (Blue)', 'X: 1 Z: 2').kategorie, 'Mystery Tower');
+});
+
+test('Für die Companion: Biom-Namen werden Biom-Orte', () => {
+  const e = fuerCompanion(seedMapAuswerten(zeilen('Soul Sand Valley', 'X: -40 Z: 210')));
+  assert.deepEqual(e, { titel: 'Soul Sand Valley', kategorie: 'Biomes', variante: 'Soul Sand Valley', dimension: 'nether', x: -40, y: null, z: 210 });
 });

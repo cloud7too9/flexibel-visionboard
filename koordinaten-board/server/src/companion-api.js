@@ -2,6 +2,9 @@
 // Anmeldung per Bearer-Token wie beim Beitreten. Nach jeder Änderung meldet
 // `geaendert` den Bereich, damit Handys und Anzeige neu laden bzw. neu zeichnen.
 import { DatenFehler } from './daten.js';
+import { screenshotAuslesen, fuerCompanion } from './erkennung.js';
+
+const BILDER = ['image/jpeg', 'image/png', 'image/webp'];
 
 /**
  * @param {import('fastify').FastifyInstance} app
@@ -43,6 +46,17 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
     const { weltId } = daten.instanzLoeschen(req.params.id);
     geaendert('orte', weltId);
     return { ok: true };
+  });
+  // Seed-Map-Screenshot auslesen (lokale OCR des Boards) – das Bild wird nicht gespeichert
+  app.post('/orte/auslesen', async (req) => {
+    const teil = await req.file();
+    if (!teil) throw new DatenFehler(400, 'Keine Datei');
+    if (!BILDER.includes(teil.mimetype)) {
+      teil.file.resume();
+      throw new DatenFehler(415, 'Nur Bilder (JPG, PNG, WebP)');
+    }
+    const { erkannt } = await screenshotAuslesen(await teil.toBuffer());
+    return { erkannt: fuerCompanion(erkannt) };
   });
 
   // ---- Sammelobjekte ----
