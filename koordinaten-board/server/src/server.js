@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Zustand } from './zustand.js';
 import { besteAdresse } from './netzwerk.js';
+import { fehlversuchSperre } from './sperre.js';
 import { FEATURES, screenshotAuslesen, erkennungBeenden } from './erkennung.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -114,6 +115,28 @@ async function dateiLoeschen(name) {
 
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'warn' } });
 app.addHook('onRequest', async (req) => adresseLernen(req));
+
+// Die Companion-PWA läuft auf einem anderen Ursprung und tritt von dort bei.
+// Freigegeben sind nur die Pfade, die sie braucht – /api/anzeige (PIN!) bleibt zu.
+// Anmeldung per Bearer-Token, nicht per Cookie, deshalb reicht „*“.
+const FUER_COMPANION = ['/api/beitreten', '/api/ich'];
+app.addHook('onRequest', async (req, reply) => {
+  if (!FUER_COMPANION.includes(req.url.split('?')[0])) return;
+  reply.header('Access-Control-Allow-Origin', '*');
+  // Chrome fragt vor Anfragen ins Heimnetz zusätzlich nach (Private Network Access)
+  if (req.headers['access-control-request-private-network'] === 'true') {
+    reply.header('Access-Control-Allow-Private-Network', 'true');
+  }
+});
+for (const pfad of FUER_COMPANION) {
+  app.options(pfad, async (req, reply) =>
+    reply
+      .header('Access-Control-Allow-Methods', 'GET, POST')
+      .header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
+      .header('Access-Control-Max-Age', '600')
+      .code(204)
+      .send());
+}
 await app.register(fastifyMultipart, { limits: { fileSize: 25 * 1024 * 1024, files: 1 } });
 await app.register(fastifyWebsocket);
 await app.register(fastifyStatic, { root: MEDIEN, prefix: '/medien/', decorateReply: false, maxAge: '7d' });
@@ -123,10 +146,19 @@ function nutzerAusAnfrage(req) {
   return tokenPruefen(kopf.startsWith('Bearer ') ? kopf.slice(7) : null);
 }
 
+const pinSperre = fehlversuchSperre();
+
 app.post('/api/beitreten', async (req, reply) => {
   const { pin, name } = req.body ?? {};
   const sauberName = typeof name === 'string' ? name.trim().slice(0, 24) : '';
-  if (String(pin ?? '') !== PIN) return reply.code(401).send({ fehler: 'Falsche PIN' });
+  const ip = req.socket.remoteAddress;
+  const sperre = pinSperre.gesperrt(ip);
+  if (sperre) return reply.code(429).send({ fehler: `Zu viele falsche PINs – bitte ${sperre} s warten` });
+  if (String(pin ?? '') !== PIN) {
+    pinSperre.fehlschlag(ip);
+    return reply.code(401).send({ fehler: 'Falsche PIN' });
+  }
+  pinSperre.erfolg(ip);
   if (!sauberName) return reply.code(400).send({ fehler: 'Name fehlt' });
   return { token: tokenErstellen(sauberName), name: sauberName };
 });

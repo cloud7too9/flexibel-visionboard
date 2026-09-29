@@ -82,6 +82,19 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 - Löschen mit zweitem Tippen („Wirklich löschen?“), weil ein Bauplan für alle weg ist
 - Vorschau ist vereinfacht (Pixel-Masken, keine Original-Texturen)
 
+## Board-Verbindung
+
+Verbindet die Companion mit dem Koordinaten-Board im Zimmer. Das ist kein Bereich, sondern gilt für das ganze Gerät: Eintrag **Board** unten in der Sidebar, der Status-Punkt zeigt den Zustand (grau nicht verbunden, gelb verbindet, grün verbunden, rot getrennt).
+
+- **Scannen**: Das Sheet „Mit Board verbinden“ startet die Kamera und sucht den QR-Code der Anzeige (`http://<ip>:<port>/?pin=1234`). Erkennung per `BarcodeDetector`, wo es ihn gibt (Android-Chrome), sonst per **jsQR** (wird erst beim Scannen vom CDN geladen, `CONFIG.qrBibliothek`).
+- **Ausweichwege**: „Foto vom QR-Code“ und Adresse + PIN von Hand. Die ganze Beitritts-Adresse lässt sich auch einfügen, sie wird in Adresse und PIN aufgeteilt; ohne Port gilt `:3000`.
+- **Beitreten**: Ist der Name schon bekannt, tritt die Companion nach dem Erkennen sofort bei (`POST /api/beitreten`). Danach hält sie `/ws?token=…` offen, verbindet bei Abbruch neu und nach dem Standby sofort. Lehnt das Board das Token ab, vergisst sie die Verbindung.
+- **Verbunden**: Das Sheet zeigt Adresse, „Angemeldet als“, wer im Raum ist und wie viele Orte das Board hat. Die Anzeige des Boards führt die Companion wie ein Handy unter „online“. „Trennen“ vergisst die Verbindung.
+- Gilt pro Gerät (`localStorage` `board.verbindung`, `board.name`) und ist auch im DEMO-Modus echt, weil das Board ein eigenes Gerät ist.
+- **Noch offen**: welche Inhalte die Companion ans Board sendet.
+
+**https ↔ http:** Die Companion soll später als PWA über **https** laufen (z. B. Hetzner), das Board liefert nur **http** im Heimnetz. Browser blockieren Anfragen von einer https-Seite an eine http-Adresse (Mixed Content), Safari auf dem iPhone ausnahmslos. Die Kamera wiederum gibt es nur in einem sicheren Kontext (https oder localhost). Heute funktioniert die Verbindung deshalb, wenn die Companion über http oder als Datei geöffnet wird; die Kamera dann nur am Rechner, am Handy bleiben Foto und Eingabe von Hand. Die Companion meldet den Fall ausdrücklich („Der Browser blockiert die Verbindung …“).
+
 ## Regeln (Server muss sie genauso prüfen – siehe `instanzPruefen()`)
 
 1. „Eigene Orte“ ist eine zusätzliche Kategorie; dort legt man Typen (Ortsnamen) selbst an.
@@ -132,7 +145,7 @@ Die Texterkennung (`/orte/auslesen`) gibt es schon im Koordinaten-Board (`../koo
 
 ## Tests
 
-`tests/` enthält Playwright-Tests für Banner und Portal-Verwaltung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
+`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung und Board-Verbindung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`.
 
 ## Referenz
 
@@ -145,3 +158,4 @@ Was auch das Koordinaten-Board betrifft, liegt in `../referenz/`: Datenmodell, S
 - Beispiel-Screenshot vom Biom-Popup, um die Erkennung darauf abzustimmen
 - Dashboard-Ansichten pro Bereich (siehe oben): Seiten pro Bereich? Wo bearbeitet man – Handy oder Anzeige?
 - Inhalte der geplanten Bereiche (werden einzeln durchgegangen)
+- Board-Verbindung: welche Inhalte ans Board gehen; https-Companion ↔ http-Board (siehe oben)

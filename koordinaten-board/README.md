@@ -25,6 +25,10 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 - Koordinaten oder fertigen `/execute … tp`-Befehl kopieren, anheften, bearbeiten, löschen
 - Export aller Orte als JSON
 
+**Companion-PWA**
+- Die Companion kann per QR-Code-Scan beitreten wie ein Handy. Dafür sind `/api/beitreten` und `/api/ich` für andere Ursprünge freigegeben (CORS, inkl. Private-Network-Access-Antwort für Chrome). `/api/anzeige` mit der PIN bleibt gesperrt.
+- Nach **5 falschen PINs** ist das Gerät **60 s gesperrt** (`server/src/sperre.js`), damit keine Webseite die 4-stellige PIN durchprobieren kann.
+
 ## Starten
 
 Voraussetzung: [Node.js](https://nodejs.org) 20 oder neuer.
