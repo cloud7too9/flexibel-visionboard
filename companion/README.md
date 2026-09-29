@@ -52,6 +52,22 @@ Jeder Bereich bekommt eigene Ansichten fürs Dashboard. Vorbild ist das iOS-Kont
 
 Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welche Ansichten ein Bereich bekommt, klären wir, wenn wir den Bereich durchgehen.
 
+## Welt-Import: Biome aus `.mcworld` (in Arbeit, Branch `bereich/karte-mcworld`)
+
+Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch aus einer hochgeladenen Bedrock-Welt; die App liest sie im Browser (Web Worker) und zeigt sie flächig auf der Karte. Stand: **Phase 1 (Dekoder in Node)** – die Oberfläche ist noch unverändert.
+
+| Datei | Inhalt |
+|---|---|
+| `biom-dekoder.js` | reine Funktionen: Chunk-Schlüssel, Data3D (Höhenkarte + Biom-Sektionen), Oberflächenbiom, `level.dat` (NBT), Kacheln 32 × 32 Chunks, Base64 |
+| `biom-welt.js` | `weltLesen(datei)`: ZIP → `level.dat` → LevelDB-Dateien **einzeln** entpacken und mit Besucher parsen (Streaming) oder `readMcworld()` (Vergleich); gemeinsam für Worker und Node |
+| `biom-ids.js` | erzeugte ID-Tabelle (minecraft-data `bedrock/1.20.0`, IDs 0–191), setzt `globalThis.BIOM_IDS` |
+| `vendor/mcbe-leveldb.js` | Bundle aus `mcbe-leveldb-reader` 5.0.1 + zip.js (211 KB, gzip 86 KB), Lizenzen in `vendor/LIZENZEN.txt` |
+| `tools/` | `npm ci`, dann `npm run vendor` / `npm run biom-ids` (neu erzeugen), `npm test` (Gegenprobe mit prismarine-chunk), `node welt-pruefen.mjs <welt.mcworld> [--weg beide] [--massstab 4] [--punkt x,z]` |
+
+- **Prüfskript** `tools/welt-pruefen.mjs`: Weltname, Seed, Version, Chunks je Dimension, Ausdehnung, häufigste Biome, unbekannte IDs mit Beispielkoordinate, Laufzeit und Spitzenspeicher je Weg, PNG je Dimension nach `tests/bilder/` (1 Pixel = 1 Chunk, unbekannt rot). `--punkt x,z` zeigt die Höhenkarte in beiden Lesarten – zum Abgleich mit der Y-Anzeige im Spiel.
+- **Tests**: `cd tests && node --test biom-dekoder.test.mjs` – handgebaute Bytes und ganze **synthetische Welten** aus `tests/welt-bauen.mjs` (echte LevelDB-Dateien mit Leveln, gelöschter Datei, Log mit Löschmarke, iOS-Ordner, Java-Welt …).
+- **Welten von Max**: `tests/daten/fixture-seed.mcworld` (darf ins Repo), die Realm-Welt nur nach `tests/daten/privat/` (steht in `.gitignore`).
+
 ## Sammelobjekte
 
 - 18 Rüstungsbesätze + Netheritaufwertung mit den **Namen aus Bedrock** (`texts/de_DE.lang`, z. B. „Wächterzier“, „Mündelzier“), englischer Name klein daneben, Stand inkl. Fluss/Blitz aus 1.21

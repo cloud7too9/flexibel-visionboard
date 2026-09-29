@@ -57,6 +57,8 @@ Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmode
 - Umrechnung Nether ↔ Oberwelt und `/execute in … run tp`-Befehl
 - Kennblöcke (PNG) statt Symbol bei Strukturen mit Bild: Listen-Gruppe, Canvas-Marker, Detail-Kopf, Screenshot-Prüfliste. Siehe Sammelobjekte → Kennblöcke.
 
+**In Arbeit: Biome aus `.mcworld`** (Bauplan `PLAN-welt-import-biome.md`, Branch `bereich/karte-mcworld`). Phase 1 (Dekoder in Node) ist gebaut und getestet; es fehlen die Prüfungen an echten Welten von Max (Haltepunkt). Danach ändern sich die Biom-Regeln unten (nur noch per Welt-Import, Chunk-Raster statt Kreise). Stand und Befehle in `README.md` → Welt-Import.
+
 **Regeln von Max** (prüft `instanzPruefen()`, der Server muss sie genauso prüfen):
 
 1. „Eigene Orte“ ist eine zusätzliche Kategorie. Dort legt man die Typen (Ortsnamen) selbst an.

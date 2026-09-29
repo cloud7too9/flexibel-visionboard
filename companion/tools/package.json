@@ -1,0 +1,19 @@
+{
+  "name": "companion-werkzeuge",
+  "private": true,
+  "type": "module",
+  "description": "Werkzeuge für den Welt-Import: Bundle bauen, Biom-IDs erzeugen, .mcworld prüfen",
+  "scripts": {
+    "vendor": "node vendor-bauen.mjs",
+    "biom-ids": "node biom-ids-bauen.mjs",
+    "pruefen": "node welt-pruefen.mjs",
+    "test": "node --test gegenprobe.test.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "mcbe-leveldb-reader": "5.0.1",
+    "minecraft-data": "3.117.0",
+    "prismarine-chunk": "1.41.0",
+    "prismarine-registry": "1.12.0"
+  }
+}
