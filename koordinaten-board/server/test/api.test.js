@@ -92,6 +92,17 @@ test('Rüstungs-Baukasten wird ausgeliefert (Texturen, Module, Manifest)', async
   }
 });
 
+test('Welt-Import wird ausgeliefert (Prüfseite, Worker, Module, Bundle)', async () => {
+  for (const [pfad, typ] of [['welt-pruefen.html', 'text/html'], ['biom-import.worker.js', 'application/javascript'],
+    ['biom-welt.js', 'application/javascript'], ['biom-dekoder.js', 'application/javascript'], ['biom-ids.js', 'application/javascript'],
+    ['vendor/mcbe-leveldb.js', 'application/javascript']]) {
+    const res = await fetch(`${BASIS}/${pfad}`);
+    assert.equal(res.status, 200, pfad);
+    assert.ok(res.headers.get('content-type').startsWith(typ), `${pfad}: ${res.headers.get('content-type')}`);
+  }
+  assert.equal((await fetch(`${BASIS}/vendor/../daten.json`)).status, 404);
+});
+
 test('Screenshot auslesen: Banner-Anleitung liefert banner statt Ort', { timeout: 60_000 }, async () => {
   const max = await beitreten('Max');
   const form = new FormData();

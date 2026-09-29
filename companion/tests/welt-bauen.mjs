@@ -281,3 +281,39 @@ export function testweltBauen({ ordner = "", altesManifest = false, seed = SEED 
   if (altesManifest) dateien.push(["db/MANIFEST-000004", manifestBauen({ neu: [{ level: 0, nr: 8 }, { level: 0, nr: 13 }], logNr: 3 })]);
   return { zip: zipBauen(dateien.map(([p, b]) => [ordner + p, b])), erwartet };
 }
+
+/**
+ * Größere Welt für Laufzeit und Abbrechen: breite × breite Oberwelt-Chunks, je Chunk Data3D
+ * plus `ballast` SubChunks mit Zufallsdaten (wie Blockdaten, nicht komprimierbar), in .ldb-Dateien
+ * zu je etwa 2 MB wie bei Mojang. Standard: 60 × 60 Chunks, ≈ 55 MB.
+ */
+export function ballastWeltBauen({ breite = 60, ballast = 5, groesse = 3000, zufall = (n) => crypto.getRandomValues(new Uint8Array(n)) } = {}) {
+  const biomVon = (cx, cz) => [ID.ebene, ID.wald, ID.wueste, ID.ozean, 5, 21, 35][Math.abs(Math.floor(cx / 7) * 3 + Math.floor(cz / 9)) % 7];
+  const d3 = new Map();
+  const wert = (id) => d3.get(id) ?? d3.set(id, data3dBauen({ biom: (x, y) => (y < 20 ? ID.tiefeDunkelheit : id) })).get(id);
+  const dateien = [], neu = [];
+  let nr = 10, eintraege = [], summe = 0;
+  const schliessen = () => {
+    if (!eintraege.length) return;
+    dateien.push([`db/${String(nr).padStart(6, "0")}.ldb`, ldbBauen(eintraege)]);
+    neu.push({ level: 1, nr });
+    nr += 1; eintraege = []; summe = 0;
+  };
+  const halb = Math.floor(breite / 2);
+  for (let cx = -halb; cx < breite - halb; cx++) for (let cz = -halb; cz < breite - halb; cz++) {
+    eintraege.push([chunkSchluessel(cx, cz), wert(biomVon(cx, cz))]);
+    for (let y = 0; y < ballast; y++) {
+      const k = new Uint8Array(10); k.set(chunkSchluessel(cx, cz, "overworld", 0x2f)); k[9] = y;
+      eintraege.push([k, zufall(groesse)]);
+    }
+    summe += ballast * groesse;
+    if (summe > 2_000_000) schliessen();
+  }
+  schliessen();
+  return zipBauen([
+    ["level.dat", levelDatBauen({ seed: SEED, name: "Große Testwelt" })],
+    ["db/CURRENT", new TextEncoder().encode("MANIFEST-001000\n")],
+    ["db/MANIFEST-001000", manifestBauen({ neu })],
+    ...dateien,
+  ]);
+}

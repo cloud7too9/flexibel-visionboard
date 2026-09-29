@@ -288,6 +288,11 @@ await app.register(fastifyStatic, { root: path.join(COMPANION_ORDNER, 'icons'), 
 await app.register(fastifyStatic, {
   root: path.join(COMPANION_ORDNER, 'ruestungs-baukasten'), prefix: '/ruestungs-baukasten/', maxAge: '7d', decorateReply: false,
 });
+// Welt-Import (Biome aus .mcworld): Prüfseite, Web Worker und seine ES-Module, Bundle der LevelDB-Bibliothek
+for (const datei of ['welt-pruefen.html', 'biom-import.worker.js', 'biom-welt.js', 'biom-dekoder.js', 'biom-ids.js']) {
+  app.get(`/${datei}`, (req, reply) => reply.headers(OHNE_CACHE).sendFile(datei, COMPANION_ORDNER));
+}
+await app.register(fastifyStatic, { root: path.join(COMPANION_ORDNER, 'vendor'), prefix: '/vendor/', maxAge: '7d', decorateReply: false });
 
 if (existsSync(CLIENT_DIST)) {
   // Baut nur noch die Anzeige; ihre Dateien liegen unter /assets/
