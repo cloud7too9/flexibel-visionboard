@@ -1235,6 +1235,12 @@ function koordinatenErkennen(text){
 /* ============================================================================
    4 · API-VERTRAG  ·  + DEMO-Mock
    ----------------------------------------------------------------------------
+   Live liefert das Koordinaten-Board die Companion selbst aus (http://<board>/).
+   Die Pfade liegen dann unter /api, angemeldet wird per Bearer-Token aus dem
+   Beitreten (Name + PIN, siehe 9f). Umsetzung: koordinaten-board/server/src/
+   companion-api.js + daten.js, geprüft mit denselben Regeln aus regeln.js.
+   Nach jeder Änderung meldet das Board per WebSocket { art:"geaendert", bereich,
+   weltId } – die Companion lädt dann den Bereich neu (liveAktualisieren).
    GET    /orte/welten                → { welten:[{ id, seed, anzahl }] }
    POST   /orte/welten   { seed }     → { welt }            (legt 3 Dimensionen an)
    GET    /orte/welten/:id            → { welt, dimensionen, typen, instanzen }
@@ -1266,9 +1272,18 @@ function koordinatenErkennen(text){
    verbindung = { id, name, oberwelt:{ x, y|null, z }, nether:{ x, y|null, z }, von, am }
    ========================================================================== */
 const DEMO = {
-  // Wie Modul A: ohne Backend (file://) oder ohne ?live=1 läuft der Mock
-  enabled: !location.protocol.startsWith("http") || new URLSearchParams(location.search).get("live") !== "1",
+  // Mock, bis init() das Board als Server erkannt hat (betriebErkennen)
+  enabled: true,
 };
+const API_BASIS = "/api";
+/** Live-Betrieb, wenn das Board diese Seite ausliefert – sonst (Datei, fremder Server, ?demo=1) der Mock */
+async function betriebErkennen(){
+  if(!location.protocol.startsWith("http") || new URLSearchParams(location.search).get("demo") === "1") return false;
+  try {
+    const r = await fetch(`${API_BASIS}/server`, { cache:"no-store" });
+    return r.ok && (await r.json())?.name === "koordinaten-board";
+  } catch { return false; }
+}
 
 const MOCK = (() => {
   let naechste = 100;
@@ -1475,7 +1490,7 @@ function mockApi(path, opts){
 
 // --- Auth + fetch-Wrapper (gleiches Muster wie Modul A) --------------------
 function authHeaders(){
-  const t = new URLSearchParams(location.search).get("token");
+  const t = bd.verbindung?.token;
   return t ? { "Authorization":"Bearer " + t } : {};
 }
 async function api(path, opts){
@@ -1485,13 +1500,14 @@ async function api(path, opts){
     await new Promise((r) => setTimeout(r, path === "/orte/auslesen" ? 900 + Math.random()*700 : 80 + Math.random()*120));
     return mockApi(path, opts);
   }
-  const istFormular = opts.body instanceof FormData;
-  const headers = Object.assign(istFormular ? {} : { "Content-Type":"application/json" }, authHeaders(), opts.headers || {});
+  const json = opts.body != null && !(opts.body instanceof FormData);
+  const headers = Object.assign(json ? { "Content-Type":"application/json" } : {}, authHeaders(), opts.headers || {});
   let res;
-  try { res = await fetch(path, Object.assign({}, opts, { headers })); }
+  try { res = await fetch(API_BASIS + path, Object.assign({}, opts, { headers })); }
   catch(e){ return { ok:false, status:0, data:{ error:"network", message:"Keine Verbindung" } }; }
   let data = null;
   try { data = await res.json(); } catch {}
+  if(res.status === 401) anmeldungAbgelaufen();
   return { ok:res.ok, status:res.status, data };
 }
 const meldungAus = (r) => r?.data?.message || (r?.status === 0 ? "Keine Verbindung" : `Fehler ${r?.status}`);
@@ -3111,6 +3127,9 @@ document.getElementById("portalWeltBtn").addEventListener("click", () => weltOef
      WS   <board>/ws?token=…                    → { art:"zustand"|"teilnehmer", … }
    Das Board ist ein eigenes Gerät: Die Verbindung ist auch im DEMO-Modus echt.
    Sie gilt nur für dieses Gerät (localStorage „board.verbindung“, „board.name“).
+   Live-Betrieb (das Board liefert diese Seite aus): Beitreten ist die Anmeldung
+   für alle Daten. Das Board ist dann immer location.origin – ohne Scanner, die
+   PIN kommt aus dem QR-Code (?pin=…), den die Kamera-App geöffnet hat.
 
    „Aufs Board“ (Inhalte auf die Anzeige werfen), über dieselbe Verbindung:
      → { art:"zeigen", karte, anfrage }       ← { art:"ok"|"fehler", anfrage }
@@ -3303,9 +3322,52 @@ async function boardBeitretenKlick(){
     return banner($b, "bad", r.fehler);
   }
   bd.verbindung = r.verbindung; lsSchreiben("board.verbindung", r.verbindung);
+  if(!DEMO.enabled){
+    // PIN nicht in der Adresszeile stehen lassen; Sheet zu, bevor die Verbindung es neu zeichnen würde
+    const q = new URLSearchParams(location.search); q.delete("pin");
+    history.replaceState(null, "", location.pathname + (q.toString() ? `?${q}` : ""));
+    alleSchliessen();
+    boardVerbinden();
+    toast(`Willkommen, ${r.verbindung.name}`);
+    return datenStarten();
+  }
   boardVerbinden();
   if(offen) boardSheetRendern();
   toast("Mit dem Board verbunden");
+}
+
+/** Live: Token abgelehnt (Board neu eingerichtet, Geheimnis gelöscht) → neu beitreten */
+function anmeldungAbgelaufen(){
+  if(DEMO.enabled || !bd.verbindung) return;
+  boardTrennen();
+  toast("Bitte neu beitreten – das Board kennt dieses Gerät nicht mehr", true);
+  boardSheetRendern();
+}
+
+/** Live: Ein Handy hat etwas geändert (auch dieses) → nur den betroffenen Bereich neu laden */
+async function liveAktualisieren({ bereich, weltId }){
+  if(DEMO.enabled) return;
+  if(bereich === "banner") return bannerLaden();
+  if(bereich === "einstellungen") return boardAnzeigen();
+  if(bereich === "welten" || (weltId && weltId !== st.weltId)) return weltenAuffrischen();
+  if(bereich === "orte") return orteAuffrischen();
+  if(bereich === "sammelobjekte") return samLaden();
+  if(bereich === "portale") return portaleLaden();
+}
+async function weltenAuffrischen(){
+  const r = await api("/orte/welten"); if(!r.ok) return;
+  st.welten = r.data.welten;
+  if(!st.weltId && st.welten[0]) return weltLaden(st.welten[0].id);
+  if(st.sheet === "welt") weltOeffnen();
+  render();
+}
+/** Orte der aktuellen Welt neu holen, ohne Ansicht, Filter oder Kartenausschnitt zu verändern */
+async function orteAuffrischen(){
+  if(!st.weltId) return;
+  const r = await api(`/orte/welten/${st.weltId}`); if(!r.ok) return;
+  Object.assign(st, { typen:r.data.typen, instanzen:r.data.instanzen });
+  const w = st.welten.find((x) => x.id === st.weltId); if(w) w.anzahl = st.instanzen.length;
+  render();
 }
 
 function boardVerbinden(){
@@ -3323,6 +3385,7 @@ function boardVerbinden(){
       const w = bd.offen.get(n.anfrage); bd.offen.delete(n.anfrage);
       return n.art === "ok" ? w?.ok() : w?.fehler(n.text || "Board hat abgelehnt");
     }
+    if(n.art === "geaendert") return liveAktualisieren(n);
     if(n.art === "teilnehmer") bd.teilnehmer = n.namen || [];
     else if(n.art === "zustand") bd.orte = n.zustand?.orte?.length ?? null;
     else if(n.art === "gezeigt") bd.gezeigt = n.karte || null;
@@ -3334,6 +3397,7 @@ function boardVerbinden(){
     bd.socket = null;
     boardOffeneAbbrechen();
     if(e.code === 4001){                     // Token abgelehnt, z. B. Board neu eingerichtet
+      if(!DEMO.enabled) return anmeldungAbgelaufen();
       boardTrennen();
       return toast("Das Board kennt dieses Gerät nicht mehr – bitte neu scannen", true);
     }
@@ -3469,13 +3533,28 @@ function boardSheetRendern(){
           : `<div class="banner info">Gerade liegt nichts auf dem Board. Im Detail eines Ortes „Aufs Board“ antippen.</div>`}
       </div>
       <div class="sheet-fuss">
-        <button class="btn-secondary" data-aktion="board-trennen">Trennen</button>
+        <button class="btn-secondary" data-aktion="board-trennen">${DEMO.enabled ? "Trennen" : "Abmelden"}</button>
         <button class="btn-primary" data-aktion="schliessen">Fertig</button>
       </div>
     </div>`);
     return;
   }
   const name = lsLesen("board.name") || (DEMO.enabled ? MOCK.ich : "");
+  if(!DEMO.enabled){
+    const pin = new URLSearchParams(location.search).get("pin") || "";
+    sheetOeffnen("board", kopfHtml("Beitreten", `Koordinaten-Board · ${esc(adresseKurz(location.origin))}`) + `<div class="orte-inhalt">
+      <div class="banner info">Alle im Raum sehen dieselben Orte, Sammelobjekte, Portale und Banner. Die PIN steht auf der Anzeige unter dem QR-Code.</div>
+      <div class="banner" id="boardBanner" hidden></div>
+      <input type="hidden" id="boardAdresse" value="${esc(location.origin)}">
+      <div class="field-group"><div class="field-group-label">PIN</div>
+        <input class="orte-eingabe mono" id="boardPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="1234" value="${esc(pin)}"></div>
+      <div class="field-group"><div class="field-group-label">Dein Name</div>
+        <input class="orte-eingabe" id="boardName" maxlength="24" autocomplete="nickname" placeholder="z. B. Max" value="${esc(name)}"></div>
+      <div class="sheet-fuss"><button class="btn-primary" data-aktion="board-beitreten">Beitreten</button></div>
+    </div>`);
+    document.getElementById(pin ? "boardName" : "boardPin").focus();
+    return;
+  }
   sheetOeffnen("board", kopfHtml("Mit Board verbinden", "QR-Code auf der Anzeige im Zimmer scannen") + `<div class="orte-inhalt">
     <div class="scanner" id="boardScanner">
       <video id="boardVideo" playsinline muted></video>
@@ -3517,12 +3596,14 @@ function uebernehmen({ instanz, typ }){
     const w = st.welten.find((x) => x.id === st.weltId); if(w && alt < 0) w.anzahl = (w.anzahl || 0) + 1;
   }
 }
+/** Welten holen und die zuletzt gewählte laden – false, wenn das nicht ging (z. B. abgemeldet) */
 async function weltenLaden(){
   const r = await api("/orte/welten");
-  if(!r.ok){ toast(meldungAus(r), true); return; }
+  if(!r.ok){ if(r.status !== 401) toast(meldungAus(r), true); return false; }
   st.welten = r.data.welten;
   if(!st.welten.some((w) => w.id === st.weltId)) st.weltId = st.welten[0]?.id || null;
   if(st.weltId) await weltLaden(st.weltId);
+  return true;
 }
 async function weltLaden(id){
   const r = await api(`/orte/welten/${id}`);
@@ -3577,7 +3658,7 @@ $datei.addEventListener("change", () => { const d = [...$datei.files]; $datei.va
 document.getElementById("orteEintragenBtn").addEventListener("click", formularOeffnen);
 document.getElementById("orteWeltBtn").addEventListener("click", () => weltOeffnen());
 document.getElementById("orteStatusBtn").addEventListener("click", () =>
-  toast(DEMO.enabled ? "Demo-Modus – Daten nur in diesem Tab" : "Mit dem Companion-Server verbunden"));
+  toast(DEMO.enabled ? "Demo-Modus – Daten nur in diesem Tab" : "Live – Daten liegen auf dem Board"));
 
 // Sidebar
 document.getElementById("boardBtn").addEventListener("click", boardOeffnen);
@@ -3657,7 +3738,8 @@ $sheet.addEventListener("click", async (e) => {
       const seed = document.getElementById("weltSeed").value.trim();
       const r = await api("/orte/welten", { method:"POST", body:JSON.stringify({ seed }) });
       if(!r.ok) return weltOeffnen(["bad", meldungAus(r)]);
-      st.welten.push({ ...r.data.welt, anzahl:0 });
+      // Live kann die Meldung „geaendert“ schneller gewesen sein – dann steht die Welt schon drin
+      if(!st.welten.some((w) => w.id === r.data.welt.id)) st.welten.push({ ...r.data.welt, anzahl:0 });
       await weltLaden(r.data.welt.id);
       alleSchliessen(); toast("Welt angelegt");
       break;
@@ -3704,7 +3786,10 @@ $sheet.addEventListener("click", async (e) => {
     case "board-beitreten": boardBeitretenKlick(); break;
     case "board-kamera": boardScanStarten(); break;
     case "board-foto": document.getElementById("boardFoto").click(); break;
-    case "board-trennen": boardTrennen(); alleSchliessen(); toast("Vom Board getrennt"); break;
+    case "board-trennen":
+      boardTrennen();
+      if(!DEMO.enabled) return location.replace(location.pathname);   // abgemeldet → neu beitreten
+      alleSchliessen(); toast("Vom Board getrennt"); break;
     case "board-zeigen": boardZeigen(a.dataset.boardQuelle); break;
     case "board-wegnehmen": boardWegnehmen(); break;
     case "banner-loeschen":
@@ -3750,18 +3835,30 @@ $sheet.addEventListener("change", (e) => {
 // Statusleiste: echte Uhrzeit
 function uhr(){ document.getElementById("uhr").textContent = new Date().toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit" }); }
 
-function init(){
+/** Daten laden und in den gewünschten Bereich springen (?modul=…) */
+async function datenStarten(){
+  if(!(await weltenLaden())) return;
+  const start = new URLSearchParams(location.search).get("modul");
+  if(start && start !== "karte") modulWechseln(start);
+  // Live und noch keine Welt: gleich eine anlegen lassen
+  if(!DEMO.enabled && !st.welten.length) weltOeffnen(["info", "Noch keine Welt auf dem Board – leg die erste mit ihrem Seed an."]);
+}
+async function init(){
   sidebarBauen("karte");
-  boardKnopfRendern();
-  if(bd.verbindung) boardVerbinden();
   document.getElementById("kopfIcon").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON.karte}</svg>`;
   applyTheme(st.dim);
   ansichtWechseln(st.ansicht);
   uhr(); setInterval(uhr, 30000);
-  weltenLaden().then(() => {
-    const start = new URLSearchParams(location.search).get("modul");
-    if(start && start !== "karte") modulWechseln(start);
-  });
+  DEMO.enabled = !(await betriebErkennen());
+  if(!DEMO.enabled){
+    // Live: Das Board ist dieser Server – eine Verbindung zu einem anderen gilt hier nicht
+    if(bd.verbindung && bd.verbindung.adresse !== location.origin) bd.verbindung = null;
+    renderStatus();
+  }
+  boardKnopfRendern();
+  if(bd.verbindung) boardVerbinden();
+  if(!DEMO.enabled && !bd.verbindung) return boardSheetRendern();   // erst beitreten, dann Daten
+  datenStarten();
 }
 init();
 </script>
