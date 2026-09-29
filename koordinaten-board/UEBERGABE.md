@@ -19,13 +19,14 @@ Ein Gerät im Zimmer zeigt die Orte der aktiven Welt groß an. Alle anderen öff
   - Anmeldung: PIN + HMAC-Token
   - Texterkennung: tesseract.js lokal (`eng`, best_int), Feature-Namen per Levenshtein unscharf zugeordnet
 - **Starten**: `start.bat` auf Windows (Node 20+) oder `start.sh`. Die Anzeige unter `/anzeige` ist nur vom Board-Rechner selbst erreichbar.
-- **Tests**: `npm test` → 32 Tests (Erkennung 13, Companion-API 3, Daten + Anzeige-Sicht 4, Regeln 3, Karten 4, Netzwerk 3, PIN-Sperre 2), alle grün. Die API-Tests starten einen echten Server-Prozess mit leerem Datenordner.
+- **Tests**: `npm test` → 37 Tests (Erkennung 13, Banner-Erkennung 4 mit echter OCR am Referenzbild, Companion-API 4, Daten + Anzeige-Sicht 4, Regeln 3, Karten 4, Netzwerk 3, PIN-Sperre 2), alle grün. Die API-Tests starten einen echten Server-Prozess mit leerem Datenordner.
 - **Server-Aufbau**:
   - `daten.js`: Welten, Typen, Instanzen, Sammelobjekte, Banner, Portale, Einstellungen (`titel`, `qrZeigen`, `aktiveWelt`). Abläufe wie der DEMO-Mock der Companion.
   - `companion-api.js`: REST unter `/api` nach dem Vertrag in `companion-prototyp.html` (Abschnitt 4), Bearer-Token aus dem Beitreten. Dazu `/api/board/einstellungen` und `PUT /api/orte/instanzen/:id/angeheftet`. Jede Änderung meldet per WebSocket `{ art:"geaendert", bereich, weltId }`.
   - `regeln.js`: lädt `companion/regeln.js` per `node:vm` – dieselben Regeln wie am Handy, nichts nachgebaut.
   - `sicht.js`: Orte der aktiven Welt (ohne Biome) in der alten `Ort`-Form für die Anzeige.
   - `erkennung.js` + `fuerCompanion()`: OCR für `/api/orte/auslesen`.
+  - `banner-erkennung.js` + `bildvorbereitung.js`: Banner-Anleitungen (Branch `bereich/banner-screenshot`). Ohne Seed-Map-Popup wird das Bild 3× vergrößert und für helle, dann dunkle Schrift in Schwarz-Weiß gewandelt; Zeilen „<Farbe> <Muster>“ werden unscharf über `regeln.js` zugeordnet. Kostet bis zu zwei weitere OCR-Läufe (~1 s am PC). WebP wird nicht vorbereitet.
   - `/api/server` → `{ name:"koordinaten-board" }`: daran erkennt die Companion den Live-Betrieb.
 - **Für die Companion** (früher Branch `board/scanner`):
   - CORS für `/api/beitreten` und `/api/ich`, Sperre nach 5 falschen PINs für 60 s.

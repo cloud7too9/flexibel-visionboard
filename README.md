@@ -15,7 +15,7 @@ Zwei Projekte für eine gemeinsame Minecraft-Welt im Raum – seit dem 29.09.202
 - Das **Board** liefert die Companion unter `/` aus und hält alle Daten (`koordinaten-board/server/daten/daten.json`). Handys scannen den QR-Code der Anzeige und treten mit Name + PIN bei; Änderungen kommen bei allen live an.
 - Handy und Server prüfen mit **derselben Datei** `companion/regeln.js`.
 - Die **Anzeige** (`/anzeige`) zeigt die Orte der aktiven Welt; jeder Inhalt der Companion lässt sich per „Aufs Board“ groß darauf werfen (Anzeigeschema in `BOARD_KARTEN`).
-- Die Texterkennung des Boards liest Seed-Map-Screenshots für die Companion aus (`/api/orte/auslesen`).
+- Die Texterkennung des Boards liest Seed-Map-Screenshots und Banner-Anleitungen für die Companion aus (`/api/orte/auslesen`).
 - Beide nutzen dieselbe Optik (Dimensions-Themes aus `modul-a-live-karte.html`) und dieselben Seed-Map-Screenshots als Grundlage.
 - `modul-a-live-karte.html`, die Hauptdatei der Companion-PWA, liegt **nicht** in diesem Repo. Max pflegt sie selbst; das Board kann sie später statt des Prototyps ausliefern (`COMPANION_DATEI`).
 

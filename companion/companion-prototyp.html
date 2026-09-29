@@ -630,6 +630,10 @@ select.orte-eingabe { padding-right:34px;
 .imp-kennblock { display:inline-grid; place-items:center; width:20px; height:20px; margin-right:6px; vertical-align:-4px;
   color:var(--accent); font:700 13px ui-monospace,monospace; }
 .imp-kennblock .kennblock { width:20px; height:20px; }
+.imp-banner { display:flex; gap:14px; align-items:flex-start; }
+.imp-banner .banner-rahmen { flex:0 0 auto; }
+.imp-schritte { margin:0; padding-left:20px; font-size:13px; line-height:1.55; color:var(--text-dim); }
+.imp-schritte li:first-child { color:var(--text); font-weight:600; }
 .imp-kopf .card-meta { display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:4px; }
 .pill { font-size:10px; font-weight:800; padding:3px 8px; border-radius:7px; text-transform:uppercase; letter-spacing:.1em;
   background:var(--accent-soft); color:var(--accent); }
@@ -992,6 +996,10 @@ button.switch { padding:0; }
         <div class="banner-raster" id="bannerListe"></div>
       </div>
       <nav class="bottombar">
+        <button class="bb-item" id="bannerScreenshotBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+          <span class="lab">Screenshot</span>
+        </button>
         <div class="bb-placeholder">Baupläne gelten für alle Welten</div>
         <button class="bb-item active" id="bannerNeuBtn">
           <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
@@ -1255,7 +1263,9 @@ function koordinatenErkennen(text){
    PUT    /orte/instanzen/:id/angeheftet { angeheftet } → { instanz }  (groß auf der Anzeige; Biome: 403)
    DELETE /orte/instanzen/:id                → { ok:true }
    POST   /orte/auslesen  (multipart „datei“) → { erkannt:{ titel, kategorie, variante, dimension,
-                                                  x, y|null, z } | null }
+                                                  x, y|null, z } | null,
+                                        banner:{ basis|null, ebenen:[{ muster, farbe }], unklar:[text] } | null }
+                                      (erst Seed-Map-Popup, sonst Banner-Anleitung „Black Base“, „Cyan Bordure“ …)
    Typen:  typ = { id, kategorie, variante|null }   instanz = { id, dimensionId, featureTypeId, x, y, z }
 
    Sammelobjekte (Fortschritt je Welt, für alle gemeinsam):
@@ -1338,6 +1348,9 @@ const MOCK = (() => {
     { titel:"Soul Sand Valley", kategorie:BIOMES, variante:"Soul Sand Valley", dimension:"overworld", x:-40, y:null, z:210 },
     { titel:"Bastion", kategorie:"Bastion", variante:null, dimension:"nether", x:-488, y:null, z:1016 },
     { titel:"Village", kategorie:"Village", variante:null, dimension:"overworld", x:1808, y:null, z:-2240 },
+    { banner:{ basis:"black", ebenen:[{ muster:"border", farbe:"cyan" }, { muster:"rhombus", farbe:"light_blue" },
+      { muster:"border", farbe:"black" }, { muster:"flower", farbe:"black" }, { muster:"square_top_left", farbe:"black" },
+      { muster:"square_bottom_right", farbe:"black" }], unklar:[] } },
   ];
   // Bereits abgehakte Sammelobjekte der Beispielwelt
   const sammel = {
@@ -1494,8 +1507,8 @@ function mockApi(path, opts){
   }
 
   if(method === "POST" && path === "/orte/auslesen"){
-    const erkannt = MOCK.auslesen[MOCK.ocr++ % MOCK.auslesen.length];
-    return ok({ erkannt:erkannt ? { ...erkannt } : null });
+    const e = MOCK.auslesen[MOCK.ocr++ % MOCK.auslesen.length];
+    return ok({ erkannt:e && !e.banner ? { ...e } : null, banner:e?.banner ? structuredClone(e.banner) : null });
   }
   return fehler(404, "Unbekannter Pfad");
 }
@@ -2150,7 +2163,8 @@ async function importAbarbeiten(){
     const r = await api("/orte/auslesen", { method:"POST", body:fd });
     if(!r.ok){ e.status = "fehler"; e.meldungen = [["bad", meldungAus(r)]]; importRendern(); continue; }
     const k = r.data?.erkannt;
-    if(!k){ e.status = "leer"; e.meldungen = [["warn", "Kein Popup gefunden – ist die Karte aufgeklappt?"]]; importRendern(); continue; }
+    if(!k && r.data?.banner){ await bannerImport(e, r.data.banner); importRendern(); continue; }
+    if(!k){ e.status = "leer"; e.meldungen = [["warn", "Weder ein Seed-Map-Popup noch eine Banner-Anleitung gefunden – ist das Popup aufgeklappt?"]]; importRendern(); continue; }
     Object.assign(e, { status:"fertig", erkannt:k, dim:k.dimension, x:String(k.x), y:k.y != null ? String(k.y) : "", z:String(k.z), an:true, meldungen:[] });
     if(k.kategorie === BIOMES){
       const b = biomFinden(k.variante);
@@ -2171,9 +2185,32 @@ async function importAbarbeiten(){
   }
   importLaeuft = false;
 }
+/** Banner aus einer Anleitung (Screenshot) in die Prüfliste: Name vorschlagen, Regeln und Duplikate prüfen */
+const bannerSchluessel = (b) => JSON.stringify([b.basis, b.ebenen.map(({ muster, farbe }) => [muster, farbe])]);
+async function bannerImport(e, b){
+  if(!bn.liste.length) await bannerLaden();   // für den Duplikat-Vergleich
+  const vergeben = new Set([...bn.liste.map((x) => x.name), ...st.importe.filter((o) => o.banner).map((o) => o.name)]);
+  let name = `Banner vom ${datumKurz(new Date().toISOString())}`;
+  for(let n = 2; vergeben.has(name); n++) name = `Banner vom ${datumKurz(new Date().toISOString())} (${n})`;
+  Object.assign(e, { status:"fertig", banner:{ basis:b.basis, ebenen:b.ebenen }, name, an:true, meldungen:[] });
+  const problem = b.basis ? bannerPruefen({ name, ...e.banner }) : "Grundfarbe nicht erkannt (Schritt 1 „… Base“) – Screenshot mit der ganzen Liste nehmen.";
+  if(problem){ e.an = false; e.meldungen.push(["bad", problem]); }
+  if(b.unklar?.length) e.meldungen.push(["warn", `Nicht zugeordnet: ${b.unklar.join(" · ")} – nach dem Speichern im Editor prüfen.`]);
+  if(!b.basis) return;
+  const gleich = bn.liste.find((x) => bannerSchluessel(x) === bannerSchluessel(e.banner));
+  const imStapel = st.importe.find((o) => o !== e && o.banner && o.status === "fertig" && bannerSchluessel(o.banner) === bannerSchluessel(e.banner));
+  if(gleich){ e.an = false; e.meldungen.push(["warn", `Schon gespeichert als „${gleich.name}“`]); }
+  else if(imStapel){ e.an = false; e.meldungen.push(["warn", "Doppelt in dieser Auswahl"]); }
+}
+
 function importFelderLesen(){
   for(const e of st.importe){
     if(e.status !== "fertig" || !e.an) continue;
+    if(e.banner){
+      const $n = $sheet.querySelector(`[data-import-name="${e.id}"]`);
+      if($n) e.name = $n.value.trim();
+      continue;
+    }
     // Karte war vorher noch „Lese …“ → es gibt noch keine Felder, erkannte Werte behalten
     if(!$sheet.querySelector(`[data-koord="i${e.id}X"]`)) continue;
     const k = koordLesen(`i${e.id}`);
@@ -2186,8 +2223,9 @@ function importRendern(){
   if(st.sheet === "import") importFelderLesen();
   const laufend = st.importe.some((e) => e.status === "wartet" || e.status === "lese");
   const auswahl = st.importe.filter((e) => e.status === "fertig" && e.an).length;
-  const erkannt = st.importe.filter((e) => e.erkannt).length;
+  const erkannt = st.importe.filter((e) => e.erkannt || e.banner).length;
   const karten = st.importe.map((e) => {
+    if(e.banner) return importBannerKarte(e);
     const k = e.erkannt;
     const biom = k && k.kategorie === BIOMES;
     const titel = e.status === "wartet" ? "Wartet …"
@@ -2214,17 +2252,54 @@ function importRendern(){
     ${karten}
     <div class="sheet-fuss">
       <button class="btn-secondary" data-aktion="import-mehr" aria-label="Weitere Screenshots">+ Mehr</button>
-      <button class="btn-primary" data-aktion="import-speichern" ${auswahl ? "" : "disabled"}>${laufend && !auswahl ? "Lese …" : auswahl === 1 ? "1 Ort speichern" : `${auswahl} Orte speichern`}</button>
+      <button class="btn-primary" data-aktion="import-speichern" ${auswahl ? "" : "disabled"}>${laufend && !auswahl ? "Lese …" : importKnopfText()}</button>
     </div>
   </div>`;
   sheetOeffnen("import", html);
   $sheet.scrollTop = scroll;
+}
+/** „1 Ort speichern“, „2 Orte + 1 Banner speichern“ … */
+function importKnopfText(){
+  const aus = st.importe.filter((e) => e.status === "fertig" && e.an);
+  const orte = aus.filter((e) => !e.banner).length, banner = aus.length - orte;
+  const teile = [orte ? `${orte} ${orte === 1 ? "Ort" : "Orte"}` : "", banner ? `${banner} Banner` : ""].filter(Boolean);
+  return `${teile.join(" + ") || "0 Orte"} speichern`;
+}
+function importBannerKarte(e){
+  const b = e.banner, bearbeitbar = e.status === "fertig";
+  const titel = e.status === "gespeichert" ? `${esc(e.name)} ✓` : `Banner · ${b.ebenen.length} Muster`;
+  const schritte = [b.basis ? `Grundfarbe ${farbe(b.basis).de}` : "Grundfarbe ?", ...b.ebenen.map((x) => `${muster(x.muster).de} (${farbe(x.farbe).de})`)];
+  return `<div class="card ${bearbeitbar && !e.an ? "aus" : ""}" data-import="${e.id}">
+    <div class="imp-kopf">
+      <img src="${e.url}" alt="">
+      <div class="text"><div class="card-title">${titel}</div><div class="card-meta"><span class="pill">Banner</span><span class="pill">alle Welten</span></div></div>
+      ${bearbeitbar ? `<button class="switch ${e.an ? "on" : ""}" data-aktion="import-an" data-id="${e.id}" role="switch" aria-checked="${e.an}" aria-label="Übernehmen"></button>` : ""}
+    </div>
+    ${e.meldungen.map(([art, text]) => `<div class="banner ${art}">${esc(text)}</div>`).join("")}
+    ${b.basis ? `<div class="imp-banner">
+      <span class="banner-rahmen">${bannerImg(b, "", "Vorschau")}</span>
+      <ol class="imp-schritte">${schritte.map((t) => `<li>${esc(t)}</li>`).join("")}</ol>
+    </div>` : ""}
+    ${bearbeitbar && e.an ? `<label class="field"><span class="field-label">Name</span>
+      <input class="orte-eingabe" data-import-name="${e.id}" maxlength="60" autocomplete="off" value="${esc(e.name)}"></label>` : ""}
+  </div>`;
 }
 async function importSpeichern(){
   importFelderLesen();
   const auswahl = st.importe.filter((e) => e.status === "fertig" && e.an);
   let gespeichert = 0; const dims = new Set();
   for(const e of auswahl){
+    if(e.banner){
+      const neu = { name:e.name, ...e.banner };
+      const problem = bannerPruefen(neu);
+      if(problem){ e.meldungen = [["bad", problem]]; continue; }
+      const r = await api("/banner", { method:"POST", body:JSON.stringify(bannerSauber(neu)) });
+      if(r.ok){
+        if(!bn.liste.some((x) => x.id === r.data.banner.id)) bn.liste.unshift(r.data.banner);
+        e.status = "gespeichert"; e.meldungen = []; gespeichert++;
+      } else e.meldungen = [["bad", meldungAus(r)]];
+      continue;
+    }
     const x = Number(e.x), z = Number(e.z), y = e.y === "" ? null : Number(e.y);
     if(!Number.isInteger(x) || !Number.isInteger(z) || (y !== null && !Number.isInteger(y))){
       e.meldungen = [["bad", "Koordinaten prüfen"]]; continue;
@@ -2235,12 +2310,13 @@ async function importSpeichern(){
     else e.meldungen = [["bad", meldungAus(r)]];
   }
   if(gespeichert === auswahl.length){
+    const banner = auswahl.filter((e) => e.banner).length, orte = gespeichert - banner;
     st.importe.forEach((e) => URL.revokeObjectURL(e.url));
     st.importe = [];
     alleSchliessen();
-    if(dims.size === 1) dimWechseln([...dims][0]);
+    if(orte && dims.size === 1 && aktivesModul === "karte") dimWechseln([...dims][0]);
     karte.neuAnpassen();
-    toast(gespeichert === 1 ? "1 Ort gespeichert" : `${gespeichert} Orte gespeichert`);
+    toast(`${[orte ? `${orte} ${orte === 1 ? "Ort" : "Orte"}` : "", banner ? `${banner} Banner` : ""].filter(Boolean).join(" + ")} gespeichert`);
     render();
   } else {
     render(); importRendern();
@@ -3775,6 +3851,8 @@ $liste.addEventListener("click", (e) => {
 // Bottom Bar
 const $datei = document.getElementById("orteDatei");
 document.getElementById("orteScreenshotBtn").addEventListener("click", () => $datei.click());
+// Banner-Anleitungen landen über dieselbe Prüfliste (das Board erkennt, was es ist)
+document.getElementById("bannerScreenshotBtn").addEventListener("click", () => $datei.click());
 $datei.addEventListener("change", () => { const d = [...$datei.files]; $datei.value = ""; if(d.length) importStarten(d); });
 document.getElementById("orteEintragenBtn").addEventListener("click", formularOeffnen);
 document.getElementById("orteWeltBtn").addEventListener("click", () => weltOeffnen());

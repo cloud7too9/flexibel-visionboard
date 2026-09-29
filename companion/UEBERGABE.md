@@ -92,7 +92,10 @@ Die Wünsche von Max waren: Koordinaten umrechnen, Verbindungen mit den Koordina
 - **Liste** mit Vorschau und Suche.
 - **Detail** mit Material, nötigen Bannervorlagen samt Herkunft und einer **Anleitung Schritt für Schritt**. Jeder Schritt zeigt den Zwischenstand und lässt sich abhaken.
 - **Editor**: Grundfarbe, bis zu 6 Ebenen, Muster-Raster mit Vorschaubildern wie am Webstuhl.
-- Ein Banner aus dem Editor-Screenshot per OCR auszulesen hat nicht funktioniert (die weiße Schrift ist zu klein). Deshalb gibt es nur den Editor von Hand.
+- **Banner aus Screenshots** (Wunsch von Max): Anleitungen, die die Schritte als „<Farbe> <Muster>“ mit englischen Namen listen (`../referenz/banner/rezept-beispiel.jpg`: „Black Base“, „Cyan Bordure“, „Light Blue Lozenge“ …), liest das Board aus. Sie landen in derselben Screenshot-Prüfliste wie Orte: Vorschau, Schritte auf Deutsch, vorgeschlagener Name („Banner vom 29.9.“), dann speichern.
+  - Einstieg über „Screenshot“ in der Bottom-Bar von Banner **oder** Karte – das Board erkennt, ob es ein Seed-Map-Popup oder eine Banner-Anleitung ist.
+  - Schritt 1 „<Farbe> Base“ ist die Grundfarbe; fehlt er, lässt sich nichts speichern. Nicht zugeordnete Zeilen werden gemeldet, derselbe Banner zweimal als „Schon gespeichert“.
+  - Der Screenshot aus einem Banner-Editor (`referenz/banner/banner-editor-beispiel.jpg`) geht weiterhin nicht (Schrift zu klein) – dort bleibt der Editor von Hand.
 
 ### Rüstung 🟨 (als Nächstes)
 
@@ -226,7 +229,7 @@ git switch -c bereich/ruestung
 cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist
-npm test                          # banner (23) + portale (29) + sammelobjekte (64) + kennbloecke (14) + board (57) + live (48) + anzeigeschema (22) = 257 Prüfungen
+npm test                          # banner (23) + portale (29) + sammelobjekte (64) + kennbloecke (14) + board (57) + live (58) + anzeigeschema (22) = 267 Prüfungen
 ```
 
 - `board.test.mjs`, `live.test.mjs` und `anzeigeschema.test.mjs` starten je ein **echtes Koordinaten-Board** (Ports 3198, 3195, 3194, eigener Datenordner). Board-Test: Companion über einen eigenen `http://localhost`-Server (DEMO) mit Kamera, Foto, Hand-Eingabe und „Aufs Board“. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).
@@ -235,7 +238,7 @@ npm test                          # banner (23) + portale (29) + sammelobjekte (
   - Aufs Board: Ort auf die echte Anzeige (`/anzeige`, 1600×900) werfen, Layout, Neuladen der Anzeige, ein zweiter Spieler ersetzt die Karte (Zeilen, Text, Nether), ungültige Karte wird abgelehnt, Wegnehmen, Stronghold mit Kennblock.
   - Kennblöcke in den Spalten der Anzeige (Tim legt seine Orte über die Companion-API des Boards an).
 
-- `live.test.mjs`: Das Board liefert die Companion aus. Max und Lena treten per `/?pin=…` bei, erste Welt anlegen, Ort von Hand, **echter Screenshot** (`referenz/seedmap/stronghold-popup.png`) über die OCR des Boards, Änderungen kommen live beim anderen Handy an (Orte, Sammelobjekt, Banner, Portal), Server prüft mit `regeln.js`, Anzeige zeigt die aktive Welt mit Kennblock, Anheften, Umschalten der Welt, Titel, QR-Code, Neuladen und Server-Neustart, falsche PIN, ungültiges Token, Abmelden. Prüft auch, dass nur die erwarteten HTTP-Fehler vorkommen.
+- `live.test.mjs`: Das Board liefert die Companion aus. Max und Lena treten per `/?pin=…` bei, erste Welt anlegen, Ort von Hand, **echter Screenshot** (`referenz/seedmap/stronghold-popup.png`) über die OCR des Boards, **Banner aus der Anleitung** `referenz/banner/rezept-beispiel.jpg` (Knopf im Banner-Bereich, Name, speichern, Duplikat beim zweiten Mal), Änderungen kommen live beim anderen Handy an (Orte, Sammelobjekt, Banner, Portal), Server prüft mit `regeln.js`, Anzeige zeigt die aktive Welt mit Kennblock, Anheften, Umschalten der Welt, Titel, QR-Code, Neuladen und Server-Neustart, falsche PIN, ungültiges Token, Abmelden. Prüft auch, dass nur die erwarteten HTTP-Fehler vorkommen.
 - `anzeigeschema.test.mjs`: Für alle DEMO-Inhalte (Orte, Sammelobjekte, Fortschritt, Portale, Banner) die Karte bauen und mit `kartePruefen` aus `koordinaten-board/server/src/zeigen.js` prüfen; je Schema über den Knopf „Aufs Board“ eine Karte auf die echte Anzeige werfen (Screenshots `a1`–`a4`).
 - `kennbloecke.test.mjs` prüft die Kennblöcke der Karte: Canvas-Marker je Dimension (zählt `drawImage`), Listen-Köpfe, Detail-Kopf, Screenshot-Prüfliste (DEMO-Texterkennung) und dass Kategorien ohne Bild ihr Symbol behalten.
 - `sammelobjekte.test.mjs` prüft `STRUKTUREN` und `SAMMELOBJEKTE` gegen `icons/manifest.json` (Namen, Besätze, vorhandene Bilder), die Kennblöcke in Liste und Detail, Abhaken, den Sprung zur Karte und den Ersatz durch Symbole, wenn `icons/` fehlt.

@@ -81,6 +81,7 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 ## Banner
 
 - **Baupläne gelten für alle Welten** (ein Banner hängt nicht am Seed), alle im Raum sehen und bearbeiten dieselben
+- **Screenshot** (Bottom-Bar, live): Anleitungen mit Schritten wie „Black Base“, „Cyan Bordure“, „Light Blue Lozenge“ liest das Board aus. Die Prüfliste zeigt Vorschau und Schritte auf Deutsch und schlägt einen Namen vor; „Banner speichern“ legt den Bauplan an. Schritt 1 („<Farbe> Base“) ist die Grundfarbe; derselbe Banner wird kein zweites Mal gespeichert. Geht auch über „Screenshot“ in der Karte
 - **Liste** als Raster mit Vorschau; Suche nach Name oder Musternamen
 - **Detail**: Material (Wolle, Stock, Farbstoffe gezählt), nötige Bannervorlagen mit Herkunft, **Anleitung Schritt für Schritt** – jeder Schritt zeigt, wie das Banner danach aussieht; abhaken (nur auf diesem Gerät, wird zurückgesetzt, wenn sich das Muster ändert)
 - **Editor**: Grundfarbe (16), bis zu 6 Ebenen; pro Ebene Farbe + Muster aus einem Raster mit Vorschaubildern (wie am Webstuhl), Ebenen verschieben/entfernen; Vorschau bleibt oben stehen
@@ -162,7 +163,7 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` – 403 bei Biomen |
 | PUT | `/orte/instanzen/:id/angeheftet` | `{ angeheftet }` | `{ instanz }` – groß auf der Anzeige, 403 bei Biomen |
 | DELETE | `/orte/instanzen/:id` | – | `{ ok:true }` |
-| POST | `/orte/auslesen` | multipart `datei` | `{ erkannt:{ titel, kategorie, variante, dimension, x, y, z } \| null }` |
+| POST | `/orte/auslesen` | multipart `datei` | `{ erkannt:{ titel, kategorie, variante, dimension, x, y, z } \| null, banner:{ basis, ebenen, unklar } \| null }` – erst Seed-Map-Popup, sonst Banner-Anleitung |
 | GET | `/sammelobjekte/welten/:id` | – | `{ status:{ [objektId]:{ von, am } } }` |
 | PUT | `/sammelobjekte/welten/:id/:objektId` | `{ gefunden }` | `{ status }` |
 | GET | `/portale/welten/:id` | – | `{ verbindungen:[verbindung] }` |

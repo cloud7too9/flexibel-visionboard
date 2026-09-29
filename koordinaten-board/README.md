@@ -20,6 +20,7 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 - Der Server liefert die Companion aus (`../companion/companion-prototyp.html`, per `COMPANION_DATEI` austauschbar). Den QR-Code der Anzeige mit der normalen Kamera-App scannen → die Companion öffnet sich mit der PIN → Name eingeben → beigetreten.
 - Alle Bereiche arbeiten auf den Daten des Boards (`server/daten/daten.json`): Welten mit Seed, Orte der Karte, Sammelobjekte, Portal-Verbindungen, Banner. Änderungen kommen bei allen Handys live an.
 - **Screenshot auslesen** über die lokale Texterkennung des Boards (`/api/orte/auslesen`): Kategorie, Variante (die Klammer im Titel, z. B. „Stairway“), X/(Y)/Z und Dimension. Kleine OCR-Fehler werden korrigiert.
+- **Banner-Anleitungen** („Black Base“, „Cyan Bordure“ …) erkennt dieselbe Route, wenn kein Seed-Map-Popup drauf ist: Das Bild wird vergrößert und in Schwarz-Weiß umgewandelt (`bildvorbereitung.js`, sonst liest Tesseract weiße Schrift auf Grau nicht), die Zeilen werden unscharf den englischen Farb- und Musternamen aus `regeln.js` zugeordnet (`banner-erkennung.js`).
 - Geprüft wird mit denselben Regeln wie in der Companion: Der Server lädt `../companion/regeln.js` (`server/src/regeln.js`).
 - **Anzeige steuern** (Board-Sheet der Companion): Welt auf der Anzeige, Titel, QR-Code zeigen; Orte im Detail „Auf der Anzeige anheften“.
 - Beitreten per PIN. Nach **5 falschen PINs** ist das Gerät **60 s gesperrt** (`server/src/sperre.js`). `/api/beitreten` und `/api/ich` bleiben per CORS offen, falls eine Companion von einem anderen Server beitritt.
@@ -76,6 +77,8 @@ server/src/companion-api.js REST-API der Companion unter /api (Vertrag: companio
 server/src/regeln.js        lädt ../companion/regeln.js per node:vm – dieselben Regeln wie am Handy
 server/src/sicht.js         Orte der aktiven Welt in der Form, die die Anzeige kennt
 server/src/erkennung.js     OCR (tesseract.js) + Auswertung des Seed-Map-Popups, fuerCompanion()
+server/src/banner-erkennung.js  Banner-Anleitung → Grundfarbe + Ebenen
+server/src/bildvorbereitung.js  JPEG/PNG vergrößern, Schwarz-Weiß (jpeg-js, pngjs)
 server/src/zeigen.js        „Aufs Board“: Karten vom Handy prüfen
 server/src/sperre.js        Sperre nach falschen PINs
 client/src/anzeige/         Große Anzeige (Gezeigt.tsx: geworfene Karte) – der Client ist nur noch die Anzeige

@@ -142,6 +142,39 @@ try {
   const regel = await max.evaluate(() => api("/banner", { method: "POST", body: JSON.stringify({ name: "Zu viel", basis: "white", ebenen: Array(7).fill({ muster: "cross", farbe: "red" }) }) }));
   pruefe(regel.status === 422 && regel.data.message.includes("höchstens 6"), "Server prüft mit denselben Regeln (7 Muster abgelehnt)");
 
+  // === Banner aus einem Screenshot (Anleitung „Black Base“, „Cyan Bordure“ …) =======
+  await max.evaluate(() => modulWechseln("banner"));
+  await lena.evaluate(() => modulWechseln("banner"));
+  const rezept = path.join(HIER, "../../referenz/banner/rezept-beispiel.jpg");
+  const hochladen = async () => {
+    const [waehler] = await Promise.all([max.waitForEvent("filechooser"), max.click("#bannerScreenshotBtn")]);
+    await waehler.setFiles(rezept);
+    return warteAuf(max, () => st.importe?.length && st.importe.at(-1).status === "fertig", null, 60000);
+  };
+  pruefe(await hochladen(), "Banner-Bereich: Screenshot → Board liest die Anleitung aus");
+  const imp = await max.evaluate(() => st.importe.at(-1));
+  pruefe(imp.banner?.basis === "black" && imp.banner.ebenen.length === 6 && imp.an, "Erkannt: schwarzes Banner mit 6 Mustern, zum Speichern vorgemerkt");
+  pruefe((await text(max, "#orteSheetInhalt .imp-schritte")).includes("Raute (Hellblau)"), "Prüfliste zeigt die Schritte auf Deutsch");
+  pruefe((await text(max, '[data-aktion="import-speichern"]')) === "1 Banner speichern", "Knopf „1 Banner speichern“");
+  pruefe((await max.$eval(`[data-import-name="${imp.id}"]`, (e) => e.value)).startsWith("Banner vom "), "Name vorgeschlagen");
+  await max.fill(`[data-import-name="${imp.id}"]`, "Enderauge");
+  await max.screenshot({ path: `${DIR}/l3b-banner-screenshot.png` });
+  await max.click('[data-aktion="import-speichern"]');
+  pruefe(await warteAuf(max, () => bn.liste.some((b) => b.name === "Enderauge") && st.sheet === null), "Banner „Enderauge“ gespeichert");
+  const gespeichert = await max.evaluate(() => bn.liste.find((b) => b.name === "Enderauge"));
+  pruefe(JSON.stringify(gespeichert.ebenen.map((e) => `${e.farbe} ${e.muster}`)) === JSON.stringify(["cyan border", "light_blue rhombus", "black border",
+    "black flower", "black square_top_left", "black square_bottom_right"]) && gespeichert.basis === "black", "Muster und Farben wie in der Anleitung");
+  pruefe(await warteAuf(lena, () => bn.liste.some((b) => b.name === "Enderauge" && b.von === "Max")), "Lena sieht den Banner live");
+  await max.evaluate((id) => bannerDetailOeffnen(id), gespeichert.id);
+  await max.waitForTimeout(400);
+  await max.screenshot({ path: `${DIR}/l3c-banner-detail.png` });
+  await max.click('#orteSheetInhalt [data-aktion="schliessen"]');
+  pruefe(await hochladen(), "Derselbe Screenshot noch einmal");
+  const nochmal = await max.evaluate(() => st.importe.at(-1));
+  pruefe(!nochmal.an && nochmal.meldungen.some(([, t]) => t === "Schon gespeichert als „Enderauge“"), "… wird als schon gespeichert erkannt und nicht vorgemerkt");
+  await max.click('#orteSheetInhalt [data-aktion="schliessen"]');
+  await max.evaluate(() => { st.importe = []; });
+
   // === Anzeige im Zimmer zeigt die aktive Welt ===================================
   const anzeige = await (await browser.newContext({ viewport: { width: 1600, height: 900 } })).newPage();
   anzeige.on("pageerror", (e) => fehler.push("Anzeige: " + e.message));
