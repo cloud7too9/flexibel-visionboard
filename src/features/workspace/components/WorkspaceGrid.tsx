@@ -2,11 +2,10 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { useWorkspaceStore } from "../model/workspace.store";
+import { selectActiveLayer, useWorkspaceStore } from "../model/workspace.store";
 import {
   cellToPixel,
   columnWidth,
@@ -48,7 +47,7 @@ type DragState =
     };
 
 export function WorkspaceGrid() {
-  const layout = useWorkspaceStore((s) => s.layout);
+  const layout = useWorkspaceStore(selectActiveLayer);
   const editMode = useWorkspaceStore((s) => s.editMode);
   const selectedPanelId = useWorkspaceStore((s) => s.selectedPanelId);
   const selectPanel = useWorkspaceStore((s) => s.selectPanel);
@@ -56,7 +55,9 @@ export function WorkspaceGrid() {
   const moveItem = useWorkspaceStore((s) => s.moveItem);
   const resizeItem = useWorkspaceStore((s) => s.resizeItem);
 
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  // Callback-Ref statt useRef: Der Container existiert nicht, solange der
+  // Layer leer ist. So wird die Breite gemessen, sobald er erscheint.
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [drag, setDrag] = useState<DragState>({ kind: "idle" });
 
@@ -83,14 +84,14 @@ export function WorkspaceGrid() {
   });
 
   useLayoutEffect(() => {
-    const el = containerRef.current;
+    const el = containerEl;
     if (!el) return;
     const update = () => setContainerWidth(el.clientWidth);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [containerEl]);
 
   const config: GridConfig = useMemo(
     () => ({
@@ -239,7 +240,7 @@ export function WorkspaceGrid() {
 
   return (
     <div
-      ref={containerRef}
+      ref={setContainerEl}
       data-breakpoint={breakpoint.name}
       className="relative w-full"
       style={{ height: totalHeight, ...gridBackground }}

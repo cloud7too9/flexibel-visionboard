@@ -22,6 +22,10 @@ export interface LayoutItem {
   maxH?: number;
 }
 
+/**
+ * Ein Layer ist eine eigenständige Widget-Anordnung. Der Workspace besteht
+ * aus einem oder mehreren Layern, von denen genau einer aktiv angezeigt wird.
+ */
 export interface WorkspaceLayout {
   id: Id;
   name: string;
@@ -29,6 +33,12 @@ export interface WorkspaceLayout {
   zeilenHoehe: number;
   abstand: number;
   items: LayoutItem[];
+}
+
+/** Persistierter Zustand des gesamten Workspace. */
+export interface WorkspaceData {
+  layers: WorkspaceLayout[];
+  activeLayerId: Id;
 }
 
 export interface PanelDefinition {

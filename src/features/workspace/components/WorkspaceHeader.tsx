@@ -1,14 +1,15 @@
 import { Button } from "../../../shared/ui/Button";
 import { useBreakpoint } from "../../../shared/hooks/useBreakpoint";
-import { useWorkspaceStore } from "../model/workspace.store";
+import { selectActiveLayer, useWorkspaceStore } from "../model/workspace.store";
 import { getBreakpoint, CANONICAL_BREAKPOINT } from "../model/breakpoints";
+import { LayerSwitcher } from "./LayerSwitcher";
 
 export function WorkspaceHeader() {
   const editMode = useWorkspaceStore((s) => s.editMode);
   const setEditMode = useWorkspaceStore((s) => s.setEditMode);
   const openAddPanel = useWorkspaceStore((s) => s.openAddPanel);
-  const resetLayout = useWorkspaceStore((s) => s.resetLayout);
-  const layoutName = useWorkspaceStore((s) => s.layout.name);
+  const resetActiveLayer = useWorkspaceStore((s) => s.resetActiveLayer);
+  const activeLayerName = useWorkspaceStore((s) => selectActiveLayer(s).name);
   const breakpoint = useBreakpoint();
   const canonical = getBreakpoint(CANONICAL_BREAKPOINT);
 
@@ -21,11 +22,9 @@ export function WorkspaceHeader() {
   return (
     <header className="border-b border-border bg-surface-muted">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <h1 className="text-base font-semibold sm:text-lg">MainHub</h1>
-          <span className="truncate text-xs text-text-muted sm:text-sm">
-            Workspace · {layoutName}
-          </span>
+          <LayerSwitcher />
           <span
             className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-text-muted"
             title={`Aktive Bildschirmgröße: ${breakpoint.label} (${breakpoint.spalten} Spalten)`}
@@ -46,7 +45,7 @@ export function WorkspaceHeader() {
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    if (confirm("Layout auf Standard zurücksetzen?")) resetLayout();
+                    if (confirm(`Layer „${activeLayerName}“ zurücksetzen?`)) resetActiveLayer();
                   }}
                 >
                   Zurücksetzen
