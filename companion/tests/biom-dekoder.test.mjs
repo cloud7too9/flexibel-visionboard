@@ -256,8 +256,10 @@ test("Fixture-Welt: level.dat, 30 Chunks, Biome, beide Wege gleich", async () =>
   assert.deepEqual(a.meta.chunks, { overworld: 30, nether: 0, end: 0 });
   const zaehler = {};
   for (const id of ausKacheln(a.kacheln).values()) zaehler[id] = (zaehler[id] || 0) + 1;
-  // 195 = Herbstwald am Spawn (vermutlich Dappled Forest), 25 Stony Shore, 184 Snowy Slopes, 1 Plains
+  // 195 Dappled Forest (Spawn, von Max mit Chunkbase bestätigt), 25 Stony Shore, 184 Snowy Slopes, 1 Plains
   assert.deepEqual(zaehler, { 1: 1, 25: 4, 184: 1, 195: 24 });
+  assert.deepEqual(a.meta.unbekannt, [], "alle IDs der Fixture-Welt stehen in biom-ids.js");
+  assert.equal(globalThis.BIOM_IDS.find((b) => b.id === 195)?.displayName, "Dappled Forest");
   const b = await weltLesen(welt, { weg: "komplett", biomIds: BEKANNT });
   assert.deepEqual(a.kacheln.map((k) => kachelZuBase64(k.daten)), b.kacheln.map((k) => kachelZuBase64(k.daten)));
 });
