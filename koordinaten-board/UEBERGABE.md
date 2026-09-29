@@ -6,9 +6,11 @@ Arbeitsweise, Zusammenspiel mit der Companion und projektübergreifende Entschei
 
 ---
 
-## Stand: fertig, läuft eigenständig
+## Stand: Server der Companion + Anzeige im Zimmer
 
-Ein Gerät im Zimmer zeigt Minecraft-Koordinaten groß an. Alle anderen verbinden sich per Handy (QR-Code mit PIN), tragen Orte ein und lesen dafür **Chunkbase-Seed-Map-Screenshots per OCR** aus.
+**Zusammenführung (Branch `board/zusammenfuehrung`, Entscheidung von Max am 29.09.2026):** Das Board ist der eine Server für Companion und Anzeige. Es liefert die Companion unter `/` aus, hält alle Daten (`daten.json`) und synchronisiert live. Die eigene Handy-Oberfläche (React-Steuerung) ist abgelöst, der Client ist nur noch die Anzeige unter `/anzeige`. Die alten Board-Orte wurden nicht übernommen (Max: neu anfangen), `zustand.json` bleibt als Sicherung liegen.
+
+Ein Gerät im Zimmer zeigt die Orte der aktiven Welt groß an. Alle anderen öffnen per QR-Code die Companion, treten mit Name + PIN bei und lesen **Chunkbase-Seed-Map-Screenshots per OCR** aus.
 
 - **Technik**:
   - Server: Fastify 5 (+ websocket/multipart/static)
@@ -17,11 +19,19 @@ Ein Gerät im Zimmer zeigt Minecraft-Koordinaten groß an. Alle anderen verbinde
   - Anmeldung: PIN + HMAC-Token
   - Texterkennung: tesseract.js lokal (`eng`, best_int), Feature-Namen per Levenshtein unscharf zugeordnet
 - **Starten**: `start.bat` auf Windows (Node 20+) oder `start.sh`. Die Anzeige unter `/anzeige` ist nur vom Board-Rechner selbst erreichbar.
-- **Tests**: `npm test` → 19 Tests (Erkennung 11, Netzwerk 3, PIN-Sperre 2, Karten 3), alle grün.
-- **Für die Companion** (Branch `board/scanner`):
+- **Tests**: `npm test` → 32 Tests (Erkennung 13, Companion-API 3, Daten + Anzeige-Sicht 4, Regeln 3, Karten 4, Netzwerk 3, PIN-Sperre 2), alle grün. Die API-Tests starten einen echten Server-Prozess mit leerem Datenordner.
+- **Server-Aufbau**:
+  - `daten.js`: Welten, Typen, Instanzen, Sammelobjekte, Banner, Portale, Einstellungen (`titel`, `qrZeigen`, `aktiveWelt`). Abläufe wie der DEMO-Mock der Companion.
+  - `companion-api.js`: REST unter `/api` nach dem Vertrag in `companion-prototyp.html` (Abschnitt 4), Bearer-Token aus dem Beitreten. Dazu `/api/board/einstellungen` und `PUT /api/orte/instanzen/:id/angeheftet`. Jede Änderung meldet per WebSocket `{ art:"geaendert", bereich, weltId }`.
+  - `regeln.js`: lädt `companion/regeln.js` per `node:vm` – dieselben Regeln wie am Handy, nichts nachgebaut.
+  - `sicht.js`: Orte der aktiven Welt (ohne Biome) in der alten `Ort`-Form für die Anzeige.
+  - `erkennung.js` + `fuerCompanion()`: OCR für `/api/orte/auslesen`.
+  - `/api/server` → `{ name:"koordinaten-board" }`: daran erkennt die Companion den Live-Betrieb.
+- **Für die Companion** (früher Branch `board/scanner`):
   - CORS für `/api/beitreten` und `/api/ich`, Sperre nach 5 falschen PINs für 60 s.
-  - „Aufs Board“: WebSocket-Nachrichten `zeigen` / `verbergen`, an alle `gezeigt`. Die Karte wird geprüft (`server/src/zeigen.js`), nur im Speicher gehalten und auf der Anzeige groß gezeigt (`client/src/anzeige/Gezeigt.tsx`). Optionales Feld `typ` → Kennblock neben dem Titel.
-- **Kennblöcke** (Branch `bereich/sammelobjekte`): PNGs der Strukturen in `client/public/icons/struktur_kennbloecke/`, eine Kopie der Bilder aus `companion/icons/`. `OrtIcon` (`client/src/komponenten/OrtIcon.tsx`) zeigt das Bild, wenn der Typ eins hat (`lib/kennbloecke.ts`), sonst das Linien-Icon der Kategorie – in Anzeige, Handy-Liste und Ort-Detail. Pfadruinen fehlt noch ein Bild.
+  - „Aufs Board“: WebSocket-Nachrichten `zeigen` / `verbergen`, an alle `gezeigt`. Die Karte wird geprüft (`server/src/zeigen.js`), nur im Speicher gehalten und auf der Anzeige groß gezeigt (`client/src/anzeige/Gezeigt.tsx`). Optional `typ` → Kennblock neben dem Titel; Block `bild` (PNG/JPEG/WebP als Data-URL, max. 200 KB) links neben den übrigen.
+- **Kennblöcke**: Die Anzeige lädt sie unter `/icons/…`, der Server liefert dafür `companion/icons` aus (keine Kopie mehr im Client). `OrtIcon` zeigt das Bild, wenn der Typ eins hat (`lib/kennbloecke.ts`), sonst das Linien-Icon der Kategorie. Pfadruinen fehlt noch ein Bild.
+- **Aufräumen möglich**: `client/src/stil.css` enthält noch Regeln der alten Handy-Oberfläche (`.ort`, `.sheet` …), `komponenten/Icon.tsx` Symbole, die nur sie brauchte.
 - **Git**: Der Verlauf ist mit allen Commits im Repo erhalten (Ordner `koordinaten-board/`). Letzter Commit hier: „QR-Code lernt die tatsächlich erreichbare Adresse“ (früher `75b00b2`).
 - ⚠️ **Ein Commit fehlt noch**: Laut alter Übergabe steht `main` bei Max auf `0b1d2f4` mit 15 Tests (Netzwerk 4). Dieser Commit war nicht im Zip. Bei Gelegenheit aus dem lokalen Board-Repo nachziehen, z. B. per `git format-patch 75b00b2..0b1d2f4` und im Repo mit `git am --directory=koordinaten-board` einspielen.
 
@@ -33,6 +43,6 @@ Ein Gerät im Zimmer zeigt Minecraft-Koordinaten groß an. Alle anderen verbinde
 ## Bezug zur Companion
 
 - Das Board ist das Raum-Dashboard. Die Bereiche der Companion sollen später als Widgets darauf laufen (siehe `../UEBERGABE.md` → Zusammenspiel).
-- Die OCR aus `server/src/erkennung.js` soll `/orte/auslesen` der Companion bedienen. Dafür fehlen noch das neue Antwortformat und die Biom-Liste.
-- Das Board hat ein eigenes, einfacheres Datenmodell (`client/src/lib/typen.ts`: `Ort` mit Name, Kategorie, Typ). Das gemeinsame Datenmodell der Companion steht in `../referenz/minecraft_tool_datenmodell.md`. Ob und wie das Board darauf umgestellt wird, hängt an der offenen Entscheidung zur Datenhaltung.
+- Die OCR bedient `/api/orte/auslesen` der Companion. Biome ordnet `fuerCompanion()` über die Biom-Liste zu; an einem echten Biom-Popup ist das noch nicht geprüft (Screenshot fehlt).
+- Gespeichert wird im gemeinsamen Datenmodell der Companion (`../referenz/minecraft_tool_datenmodell.md` + Erweiterungen). Die Anzeige bekommt davon über `sicht.js` weiter ihre einfache `Ort`-Form (`client/src/lib/typen.ts`).
 - Die Seed-Map-Screenshots, auf denen die Erkennung beruht, liegen in `../referenz/seedmap/`.

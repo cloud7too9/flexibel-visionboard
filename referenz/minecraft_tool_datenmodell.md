@@ -317,3 +317,21 @@ STATIC CONFIG
 ```
 
 Das Modell soll bewusst minimal bleiben. Erweiterungen werden erst vorgenommen, wenn ein konkreter Anwendungsfall zeigt, dass sie benötigt werden.
+
+---
+
+# Erweiterungen (umgesetzt im Board-Server, `koordinaten-board/server/src/daten.js`)
+
+Jede Erweiterung hat einen konkreten Anwendungsfall aus einem Bereich der Companion:
+
+| Tabelle / Feld | Zweck | Bereich |
+|---|---|---|
+| `FeatureInstance.quelle` | `screenshot` oder `manuell` – neue Varianten und Biome nur aus Screenshots | Karte |
+| `FeatureInstance.von`, `.am` | wer den Ort eingetragen hat und wann (Anzeige: „zuletzt gespeichert“, „Neu“) | Karte, Anzeige |
+| `FeatureInstance.angeheftet` | groß oben auf der Anzeige im Zimmer | Anzeige |
+| Sammel-Status je Welt `{ objektId: { von, am } }` | abgehakte Rüstungsbesätze | Sammelobjekte |
+| Portal-Verbindung je Welt `{ name, oberwelt, nether, von, am }` | Portale verknüpfen und prüfen | Portal-Verwaltung |
+| Banner `{ name, basis, ebenen, von, am }` | Baupläne, für alle Welten | Banner |
+| Einstellungen `{ titel, qrZeigen, aktiveWelt }` | was die Anzeige im Zimmer zeigt | Anzeige |
+
+`FeatureType` ist welt-übergreifend (eine Variante wie „Stairway“ gilt in allen Welten). Dimensionen werden nicht gespeichert, sondern je Welt abgeleitet (`d_<welt>_<type>`).

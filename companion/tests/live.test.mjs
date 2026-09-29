@@ -44,12 +44,17 @@ async function boardStoppen() {
 
 const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
 const fehler = [], antworten = [];
+let boardAus = false;   // absichtlicher Neustart: fehlgeschlagene Wiederverbindungen sind dann erwartet
 async function handy() {
   const kontext = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const p = await kontext.newPage();
   p.on("pageerror", (e) => fehler.push(e.message));
   // Ladefehler prüft „antworten“ genau; die Konsole meldet sie nur ohne Adresse (auch /favicon.ico)
-  p.on("console", (m) => { if (m.type() === "error" && !m.text().startsWith("Failed to load resource")) fehler.push(m.text()); });
+  p.on("console", (m) => {
+    if (m.type() !== "error" || m.text().startsWith("Failed to load resource")) return;
+    if (boardAus && m.text().startsWith("WebSocket connection to")) return;
+    fehler.push(m.text());
+  });
   p.on("response", (r) => { if (r.status() >= 400) antworten.push(`${r.status()} ${new URL(r.url()).pathname}`); });
   return p;
 }
@@ -193,10 +198,13 @@ try {
   // === Neuladen und Server-Neustart =============================================
   await max.reload();
   pruefe(await warteAuf(max, () => !DEMO.enabled && st.instanzen?.length === 3 && bd.status === "verbunden"), "Neuladen: angemeldet, Daten da, live verbunden");
+  boardAus = true;
   await boardStoppen();
   pruefe(await warteAuf(max, () => bd.status === "getrennt"), "Board aus → getrennt");
   await boardStarten();
   pruefe(await warteAuf(max, () => bd.status === "verbunden", null, 12000), "Board wieder da → verbindet neu");
+  pruefe(await warteAuf(lena, () => bd.status === "verbunden", null, 12000), "… auch Lena");
+  boardAus = false;
   await max.reload();
   await max.evaluate(() => modulWechseln("sammelobjekte"));
   pruefe(await warteAuf(max, () => st.instanzen?.length === 3 && sam.status.rib && pt.liste.length === 1), "Nach dem Neustart: Orte, Sammelobjekt, Portal noch da");

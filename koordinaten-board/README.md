@@ -1,6 +1,6 @@
 # Koordinaten-Board
 
-Lokales Board für Minecraft-Koordinaten. Ein Gerät im Raum (Laptop, Mini-PC, Raspberry Pi am TV) zeigt alle gespeicherten Orte groß an. Alle anderen verbinden sich per Handy übers WLAN und tragen Orte ein – am schnellsten per **Screenshot aus der Seed Map**.
+Lokales Board für Minecraft-Koordinaten und **der Server der Companion**. Ein Gerät im Raum (Laptop, Mini-PC, Raspberry Pi am TV) zeigt die Orte der aktiven Welt groß an. Alle anderen öffnen per QR-Code die **Companion** am Handy, die das Board selbst ausliefert: Orte (am schnellsten per **Screenshot aus der Seed Map**), Sammelobjekte, Portal-Verbindungen und Banner – alle Daten liegen auf dem Board.
 
 Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung passiert lokal auf dem Board-Gerät.
 
@@ -16,20 +16,15 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 - QR-Code + PIN zum Beitreten, wer online ist, zuletzt gespeicherte Orte
 - Strukturen mit Kennblock (z. B. Netherziegel für „Nether Fortress“) zeigen das Bild statt des Linien-Icons, auch in der Handy-Liste und im Ort-Detail. Bilder: `client/public/icons/struktur_kennbloecke/`, Zuordnung Typ → Bild: `client/src/lib/kennbloecke.ts`
 
-**Handy** (Startseite)
-- **Screenshot auslesen**: Ein oder mehrere Seed-Map-Screenshots mit aufgeklapptem Popup auswählen → Name, Typ, X/(Y)/Z und Dimension werden erkannt → prüfen → speichern. Optional wird ein Kartenausschnitt (Popup + Marker, ohne Werbung) als Bild gespeichert.
-- Erkennt die Features aus der Feature-Liste (Village, Stronghold, Nether Fortress, End City …), korrigiert kleine OCR-Fehler und ordnet eine Kategorie zu
-- Warnt bei Orten, die schon gespeichert sind (gleiche Dimension, ±3 Blöcke)
-- **Manuell** eintragen, mit ±-Taste (die iOS-Zifferntastatur hat kein Minus) und Einfügefeld für F3+C-Text, `/tp`-Befehle oder „X: … Z: …“
-- Suche, Filter nach Dimension und Kategorie
-- **Mein Standort**: sortiert die Liste nach Entfernung mit Himmelsrichtung (auch über Nether/Oberwelt hinweg)
-- Koordinaten oder fertigen `/execute … tp`-Befehl kopieren, anheften, bearbeiten, löschen
-- Export aller Orte als JSON
-
-**Companion-PWA**
-- Die Companion kann per QR-Code-Scan beitreten wie ein Handy. Dafür sind `/api/beitreten` und `/api/ich` für andere Ursprünge freigegeben (CORS, inkl. Private-Network-Access-Antwort für Chrome). `/api/anzeige` mit der PIN bleibt gesperrt.
-- Nach **5 falschen PINs** ist das Gerät **60 s gesperrt** (`server/src/sperre.js`), damit keine Webseite die 4-stellige PIN durchprobieren kann.
-- **Aufs Board**: Die Companion kann eine Karte groß auf die Anzeige werfen (z. B. einen Ort). Sie liegt über den Spalten, Seitenleiste mit QR-Code bleibt frei, im Theme ihrer Dimension, mit Absender. Eine neue Karte ersetzt die alte; gespeichert wird sie nicht. Bringt die Karte einen Seed-Map-Typ mit (`typ`), steht der Kennblock neben dem Titel. Aufbau und Prüfung der Karte: `server/src/zeigen.js`.
+**Handy: die Companion** (Startseite `/`)
+- Der Server liefert die Companion aus (`../companion/companion-prototyp.html`, per `COMPANION_DATEI` austauschbar). Den QR-Code der Anzeige mit der normalen Kamera-App scannen → die Companion öffnet sich mit der PIN → Name eingeben → beigetreten.
+- Alle Bereiche arbeiten auf den Daten des Boards (`server/daten/daten.json`): Welten mit Seed, Orte der Karte, Sammelobjekte, Portal-Verbindungen, Banner. Änderungen kommen bei allen Handys live an.
+- **Screenshot auslesen** über die lokale Texterkennung des Boards (`/api/orte/auslesen`): Kategorie, Variante (die Klammer im Titel, z. B. „Stairway“), X/(Y)/Z und Dimension. Kleine OCR-Fehler werden korrigiert.
+- Geprüft wird mit denselben Regeln wie in der Companion: Der Server lädt `../companion/regeln.js` (`server/src/regeln.js`).
+- **Anzeige steuern** (Board-Sheet der Companion): Welt auf der Anzeige, Titel, QR-Code zeigen; Orte im Detail „Auf der Anzeige anheften“.
+- Beitreten per PIN. Nach **5 falschen PINs** ist das Gerät **60 s gesperrt** (`server/src/sperre.js`). `/api/beitreten` und `/api/ich` bleiben per CORS offen, falls eine Companion von einem anderen Server beitritt.
+- **Aufs Board**: Jeder Inhalt der Companion (Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner) lässt sich groß auf die Anzeige werfen. Die Karte liegt über den Spalten, im Theme ihrer Dimension, mit Absender; eine neue ersetzt die alte, gespeichert wird sie nicht. Mit `typ` (Seed-Map-Typ) steht der Kennblock neben dem Titel, ein `bild`-Block (z. B. die Banner-Vorschau) links neben den übrigen. Aufbau und Prüfung: `server/src/zeigen.js`.
+- Aus der früheren Handy-Oberfläche des Boards noch nicht übernommen: Notiz, Kartenausschnitt als Bild, Export als JSON.
 
 ## Starten
 
@@ -60,8 +55,8 @@ Die Konsole zeigt dann die Adresse für die Handys und die PIN. Einfacher: den Q
 
 1. Auf der Seed Map (z. B. chunkbase.com) einen Ort antippen, sodass das Popup mit Name und Koordinaten aufklappt
 2. Screenshot machen – die Dimension oben im Dropdown darf mit drauf sein, dann wird sie mit erkannt
-3. Im Board auf **Screenshot** tippen, einen oder gleich mehrere Screenshots auswählen
-4. Erkannte Werte prüfen, ggf. korrigieren → **Orte speichern**
+3. In der Companion (Karte) unten auf **Screenshot** tippen, einen oder gleich mehrere Screenshots auswählen
+4. Erkannte Werte prüfen, ggf. korrigieren → **speichern**
 
 Ist ein Popup von Werbung verdeckt oder nicht aufgeklappt, meldet das Board „Kein Popup gefunden“ statt falsche Werte zu raten.
 
@@ -70,27 +65,29 @@ Ist ein Popup von Werbung verdeckt oder nicht aufgeklappt, meldet das Board „K
 ```bash
 npm run dev:server    # Server mit Auto-Neustart auf :3000
 npm run dev:client    # Vite auf :5173 (leitet /api, /ws, /medien an :3000 weiter)
-npm test              # Tests der Screenshot-Auswertung
+npm test              # Server-Tests: Daten, Companion-API, Regeln, Erkennung, Karten, Netzwerk, PIN-Sperre
 ```
 
 Aufbau:
 ```
-server/src/server.js      Fastify: Beitritt, Upload, Texterkennung, WebSocket-Sync, liefert client/dist aus
-server/src/zustand.js     Orte + Einstellungen, Validierung, Speichern als JSON
-server/src/erkennung.js   OCR (tesseract.js) + Auswertung des Seed-Map-Popups, Feature-Liste
-server/src/zeigen.js      „Aufs Board“: Karten vom Handy prüfen
-server/src/sperre.js      Sperre nach falschen PINs
-client/src/anzeige/       Große Anzeige (Gezeigt.tsx: geworfene Karte)
-client/src/steuerung/     Handy-Oberfläche
+server/src/server.js        Fastify: Beitritt, WebSocket, liefert Companion (/) und Anzeige (/anzeige) aus
+server/src/daten.js         gemeinsame Daten (daten.json): Welten, Orte, Sammelobjekte, Banner, Portale, Einstellungen
+server/src/companion-api.js REST-API der Companion unter /api (Vertrag: companion-prototyp.html, Abschnitt 4)
+server/src/regeln.js        lädt ../companion/regeln.js per node:vm – dieselben Regeln wie am Handy
+server/src/sicht.js         Orte der aktiven Welt in der Form, die die Anzeige kennt
+server/src/erkennung.js     OCR (tesseract.js) + Auswertung des Seed-Map-Popups, fuerCompanion()
+server/src/zeigen.js        „Aufs Board“: Karten vom Handy prüfen
+server/src/sperre.js        Sperre nach falschen PINs
+client/src/anzeige/         Große Anzeige (Gezeigt.tsx: geworfene Karte) – der Client ist nur noch die Anzeige
 ```
 
-Neue Feature-Typen oder andere Kategorien: Liste `FEATURES` in `server/src/erkennung.js`.
+Neue Feature-Typen für die Texterkennung: Liste `FEATURES` in `server/src/erkennung.js`. Kategorien, Biome und Regeln stehen in `../companion/regeln.js`.
 
 ## Daten
 
 Alles liegt in `server/daten/`:
-- `zustand.json` – alle Orte und Einstellungen (zum Sichern einfach kopieren)
-- `medien/` – Bilder und Kartenausschnitte
+- `daten.json` – alle Welten, Orte, Sammelobjekte, Banner, Portal-Verbindungen und die Einstellungen der Anzeige (zum Sichern einfach kopieren)
+- `zustand.json`, `medien/` – Orte und Bilder der früheren Handy-Oberfläche; werden nicht mehr gelesen und bleiben als Sicherung liegen
 - `pin.txt` – Raum-PIN (löschen = neue PIN beim nächsten Start)
 - `geheim.txt` – Schlüssel für die Anmeldungen (löschen = alle Handys müssen neu beitreten)
 
@@ -103,3 +100,5 @@ Alles liegt in `server/daten/`:
 | `ANZEIGE_OFFEN` | aus | `1` = Anzeige darf auch von anderen Geräten geöffnet werden (z. B. Smart-TV-Browser) |
 | `OEFFENTLICHE_URL` | automatisch | Adresse im QR-Code, falls die automatische LAN-IP falsch ist |
 | `DATEN_ORDNER` | `server/daten` | Speicherort |
+| `COMPANION_ORDNER` | `../companion` | Ordner mit Companion-Seite, `regeln.js` und `icons/` |
+| `COMPANION_DATEI` | `companion-prototyp.html` | Seite, die unter `/` ausgeliefert wird (später z. B. `modul-a-live-karte.html`) |
