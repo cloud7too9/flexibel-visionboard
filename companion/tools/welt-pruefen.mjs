@@ -99,7 +99,7 @@ function chunksVon(dim) {
 }
 
 mkdirSync(ziel, { recursive: true });
-const dateiname = String(meta.weltname || path.basename(datei, path.extname(datei))).replace(/[^\p{L}\p{N}_-]+/gu, "-").toLowerCase();
+const dateiname = String(meta.weltname || path.basename(datei, path.extname(datei))).replace(/[^\p{L}\p{N}_-]+/gu, "-").replace(/^-+|-+$/g, "").toLowerCase();
 for (const dim of DIMENSIONEN) {
   const liste = chunksVon(dim);
   if (!liste.length) continue;

@@ -89,8 +89,8 @@ tag 1 Byte     0x2B = Data3D
 ### 3.4 Data3D (Tag 43 / 0x2B)
 
 - ✔ Byte 0–511: Höhenkarte, 256 × int16 LE.
-- ⚠ Reihenfolge (`z*16 + x` oder `x*16 + z`) und Bezug der Höhe (relativ zu minY oder absolut; erste Luft oder oberster Block) in Phase 1 bestätigen. Auf das Ergebnis pro Chunk wirkt sich das kaum aus, weil die Mehrheit der 256 Spalten zählt. Trotzdem richtig festlegen.
-- ✔ Ab Byte 512: Biom-Sektionen zu je 16 × 16 × 16, von unten nach oben. Geschrieben werden 25 (eine mehr als nötig).
+- ✔ Reihenfolge `z*16 + x`, Wert = erste Luft relativ zu minY (−64), also oberster Block = `−64 + Wert − 1`. Bestätigt an der Fixture-Welt (1.26.51): bei X 0 / Z 0 steht 138 → y 73, Max stand dort auf y 74; über Chunk-Grenzen springt die Höhe mit `z*16 + x` im Mittel 1,35 Blöcke (innen 1,19), mit `x*16 + z` 9,66.
+- ✔ Ab Byte 512: Biom-Sektionen zu je 16 × 16 × 16, von unten nach oben. In der Fixture-Welt (1.26.51, Oberwelt) sind es 24 – genau so viele wie nötig (−64 … 319), nicht 25.
 - ✔ Aufbau einer Sektion:
   - Kopfbyte `0xFF` → identisch mit der Sektion darunter.
   - sonst `bits = kopf >> 1`.
@@ -117,6 +117,7 @@ Dafür einen kleinen eigenen NBT-Leser schreiben (nur lesen; alle 13 Tag-Typen �
 - ✔ `minecraft-data` → `data/bedrock/1.20.0/biomes.json` enthält die echten gespeicherten IDs 0–191, z. B. `ocean 0`, `plains 1`, `river 7`, `ice_plains_spikes 140`, `soulsand_valley 178`, `deep_dark 190`, `mangrove_swamp 191`. Das Feld `displayName` entspricht der Chunkbase-Schreibweise („Ice Spikes“, „Badlands“, „Dark Forest“, „Windswept Hills“), dazu gibt es `color`.
 - ✔ **Nicht** `bedrock/1.21.60/biomes.json` verwenden. Dort sind die IDs alphabetisch durchnummeriert (`plains 64`) und passen nicht zu den gespeicherten Daten.
 - ⚠ Neuere Biome fehlen in 1.20.0: Cherry Grove (vermutlich 192), Pale Garden (vermutlich 193), Dappled Forest (195 laut BedrockMapper), Sulfur Caves (unbekannt). In Phase 1 an der Testwelt bestätigen.
+  - Fixture-Welt: **ID 195** kommt vor (24 von 30 Chunks, Spawn X 0 / Z 0, Herbstwald mit roten und orangen Blättern). Passt zu Dappled Forest; der Name wird mit der Chunkbase-Stichprobe an X 0 / Z 0 bestätigt.
 - Zuordnung zur bestehenden Biom-Liste in STAMMDATEN über den Anzeigenamen. Farbe aus der Biom-Liste, sonst `color` aus minecraft-data.
 - Die Tabelle wird einmal per Skript erzeugt und eingecheckt, nicht zur Laufzeit geladen.
 
@@ -231,16 +232,21 @@ Module-Worker laufen nicht unter `file://`. Falls die bestehenden Tests die HTML
 8  Ergebnis mit Transferables zurückschicken
 ```
 
-Besuch-Objekt für `parseLdbContent` / `parseLogContent` (⚠ keine offiziell dokumentierte API, in Phase 1 prüfen):
+Besuch-Objekt für `parseLdbContent` / `parseLogContent` (keine offiziell dokumentierte API; ✔ trägt in 5.0.1 – Streaming und `readMcworld()` liefern an den synthetischen Welten und an der Fixture-Welt identische Kacheln):
 
 ```js
 const besuch = {
   ordinal: 0,
-  visitor: (eintrag) => { /* eintrag.keyBytes, eintrag.value */ },
-  options: { includeValues: true, includeDeleted: false },
+  visitor: (eintrag) => { /* eintrag.keyBytes, eintrag.value, eintrag.isDeleted */ },
+  options: { includeValues: true, includeDeleted: true },   // Löschmarken im .log entfernen den Chunk
   sourceKind: "ldb"            // bei .log-Dateien "log"
 };
 ```
+
+✔ Umgesetzt in `biom-welt.js`. Abweichungen, in Phase 1 gefunden:
+- Reihenfolge wie `LevelDb.init()`: `.ldb` nach Level absteigend, dann nach Nummer, laut MANIFEST gelöschte Dateien überspringen; danach `.log` nach Namen.
+- Das MANIFEST kommt aus `CURRENT`. Die Bibliothek liest alle MANIFEST-Dateien, und jede setzt den Stand zurück – bei mehreren gewinnt dort die letzte in ZIP-Reihenfolge.
+- Eine frisch betretene Welt (Fixture) hat noch keine `.ldb`: alles steht in `000003.log`.
 
 Fallback, falls das nicht trägt: `readMcworld()`. Einfacher, aber speicherhungrig. Beide Wege müssen im Node-Test dasselbe Raster liefern.
 
