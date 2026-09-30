@@ -194,6 +194,7 @@ Als Kommentar in **JS 4 · API + MOCK** eintragen und in `mockApi()` umsetzen.
 **`instanzPruefen()`**: Kategorie Biome immer ablehnen mit „Biome kommen nur aus dem Welt-Import“.
 
 Die Datenablage (Hetzner oder Board) ist noch offen. Der Vertrag funktioniert für beide.
+✔ Entschieden: das Board (siehe Phase 3).
 
 ---
 
@@ -369,6 +370,15 @@ Commit: `Welt-Import im Web Worker`
 - `biomeLaden()` in `weltLaden()` aufrufen.
 
 Commit: `Biom-Raster: Datenmodell, Regeln und Mock`
+
+✔ Umgesetzt. Abweichungen:
+- **Route** `/orte/welten/:id/biome` statt `/welten/:weltId/biome` – passt zu den übrigen Routen der Karte (`/orte/welten/:id`).
+- **Datenablage = Board** (Entscheidung aus der Zusammenführung): `koordinaten-board/server/src/daten.js`, Import-Eintrag in `daten.json`, Kacheln je Welt in `daten/biome/<weltId>.json`. Der Server prüft mit derselben `regeln.js` (vm) – nichts nachgebaut.
+- **`bedrockId` und `farbe`** stehen in der erzeugten `biom-ids.js` (mehrere alte IDs → ein Biom). `BIOM_NACH_ID` in der Companion verknüpft sie über den Anzeigenamen mit der Biom-Liste; `regeln.js` braucht keine IDs.
+- **`von`** im `WeltImport` wie bei allen Board-Daten (Name aus dem Token).
+- **Demo-Kacheln** als Chunk-Raster in Textzeilen (9 Zeilen) statt Base64 – kürzer; der Test prüft sie gegen das Node-Ergebnis der Fixture-Welt.
+- **Kategorie „Biomes“** fehlt jetzt in `FEATURE_KATEGORIEN`; die Konstante `BIOMES` bleibt für die Texterkennung. Biom-Orte aus älteren Board-Daten blendet die Companion aus, der Server lässt sie nur noch löschen.
+- `CONFIG.kachelChunks` heißt `KACHEL_CHUNKS` und steht in `regeln.js` (Mock und Server). `netherBiomY`/`endBiomY` kommen mit dem Import-Sheet (Phase 4), die Kreise und `biomRadius` gehen in Phase 5.
 
 ### Phase 4 – Import-Sheet und Prüfliste ⏸ Haltepunkt
 

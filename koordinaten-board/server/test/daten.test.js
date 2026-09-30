@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Daten, DatenFehler } from '../src/daten.js';
@@ -31,12 +31,66 @@ test('Welten, Orte, Typen – wie der DEMO-Mock der Companion', () => {
   assert.deepEqual(d.weltenListe(), [{ id: 'w_1', seed: '6889192652397090698', anzahl: 2 }]);
 
   assert.equal(d.instanzAendern(instanz.id, { x: 1, y: 40, z: 2 }).instanz.y, 40);
-  const biom = d.instanzAnlegen({ dimensionId: 'd_w_1_nether', kategorie: 'Biomes', variante: 'Soul Sand Valley', x: 0, y: null, z: 0, quelle: 'screenshot' }, 'Max');
-  wirft(() => d.instanzAendern(biom.instanz.id, { x: 1, y: null, z: 1 }), 403);
   assert.equal(d.instanzAnheften(instanz.id, { angeheftet: true }).instanz.angeheftet, true);
-  wirft(() => d.instanzAnheften(biom.instanz.id, { angeheftet: true }), 403);
-  d.instanzLoeschen(biom.instanz.id);
-  wirft(() => d.instanzLoeschen(biom.instanz.id), 404);
+  wirft(() => d.instanzAnlegen({ dimensionId: 'd_w_1_nether', kategorie: 'Biomes', variante: 'Soul Sand Valley', x: 0, y: null, z: 0, quelle: 'screenshot' }, 'Max'),
+    422, 'Biome kommen nur aus dem Welt-Import');
+  // Biom-Orte aus der Zeit vor dem Welt-Import: fest, nicht anheftbar, löschbar
+  const alt = altesBiom(d, 'd_w_1_nether', 'Soul Sand Valley');
+  wirft(() => d.instanzAendern(alt, { x: 1, y: null, z: 1 }), 403, 'Biome kommen nur aus dem Welt-Import');
+  wirft(() => d.instanzAnheften(alt, { angeheftet: true }), 403);
+  d.instanzLoeschen(alt);
+  wirft(() => d.instanzLoeschen(alt), 404);
+});
+
+/** Biom-Ort, wie ihn frühere Versionen per Screenshot angelegt haben (heute lehnt instanzPruefen das ab) */
+function altesBiom(d, dimensionId, variante) {
+  const typ = { id: d.neueId('t'), kategorie: 'Biomes', variante };
+  const instanz = { id: d.neueId('i'), dimensionId, featureTypeId: typ.id, x: 0, y: null, z: 0, quelle: 'screenshot', angeheftet: false, von: 'Max', am: '2026-09-01T00:00:00.000Z' };
+  d.inhalt.typen.push(typ);
+  d.inhalt.instanzen.push(instanz);
+  return instanz.id;
+}
+
+test('Biome: ein Import je Welt, Kacheln in eigener Datei', async () => {
+  const o = ordner();
+  const d = new Daten(o);
+  d.weltAnlegen({ seed: '6889192652397090698' });
+  d.weltAnlegen({ seed: '2' });
+  assert.deepEqual(await d.biomeLesen('w_1'), { import: null, kacheln: [] });
+  const leerKachel = Buffer.alloc(2048);
+  leerKachel.writeUInt16LE(196, 0);   // Chunk 0,0 = Dappled Forest (195 + 1)
+  const kacheln = [{ dim: 'overworld', kx: 0, kz: 0, daten: leerKachel.toString('base64') }, { dim: 'overworld', kx: -1, kz: 0, daten: Buffer.alloc(2048).toString('base64') }];
+  const body = { import: { seed: '6889192652397090698', weltname: 'Meine Welt (1)', dateiname: 'Meine Welt.mcworld', spielversion: '1.26.51',
+    chunks: { overworld: 30, nether: 0, end: 0 }, unbekannt: [] }, kacheln };
+
+  const { import: imp } = await d.biomeSetzen('w_1', body, 'Max');
+  assert.deepEqual([imp.weltId, imp.von, imp.seed, imp.chunks.overworld, typeof imp.importiertAm], ['w_1', 'Max', '6889192652397090698', 30, 'string']);
+  let gelesen = await d.biomeLesen('w_1');
+  assert.deepEqual(gelesen.kacheln, kacheln);
+  assert.equal(Buffer.from(gelesen.kacheln[0].daten, 'base64').readUInt16LE(0) - 1, 195);
+  // Kacheln stehen nicht in daten.json
+  await d.speichern();
+  assert.ok(!readFileSync(path.join(o, 'daten.json'), 'utf8').includes(kacheln[0].daten));
+  assert.ok(existsSync(path.join(o, 'biome', 'w_1.json')));
+
+  // Neuer Import ersetzt den alten vollständig
+  const zweiter = await d.biomeSetzen('w_1', { ...body, kacheln: kacheln.slice(0, 1) }, 'Lena');
+  assert.notEqual(zweiter.import.id, imp.id);
+  gelesen = await d.biomeLesen('w_1');
+  assert.deepEqual([gelesen.import.von, gelesen.kacheln.length], ['Lena', 1]);
+
+  await assert.rejects(async () => d.biomeSetzen('w_2', body, 'Max'), (f) => f instanceof DatenFehler && f.status === 422 && f.message === 'Diese Welt hat einen anderen Seed');
+  await assert.rejects(async () => d.biomeLesen('w_9'), (f) => f.status === 404);
+
+  // Übersteht einen Neustart
+  await d.speichern();
+  const neu = new Daten(o);
+  await neu.laden();
+  assert.equal((await neu.biomeLesen('w_1')).kacheln.length, 1);
+  await neu.biomeLoeschen('w_1');
+  assert.deepEqual(await neu.biomeLesen('w_1'), { import: null, kacheln: [] });
+  assert.ok(!existsSync(path.join(o, 'biome', 'w_1.json')));
+  rmSync(o, { recursive: true, force: true });
 });
 
 test('Sammelobjekte, Portale, Banner', () => {
@@ -86,7 +140,7 @@ test('Anzeige zeigt die aktive Welt ohne Biome', () => {
   d.weltAnlegen({ seed: '2' });
   d.instanzAnlegen({ dimensionId: 'd_w_1_nether', kategorie: 'Nether Fortress', variante: null, x: 180, y: 70, z: -95, quelle: 'manuell' }, 'Tim');
   d.instanzAnlegen({ dimensionId: 'd_w_1_overworld', kategorie: 'Eigene Orte', variante: 'Hauptbasis', x: 212, y: 71, z: -388, quelle: 'manuell' }, 'Max');
-  d.instanzAnlegen({ dimensionId: 'd_w_1_overworld', kategorie: 'Biomes', variante: 'Cherry Grove', x: 0, y: null, z: 0, quelle: 'screenshot' }, 'Max');
+  altesBiom(d, 'd_w_1_overworld', 'Cherry Grove');
   d.instanzAnlegen({ dimensionId: 'd_w_2_end', kategorie: 'End City', variante: null, x: 1300, y: 60, z: -820, quelle: 'manuell' }, 'Lena');
 
   let sicht = anzeigeSicht(d);

@@ -125,6 +125,18 @@ try {
   await lena.waitForTimeout(500);   // Sheet-Animation abwarten
   await lena.screenshot({ path: `${DIR}/l3-lena-live.png` });
 
+  // Biome aus dem Welt-Import: Max speichert, Lena lädt live nach
+  const importiert = await max.evaluate(async () => {
+    const daten = new Uint16Array(KACHEL_CHUNKS ** 2); daten[0] = 196;   // Chunk 0,0 = Dappled Forest
+    const r = await api(`/orte/welten/${st.weltId}/biome`, { method: "PUT", body: JSON.stringify({
+      import: { seed: st.welt.seed, weltname: "Meine Welt", chunks: { overworld: 1, nether: 0, end: 0 }, unbekannt: [] },
+      kacheln: [{ dim: "overworld", kx: 0, kz: 0, daten: kachelZuBase64(daten) }] }) });
+    return r.ok && r.data.import.von === "Max";
+  });
+  pruefe(importiert, "Welt-Import auf dem Board gespeichert (von Max)");
+  pruefe(await warteAuf(lena, () => st.biome.import?.weltname === "Meine Welt" && st.biome.kacheln[0]?.daten[0] - 1 === 195),
+    "Lena bekommt die Biome live (Kachel dekodiert: Dappled Forest)");
+
   // Sammelobjekt: Lena hakt ab, Max sieht es
   await max.evaluate(() => modulWechseln("sammelobjekte"));
   await lena.evaluate(() => modulWechseln("sammelobjekte"));

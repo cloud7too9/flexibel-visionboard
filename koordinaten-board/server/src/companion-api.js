@@ -68,6 +68,20 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
     return { erkannt: fuerCompanion(erkannt), banner };
   });
 
+  // ---- Biome aus dem Welt-Import (.mcworld) – die Welt liest das Handy, hier wird nur gespeichert ----
+  app.get('/orte/welten/:id/biome', async (req) => daten.biomeLesen(req.params.id));
+  // Große Welten: je Kachel (512 × 512 Blöcke) knapp 2,8 KB Base64
+  app.put('/orte/welten/:id/biome', { bodyLimit: 64 * 1024 * 1024 }, async (req) => {
+    const antwort = await daten.biomeSetzen(req.params.id, req.body, req.nutzer.name);
+    geaendert('biome', req.params.id);
+    return antwort;
+  });
+  app.delete('/orte/welten/:id/biome', async (req) => {
+    await daten.biomeLoeschen(req.params.id);
+    geaendert('biome', req.params.id);
+    return { ok: true };
+  });
+
   // ---- Sammelobjekte ----
   app.get('/sammelobjekte/welten/:id', async (req) => daten.sammelLesen(req.params.id));
   app.put('/sammelobjekte/welten/:id/:objektId', async (req) => {

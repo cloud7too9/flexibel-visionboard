@@ -79,6 +79,21 @@ test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner, Rüstung'
   assert.deepEqual((await anfrage('DELETE', `/api/ruestung/${set.id}`, max)).daten, { ok: true });
   assert.equal((await anfrage('GET', '/api/ruestung', max)).daten.sets.length, 0);
   assert.equal((await anfrage('PUT', '/api/board/einstellungen', max, { aktiveWelt: 'w_99' })).status, 404);
+
+  // Biome aus dem Welt-Import: ersetzen, lesen, löschen – auch große Welten passen durch
+  const kacheln = [];
+  for (let kx = -30; kx < 30; kx += 1) for (let kz = -10; kz < 10; kz += 1) kacheln.push({ dim: 'overworld', kx, kz, daten: Buffer.alloc(2048, kx & 0xff).toString('base64') });
+  const biome = { import: { seed: '6889192652397090698', weltname: 'Realm', chunks: { overworld: 1_228_800, nether: 0, end: 0 }, unbekannt: [] }, kacheln };
+  assert.ok(JSON.stringify(biome).length > 3_000_000);
+  r = await anfrage('PUT', `/api/orte/welten/${welt.id}/biome`, lena, biome);
+  assert.deepEqual([r.status, r.daten.import.von, r.daten.import.weltname], [200, 'Lena', 'Realm']);
+  r = await anfrage('GET', `/api/orte/welten/${welt.id}/biome`, max);
+  assert.deepEqual([r.daten.import.chunks.overworld, r.daten.kacheln.length, r.daten.kacheln[5].daten], [1_228_800, 1200, kacheln[5].daten]);
+  r = await anfrage('PUT', `/api/orte/welten/${welt.id}/biome`, max, { ...biome, import: { ...biome.import, seed: '1' } });
+  assert.deepEqual([r.status, r.daten.message], [422, 'Diese Welt hat einen anderen Seed']);
+  assert.deepEqual((await anfrage('DELETE', `/api/orte/welten/${welt.id}/biome`, max)).daten, { ok: true });
+  assert.equal((await anfrage('GET', `/api/orte/welten/${welt.id}/biome`, max)).daten.import, null);
+  assert.equal((await anfrage('GET', '/api/orte/welten/w_99/biome', max)).status, 404);
 });
 
 test('Rüstungs-Baukasten wird ausgeliefert (Texturen, Module, Manifest)', async () => {

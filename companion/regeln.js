@@ -20,19 +20,23 @@ const inDim = (d) => (d === "overworld" ? "in der Oberwelt" : `im ${dimLabel(d)}
 
 /* ---- Kategorien und Biome (Datenmodell) --------------------------------- */
 const EIGENE_ORTE = "Eigene Orte";
+// Titel „Biomes“ der Seed Map: Biome sind keine Orte mehr, sie kommen nur aus dem Welt-Import (.mcworld).
+// Die Texterkennung meldet sie noch unter dieser Kategorie, damit die Prüfliste sie ausgrauen kann.
 const BIOMES = "Biomes";
 
-// FeatureCategory je Dimension (Reihenfolge wie in der Seed Map)
+// FeatureCategory je Dimension (Reihenfolge wie in der Seed Map, ohne „Biomes“)
 const FEATURE_KATEGORIEN = Object.freeze({
-  overworld: ["Biomes", "Slime Chunk", "Spawn Point", "Village", "Ancient City", "Dungeon", "Stronghold",
+  overworld: ["Slime Chunk", "Spawn Point", "Village", "Ancient City", "Dungeon", "Stronghold",
     "Mansion", "Monument", "Mineshaft", "Outpost", "Ruined Portal", "Jungle Temple", "Desert Temple",
     "Witch Hut", "Shipwreck", "Ocean Ruins", "Cave", "Lava Pool", "Treasure", "Igloo", "Fossil", "Ravine",
     "Geode", "Apple", "Ore Veins", "Desert Well", "Trail Ruins", "Trial Chamber", "Camp"],
-  nether: ["Biomes", "Nether Fortress", "Bastion", "Ruined Portal", "Nether Fossil"],
-  end: ["Biomes", "End City", "End Gateway"],
+  nether: ["Nether Fortress", "Bastion", "Ruined Portal", "Nether Fossil"],
+  end: ["End City", "End Gateway"],
 });
 
-// Biome nach Kategorie-Gruppe; Nether/End bestimmen die Dimension
+// Biome nach Kategorie-Gruppe; Nether/End bestimmen die Dimension.
+// Die Bedrock-IDs und Kartenfarben stehen in biom-ids.js (erzeugt, mehrere alte IDs → ein Biom),
+// verknüpft über den Anzeigenamen (displayName = name hier).
 const BIOM_GRUPPEN = Object.freeze({
   Plains: ["Plains", "Snowy Plains", "Mushroom Fields", "Savanna", "Sunflower Plains", "Ice Spikes"],
   Woodlands: ["Forest", "Taiga", "Jungle", "Sparse Jungle", "Birch Forest", "Dark Forest", "Snowy Taiga",
@@ -279,19 +283,67 @@ const ruestungSauber = (s) => ({
 function instanzPruefen(e, dimType, typVorhanden){
   const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= WELTGRENZE;
   if(!ganz(e.x) || !ganz(e.z) || (e.y != null && !ganz(e.y))) return "Ungültige Koordinaten";
+  if(e.kategorie === BIOMES) return "Biome kommen nur aus dem Welt-Import";
   if(e.kategorie !== EIGENE_ORTE && !FEATURE_KATEGORIEN[dimType].includes(e.kategorie))
     return `„${e.kategorie}“ gibt es ${inDim(dimType)} nicht`;
-  if(e.kategorie === BIOMES){
-    if(e.quelle !== "screenshot") return "Biome können nur per Screenshot hinzugefügt werden";
-    const b = biomFinden(e.variante);
-    if(!b) return `„${e.variante}“ steht nicht in der Biom-Liste`;
-    if(b.dimension !== dimType) return `${b.name} liegt ${inDim(b.dimension)}`;
-  }
   if(e.kategorie === EIGENE_ORTE && !String(e.variante || "").trim()) return "Eigene Orte brauchen einen Namen";
   // Neue Varianten nur aus Screenshots – außer bei „Eigene Orte“
   if(!typVorhanden && e.variante && e.quelle !== "screenshot" && e.kategorie !== EIGENE_ORTE)
     return "Neue Varianten entstehen nur aus Screenshots";
   return null;
+}
+
+/* ---- Regeln · Biome aus dem Welt-Import (.mcworld) --------------------- */
+/* Je Welt genau ein Import; ein neuer ersetzt den alten samt allen Kacheln.
+   Kachel = 32 × 32 Chunks = 512 × 512 Blöcke, ein Wert je Chunk: Bedrock-ID + 1, 0 = unerkundet.
+   Transport als Base64 von 1024 × Uint16 (Little Endian) = 2048 Byte.
+   Gelesen wird die Welt im Browser: biom-dekoder.js, biom-welt.js, biom-import.worker.js. */
+const KACHEL_CHUNKS = 32;
+const KACHEL_BYTES = KACHEL_CHUNKS * KACHEL_CHUNKS * 2;
+const KACHEL_GRENZE = Math.ceil(WELTGRENZE / (KACHEL_CHUNKS * 16));   // größtes |kx| bzw. |kz|
+
+/** Byte-Länge eines Base64-Texts, -1 wenn es keiner ist – ohne atob, läuft auch im vm des Servers */
+function base64Laenge(text){
+  if(typeof text !== "string" || text.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(text)) return -1;
+  return text.length / 4 * 3 - (text.endsWith("==") ? 2 : text.endsWith("=") ? 1 : 0);
+}
+const seedText = (s) => { const t = String(s ?? "").trim(); return /^-?\d{1,20}$/.test(t) ? BigInt(t).toString() : null; };
+
+/** Regeln für einen Welt-Import { import, kacheln } – identisch in Mock und Server. Fehlertext oder null. */
+function biomImportPruefen(body, welt){
+  const imp = body?.import;
+  if(!imp || typeof imp !== "object") return "Import fehlt";
+  if(seedText(imp.seed) === null || seedText(imp.seed) !== seedText(welt?.seed)) return "Diese Welt hat einen anderen Seed";
+  if(!Array.isArray(body.kacheln)) return "Kacheln fehlen";
+  const gesehen = new Set();
+  for(const k of body.kacheln){
+    if(!DIM_ORDER.includes(k?.dim)) return "Unbekannte Dimension in den Kacheln";
+    if(![k.kx, k.kz].every((v) => Number.isInteger(v) && Math.abs(v) <= KACHEL_GRENZE)) return "Kachel liegt außerhalb der Welt";
+    if(base64Laenge(k.daten) !== KACHEL_BYTES) return `Kachel hat nicht genau ${KACHEL_BYTES} Byte`;
+    const schluessel = `${k.dim}:${k.kx}:${k.kz}`;
+    if(gesehen.has(schluessel)) return "Kachel doppelt";
+    gesehen.add(schluessel);
+  }
+  return null;
+}
+/** Nur bekannte Felder; importiertAm und von setzt, wer speichert (Mock bzw. Server). */
+function biomImportSauber(body){
+  const imp = body.import, text = (v, n) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : null);
+  const anzahl = (v) => (Number.isInteger(v) && v >= 0 ? v : 0);
+  const unbekannt = (Array.isArray(imp.unbekannt) ? imp.unbekannt : [])
+    .filter((u) => Number.isInteger(u?.bedrockId) && DIM_ORDER.includes(u.beispiel?.dim))
+    .slice(0, 100)
+    .map((u) => ({ bedrockId:u.bedrockId, chunks:anzahl(u.chunks),
+                   beispiel:{ dim:u.beispiel.dim, x:Math.trunc(Number(u.beispiel.x)) || 0, z:Math.trunc(Number(u.beispiel.z)) || 0 } }));
+  return {
+    import:{
+      dateiname:text(imp.dateiname, 120), weltname:text(imp.weltname, 80), seed:seedText(imp.seed),
+      spielversion:text(imp.spielversion, 20),
+      chunks:Object.fromEntries(DIM_ORDER.map((d) => [d, anzahl(imp.chunks?.[d])])),
+      unbekannt,
+    },
+    kacheln:body.kacheln.map((k) => ({ dim:k.dim, kx:k.kx, kz:k.kz, daten:k.daten })),
+  };
 }
 
 /* ---- Regeln · Portal-Verbindungen -------------------------------------- */

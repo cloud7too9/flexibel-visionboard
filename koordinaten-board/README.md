@@ -90,7 +90,8 @@ Neue Feature-Typen für die Texterkennung: Liste `FEATURES` in `server/src/erken
 ## Daten
 
 Alles liegt in `server/daten/`:
-- `daten.json` – alle Welten, Orte, Sammelobjekte, Banner, Rüstungs-Sets, Portal-Verbindungen und die Einstellungen der Anzeige (zum Sichern einfach kopieren)
+- `daten.json` – alle Welten, Orte, Sammelobjekte, Banner, Rüstungs-Sets, Portal-Verbindungen, Biom-Importe und die Einstellungen der Anzeige (zum Sichern einfach kopieren)
+- `biome/<weltId>.json` – Biom-Kacheln aus dem Welt-Import (`.mcworld`, gelesen auf dem Handy), je Welt eine Datei; nur beim Import geschrieben, darum nicht in `daten.json`
 - `zustand.json`, `medien/` – Orte und Bilder der früheren Handy-Oberfläche; werden nicht mehr gelesen und bleiben als Sicherung liegen
 - `pin.txt` – Raum-PIN (löschen = neue PIN beim nächsten Start)
 - `geheim.txt` – Schlüssel für die Anmeldungen (löschen = alle Handys müssen neu beitreten)

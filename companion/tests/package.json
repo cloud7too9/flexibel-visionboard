@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test biom-dekoder.test.mjs && node welt-import.test.mjs && node banner.test.mjs && node portale.test.mjs && node sammelobjekte.test.mjs && node kennbloecke.test.mjs && node board.test.mjs && node live.test.mjs && node anzeigeschema.test.mjs && node ruestung.test.mjs"
+    "test": "node --test biom-dekoder.test.mjs && node welt-import.test.mjs && node karte-mcworld.test.mjs && node banner.test.mjs && node portale.test.mjs && node sammelobjekte.test.mjs && node kennbloecke.test.mjs && node board.test.mjs && node live.test.mjs && node anzeigeschema.test.mjs && node ruestung.test.mjs"
   },
   "devDependencies": {
     "jsqr": "^1.4.0",

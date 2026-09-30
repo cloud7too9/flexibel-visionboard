@@ -54,7 +54,7 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 
 ## Welt-Import: Biome aus `.mcworld` (in Arbeit, Branch `bereich/karte-mcworld`)
 
-Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch aus einer hochgeladenen Bedrock-Welt; die App liest sie im Browser (Web Worker) und zeigt sie flächig auf der Karte. Stand: **Phase 2** – Dekoder an der Fixture-Welt von Max geprüft (Höhenkarte an seiner Stelle, 8 von 8 Chunkbase-Stichproben, ID 195 = Dappled Forest), der Import läuft im Web Worker. Die Karte ist noch unverändert; ausprobieren lässt er sich über die Prüfseite `welt-pruefen.html`.
+Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch aus einer hochgeladenen Bedrock-Welt; die App liest sie im Browser (Web Worker) und zeigt sie flächig auf der Karte. Stand: **Phase 3** – Dekoder an der Fixture-Welt von Max geprüft (Höhenkarte an seiner Stelle, 8 von 8 Chunkbase-Stichproben, ID 195 = Dappled Forest), der Import läuft im Web Worker, Datenmodell, Regeln, Mock und Board-API stehen. Biome sind keine Orte mehr. Import-Sheet (Phase 4) und Biom-Ebene der Karte (Phase 5) fehlen noch; ausprobieren lässt sich der Import über die Prüfseite `welt-pruefen.html`.
 
 | Datei | Inhalt |
 |---|---|
@@ -71,6 +71,10 @@ Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch a
 - **Welten von Max**: `tests/daten/fixture-seed.mcworld` (darf ins Repo), die Realm-Welt nur nach `tests/daten/privat/` (steht in `.gitignore`).
 - **Worker-Test** `tests/welt-import.test.mjs` (Playwright, über http): Fixture-Welt, synthetische Welt und eine 55-MB-Welt im Worker müssen genau das Node-Ergebnis liefern; dazu Fortschritt, Abbrechen, Fehlertexte, Absturz-Hinweis und der Rückfall ohne Worker. Module-Worker laufen nicht unter `file://` – die Seite sagt das.
 - Das Board liefert Prüfseite, Worker, Module und `vendor/` aus (`koordinaten-board/server/src/server.js`).
+- **Datenmodell** (Phase 3): je Welt ein `WeltImport` (Datei, Weltname, Seed, Version, Chunks je Dimension, unbekannte IDs, `importiertAm`, `von`) und seine Kacheln (32 × 32 Chunks, Base64). API im Vertrag (Abschnitt 4): `GET/PUT/DELETE /orte/welten/:id/biome`, ein PUT ersetzt Import und alle Kacheln. Regeln in `regeln.js`: `biomImportPruefen()` (Seed passt, Dimension, genau 2048 Byte je Kachel, innerhalb der Weltgrenze, keine doppelte Kachel), `instanzPruefen()` lehnt die Kategorie „Biomes“ ab („Biome kommen nur aus dem Welt-Import“).
+- **Bedrock-ID → Biom**: `BIOM_NACH_ID` in der Companion verknüpft `biom-ids.js` über den Anzeigenamen mit der Biom-Liste (mehrere alte IDs → ein Biom) und trägt die Kartenfarbe.
+- **Mock**: Die Beispielwelt `w_1` hat die echten Biome der Fixture-Welt (30 Chunks um den Spawn), die Biom-Orte sind raus. Ein Biom-Screenshot erscheint in der Prüfliste ausgegraut mit „Biome kommen aus dem Welt-Import“.
+- **Test** `tests/karte-mcworld.test.mjs`: Mock-Kacheln = Node-Ergebnis der Fixture-Welt, Kachel-Kodierung der Seite = `biom-dekoder.js`, Mock-API nach Vertrag, Weltwechsel, ausgegrautes Biom in der Prüfliste. Live (`live.test.mjs`): Max importiert, Lena bekommt die Biome ohne Neuladen.
 
 ## Sammelobjekte
 

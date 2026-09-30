@@ -104,7 +104,7 @@ const karten = await p.$$eval("[data-import]", (l) => l.map((c) => ({
 })));
 console.log("     Prüfliste:", karten.map((k) => `${k.titel} [${k.bild || k.symbol || "–"}]`).join(" | "));
 pruefe(karten[0].bild === "icons/struktur_kennbloecke/stronghold.png", "Prüfliste: Stronghold mit Kennblock");
-pruefe(karten[1].symbol === "◍", "Prüfliste: Biom mit Symbol ◍");
+pruefe(karten[1].symbol === "◍", "Prüfliste: Biom (ausgegraut, kommt aus dem Welt-Import) mit Symbol ◍");
 pruefe(karten[2].bild === null && karten[2].symbol === null, "Prüfliste: nicht erkannt ohne Kennblock");
 pruefe(karten.every((k) => Math.round(k.vorschau) === 52), "Screenshot-Vorschau bleibt 52 px");
 await p.screenshot({ path: `${DIR}/k5-pruefliste.png` });

@@ -57,7 +57,7 @@ Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmode
 - Umrechnung Nether ↔ Oberwelt und `/execute in … run tp`-Befehl
 - Kennblöcke (PNG) statt Symbol bei Strukturen mit Bild: Listen-Gruppe, Canvas-Marker, Detail-Kopf, Screenshot-Prüfliste. Siehe Sammelobjekte → Kennblöcke.
 
-**In Arbeit: Biome aus `.mcworld`** (Bauplan `PLAN-welt-import-biome.md`, Branch `bereich/karte-mcworld`). Phase 1 (Dekoder in Node) ist gebaut und an der Fixture-Welt von Max geprüft (`tests/daten/fixture-seed.mcworld`: Höhenkarte, Chunkbase 8/8, ID 195 = Dappled Forest). Haltepunkt: Phase 2 (Worker im Browser) erst nach dem OK von Max. Danach ändern sich die Biom-Regeln unten (nur noch per Welt-Import, Chunk-Raster statt Kreise). Stand und Befehle in `README.md` → Welt-Import.
+**In Arbeit: Biome aus `.mcworld`** (Bauplan `PLAN-welt-import-biome.md`, Branch `bereich/karte-mcworld`). Phase 1 (Dekoder in Node) ist an der Fixture-Welt von Max geprüft (`tests/daten/fixture-seed.mcworld`: Höhenkarte, Chunkbase 8/8, ID 195 = Dappled Forest), Phase 2 (Worker) und Phase 3 (Datenmodell, Regeln, Mock, Board-API) sind gebaut. Seit Phase 3 gelten die Regeln 3 und 4 unten nicht mehr: **Biome kommen nur aus dem Welt-Import**, `instanzPruefen()` lehnt die Kategorie ab, die Prüfliste graut Biom-Screenshots aus, Biom-Orte aus älteren Daten blendet die Companion aus. Regel 5 (Kreise) ersetzt Phase 5 durch das Chunk-Raster. Stand und Befehle in `README.md` → Welt-Import.
 
 **Regeln von Max** (prüft `instanzPruefen()`, der Server muss sie genauso prüfen):
 

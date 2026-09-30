@@ -1,9 +1,10 @@
 // Gemeinsame Daten von Companion und Board in einer JSON-Datei (daten.json):
 // Welten, Orte (Typen + Instanzen), Sammelobjekte, Banner, Rüstungs-Sets,
-// Portal-Verbindungen und die Einstellungen der Anzeige. Die Abläufe entsprechen dem DEMO-Mock der
+// Portal-Verbindungen, Biom-Importe und die Einstellungen der Anzeige. Die Biom-Kacheln
+// liegen je Welt in biome/<weltId>.json – groß, aber nur beim Import geschrieben. Die Abläufe entsprechen dem DEMO-Mock der
 // Companion (mockApi in companion-prototyp.html), geprüft wird mit denselben
 // Regeln (companion/regeln.js).
-import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, rename, mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { regeln } from './regeln.js';
 
@@ -28,6 +29,7 @@ const leer = () => ({
   banner: [],        // { id, name, basis, ebenen, von, am }
   ruestung: [],      // { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster, material, farbe, verzaubert }|null }, von, am }
   portale: [],       // { id, weltId, name, oberwelt, nether, von, am }
+  biome: {},         // { [weltId]: { id, weltId, dateiname, weltname, seed, spielversion, chunks, unbekannt, importiertAm, von } }
   einstellungen: { ...STANDARD_EINSTELLUNGEN },
 });
 
@@ -39,6 +41,8 @@ const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= WELTGRENZE;
 export class Daten {
   constructor(ordner) {
     this.datei = path.join(ordner, 'daten.json');
+    this.biomOrdner = path.join(ordner, 'biome');
+    this.biomReihe = Promise.resolve();   // Importe nacheinander, damit Kacheln und Eintrag zusammenpassen
     this.inhalt = leer();
     this.version = 0;
     this.timer = null;
@@ -152,7 +156,7 @@ export class Daten {
   instanzAendern(id, body) {
     const i = this.instanz(id);
     const t = this.inhalt.typen.find((x) => x.id === i.featureTypeId);
-    if (t?.kategorie === BIOMES) fehler(403, 'Biome stammen aus Screenshots und sind fest');
+    if (t?.kategorie === BIOMES) fehler(403, 'Biome kommen nur aus dem Welt-Import');
     if (!ganz(body?.x) || !ganz(body?.z) || (body.y != null && !ganz(body.y))) fehler(400, 'Ungültige Koordinaten');
     Object.assign(i, { x: body.x, y: body.y ?? null, z: body.z, geaendert: new Date().toISOString() });
     this.speichernVerzoegert();
@@ -174,6 +178,57 @@ export class Daten {
     this.inhalt.instanzen.splice(this.inhalt.instanzen.indexOf(i), 1);
     this.speichernVerzoegert();
     return { weltId: this.dimension(i.dimensionId)?.worldId };
+  }
+
+  // ---------- Biome aus dem Welt-Import (.mcworld) ----------
+
+  biomDatei(weltId) {
+    return path.join(this.biomOrdner, `${weltId}.json`);
+  }
+
+  async biomeLesen(weltId) {
+    this.welt(weltId);
+    const imp = this.inhalt.biome[weltId] ?? null;
+    if (!imp) return { import: null, kacheln: [] };
+    try {
+      return { import: kopie(imp), kacheln: JSON.parse(await readFile(this.biomDatei(weltId), 'utf8')) };
+    } catch (f) {
+      console.warn(`Biom-Kacheln von ${weltId} unlesbar:`, f.message);
+      return { import: kopie(imp), kacheln: [] };
+    }
+  }
+
+  /** Ersetzt Import und alle Kacheln der Welt in einem Schritt */
+  biomeSetzen(weltId, body, von) {
+    const welt = this.welt(weltId);
+    const problem = regeln.biomImportPruefen(body, welt);
+    if (problem) fehler(422, problem);
+    const sauber = kopie(regeln.biomImportSauber(body));
+    return this.inReihe(async () => {
+      await mkdir(this.biomOrdner, { recursive: true });
+      const tmp = `${this.biomDatei(weltId)}.tmp`;
+      await writeFile(tmp, JSON.stringify(sauber.kacheln));
+      await rename(tmp, this.biomDatei(weltId));
+      const imp = { id: this.neueId('bi'), weltId, ...sauber.import, importiertAm: new Date().toISOString(), von };
+      this.inhalt.biome[weltId] = imp;
+      this.speichernVerzoegert();
+      return { import: kopie(imp) };
+    });
+  }
+
+  biomeLoeschen(weltId) {
+    this.welt(weltId);
+    return this.inReihe(async () => {
+      delete this.inhalt.biome[weltId];
+      this.speichernVerzoegert();
+      await rm(this.biomDatei(weltId), { force: true });
+    });
+  }
+
+  inReihe(aufgabe) {
+    const lauf = this.biomReihe.then(aufgabe);
+    this.biomReihe = lauf.catch(() => {});
+    return lauf;
   }
 
   // ---------- Sammelobjekte ----------

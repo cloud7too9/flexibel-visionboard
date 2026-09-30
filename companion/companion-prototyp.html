@@ -1188,6 +1188,7 @@ button.switch { padding:0; }
 </div>
 
 <script src="regeln.js"></script>
+<script src="biom-ids.js"></script>
 <script>
 "use strict";
 /* ============================================================================
@@ -1197,16 +1198,19 @@ button.switch { padding:0; }
    DATABASE                         STATIC CONFIG
    ├── World  (id, seed)            ├── FeatureCategory  (je Dimension)
    ├── Dimension (id, worldId,type) ├── FeatureType      (Kategorie + Variante)
-   └── FeatureInstance              ├── Biome            (Name, Gruppe, Dimension)
-       (id, dimensionId,            └── Group
-        featureTypeId, x, y?, z)
+   ├── FeatureInstance              ├── Biome            (Name, Gruppe, Dimension)
+   │   (id, dimensionId,            ├── Group
+   │    featureTypeId, x, y?, z)    └── Biom-IDs         (biom-ids.js: Bedrock-ID, Farbe)
+   ├── WeltImport (je Welt einer: Datei, Seed, Version, Chunks, unbekannte IDs)
+   └── BiomKachel (weltId, dim, kx, kz, daten: 32 × 32 Chunks)
 
    Regeln (Server prüft, Mock bildet sie nach):
    · „Eigene Orte“ ist eine zusätzliche Kategorie – dort legt man Typen selbst an
      (z. B. „Hauptbasis“), in allen anderen Kategorien entstehen Typen nur aus
      Screenshots (Variante aus dem Popup, z. B. Stronghold → „Stairway“).
-   · Biome entstehen ausschließlich per Screenshot. Das Biom ist der Typ,
-     die Dimension ergibt sich aus der Biom-Liste.
+   · Biome kommen ausschließlich aus dem Welt-Import (.mcworld) – keine Orte,
+     keine Handeingabe. Ein neuer Import ersetzt den alten ganz, einzelne Chunks
+     sind nicht bearbeitbar. Der Seed der Datei muss zum Seed der Welt passen.
    · Die Karte zeigt Biome nur rund um bekannte Punkte – unbekannte Fläche bleibt leer.
 
    Abschnitte: 0 Konfig · 1 Themes · 2 Stammdaten · 3 Koordinaten · 4 API-Vertrag
@@ -1345,8 +1349,28 @@ const FUNDORTE = SAMMELOBJEKTE.reduce((liste, o) => {
   return liste;
 }, []);
 
-/** Kategorien, die man in dieser Dimension von Hand eintragen darf (Biome nur per Screenshot). */
-const kategorienManuell = (dim) => [EIGENE_ORTE, ...FEATURE_KATEGORIEN[dim].filter((k) => k !== BIOMES)];
+/** Kategorien, die man in dieser Dimension von Hand eintragen darf */
+const kategorienManuell = (dim) => [EIGENE_ORTE, ...FEATURE_KATEGORIEN[dim]];
+
+/* Biome aus dem Welt-Import: Bedrock-ID (biom-ids.js, erzeugt) → Biom der Liste + Kartenfarbe.
+   Mehrere alte IDs zeigen auf dasselbe Biom (z. B. 12 und 13 → Snowy Plains). Fehlt eine ID,
+   ist sie „unbekannt“: gespeichert, aber leer dargestellt, bis biom-ids.js sie kennt. */
+const BIOM_NACH_ID = new Map((globalThis.BIOM_IDS || []).map((b) => [b.id, { bedrockId:b.id, biom:biomFinden(b.displayName), farbe:b.color }]));
+
+/** Kachel (Uint16Array(1024), Wert = Bedrock-ID + 1) ↔ Base64 – wie biom-dekoder.js, hier ohne Module (file://) */
+function kachelZuBase64(daten){
+  let binaer = "";
+  for(const v of daten) binaer += String.fromCharCode(v & 0xff, v >> 8);
+  return btoa(binaer);
+}
+function kachelAusBase64(text){
+  let binaer;
+  try { binaer = atob(String(text)); } catch { return null; }
+  if(binaer.length !== KACHEL_CHUNKS * KACHEL_CHUNKS * 2) return null;
+  const daten = new Uint16Array(KACHEL_CHUNKS * KACHEL_CHUNKS);
+  for(let i = 0; i < daten.length; i++) daten[i] = binaer.charCodeAt(i * 2) | (binaer.charCodeAt(i * 2 + 1) << 8);
+  return daten;
+}
 
 /* ============================================================================
    3 · KOORDINATEN  ·  Formatierung, Umrechnung, Entfernung, Einfügen
@@ -1422,14 +1446,26 @@ function koordinatenErkennen(text){
    POST   /orte/instanzen             { dimensionId, kategorie, variante|null, x, y|null, z,
                                         quelle:"screenshot"|"manuell" }
                                       → { instanz, typ }   (Typ wird gefunden oder angelegt)
-   PATCH  /orte/instanzen/:id  { x, y, z }   → { instanz }  (Biome: 403)
-   PUT    /orte/instanzen/:id/angeheftet { angeheftet } → { instanz }  (groß auf der Anzeige; Biome: 403)
+   PATCH  /orte/instanzen/:id  { x, y, z }   → { instanz }
+   PUT    /orte/instanzen/:id/angeheftet { angeheftet } → { instanz }  (groß auf der Anzeige)
    DELETE /orte/instanzen/:id                → { ok:true }
    POST   /orte/auslesen  (multipart „datei“) → { erkannt:{ titel, kategorie, variante, dimension,
                                                   x, y|null, z } | null,
                                         banner:{ basis|null, ebenen:[{ muster, farbe }], unklar:[text] } | null }
                                       (erst Seed-Map-Popup, sonst Banner-Anleitung „Black Base“, „Cyan Bordure“ …)
    Typen:  typ = { id, kategorie, variante|null }   instanz = { id, dimensionId, featureTypeId, x, y, z }
+   Kategorie „Biomes“: 422 „Biome kommen nur aus dem Welt-Import“. Biom-Orte aus älteren Daten
+   blendet die Companion aus; der Server lässt sie nur noch löschen.
+
+   Biome aus dem Welt-Import (.mcworld, gelesen im Browser, Regeln siehe biomImportPruefen()):
+   GET    /orte/welten/:id/biome                  → { import:weltImport|null, kacheln:[kachel] }
+   PUT    /orte/welten/:id/biome  { import, kacheln } → { import }   (ersetzt Import und alle Kacheln)
+   DELETE /orte/welten/:id/biome                  → { ok:true }
+   weltImport = { id, weltId, dateiname, weltname, seed, spielversion, importiertAm, von,
+                  chunks:{ overworld, nether, end }, unbekannt:[{ bedrockId, chunks, beispiel:{ dim, x, z } }] }
+   kachel = { dim, kx, kz, daten }   32 × 32 Chunks (512 × 512 Blöcke), kx = Math.floor(chunkX / 32),
+            daten = Base64 von 1024 × Uint16 LE, Index (chunkZ − kz·32)·32 + (chunkX − kx·32),
+            Wert = Bedrock-ID + 1, 0 = unerkundet
 
    Sammelobjekte (Fortschritt je Welt, für alle gemeinsam):
    GET    /sammelobjekte/welten/:id              → { status:{ [objektId]:{ von, am } } }
@@ -1497,26 +1533,40 @@ const MOCK = (() => {
     ["overworld", "Ancient City", null, -824, -51, 1560],
     ["overworld", "Ruined Portal", null, -312, null, -904],
     ["overworld", "Trial Chamber", null, 1488, -20, 96],
-    ["overworld", BIOMES, "Cherry Grove", -600, null, 780],
-    ["overworld", BIOMES, "Cherry Grove", -520, null, 860],
-    ["overworld", BIOMES, "Savanna", 420, null, -300],
-    ["overworld", BIOMES, "Plains", 180, null, -520],
-    ["overworld", BIOMES, "River", 330, null, -760],
     ["nether", EIGENE_ORTE, "Portal zur Basis", 26, 71, -49],
     ["nether", "Nether Fortress", null, -120, null, 248],
     ["nether", "Bastion", null, 344, null, -96],
-    ["nether", BIOMES, "Soul Sand Valley", 90, null, -300],
-    ["nether", BIOMES, "Crimson Forest", -60, null, 120],
     ["end", "End City", null, 1320, null, -760],
     ["end", "End Gateway", null, 96, 75, 0],
   ].forEach(([dim, kat, v, x, y, z]) => anlegen("w_1", dim, kat, v, x, y, z));
 
-  // Simulierte Texterkennung: rotiert durch typische Fälle
+  // Biome der Beispielwelt: echte Daten aus tests/daten/fixture-seed.mcworld (Spawn, 30 Chunks).
+  // Eine Zeile je Chunk-Z ab −5, eine Spalte je Chunk-X ab −3, Norden oben; „.“ = unerkundet.
+  const BIOM_DEMO = { D:195, S:25, W:184, P:1 };   // Dappled Forest, Stony Shore, Snowy Slopes, Plains
+  const demoKacheln = new Map();
+  ["....S..", "..DSS..", ".DDDS..", ".DDD...", ".WD.D.D", ".DDD.D.", ".DDDDD.", "D.DDDD.", "..P...."].forEach((zeile, z) => {
+    [...zeile].forEach((c, x) => {
+      if(!BIOM_DEMO[c]) return;
+      const cx = x - 3, cz = z - 5, kx = Math.floor(cx / KACHEL_CHUNKS), kz = Math.floor(cz / KACHEL_CHUNKS);
+      const k = demoKacheln.get(`${kx}:${kz}`) || demoKacheln.set(`${kx}:${kz}`, { kx, kz, daten:new Uint16Array(KACHEL_CHUNKS ** 2) }).get(`${kx}:${kz}`);
+      k.daten[(cz - kz * KACHEL_CHUNKS) * KACHEL_CHUNKS + (cx - kx * KACHEL_CHUNKS)] = BIOM_DEMO[c] + 1;
+    });
+  });
+  const biome = {
+    w_1: {
+      import:{ id:"bi_1", weltId:"w_1", dateiname:"Meine Welt.mcworld", weltname:"Meine Welt (1)", seed:"6889192652397090698",
+               spielversion:"1.26.51", importiertAm:"2026-09-29T20:15:00.000Z", von:"Max",
+               chunks:{ overworld:30, nether:0, end:0 }, unbekannt:[] },
+      kacheln:[...demoKacheln.values()].sort((a, b) => a.kz - b.kz || a.kx - b.kx)
+        .map((k) => ({ dim:"overworld", kx:k.kx, kz:k.kz, daten:kachelZuBase64(k.daten) })),
+    },
+  };
+
+  // Simulierte Texterkennung: rotiert durch typische Fälle (Biome graut die Prüfliste aus)
   const auslesen = [
     { titel:"Stronghold (Stairway)", kategorie:"Stronghold", variante:"Stairway", dimension:"overworld", x:-1884, y:null, z:-524 },
     { titel:"Cherry Grove", kategorie:BIOMES, variante:"Cherry Grove", dimension:"overworld", x:-1432, y:null, z:960 },
     null,
-    { titel:"Soul Sand Valley", kategorie:BIOMES, variante:"Soul Sand Valley", dimension:"overworld", x:-40, y:null, z:210 },
     { titel:"Bastion", kategorie:"Bastion", variante:null, dimension:"nether", x:-488, y:null, z:1016 },
     { titel:"Village", kategorie:"Village", variante:null, dimension:"overworld", x:1808, y:null, z:-2240 },
     { banner:{ basis:"black", ebenen:[{ muster:"border", farbe:"cyan" }, { muster:"rhombus", farbe:"light_blue" },
@@ -1557,7 +1607,7 @@ const MOCK = (() => {
       { id:"p_3", name:"Dorf", oberwelt:{ x:640, y:64, z:-1120 }, nether:{ x:100, y:70, z:-150 }, von:"Lena", am:"2026-09-24" },
     ],
   };
-  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, banner, ruestung, portale, ich:"Max" };
+  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, banner, ruestung, portale, biome, ich:"Max" };
 })();
 
 function mockApi(path, opts){
@@ -1611,7 +1661,6 @@ function mockApi(path, opts){
   if(method === "PUT" && (m = path.match(/^\/orte\/instanzen\/([\w-]+)\/angeheftet$/))){
     const i = MOCK.instanzen.find((x) => x.id === m[1]);
     if(!i) return fehler(404, "Ort nicht gefunden");
-    if(MOCK.typen.find((x) => x.id === i.featureTypeId)?.kategorie === BIOMES) return fehler(403, "Biome zeigt die Anzeige nicht");
     i.angeheftet = Boolean(body?.angeheftet);
     return ok({ instanz:{ ...i } });
   }
@@ -1623,13 +1672,25 @@ function mockApi(path, opts){
       return ok({ ok:true });
     }
     if(method === "PATCH"){
-      const t = MOCK.typen.find((x) => x.id === i.featureTypeId);
-      if(t.kategorie === BIOMES) return fehler(403, "Biome stammen aus Screenshots und sind fest");
       const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= CONFIG.weltGrenze;
       if(!ganz(body.x) || !ganz(body.z) || (body.y != null && !ganz(body.y))) return fehler(400, "Ungültige Koordinaten");
       Object.assign(i, { x:body.x, y:body.y ?? null, z:body.z });
       return ok({ instanz:{ ...i } });
     }
+  }
+
+  if((m = path.match(/^\/orte\/welten\/([\w-]+)\/biome$/))){
+    const welt = MOCK.welten.find((w) => w.id === m[1]);
+    if(!welt) return fehler(404, "Welt nicht gefunden");
+    if(method === "GET") return ok(structuredClone(MOCK.biome[welt.id] || { import:null, kacheln:[] }));
+    if(method === "PUT"){
+      const problem = biomImportPruefen(body, welt); if(problem) return fehler(422, problem);
+      const sauber = biomImportSauber(body);
+      const imp = { id:MOCK.neueId("bi"), weltId:welt.id, ...sauber.import, importiertAm:new Date().toISOString(), von:MOCK.ich };
+      MOCK.biome[welt.id] = { import:imp, kacheln:sauber.kacheln };
+      return ok({ import:structuredClone(imp) });
+    }
+    if(method === "DELETE"){ delete MOCK.biome[welt.id]; return ok({ ok:true }); }
   }
 
   if(method === "GET" && (m = path.match(/^\/sammelobjekte\/welten\/([\w-]+)$/))){
@@ -1773,6 +1834,7 @@ const st = {
   zu: new Set(),         // zugeklappte Kategorien (Schlüssel dim:kategorie)
   standort: lsLesen("orte.standort"),  // { x, y, z, dim } – nur auf diesem Gerät
   importe: [],           // Screenshot-Prüfliste
+  biome: { import:null, kacheln:[] },   // Welt-Import der aktuellen Welt, Kacheln als Uint16Array(1024)
   sheet: null,           // welches Sheet offen ist
 };
 
@@ -1793,13 +1855,13 @@ function sichtbareInstanzen(){
       && (!q || `${t.kategorie} ${t.variante || ""} ${i.x} ${i.z}`.toLowerCase().includes(q)));
 }
 
-/** Gleicher Typ (bzw. gleiches Biom) auf fast gleicher Stelle? */
+/** Gleicher Typ auf fast gleicher Stelle? */
 function duplikat(dim, kategorie, variante, x, z, ohneId){
   const dimId = dimIdVon(dim);
   return st.instanzen.find((i) => {
     if(i.id === ohneId || i.dimensionId !== dimId) return false;
     const t = typVon(i);
-    return t && t.kategorie === kategorie && (kategorie !== BIOMES || t.variante === variante)
+    return t && t.kategorie === kategorie
       && Math.abs(i.x - x) <= CONFIG.duplikatRadius && Math.abs(i.z - z) <= CONFIG.duplikatRadius;
   }) || null;
 }
@@ -2239,9 +2301,8 @@ function detailOeffnen(id, loeschenFragen){
   const i = st.instanzen.find((x) => x.id === id); if(!i) return;
   const t = typVon(i), dim = dimTypeVon(i.dimensionId);
   const w = entfernung(st.standort, i.x, i.z, dim);
-  const biom = t.kategorie === BIOMES ? biomFinden(t.variante) : null;
   const titel = esc(t.variante || t.kategorie);
-  const sub = `${t.variante ? `${esc(t.kategorie)} · ` : ""}${dimLabel(dim)}${biom ? ` · ${esc(biom.gruppe)}` : ""}`;
+  const sub = `${t.variante ? `${esc(t.kategorie)} · ` : ""}${dimLabel(dim)}`;
   const html = kopfHtml(titel, sub, kennblockHtml(t.kategorie)) + `<div class="orte-inhalt">
     <div class="result-card">
       <div class="result-label">Koordinaten</div>
@@ -2253,9 +2314,8 @@ function detailOeffnen(id, loeschenFragen){
       ${umrechnen(i.x, i.z, dim) ? `<div class="result-row"><span class="rname">${portalHtml(i.x, i.z, dim, "mono")}</span></div>` : ""}
       ${w ? `<div class="result-row"><span class="rname">Von deinem Standort</span><span><b class="rval mono">${entfernungText(w.meter)}</b><span class="runit">${w.richtung}</span></span></div>` : ""}
     </div>
-    ${biom ? `<div class="banner info">Biome stammen aus Screenshots – die Koordinaten sind fest. Falsch erfasst? Löschen und neu auslesen.</div>` : ""}
     ${boardZeigenKnopf(`ort:${i.id}`)}
-    ${DEMO.enabled || biom ? "" : `<button class="btn-secondary anheften ${i.angeheftet ? "aktiv" : ""}" data-aktion="anheften" data-id="${i.id}">
+    ${DEMO.enabled ? "" : `<button class="btn-secondary anheften ${i.angeheftet ? "aktiv" : ""}" data-aktion="anheften" data-id="${i.id}">
       ${i.angeheftet ? "Groß auf der Anzeige · Lösen" : "Auf der Anzeige anheften"}</button>`}
     <div class="knopf-raster">
       <button class="btn-secondary" data-aktion="kopieren" data-text="${i.x} ${i.y ?? "~"} ${i.z}">Koordinaten</button>
@@ -2264,8 +2324,8 @@ function detailOeffnen(id, loeschenFragen){
     ${loeschenFragen
       ? `<div class="knopf-raster"><button class="btn-secondary" data-aktion="detail" data-id="${i.id}">Abbrechen</button><button class="btn-danger" data-aktion="loeschen" data-id="${i.id}">Wirklich löschen</button></div>`
       : `<div class="knopf-raster">
-          ${biom ? "" : `<button class="btn-primary" data-aktion="bearbeiten" data-id="${i.id}">Bearbeiten</button>`}
-          <button class="btn-danger" data-aktion="loeschen-fragen" data-id="${i.id}" ${biom ? 'style="grid-column:1/-1"' : ""}>Löschen</button>
+          <button class="btn-primary" data-aktion="bearbeiten" data-id="${i.id}">Bearbeiten</button>
+          <button class="btn-danger" data-aktion="loeschen-fragen" data-id="${i.id}">Löschen</button>
         </div>`}
   </div>`;
   sheetOeffnen("detail", html, dim);
@@ -2310,7 +2370,7 @@ function formularRendern(behalten){
       </select>
       <div class="result-hint">Neue Varianten (z. B. „Stairway“) entstehen nur aus Screenshots.</div>`;
 
-  const html = kopfHtml("Ort eintragen", "Von Hand – Biome nur per Screenshot") + `<div class="orte-inhalt">
+  const html = kopfHtml("Ort eintragen", "Von Hand – Biome kommen aus dem Welt-Import") + `<div class="orte-inhalt">
     <div class="field-group"><div class="field-group-label">Dimension</div>
       <div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${form.dim === d ? "active" : ""}" data-form-dim="${d}">${dimLabel(d)}</button>`).join("")}</div></div>
     <div class="field-group"><div class="field-group-label">Kategorie</div>
@@ -2372,15 +2432,14 @@ async function importAbarbeiten(){
     const k = r.data?.erkannt;
     if(!k && r.data?.banner){ await bannerImport(e, r.data.banner); importRendern(); continue; }
     if(!k){ e.status = "leer"; e.meldungen = [["warn", "Weder ein Seed-Map-Popup noch eine Banner-Anleitung gefunden – ist das Popup aufgeklappt?"]]; importRendern(); continue; }
-    Object.assign(e, { status:"fertig", erkannt:k, dim:k.dimension, x:String(k.x), y:k.y != null ? String(k.y) : "", z:String(k.z), an:true, meldungen:[] });
     if(k.kategorie === BIOMES){
-      const b = biomFinden(k.variante);
-      if(!b){ e.an = false; e.meldungen.push(["bad", `„${k.variante}“ steht nicht in der Biom-Liste`]); }
-      else if(b.dimension !== k.dimension){
-        e.dim = b.dimension;
-        e.meldungen.push(["warn", `Das Dropdown zeigte ${dimLabel(k.dimension)}, ${b.name} liegt aber ${inDim(b.dimension)} – dort übernommen.`]);
-      }
-    } else if(!FEATURE_KATEGORIEN[e.dim].includes(k.kategorie)){
+      // Biome sind keine Orte mehr: ausgegraut, ohne Schalter
+      Object.assign(e, { status:"biom", erkannt:k, dim:biomFinden(k.variante)?.dimension || k.dimension, an:false,
+        meldungen:[["info", "Biome kommen aus dem Welt-Import – dieser Screenshot wird nicht gespeichert."]] });
+      importRendern(); continue;
+    }
+    Object.assign(e, { status:"fertig", erkannt:k, dim:k.dimension, x:String(k.x), y:k.y != null ? String(k.y) : "", z:String(k.z), an:true, meldungen:[] });
+    if(!FEATURE_KATEGORIEN[e.dim].includes(k.kategorie)){
       e.an = false; e.meldungen.push(["bad", `„${k.kategorie}“ gibt es ${inDim(e.dim)} nicht`]);
     }
     const d = duplikat(e.dim, k.kategorie, k.variante, k.x, k.z);
@@ -2434,7 +2493,7 @@ function importRendern(){
   const karten = st.importe.map((e) => {
     if(e.banner) return importBannerKarte(e);
     const k = e.erkannt;
-    const biom = k && k.kategorie === BIOMES;
+    const biom = e.status === "biom";
     const titel = e.status === "wartet" ? "Wartet …"
       : e.status === "lese" ? '<span class="dreher"></span>Lese Text …'
       : e.status === "gespeichert" ? `${esc(k.titel)} ✓`
@@ -2442,7 +2501,7 @@ function importRendern(){
       : "Nicht erkannt";
     const meta = k ? `<span class="pill">${dimLabel(e.dim)}</span>${biom ? '<span class="pill">Biom</span>' : ""}` : "";
     const bearbeitbar = e.status === "fertig";
-    return `<div class="card ${bearbeitbar && !e.an ? "aus" : ""}" style="${k ? "" : ""}" data-import="${e.id}">
+    return `<div class="card ${(bearbeitbar && !e.an) || biom ? "aus" : ""}" data-import="${e.id}">
       <div class="imp-kopf">
         <img src="${e.url}" alt="">
         <div class="text"><div class="card-title">${titel}</div><div class="card-meta">${meta}</div></div>
@@ -2450,7 +2509,7 @@ function importRendern(){
       </div>
       ${e.meldungen.map(([art, text]) => `<div class="banner ${art}">${esc(text)}</div>`).join("")}
       ${bearbeitbar && e.an ? `
-        ${biom ? "" : `<div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${e.dim === d ? "active" : ""}" data-import-dim="${d}" data-id="${e.id}">${dimLabel(d)}</button>`).join("")}</div>`}
+        <div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${e.dim === d ? "active" : ""}" data-import-dim="${d}" data-id="${e.id}">${dimLabel(d)}</button>`).join("")}</div>
         ${koordFelder(`i${e.id}`, e.x, e.y, e.z)}` : ""}
     </div>`;
   }).join("");
@@ -3679,6 +3738,7 @@ async function liveAktualisieren({ bereich, weltId }){
   if(bereich === "orte") return orteAuffrischen();
   if(bereich === "sammelobjekte") return samLaden();
   if(bereich === "portale") return portaleLaden();
+  if(bereich === "biome") return biomeLaden();
 }
 async function weltenAuffrischen(){
   const r = await api("/orte/welten"); if(!r.ok) return;
@@ -3691,7 +3751,7 @@ async function weltenAuffrischen(){
 async function orteAuffrischen(){
   if(!st.weltId) return;
   const r = await api(`/orte/welten/${st.weltId}`); if(!r.ok) return;
-  Object.assign(st, { typen:r.data.typen, instanzen:r.data.instanzen });
+  Object.assign(st, { typen:r.data.typen, instanzen:ohneBiome(r.data) });
   const w = st.welten.find((x) => x.id === st.weltId); if(w) w.anzahl = st.instanzen.length;
   render();
 }
@@ -3816,14 +3876,13 @@ function bannerKarte(id){
 function ortKarte(id){
   const i = st.instanzen.find((x) => x.id === id); if(!i) return null;
   const t = typVon(i), dim = dimTypeVon(i.dimensionId);
-  const biom = t.kategorie === BIOMES ? biomFinden(t.variante) : null;
   const bloecke = [{ art:"koordinaten", x:i.x, y:i.y ?? null, z:i.z }];
   const u = umrechnen(i.x, i.z, dim);
   if(u) bloecke.push({ art:"koordinaten", label:u.dim === "nether" ? "Im Nether" : "In der Oberwelt",
                        x:u.x, y:null, z:u.z, dimension:BOARD_DIM[u.dim] });
-  const unter = [t.variante ? t.kategorie : null, biom?.gruppe].filter(Boolean).join(" · ");
-  // typ = Feature-Typ der Seed Map → die Anzeige zeigt dazu den Kennblock (eigene Orte, Biome: keiner)
-  const typ = t.kategorie === EIGENE_ORTE || t.kategorie === BIOMES ? undefined : t.kategorie;
+  const unter = t.variante ? t.kategorie : null;
+  // typ = Feature-Typ der Seed Map → die Anzeige zeigt dazu den Kennblock (eigene Orte: keiner)
+  const typ = t.kategorie === EIGENE_ORTE ? undefined : t.kategorie;
   return { titel:t.variante || t.kategorie, unter:unter || undefined, bereich:"Karte",
            quelle:`ort:${i.id}`, typ, dimension:BOARD_DIM[dim], bloecke };
 }
@@ -4558,12 +4617,24 @@ async function weltenLaden(){
 async function weltLaden(id){
   const r = await api(`/orte/welten/${id}`);
   if(!r.ok){ toast(meldungAus(r), true); return; }
-  Object.assign(st, { weltId:id, welt:r.data.welt, dimensionen:r.data.dimensionen, typen:r.data.typen, instanzen:r.data.instanzen, filter:null });
+  Object.assign(st, { weltId:id, welt:r.data.welt, dimensionen:r.data.dimensionen, typen:r.data.typen, instanzen:ohneBiome(r.data),
+    filter:null, biome:{ import:null, kacheln:[] } });
   lsSchreiben("orte.welt", id);
   karte.neuAnpassen();
   render();
   samLaden();
   portaleLaden();
+  biomeLaden();
+}
+/** Biom-Orte aus der Zeit vor dem Welt-Import blendet die Karte aus (der Server lässt sie nur noch löschen) */
+const ohneBiome = ({ typen, instanzen }) => instanzen.filter((i) => typen.find((t) => t.id === i.featureTypeId)?.kategorie !== BIOMES);
+/** Welt-Import der aktuellen Welt; die Kacheln kommen als Base64 und werden hier einmal dekodiert */
+async function biomeLaden(){
+  const id = st.weltId; if(!id) return;
+  const r = await api(`/orte/welten/${id}/biome`);
+  if(id !== st.weltId) return;   // inzwischen eine andere Welt gewählt
+  if(!r.ok){ if(r.status !== 401) toast(meldungAus(r), true); return; }
+  st.biome = { import:r.data.import, kacheln:r.data.kacheln.map((k) => ({ dim:k.dim, kx:k.kx, kz:k.kz, daten:kachelAusBase64(k.daten) })).filter((k) => k.daten) };
 }
 function dimWechseln(dim){
   st.dim = dim; st.filter = null;

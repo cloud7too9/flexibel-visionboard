@@ -26,6 +26,7 @@ Ein Gerät im Zimmer zeigt die Orte der aktiven Welt groß an. Alle anderen öff
   - `companion-api.js`: REST unter `/api` nach dem Vertrag in `companion-prototyp.html` (Abschnitt 4), Bearer-Token aus dem Beitreten. Dazu `/api/board/einstellungen` und `PUT /api/orte/instanzen/:id/angeheftet`. Jede Änderung meldet per WebSocket `{ art:"geaendert", bereich, weltId }`.
   - `regeln.js`: lädt `companion/regeln.js` per `node:vm` – dieselben Regeln wie am Handy, nichts nachgebaut.
   - `sicht.js`: Orte der aktiven Welt (ohne Biome) in der alten `Ort`-Form für die Anzeige.
+  - Biome aus dem Welt-Import (`/api/orte/welten/:id/biome`, Branch `bereich/karte-mcworld`): `daten.js` hält je Welt den Import-Eintrag in `daten.json` und die Kacheln in `daten/biome/<weltId>.json`; ein PUT ersetzt beides (Importe laufen nacheinander), `bodyLimit` 64 MB. Geprüft mit `biomImportPruefen()` aus `companion/regeln.js`. Biom-Orte legt der Server nicht mehr an, alte lassen sich nur noch löschen.
   - `erkennung.js` + `fuerCompanion()`: OCR für `/api/orte/auslesen`.
   - `banner-erkennung.js` + `bildvorbereitung.js`: Banner-Anleitungen (Branch `bereich/banner-screenshot`). Ohne Seed-Map-Popup wird das Bild 3× vergrößert und für helle, dann dunkle Schrift in Schwarz-Weiß gewandelt; Zeilen „<Farbe> <Muster>“ werden unscharf über `regeln.js` zugeordnet. Kostet bis zu zwei weitere OCR-Läufe (~1 s am PC). WebP wird nicht vorbereitet.
   - `/api/server` → `{ name:"koordinaten-board" }`: daran erkennt die Companion den Live-Betrieb.
