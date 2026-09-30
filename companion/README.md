@@ -54,7 +54,7 @@ Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welch
 
 ## Welt-Import: Biome aus `.mcworld` (in Arbeit, Branch `bereich/karte-mcworld`)
 
-Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch aus einer hochgeladenen Bedrock-Welt; die App liest sie im Browser (Web Worker) und zeigt sie flächig auf der Karte. Stand: **Phase 3** – Dekoder an der Fixture-Welt von Max geprüft (Höhenkarte an seiner Stelle, 8 von 8 Chunkbase-Stichproben, ID 195 = Dappled Forest), der Import läuft im Web Worker, Datenmodell, Regeln, Mock und Board-API stehen. Biome sind keine Orte mehr. Import-Sheet (Phase 4) und Biom-Ebene der Karte (Phase 5) fehlen noch; ausprobieren lässt sich der Import über die Prüfseite `welt-pruefen.html`.
+Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch aus einer hochgeladenen Bedrock-Welt; die App liest sie im Browser (Web Worker) und zeigt sie flächig auf der Karte. Stand: **Phase 4** (Haltepunkt) – Dekoder an der Fixture-Welt von Max geprüft (Höhenkarte an seiner Stelle, 8 von 8 Chunkbase-Stichproben, ID 195 = Dappled Forest), der Import läuft im Web Worker, Datenmodell, Regeln, Mock und Board-API stehen, das Import-Sheet mit Prüfliste ist in der Karte. Biome sind keine Orte mehr. Es fehlt die Biom-Ebene der Karte (Phase 5).
 
 | Datei | Inhalt |
 |---|---|
@@ -64,7 +64,7 @@ Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch a
 | `vendor/mcbe-leveldb.js` | Bundle aus `mcbe-leveldb-reader` 5.0.1 + zip.js (211 KB, gzip 86 KB), Lizenzen in `vendor/LIZENZEN.txt` |
 | `tools/` | `npm ci`, dann `npm run vendor` / `npm run biom-ids` (neu erzeugen), `npm test` (Gegenprobe mit prismarine-chunk), `node welt-pruefen.mjs <welt.mcworld> [--weg beide] [--massstab 4] [--punkt x,z]` |
 | `biom-import.worker.js` | Web Worker (`type: "module"`): `{ typ:"start", datei, biomIds }` → `fortschritt` … → `fertig` (Kacheln als Transferables) oder `fehler`; Abbrechen = `terminate()` |
-| `welt-pruefen.html` | Prüfseite für Phase 2: Welt wählen, Fortschritt, Abbrechen, Ergebnis mit Dauer, Vorschau je Dimension und „Ergebnis kopieren“; merkt sich einen abgestürzten Lauf. Ohne Worker (gesperrt) liest sie im Vordergrund. Vom Board unter `http://<board>:3000/welt-pruefen.html` |
+| `welt-pruefen.html` | Prüfseite aus Phase 2 (für Messungen am Gerät, der eigentliche Einstieg ist das Import-Sheet der Karte): Welt wählen, Fortschritt, Abbrechen, Ergebnis mit Dauer, Vorschau je Dimension und „Ergebnis kopieren“; merkt sich einen abgestürzten Lauf. Ohne Worker (gesperrt) liest sie im Vordergrund. Vom Board unter `http://<board>:3000/welt-pruefen.html` |
 
 - **Prüfskript** `tools/welt-pruefen.mjs`: Weltname, Seed, Version, Chunks je Dimension, Ausdehnung, häufigste Biome, unbekannte IDs mit Beispielkoordinate, Laufzeit und Spitzenspeicher je Weg, PNG je Dimension nach `tests/bilder/` (1 Pixel = 1 Chunk, unbekannt rot). `--punkt x,z` zeigt die Höhenkarte in beiden Lesarten – zum Abgleich mit der Y-Anzeige im Spiel.
 - **Tests**: `cd tests && node --test biom-dekoder.test.mjs` – handgebaute Bytes und ganze **synthetische Welten** aus `tests/welt-bauen.mjs` (echte LevelDB-Dateien mit Leveln, gelöschter Datei, Log mit Löschmarke, iOS-Ordner, Java-Welt …).
@@ -74,7 +74,14 @@ Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch a
 - **Datenmodell** (Phase 3): je Welt ein `WeltImport` (Datei, Weltname, Seed, Version, Chunks je Dimension, unbekannte IDs, `importiertAm`, `von`) und seine Kacheln (32 × 32 Chunks, Base64). API im Vertrag (Abschnitt 4): `GET/PUT/DELETE /orte/welten/:id/biome`, ein PUT ersetzt Import und alle Kacheln. Regeln in `regeln.js`: `biomImportPruefen()` (Seed passt, Dimension, genau 2048 Byte je Kachel, innerhalb der Weltgrenze, keine doppelte Kachel), `instanzPruefen()` lehnt die Kategorie „Biomes“ ab („Biome kommen nur aus dem Welt-Import“).
 - **Bedrock-ID → Biom**: `BIOM_NACH_ID` in der Companion verknüpft `biom-ids.js` über den Anzeigenamen mit der Biom-Liste (mehrere alte IDs → ein Biom) und trägt die Kartenfarbe.
 - **Mock**: Die Beispielwelt `w_1` hat die echten Biome der Fixture-Welt (30 Chunks um den Spawn), die Biom-Orte sind raus. Ein Biom-Screenshot erscheint in der Prüfliste ausgegraut mit „Biome kommen aus dem Welt-Import“.
-- **Test** `tests/karte-mcworld.test.mjs`: Mock-Kacheln = Node-Ergebnis der Fixture-Welt, Kachel-Kodierung der Seite = `biom-dekoder.js`, Mock-API nach Vertrag, Weltwechsel, ausgegrautes Biom in der Prüfliste. Live (`live.test.mjs`): Max importiert, Lena bekommt die Biome ohne Neuladen.
+- **Import-Sheet** (Phase 4, Karte → Bottombar „Welt-Import“, Sheet `weltimport`):
+  - **Start**: Biome dieser Welt (Stand, Chunks je Dimension, Datei, importiert von) mit „Import löschen“ (zweites Tippen „Wirklich löschen“), Anleitung Realm → `.mcworld`, „Welt auswählen …“. Als Datei (`file://`) nur ein Hinweis – Module-Worker brauchen http(s).
+  - **Lauf**: Phase und Zähler, Zeit, Balken, „Abbrechen“ (beendet den Worker). Das Sheet darf zu – ist das Lesen fertig, öffnet sich die Prüfliste (oder ein Toast, wenn gerade ein anderes Sheet offen ist). Ohne Worker liest die Seite im Vordergrund.
+  - **Prüfliste**: Weltname, Spielversion, Seed mit ✔/✘, Vorschau je Dimension (Umschalter mit Chunk-Zahl, 1 Pixel = 1 Chunk, unbekannte IDs rot), die fünf häufigsten Biome (alte IDs zählen zu ihrem heutigen Biom), unbekannte IDs mit Anzahl und Beispielkoordinate, „Ersetzt den Import vom …“, „Verwerfen“ / „Übernehmen“.
+  - **Anderer Seed**: Banner, „Übernehmen“ gesperrt. Angebot „Neue Welt mit diesem Seed anlegen“ (gibt es die Welt schon: „Zur Welt mit diesem Seed wechseln und übernehmen“), danach Import dorthin.
+  - **Absturz**: Während des Lesens steht `orte.weltImportLauf` im Speicher. Ist er nach dem Neuladen noch da, zeigt die Companion „Letzter Welt-Import abgestürzt“ und im Sheet Datei, Größe und den Tipp, am Laptop zu importieren.
+  - **Karte**: Der Hinweis oben zeigt „Biome: Stand <Datum> · <n> Chunks“ der aktuellen Dimension bzw. „keine Biome importiert“.
+- **Test** `tests/karte-mcworld.test.mjs` (über http): Mock-Kacheln = Node-Ergebnis der Fixture-Welt, Kachel-Kodierung der Seite = `biom-dekoder.js`, Mock-API nach Vertrag, Weltwechsel, ausgegrautes Biom in der Screenshot-Prüfliste; Import-Sheet mit Fixture-Welt (Prüfliste, Übernehmen, Löschen), falschem Seed (Wechseln), fremdem Seed mit unbekannter ID (neue Welt), Abbrechen, Java-Fehler, Absturz-Hinweis, `file://`. Live (`live.test.mjs`): Max importiert über das Sheet (Worker vom Board), Lena bekommt die Biome ohne Neuladen.
 
 ## Sammelobjekte
 

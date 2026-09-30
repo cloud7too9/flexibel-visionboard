@@ -125,17 +125,18 @@ try {
   await lena.waitForTimeout(500);   // Sheet-Animation abwarten
   await lena.screenshot({ path: `${DIR}/l3-lena-live.png` });
 
-  // Biome aus dem Welt-Import: Max speichert, Lena lädt live nach
-  const importiert = await max.evaluate(async () => {
-    const daten = new Uint16Array(KACHEL_CHUNKS ** 2); daten[0] = 196;   // Chunk 0,0 = Dappled Forest
-    const r = await api(`/orte/welten/${st.weltId}/biome`, { method: "PUT", body: JSON.stringify({
-      import: { seed: st.welt.seed, weltname: "Meine Welt", chunks: { overworld: 1, nether: 0, end: 0 }, unbekannt: [] },
-      kacheln: [{ dim: "overworld", kx: 0, kz: 0, daten: kachelZuBase64(daten) }] }) });
-    return r.ok && r.data.import.von === "Max";
-  });
-  pruefe(importiert, "Welt-Import auf dem Board gespeichert (von Max)");
-  pruefe(await warteAuf(lena, () => st.biome.import?.weltname === "Meine Welt" && st.biome.kacheln[0]?.daten[0] - 1 === 195),
-    "Lena bekommt die Biome live (Kachel dekodiert: Dappled Forest)");
+  // Welt-Import: Max liest die Fixture-Welt im Worker (vom Board ausgeliefert), übernimmt – Lena lädt live nach
+  await max.click("#orteImportBtn");
+  await max.setInputFiles("#weltImportDatei", path.join(HIER, "daten", "fixture-seed.mcworld"));
+  pruefe(await warteAuf(max, () => wi.status === "fertig" && wi.modus === "Worker", null, 30000), "Welt-Import: Fixture-Welt im Worker gelesen");
+  pruefe((await text(max, "#orteSheetInhalt")).includes("6889192652397090698 ✔"), "Prüfliste: Seed passt zur Welt");
+  await max.waitForTimeout(400);
+  await max.screenshot({ path: `${DIR}/l3e-welt-import.png` });
+  await max.click('[data-aktion="wi-uebernehmen"]');
+  pruefe(await warteAuf(max, () => st.biome.import?.von === "Max" && st.sheet === null), "Übernommen: auf dem Board gespeichert (von Max)");
+  pruefe(await warteAuf(lena, () => st.biome.import?.dateiname === "fixture-seed.mcworld" && st.biome.kacheln.length === 4
+    && st.biome.kacheln.find((k) => k.kx === -1 && k.kz === -1).daten[28 * 32 + 31] - 1 === 195),
+    "Lena bekommt die Biome live (Chunk X −1 Z −4 dekodiert: Dappled Forest)");
 
   // Sammelobjekt: Lena hakt ab, Max sieht es
   await max.evaluate(() => modulWechseln("sammelobjekte"));

@@ -404,6 +404,14 @@ Test `tests/karte-mcworld.test.mjs`:
 
 Commit: `Import-Sheet mit Prüfliste`
 
+✔ Umgesetzt. Abweichungen und Ergänzungen:
+- Bottombar-Beschriftung „Welt-Import“ (fünf Einträge, „Welt importieren“ passt nicht in die Breite); das Sheet heißt „Welt importieren“.
+- **Import-Info** steht im Startbild des Sheets (Stand, Chunks, Datei, importiert von, „Import löschen“) und kurz im Karten-Hinweis oben („Biome: Stand 30.9. · 30 Chunks“).
+- Gibt es schon eine Welt mit dem Seed der Datei, heißt das Angebot „Zur Welt mit diesem Seed wechseln und übernehmen“ (sonst würde „Welt anlegen“ mit 409 abbrechen).
+- **Absturz-Merker** wie auf der Prüfseite (`orte.weltImportLauf`): nach dem Neuladen Toast und im Sheet Datei, Größe und der Tipp „am Laptop importieren“ (Risiko iPhone-Speicher).
+- Unbekannte IDs sind nur in der **Vorschau** rot; auf der Karte bleiben sie leer (Phase 5).
+- Test über http mit dem kleinen Static-Server aus `tests/hilfen.mjs`; dazu der echte Ablauf über das Board in `live.test.mjs`.
+
 ### Phase 5 – Biom-Ebene auf der Karte
 
 - Pro Kachel ein Offscreen-Canvas 32 × 32 (`ImageData`, 1 Pixel = 1 Chunk). Farbe aus der Biom-Liste; `0` und unbekannte IDs transparent. Cache neu bauen bei Import und Löschen.

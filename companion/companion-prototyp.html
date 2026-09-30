@@ -626,6 +626,21 @@ select.orte-eingabe { padding-right:34px;
 .card .field input, .card .orte-eingabe, .card .tool-segment { background:var(--surface); }
 .card .koord-in .vz { background:var(--surface-2); }
 
+/* Welt-Import (.mcworld) */
+.wi-wert { font-size:14px; font-weight:700; text-align:right; min-width:0; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.wi-wert .ok { color:var(--accent); } .wi-wert .nein { color:#ff8278; }
+.wi-balken { height:8px; border-radius:4px; background:var(--surface-3); overflow:hidden; }
+.wi-balken span { display:block; height:100%; width:0; background:var(--accent); transition:width .2s; }
+.wi-vorschau { display:flex; justify-content:center; padding:10px; border-radius:12px; min-height:60px; align-items:center;
+  background:repeating-conic-gradient(var(--surface-2) 0 25%, var(--surface) 0 50%) 0 0 / 16px 16px; border:1px solid var(--border-soft); }
+.wi-vorschau canvas { image-rendering:pixelated; image-rendering:crisp-edges; max-width:100%; }
+.wi-biom { display:flex; align-items:center; gap:9px; font-size:13.5px; }
+.wi-biom i { width:12px; height:12px; border-radius:3px; flex:0 0 auto; box-shadow:inset 0 0 0 1px rgba(0,0,0,.35); }
+.wi-biom span { flex:1; min-width:0; }
+.wi-biom b { font-variant-numeric:tabular-nums; color:var(--text-dim); font-weight:600; }
+.imp-schritte.wi-schritte li:first-child { color:inherit; font-weight:inherit; }
+.seg-btn .wi-zahl { font-weight:600; opacity:.7; margin-left:3px; font-variant-numeric:tabular-nums; }
+
 /* Screenshot-Prüfliste */
 .card.aus { opacity:.55; }
 .imp-kopf { display:flex; gap:11px; align-items:center; }
@@ -1070,12 +1085,17 @@ button.switch { padding:0; }
           <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
           <span class="lab">Eintragen</span>
         </button>
+        <button class="bb-item" id="orteImportBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v10M8 10l4 4 4-4"/><path d="M4 15v4h16v-4"/></svg></span>
+          <span class="lab">Welt-Import</span>
+        </button>
         <button class="bb-item" id="orteWeltBtn">
           <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
           <span class="lab">Welt</span>
         </button>
       </nav>
       <input type="file" id="orteDatei" accept="image/*" multiple hidden>
+      <input type="file" id="weltImportDatei" hidden>
     </section>
     <!-- === Modul: Sammelobjekte · Rüstungs-Modifikationen =================== -->
     <section class="module" data-module="sammelobjekte" id="moduleSammel">
@@ -1224,6 +1244,8 @@ button.switch { padding:0; }
 const CONFIG = Object.freeze({
   duplikatRadius: 3,     // Blöcke – gleicher Typ so nah beieinander gilt als Duplikat
   biomRadius: 48,        // Blöcke – Fläche, die um einen bekannten Biom-Punkt gezeichnet wird
+  netherBiomY: 64,       // Welt-Import: Nether und End haben keine Oberfläche – Biom in dieser Höhe
+  endBiomY: 64,
   zoomMin: 0.02,         // Pixel pro Block
   zoomMax: 4,
   toastMs: 2600,
@@ -2170,8 +2192,8 @@ const karte = (() => {
     }
 
     // Hinweis + Legende
-    const bekannt = biome.length;
-    $hinweis.innerHTML = `<span class="chip mono">${rasterweite()} Blöcke · ${bekannt ? `${bekannt} Biom-Punkte` : "keine Biome bekannt"}</span>`;
+    const imp = st.biome.import;
+    $hinweis.innerHTML = `<span class="chip mono">${rasterweite()} Blöcke · ${imp ? `Biome: Stand ${datumKurz(imp.importiertAm)} · ${zahl(imp.chunks[st.dim] || 0)} Chunks` : "keine Biome importiert"}</span>`;
     $legende.innerHTML = [...legende].slice(0, 6).map(([n, f]) => `<span class="chip"><i style="background:${f}"></i>${esc(n)}</span>`).join("");
   }
 
@@ -2591,6 +2613,232 @@ async function importSpeichern(){
 }
 
 // --- Welt ----------------------------------------------------------------------
+// --- Welt-Import: Biome aus einer .mcworld ---------------------------------------
+/* Die Welt liest ein Web Worker (biom-import.worker.js → biom-welt.js) auf diesem Gerät. Hochgeladen
+   wird nur das Ergebnis: je Welt ein Import mit Kacheln (PUT /orte/welten/:id/biome, ersetzt den alten).
+   Module-Worker laufen nicht unter file:// – dann steht dort ein Hinweis. Bleibt der Merker WI_LAUF
+   nach dem Neuladen stehen, ist die Seite beim Lesen abgestürzt (meist zu wenig Speicher). */
+const WI_PHASEN = { oeffnen:"Datei öffnen", lesen:"Weltdaten lesen", berechnen:"Biome berechnen" };
+const WI_LAUF = "orte.weltImportLauf";
+const WI_UNBEKANNT = "#ff0000";   // unbekannte Biom-IDs in der Vorschau
+const wi = { status:"bereit", datei:null, worker:null, lauf:0, start:0, uhr:null, fortschritt:null, modus:"Worker",
+  ergebnis:null, dauer:0, dim:"overworld", meldung:null, loeschenFragen:false, speichert:false, absturz:lsLesen(WI_LAUF) };
+lsSchreiben(WI_LAUF, null);
+const $wiDatei = document.getElementById("weltImportDatei");
+const mb = (b) => b < 1024 * 1024 ? `${Math.max(1, Math.round(b / 1024))} KB` : `${(b / 1024 / 1024).toLocaleString("de-DE", { maximumFractionDigits:1 })} MB`;
+const sekunden = (ms) => `${(ms / 1000).toLocaleString("de-DE", { minimumFractionDigits:1, maximumFractionDigits:1 })} s`;
+const datumLang = (iso) => new Date(iso).toLocaleString("de-DE", { day:"numeric", month:"numeric", year:"numeric", hour:"2-digit", minute:"2-digit" });
+
+function weltImportOeffnen(){
+  wi.loeschenFragen = false;
+  weltImportRendern(true);
+}
+/** Start, Lauf oder Prüfliste – oeffnen: auch wenn das Sheet gerade zu ist */
+function weltImportRendern(oeffnen){
+  if(!oeffnen && st.sheet !== "weltimport") return;
+  const scroll = st.sheet === "weltimport" ? $sheet.scrollTop : 0;
+  const inhalt = wi.status === "laeuft" ? wiLaufHtml() : wi.status === "fertig" ? wiPruefHtml() : wiStartHtml();
+  sheetOeffnen("weltimport", kopfHtml("Welt importieren", "Biome aus einer Bedrock-Welt (.mcworld)") + `<div class="orte-inhalt">${inhalt}</div>`,
+    wi.status === "fertig" ? wi.dim : undefined);
+  $sheet.scrollTop = scroll;
+  if(wi.status === "laeuft") wiFortschrittZeigen();
+  if(wi.status === "fertig") wiVorschauZeichnen();
+}
+
+function wiStartHtml(){
+  const imp = st.biome.import;
+  const chunks = imp && DIM_ORDER.filter((d) => imp.chunks[d]).map((d) => `${dimLabel(d)} ${zahl(imp.chunks[d])}`).join(" · ");
+  return `
+    ${wi.meldung ? `<div class="banner ${wi.meldung[0]}">${esc(wi.meldung[1])}</div>` : ""}
+    ${wi.absturz ? `<div class="banner warn">Der letzte Import wurde nicht beendet – vermutlich reichte der Speicher nicht
+      (${esc(wi.absturz.name)}, ${mb(wi.absturz.groesse)}). Tipp: am Laptop importieren, die Biome landen trotzdem bei allen.</div>` : ""}
+    ${imp ? `<div class="result-card">
+      <div class="result-label">Biome dieser Welt</div>
+      <div class="result-row"><span class="rname">Stand</span><span class="wi-wert">${datumLang(imp.importiertAm)}</span></div>
+      <div class="result-row"><span class="rname">Chunks</span><span class="wi-wert">${chunks || "0"}</span></div>
+      <div class="result-row"><span class="rname">Datei</span><span class="wi-wert">${esc(imp.dateiname || imp.weltname || "–")}</span></div>
+      ${imp.von ? `<div class="result-row"><span class="rname">Importiert von</span><span class="wi-wert">${esc(imp.von)}</span></div>` : ""}
+      ${wi.loeschenFragen
+        ? `<div class="knopf-raster"><button class="btn-secondary" data-aktion="wi-loeschen-nein">Abbrechen</button><button class="btn-danger" data-aktion="wi-loeschen">Wirklich löschen</button></div>`
+        : `<button class="btn-danger" data-aktion="wi-loeschen-fragen">Import löschen</button>`}
+    </div>` : `<div class="banner info">Diese Welt hat noch keine Biome. Unerkundete Fläche bleibt auf der Karte leer.</div>`}
+    <div class="field-group"><div class="field-group-label">So kommst du an die Datei</div>
+      <ol class="imp-schritte wi-schritte">
+        <li>Realm: in den Realm-Einstellungen die Welt herunterladen.</li>
+        <li>Bei der Welt „Bearbeiten“ → „Welt exportieren“ und die <b>.mcworld</b> in „Dateien“ sichern.</li>
+        <li>Hier auswählen. Gelesen wird auf diesem Gerät – hochgeladen werden nur die Biome.</li>
+      </ol></div>
+    ${location.protocol.startsWith("http")
+      ? `<div class="sheet-fuss"><button class="btn-primary" data-aktion="wi-waehlen">${imp ? "Neue Welt-Datei auswählen …" : "Welt auswählen …"}</button></div>`
+      : `<div class="banner bad">Der Welt-Import braucht http(s) – als Datei geöffnet laufen keine Module-Worker. Über das Board öffnen.</div>`}`;
+}
+
+function wiLaufHtml(){
+  return `<div class="result-card">
+      <div class="result-row"><span class="rname" id="wiPhase">Datei öffnen …</span><span class="wi-wert" id="wiZeit">0,0 s</span></div>
+      <div class="wi-balken"><span id="wiBalken"></span></div>
+      <div class="result-hint">${esc(wi.datei.name)} · ${mb(wi.datei.size)}${wi.modus === "Vordergrund" ? " · ohne Worker" : ""}</div>
+    </div>
+    <div class="result-hint">Große Realm-Welten brauchen eine Weile. Nichts wird gespeichert, bevor du die Prüfliste übernimmst.</div>
+    <button class="btn-secondary" data-aktion="wi-abbrechen">Abbrechen</button>`;
+}
+function wiFortschrittZeigen(){
+  const $p = document.getElementById("wiPhase");
+  if(st.sheet !== "weltimport" || wi.status !== "laeuft" || !$p) return;
+  const { phase, aktuell, gesamt } = wi.fortschritt;
+  $p.textContent = `${WI_PHASEN[phase] ?? phase}${gesamt > 1 ? ` · ${zahl(aktuell)} / ${zahl(gesamt)}` : " …"}`;
+  const anteil = { oeffnen:0, lesen:0.05 + 0.85 * (aktuell / Math.max(1, gesamt)), berechnen:0.95 }[phase] ?? 0;
+  document.getElementById("wiBalken").style.width = `${Math.round(anteil * 100)}%`;
+  document.getElementById("wiZeit").textContent = sekunden(performance.now() - wi.start);
+}
+
+function wiStarten(datei){
+  wi.worker?.terminate();
+  Object.assign(wi, { status:"laeuft", datei, ergebnis:null, meldung:null, absturz:null, modus:"Worker",
+    fortschritt:{ phase:"oeffnen", aktuell:0, gesamt:1 }, start:performance.now() });
+  lsSchreiben(WI_LAUF, { name:datei.name, groesse:datei.size, start:Date.now() });
+  const lauf = ++wi.lauf;
+  clearInterval(wi.uhr); wi.uhr = setInterval(wiFortschrittZeigen, 200);
+  weltImportRendern(true);
+  const nachricht = (data) => {
+    if(lauf !== wi.lauf) return;   // abgebrochen oder überholt
+    if(data.typ === "fortschritt"){ wi.fortschritt = data; return wiFortschrittZeigen(); }
+    wi.worker?.terminate(); wi.worker = null;
+    clearInterval(wi.uhr); lsSchreiben(WI_LAUF, null);
+    if(data.typ === "fehler") Object.assign(wi, { status:"bereit", meldung:["bad", data.text] });
+    else {
+      const meta = data.meta;
+      Object.assign(wi, { status:"fertig", dauer:performance.now() - wi.start, dim:[st.dim, ...DIM_ORDER].find((d) => meta.chunks[d]) || "overworld",
+        ergebnis:{ meta, kacheln:data.kacheln.map((k) => ({ dim:k.dim, kx:k.kx, kz:k.kz, daten:new Uint16Array(k.daten) })) } });
+    }
+    if(!st.sheet || st.sheet === "weltimport") weltImportRendern(true);
+    else toast(wi.status === "fertig" ? "Welt gelesen – Prüfliste unter „Welt-Import“" : data.text, wi.status !== "fertig");
+  };
+  const auftrag = { typ:"start", datei, biomIds:[...BIOM_NACH_ID.keys()], hoehen:{ netherBiomY:CONFIG.netherBiomY, endBiomY:CONFIG.endBiomY } };
+  // Ohne Worker (gesperrt oder lädt nicht): derselbe Ablauf auf der Seite – die Oberfläche reagiert dann langsamer
+  const vordergrund = async () => {
+    wi.modus = "Vordergrund"; weltImportRendern();
+    try {
+      const { weltLesen, WeltFehler, FEHLER } = await import("./biom-welt.js");
+      try {
+        const { meta, kacheln } = await weltLesen(datei, { biomIds:auftrag.biomIds, hoehen:auftrag.hoehen, fortschritt:(f) => nachricht({ typ:"fortschritt", ...f }) });
+        nachricht({ typ:"fertig", meta, kacheln:kacheln.map((k) => ({ ...k, daten:k.daten.buffer })) });
+      } catch(f){ console.warn("Welt-Import:", f); nachricht({ typ:"fehler", text:f instanceof WeltFehler ? f.message : FEHLER.LESEN }); }
+    } catch(f){ console.error("Welt-Import:", f); nachricht({ typ:"fehler", text:"Der Import konnte nicht geladen werden" }); }
+  };
+  let gemeldet = false;
+  try {
+    wi.worker = new Worker(new URL("./biom-import.worker.js", document.baseURI), { type:"module" });
+    wi.worker.onmessage = ({ data }) => { gemeldet = true; nachricht(data); };
+    wi.worker.onerror = (e) => {
+      e.preventDefault(); wi.worker?.terminate(); wi.worker = null;
+      if(gemeldet) nachricht({ typ:"fehler", text:`Der Import ist ausgefallen: ${e.message || "unbekannter Fehler"}` });
+      else vordergrund();
+    };
+    wi.worker.postMessage(auftrag);
+  } catch { vordergrund(); }
+}
+function wiAbbrechen(){
+  wi.worker?.terminate(); wi.worker = null;
+  wi.lauf += 1;   // ein Lauf im Vordergrund lässt sich nicht beenden – sein Ergebnis wird verworfen
+  clearInterval(wi.uhr); lsSchreiben(WI_LAUF, null);
+  Object.assign(wi, { status:"bereit", ergebnis:null, meldung:["info", "Abgebrochen."] });
+  weltImportRendern();
+}
+
+/** Chunks einer Dimension aus den Kacheln: [{ cx, cz, id }] */
+function wiChunks(kacheln, dim){
+  const liste = [];
+  for(const k of kacheln) if(k.dim === dim){
+    for(let i = 0; i < k.daten.length; i++) if(k.daten[i])
+      liste.push({ cx:k.kx * KACHEL_CHUNKS + (i % KACHEL_CHUNKS), cz:k.kz * KACHEL_CHUNKS + Math.floor(i / KACHEL_CHUNKS), id:k.daten[i] - 1 });
+  }
+  return liste;
+}
+/** Häufigste Biome – alte IDs zählen zu ihrem heutigen Biom */
+function wiTopBiome(liste, n){
+  const zaehler = new Map();
+  for(const { id } of liste){
+    const e = BIOM_NACH_ID.get(id), name = e?.biom?.name ?? `Unbekannt (ID ${id})`;
+    const z = zaehler.get(name) || zaehler.set(name, { name, farbe:e?.farbe ?? WI_UNBEKANNT, chunks:0 }).get(name);
+    z.chunks++;
+  }
+  return [...zaehler.values()].sort((a, b) => b.chunks - a.chunks).slice(0, n);
+}
+
+function wiPruefHtml(){
+  const { meta } = wi.ergebnis, liste = wiChunks(wi.ergebnis.kacheln, wi.dim);
+  const seedOk = seedText(meta.seed) === seedText(st.welt?.seed);
+  const andere = !seedOk && st.welten.find((w) => seedText(w.seed) === seedText(meta.seed));
+  const vorher = seedOk && st.biome.import;
+  return `
+    <div class="result-card">
+      <div class="result-label">${esc(wi.datei.name)} · ${mb(wi.datei.size)} · ${sekunden(wi.dauer)}</div>
+      <div class="result-row"><span class="rname">Welt</span><span class="wi-wert">${esc(meta.weltname || "–")}</span></div>
+      <div class="result-row"><span class="rname">Spielversion</span><span class="wi-wert">${esc(meta.spielversion || "–")}</span></div>
+      <div class="result-row"><span class="rname">Seed</span><span class="wi-wert"><span class="mono">${esc(meta.seed)}</span>
+        ${seedOk ? '<b class="ok" title="passt zur Welt">✔</b>' : '<b class="nein" title="passt nicht">✘</b>'}</span></div>
+    </div>
+    ${seedOk ? "" : `<div class="banner bad">Diese Welt hat einen anderen Seed. Ausgewählt ist die Welt mit Seed ${esc(st.welt?.seed ?? "–")}.</div>
+      <button class="btn-secondary" data-aktion="wi-andere-welt">${andere ? "Zur Welt mit diesem Seed wechseln und übernehmen" : "Neue Welt mit diesem Seed anlegen"}</button>`}
+    <div class="field-group"><div class="field-group-label">Vorschau · 1 Pixel = 1 Chunk · Norden oben</div>
+      <div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${wi.dim === d ? "active" : ""}" data-wi-dim="${d}">${dimLabel(d)}<span class="wi-zahl">${zahl(meta.chunks[d])}</span></button>`).join("")}</div>
+      <div class="wi-vorschau" id="wiVorschau">${liste.length ? "" : `<span class="result-hint">Keine erkundeten Chunks ${inDim(wi.dim)}.</span>`}</div>
+      <div class="result-hint" id="wiAusschnitt"></div>
+      ${wiTopBiome(liste, 5).map((b) => `<div class="wi-biom"><i style="background:${b.farbe}"></i><span>${esc(b.name)}</span><b>${zahl(b.chunks)}</b></div>`).join("")}
+    </div>
+    ${meta.unbekannt.length ? `<div class="banner warn">Unbekannte Biom-IDs (rot in der Vorschau): ${meta.unbekannt.map((u) =>
+      `<b>${u.bedrockId}</b> · ${zahl(u.chunks)} Chunks, z. B. ${dimLabel(u.beispiel.dim)} X ${zahl(u.beispiel.x)} Z ${zahl(u.beispiel.z)}`).join("; ")}.
+      Sie werden gespeichert und erscheinen, sobald die Biom-Liste sie kennt.</div>` : ""}
+    ${vorher ? `<div class="banner info">Ersetzt den Import vom ${datumLang(vorher.importiertAm)}.</div>` : ""}
+    <div class="banner" id="wiBanner" hidden></div>
+    <div class="sheet-fuss">
+      <button class="btn-secondary" data-aktion="wi-verwerfen">Verwerfen</button>
+      <button class="btn-primary" data-aktion="wi-uebernehmen" ${seedOk && !wi.speichert ? "" : "disabled"}>${wi.speichert ? "Speichere …" : "Übernehmen"}</button>
+    </div>`;
+}
+function wiVorschauZeichnen(){
+  const $v = document.getElementById("wiVorschau");
+  const liste = wiChunks(wi.ergebnis.kacheln, wi.dim);
+  if(!$v || !liste.length) return;
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for(const { cx, cz } of liste){ minX = Math.min(minX, cx); maxX = Math.max(maxX, cx); minZ = Math.min(minZ, cz); maxZ = Math.max(maxZ, cz); }
+  const b = maxX - minX + 1, h = maxZ - minZ + 1, schritt = Math.ceil(Math.max(b, h) / 2048);   // sehr große Welten ausdünnen
+  const c = document.createElement("canvas");
+  c.width = Math.ceil(b / schritt); c.height = Math.ceil(h / schritt);
+  const ctx = c.getContext("2d"), bild = ctx.createImageData(c.width, c.height);
+  for(const { cx, cz, id } of liste){
+    const f = BIOM_NACH_ID.get(id)?.farbe ?? WI_UNBEKANNT, i = (Math.floor((cz - minZ) / schritt) * c.width + Math.floor((cx - minX) / schritt)) * 4;
+    bild.data[i] = parseInt(f.slice(1, 3), 16); bild.data[i + 1] = parseInt(f.slice(3, 5), 16); bild.data[i + 2] = parseInt(f.slice(5, 7), 16); bild.data[i + 3] = 255;
+  }
+  ctx.putImageData(bild, 0, 0);
+  const platz = $v.clientWidth - 22, px = Math.max(1, Math.min(24, Math.floor(300 / c.height), Math.floor(platz / c.width)));
+  const breite = Math.min(c.width * px, platz);
+  c.style.width = `${breite}px`; c.style.height = `${Math.round(c.height * breite / c.width)}px`;
+  $v.replaceChildren(c);
+  document.getElementById("wiAusschnitt").textContent =
+    `Chunks X ${zahl(minX)} … ${zahl(maxX)}, Z ${zahl(minZ)} … ${zahl(maxZ)} · ≈ ${zahl(b * 16)} × ${zahl(h * 16)} Blöcke`;
+}
+
+async function wiUebernehmen(weltId){
+  const { meta, kacheln } = wi.ergebnis;
+  wi.speichert = true; weltImportRendern();
+  const r = await api(`/orte/welten/${weltId}/biome`, { method:"PUT", body:JSON.stringify({
+    import:{ ...meta, dateiname:wi.datei.name },
+    kacheln:kacheln.map((k) => ({ dim:k.dim, kx:k.kx, kz:k.kz, daten:kachelZuBase64(k.daten) })) }) });
+  wi.speichert = false;
+  if(!r.ok){
+    weltImportRendern();
+    const $b = document.getElementById("wiBanner");   // fehlt, wenn das Sheet inzwischen zu ist
+    return $b ? banner($b, "bad", meldungAus(r)) : toast(meldungAus(r), true);
+  }
+  if(weltId === st.weltId){ biomeStand++; st.biome = { import:r.data.import, kacheln }; }
+  const summe = DIM_ORDER.reduce((n, d) => n + meta.chunks[d], 0);
+  Object.assign(wi, { status:"bereit", ergebnis:null, datei:null, meldung:null });
+  alleSchliessen(); render();
+  toast(`Biome übernommen · ${zahl(summe)} Chunks`);
+}
+
 function weltOeffnen(meldung){
   const html = kopfHtml("Welt", "Jede Welt hat einen Seed und drei Dimensionen") + `<div class="orte-inhalt">
     <div class="list-stack">${st.welten.map((w) => `
@@ -4617,6 +4865,7 @@ async function weltenLaden(){
 async function weltLaden(id){
   const r = await api(`/orte/welten/${id}`);
   if(!r.ok){ toast(meldungAus(r), true); return; }
+  biomeStand++;
   Object.assign(st, { weltId:id, welt:r.data.welt, dimensionen:r.data.dimensionen, typen:r.data.typen, instanzen:ohneBiome(r.data),
     filter:null, biome:{ import:null, kacheln:[] } });
   lsSchreiben("orte.welt", id);
@@ -4629,12 +4878,16 @@ async function weltLaden(id){
 /** Biom-Orte aus der Zeit vor dem Welt-Import blendet die Karte aus (der Server lässt sie nur noch löschen) */
 const ohneBiome = ({ typen, instanzen }) => instanzen.filter((i) => typen.find((t) => t.id === i.featureTypeId)?.kategorie !== BIOMES);
 /** Welt-Import der aktuellen Welt; die Kacheln kommen als Base64 und werden hier einmal dekodiert */
+let biomeStand = 0;   // zählt jede Änderung an st.biome – eine ältere Antwort wird verworfen
 async function biomeLaden(){
   const id = st.weltId; if(!id) return;
+  const stand = ++biomeStand;
   const r = await api(`/orte/welten/${id}/biome`);
-  if(id !== st.weltId) return;   // inzwischen eine andere Welt gewählt
+  if(id !== st.weltId || stand !== biomeStand) return;   // inzwischen andere Welt oder neuer Import
   if(!r.ok){ if(r.status !== 401) toast(meldungAus(r), true); return; }
   st.biome = { import:r.data.import, kacheln:r.data.kacheln.map((k) => ({ dim:k.dim, kx:k.kx, kz:k.kz, daten:kachelAusBase64(k.daten) })).filter((k) => k.daten) };
+  karte.zeichnen();
+  if(st.sheet === "weltimport" && wi.status !== "fertig") weltImportRendern();
 }
 function dimWechseln(dim){
   st.dim = dim; st.filter = null;
@@ -4679,6 +4932,8 @@ document.getElementById("orteScreenshotBtn").addEventListener("click", () => $da
 document.getElementById("bannerScreenshotBtn").addEventListener("click", () => $datei.click());
 $datei.addEventListener("change", () => { const d = [...$datei.files]; $datei.value = ""; if(d.length) importStarten(d); });
 document.getElementById("orteEintragenBtn").addEventListener("click", formularOeffnen);
+document.getElementById("orteImportBtn").addEventListener("click", weltImportOeffnen);
+$wiDatei.addEventListener("change", () => { const d = $wiDatei.files[0]; $wiDatei.value = ""; if(d) wiStarten(d); });
 document.getElementById("orteWeltBtn").addEventListener("click", () => weltOeffnen());
 document.getElementById("orteStatusBtn").addEventListener("click", () =>
   toast(DEMO.enabled ? "Demo-Modus – Daten nur in diesem Tab" : "Live – Daten liegen auf dem Board"));
@@ -4712,6 +4967,8 @@ $sheet.addEventListener("click", async (e) => {
     $sheet.querySelectorAll("[data-standort-dim]").forEach((b) => b.classList.toggle("active", b === sd));
     return themaSetzen($sheet, standortDim);
   }
+  const wdim = e.target.closest("[data-wi-dim]");
+  if(wdim){ wi.dim = wdim.dataset.wiDim; return weltImportRendern(); }
   const idim = e.target.closest("[data-import-dim]");
   if(idim){
     importFelderLesen();
@@ -4756,6 +5013,33 @@ $sheet.addEventListener("click", async (e) => {
     }
     case "import-mehr": importFelderLesen(); $datei.click(); break;
     case "import-speichern": importSpeichern(); break;
+    case "wi-waehlen": $wiDatei.click(); break;
+    case "wi-abbrechen": wiAbbrechen(); break;
+    case "wi-verwerfen": Object.assign(wi, { status:"bereit", ergebnis:null, datei:null, meldung:null }); weltImportRendern(); break;
+    case "wi-uebernehmen": if(!wi.speichert) await wiUebernehmen(st.weltId); break;
+    case "wi-andere-welt": {
+      // Seed passt nicht: Welt mit dem Seed der Datei nehmen (anlegen wie unter „Welt“), dann dorthin importieren
+      const seed = seedText(wi.ergebnis.meta.seed);
+      let w = st.welten.find((x) => seedText(x.seed) === seed);
+      if(!w){
+        const r = await api("/orte/welten", { method:"POST", body:JSON.stringify({ seed }) });
+        if(!r.ok) return banner(document.getElementById("wiBanner"), "bad", meldungAus(r));
+        w = r.data.welt;
+        if(!st.welten.some((x) => x.id === w.id)) st.welten.push({ ...w, anzahl:0 });
+      }
+      await weltLaden(w.id);
+      await wiUebernehmen(w.id);
+      break;
+    }
+    case "wi-loeschen-fragen": wi.loeschenFragen = true; weltImportRendern(); break;
+    case "wi-loeschen-nein": wi.loeschenFragen = false; weltImportRendern(); break;
+    case "wi-loeschen": {
+      const r = await api(`/orte/welten/${st.weltId}/biome`, { method:"DELETE" });
+      if(!r.ok) return toast(meldungAus(r), true);
+      biomeStand++; st.biome = { import:null, kacheln:[] };
+      wi.loeschenFragen = false; weltImportRendern(); render(); toast("Biom-Import gelöscht");
+      break;
+    }
     case "welt-waehlen":
       if(id !== st.weltId){ await weltLaden(id); toast("Welt gewechselt"); }
       alleSchliessen(); break;
@@ -4910,6 +5194,7 @@ async function init(){
   if(bd.verbindung) boardVerbinden();
   if(!DEMO.enabled && !bd.verbindung) return boardSheetRendern();   // erst beitreten, dann Daten
   datenStarten();
+  if(wi.absturz) toast("Letzter Welt-Import abgestürzt", true);   // Einzelheiten im Sheet
 }
 init();
 </script>
