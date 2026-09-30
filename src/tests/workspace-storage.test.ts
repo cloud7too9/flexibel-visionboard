@@ -40,6 +40,33 @@ describe("workspace storage", () => {
     expect(loaded!.activeLayerId).toBe(DEFAULT_LAYOUT.id);
   });
 
+  it("converts version 1 and 2 coordinates into the fine grid", () => {
+    const legacy = {
+      ...DEFAULT_LAYOUT,
+      spalten: 12,
+      items: [
+        { id: "a", panelTyp: "aufgaben", titel: "A", x: 3, y: 2, w: 3, h: 2, minW: 2, minH: 2 },
+      ],
+    };
+    const v2 = parsePersistedWorkspace({ version: 2, layers: [legacy], activeLayerId: legacy.id })!;
+    const item = v2.layers[0].items[0];
+    expect(v2.layers[0].spalten).toBe(96);
+    expect(v2.layers[0].zeilen).toBe(48);
+    expect(item).toMatchObject({ x: 24, w: 24, y: 10, h: 10 });
+    expect(item.minW).toBeUndefined();
+  });
+
+  it("fits legacy layouts that were taller than the area", () => {
+    const tall = {
+      ...DEFAULT_LAYOUT,
+      spalten: 12,
+      items: [{ id: "a", panelTyp: "aufgaben", titel: "A", x: 0, y: 20, w: 3, h: 2 }],
+    };
+    const parsed = parsePersistedWorkspace({ version: 1, layout: tall })!;
+    const it0 = parsed.layers[0].items[0];
+    expect(it0.y + it0.h).toBeLessThanOrEqual(48);
+  });
+
   it("falls back to the first layer when the active id is unknown", () => {
     const parsed = parsePersistedWorkspace({
       version: 2,

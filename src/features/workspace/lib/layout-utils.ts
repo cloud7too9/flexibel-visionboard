@@ -1,11 +1,12 @@
-import type { AllowedSize, LayoutItem } from "../model/workspace.types";
-import { ALLOWED_SIZES } from "../model/workspace.types";
+import type { LayoutItem } from "../model/workspace.types";
 
 export interface GridConfig {
   cols: number;
-  rowHeight: number;
+  rows: number;
+  /** Sichtbarer Abstand zwischen Widgets in Pixeln (je Hälfte als Einzug). */
   gap: number;
   containerWidth: number;
+  containerHeight: number;
 }
 
 export interface PixelRect {
@@ -15,87 +16,6 @@ export interface PixelRect {
   height: number;
 }
 
-export function columnWidth(config: GridConfig): number {
-  const { cols, gap, containerWidth } = config;
-  const totalGap = gap * (cols - 1);
-  return Math.max(0, (containerWidth - totalGap) / cols);
-}
-
-export function cellToPixel(
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  config: GridConfig,
-): PixelRect {
-  const col = columnWidth(config);
-  const left = x * (col + config.gap);
-  const top = y * (config.rowHeight + config.gap);
-  const width = w * col + (w - 1) * config.gap;
-  const height = h * config.rowHeight + (h - 1) * config.gap;
-  return { left, top, width, height };
-}
-
-export function pixelToCell(
-  px: number,
-  py: number,
-  config: GridConfig,
-): { x: number; y: number } {
-  const col = columnWidth(config);
-  const x = Math.round(px / (col + config.gap));
-  const y = Math.round(py / (config.rowHeight + config.gap));
-  return {
-    x: clamp(x, 0, config.cols - 1),
-    y: Math.max(0, y),
-  };
-}
-
-export function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
-export function clampItemToGrid(item: LayoutItem, cols: number): LayoutItem {
-  const w = Math.min(item.w, cols);
-  const x = clamp(item.x, 0, cols - w);
-  const y = Math.max(0, item.y);
-  return { ...item, x, y, w };
-}
-
-export function snapSize(w: number, h: number): AllowedSize {
-  let best = ALLOWED_SIZES[0];
-  let bestDist = Infinity;
-  for (const size of ALLOWED_SIZES) {
-    const dist = Math.abs(size.w - w) + Math.abs(size.h - h);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = size;
-    }
-  }
-  return best;
-}
-
-export function gridRowCount(items: LayoutItem[], minRows = 6): number {
-  const max = items.reduce((acc, it) => Math.max(acc, it.y + it.h), 0);
-  return Math.max(minRows, max + 2);
-}
-
-export function findFreePosition(
-  items: LayoutItem[],
-  w: number,
-  h: number,
-  cols: number,
-): { x: number; y: number } {
-  const maxY = gridRowCount(items) + h;
-  for (let y = 0; y <= maxY; y++) {
-    for (let x = 0; x + w <= cols; x++) {
-      const candidate = { x, y, w, h };
-      const collides = items.some((it) => rectsOverlap(candidate, it));
-      if (!collides) return { x, y };
-    }
-  }
-  return { x: 0, y: maxY };
-}
-
 export interface Rect {
   x: number;
   y: number;
@@ -103,6 +23,97 @@ export interface Rect {
   h: number;
 }
 
+/** Breite und Höhe einer Rasterzelle in Pixeln. Die Fläche füllt den Container. */
+export function cellSize(config: GridConfig): { w: number; h: number } {
+  return {
+    w: config.cols > 0 ? Math.max(0, config.containerWidth / config.cols) : 0,
+    h: config.rows > 0 ? Math.max(0, config.containerHeight / config.rows) : 0,
+  };
+}
+
+/**
+ * Rechnet Rasterkoordinaten in Pixel um. Zellen liegen lückenlos
+ * aneinander; der Abstand zwischen Widgets entsteht durch einen Einzug von
+ * `gap / 2` auf jeder Seite. So fallen Widget-Kanten auf die Gitterlinien.
+ */
+export function cellToPixel(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  config: GridConfig,
+): PixelRect {
+  const cell = cellSize(config);
+  const inset = config.gap / 2;
+  return {
+    left: x * cell.w + inset,
+    top: y * cell.h + inset,
+    width: Math.max(0, w * cell.w - config.gap),
+    height: Math.max(0, h * cell.h - config.gap),
+  };
+}
+
+export function pixelToCell(px: number, py: number, config: GridConfig): { x: number; y: number } {
+  const cell = cellSize(config);
+  const x = cell.w > 0 ? Math.round(px / cell.w) : 0;
+  const y = cell.h > 0 ? Math.round(py / cell.h) : 0;
+  return {
+    x: clamp(x, 0, config.cols - 1),
+    y: clamp(y, 0, config.rows - 1),
+  };
+}
+
+export function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
+/** Hält ein Item vollständig innerhalb der Fläche (cols × rows). */
+export function clampItemToGrid(item: LayoutItem, cols: number, rows: number): LayoutItem {
+  const w = clamp(item.w, 1, cols);
+  const h = clamp(item.h, 1, rows);
+  const x = clamp(item.x, 0, cols - w);
+  const y = clamp(item.y, 0, rows - h);
+  return { ...item, x, y, w, h };
+}
+
 export function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+/**
+ * Erste freie Position für ein w × h großes Item, zeilenweise von oben links.
+ * Gibt `null` zurück, wenn die Fläche keinen Platz mehr hat.
+ */
+export function findFreePosition(
+  items: Rect[],
+  w: number,
+  h: number,
+  cols: number,
+  rows: number,
+): { x: number; y: number } | null {
+  if (w > cols || h > rows) return null;
+  for (let y = 0; y + h <= rows; y++) {
+    for (let x = 0; x + w <= cols; x++) {
+      const candidate = { x, y, w, h };
+      if (!items.some((it) => rectsOverlap(candidate, it))) return { x, y };
+    }
+  }
+  return null;
+}
+
+/**
+ * Staucht Items vertikal, bis sie in `rows` Zeilen passen. Jede Kante wird
+ * mit demselben Faktor abgebildet und abgerundet; weil die Abbildung
+ * monoton ist, entstehen keine neuen Überlappungen.
+ */
+export function fitItemsToRows<T extends Rect>(items: T[], rows: number): T[] {
+  const bottom = items.reduce((acc, it) => Math.max(acc, it.y + it.h), 0);
+  if (bottom <= rows) return items;
+  const factor = rows / bottom;
+  return items.map((it) => {
+    const top = Math.floor(it.y * factor);
+    const end = Math.floor((it.y + it.h) * factor);
+    const h = Math.max(1, end - top);
+    return { ...it, y: Math.min(top, rows - h), h };
+  });
 }

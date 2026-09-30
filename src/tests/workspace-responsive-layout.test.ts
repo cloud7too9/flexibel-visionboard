@@ -2,11 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   adaptLayoutToBreakpoint,
   reflowItems,
-  scaleItemWidth,
 } from "../features/workspace/lib/responsive-layout";
 import { getBreakpoint } from "../features/workspace/model/breakpoints";
 import { DEFAULT_LAYOUT } from "../features/workspace/model/default-layout";
-import { PANEL_REGISTRY } from "../features/workspace/model/panel-registry";
 import type { LayoutItem } from "../features/workspace/model/workspace.types";
 import { rectsOverlap } from "../features/workspace/lib/layout-utils";
 
@@ -29,31 +27,16 @@ function expectNoOverlaps(items: LayoutItem[]) {
   }
 }
 
-function expectWithinGrid(items: LayoutItem[], cols: number) {
+function expectWithinGrid(items: LayoutItem[], cols: number, rows = Infinity) {
   for (const it of items) {
     expect(it.x).toBeGreaterThanOrEqual(0);
     expect(it.y).toBeGreaterThanOrEqual(0);
     expect(it.w).toBeGreaterThanOrEqual(1);
+    expect(it.h).toBeGreaterThanOrEqual(1);
     expect(it.x + it.w).toBeLessThanOrEqual(cols);
+    expect(it.y + it.h).toBeLessThanOrEqual(rows);
   }
 }
-
-describe("scaleItemWidth", () => {
-  it("scales proportionally between column counts", () => {
-    expect(scaleItemWidth(mkItem({ w: 6 }), 12, 6)).toBe(3);
-    expect(scaleItemWidth(mkItem({ w: 12 }), 12, 6)).toBe(6);
-  });
-
-  it("never exceeds the target grid", () => {
-    expect(scaleItemWidth(mkItem({ w: 12 }), 12, 2)).toBe(2);
-  });
-
-  it("respects the panel's minimum width, capped at the target grid", () => {
-    const minW = PANEL_REGISTRY.schnellnotiz.minBreite;
-    expect(scaleItemWidth(mkItem({ w: 1 }), 12, 6)).toBe(minW);
-    expect(scaleItemWidth(mkItem({ w: 1, minW: 5 }), 12, 2)).toBe(2);
-  });
-});
 
 describe("reflowItems", () => {
   it("keeps non-overlapping items in a valid grid", () => {
@@ -101,9 +84,9 @@ describe("adaptLayoutToBreakpoint", () => {
     const desktop = getBreakpoint("desktop");
     const out = adaptLayoutToBreakpoint(DEFAULT_LAYOUT, desktop);
     expect(out.spalten).toBe(DEFAULT_LAYOUT.spalten);
+    expect(out.zeilen).toBe(DEFAULT_LAYOUT.zeilen);
     expect(out.items).toEqual(DEFAULT_LAYOUT.items);
     expect(out.abstand).toBe(desktop.abstand);
-    expect(out.zeilenHoehe).toBe(desktop.zeilenHoehe);
   });
 
   it("does not mutate the input layout", () => {
@@ -113,28 +96,27 @@ describe("adaptLayoutToBreakpoint", () => {
     expect(JSON.stringify(DEFAULT_LAYOUT)).toBe(snapshot);
   });
 
-  it("produces a valid 6-column layout for tablet", () => {
+  it("produces a valid tablet layout that fits the area", () => {
     const tablet = getBreakpoint("tablet");
     const out = adaptLayoutToBreakpoint(DEFAULT_LAYOUT, tablet);
-    expect(out.spalten).toBe(6);
+    expect(out.spalten).toBe(tablet.spalten);
+    expect(out.zeilen).toBe(tablet.zeilen);
     expect(out.items.length).toBe(DEFAULT_LAYOUT.items.length);
     expectNoOverlaps(out.items);
-    expectWithinGrid(out.items, 6);
+    expectWithinGrid(out.items, tablet.spalten, tablet.zeilen);
+    for (const it of out.items) expect(it.w).toBeGreaterThanOrEqual(tablet.minWidgetSpalten);
   });
 
-  it("stacks panels full-width in a single column flow on mobile", () => {
+  it("stacks widgets full-width on mobile and fits them into the height", () => {
     const mobile = getBreakpoint("mobile");
     const out = adaptLayoutToBreakpoint(DEFAULT_LAYOUT, mobile);
-    expect(out.spalten).toBe(2);
     expect(out.items.length).toBe(DEFAULT_LAYOUT.items.length);
     expectNoOverlaps(out.items);
-    expectWithinGrid(out.items, 2);
-    // Alle Standard-Panels haben minBreite 2 → auf Mobil volle Breite, x = 0.
+    expectWithinGrid(out.items, mobile.spalten, mobile.zeilen);
     for (const it of out.items) {
-      expect(it.w).toBe(2);
+      expect(it.w).toBe(mobile.spalten);
       expect(it.x).toBe(0);
     }
-    // Reihenfolge entspricht der Lesereihenfolge des Desktop-Layouts.
     expect(out.items.map((i) => i.id)).toEqual([
       "panel-schnellnotiz",
       "panel-aufgaben",
@@ -145,14 +127,13 @@ describe("adaptLayoutToBreakpoint", () => {
     ]);
   });
 
-  it("keeps ids, titles, types and heights intact", () => {
+  it("keeps ids, titles and types intact", () => {
     const out = adaptLayoutToBreakpoint(DEFAULT_LAYOUT, getBreakpoint("tablet"));
     for (const original of DEFAULT_LAYOUT.items) {
       const adapted = out.items.find((i) => i.id === original.id);
       expect(adapted).toBeDefined();
       expect(adapted!.titel).toBe(original.titel);
       expect(adapted!.panelTyp).toBe(original.panelTyp);
-      expect(adapted!.h).toBe(original.h);
     }
   });
 });

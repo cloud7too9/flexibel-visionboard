@@ -25,9 +25,11 @@ interface WorkspaceState {
   // Widgets – wirken immer auf den aktiven Layer.
   moveItem: (id: Id, x: number, y: number) => boolean;
   resizeItem: (id: Id, w: number, h: number) => boolean;
-  addItem: (typ: PanelTyp) => void;
+  /** false, wenn auf dem Layer kein Platz mehr frei ist. */
+  addItem: (typ: PanelTyp) => boolean;
   removeItem: (id: Id) => void;
-  duplicateItem: (id: Id) => void;
+  /** false, wenn auf dem Layer kein Platz mehr frei ist. */
+  duplicateItem: (id: Id) => boolean;
 
   // Layer
   setActiveLayer: (id: Id) => void;
@@ -63,6 +65,24 @@ export function nextLayerName(layers: WorkspaceLayout[]): string {
 
 function normalizeLayerName(name: string): string {
   return name.trim().replace(/\s+/g, " ").slice(0, LAYER_NAME_MAX_LENGTH);
+}
+
+/**
+ * Sucht Platz für ein neues Widget: zuerst in Wunschgröße, dann in
+ * Mindestgröße. `null`, wenn die Fläche voll ist.
+ */
+function findSlot(
+  layout: WorkspaceLayout,
+  preferred: { w: number; h: number },
+  minimum: { w: number; h: number },
+): { x: number; y: number; w: number; h: number } | null {
+  for (const size of [preferred, minimum]) {
+    const w = Math.min(size.w, layout.spalten);
+    const h = Math.min(size.h, layout.zeilen);
+    const pos = findFreePosition(layout.items, w, h, layout.spalten, layout.zeilen);
+    if (pos) return { ...pos, w, h };
+  }
+  return null;
 }
 
 export function createInitialWorkspace(): WorkspaceData {
@@ -103,7 +123,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const layout = selectActiveLayer(get());
       const target = layout.items.find((i) => i.id === id);
       if (!target) return false;
-      const candidate = clampItemToGrid({ ...target, x, y }, layout.spalten);
+      const candidate = clampItemToGrid({ ...target, x, y }, layout.spalten, layout.zeilen);
       if (candidate.x === target.x && candidate.y === target.y) return false;
       if (hasCollision(candidate, layout.items)) return false;
       commitActiveItems(layout.items.map((i) => (i.id === id ? candidate : i)));
@@ -116,13 +136,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       if (!target) return false;
       const def = PANEL_REGISTRY[target.panelTyp];
       if (!def.erlaubtResize) return false;
-      const minW = target.minW ?? def.minBreite;
-      const minH = target.minH ?? def.minHoehe;
-      const clampedW = Math.max(minW, Math.min(w, layout.spalten));
-      const clampedH = Math.max(minH, h);
+      const minW = Math.min(target.minW ?? def.minBreite, layout.spalten);
+      const minH = Math.min(target.minH ?? def.minHoehe, layout.zeilen);
+      // Skalieren verschiebt das Widget nicht: Die obere linke Ecke bleibt,
+      // die Größe endet am Rand der Fläche.
+      const clampedW = Math.max(minW, Math.min(Math.round(w), layout.spalten - target.x));
+      const clampedH = Math.max(minH, Math.min(Math.round(h), layout.zeilen - target.y));
       const candidate = clampItemToGrid(
         { ...target, w: clampedW, h: clampedH },
         layout.spalten,
+        layout.zeilen,
       );
       if (candidate.w === target.w && candidate.h === target.h) return false;
       if (hasCollision(candidate, layout.items)) return false;
@@ -133,24 +156,20 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     addItem: (typ) => {
       const layout = selectActiveLayer(get());
       const def = PANEL_REGISTRY[typ];
-      const pos = findFreePosition(
-        layout.items,
-        def.standardBreite,
-        def.standardHoehe,
-        layout.spalten,
+      const slot = findSlot(
+        layout,
+        { w: def.standardBreite, h: def.standardHoehe },
+        { w: def.minBreite, h: def.minHoehe },
       );
+      if (!slot) return false;
       const item: LayoutItem = {
         id: nextId(`panel-${typ}`),
         panelTyp: typ,
         titel: def.standardTitel,
-        x: pos.x,
-        y: pos.y,
-        w: def.standardBreite,
-        h: def.standardHoehe,
-        minW: def.minBreite,
-        minH: def.minHoehe,
+        ...slot,
       };
       commitActiveItems([...layout.items, item], { addPanelOpen: false });
+      return true;
     },
 
     removeItem: (id) => {
@@ -165,15 +184,17 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     duplicateItem: (id) => {
       const layout = selectActiveLayer(get());
       const target = layout.items.find((i) => i.id === id);
-      if (!target) return;
-      const pos = findFreePosition(layout.items, target.w, target.h, layout.spalten);
-      const copy: LayoutItem = {
-        ...target,
-        id: nextId(`panel-${target.panelTyp}`),
-        x: pos.x,
-        y: pos.y,
-      };
+      if (!target) return false;
+      const def = PANEL_REGISTRY[target.panelTyp];
+      const slot = findSlot(
+        layout,
+        { w: target.w, h: target.h },
+        { w: target.minW ?? def.minBreite, h: target.minH ?? def.minHoehe },
+      );
+      if (!slot) return false;
+      const copy: LayoutItem = { ...target, id: nextId(`panel-${target.panelTyp}`), ...slot };
       commitActiveItems([...layout.items, copy]);
+      return true;
     },
 
     setActiveLayer: (id) => {
@@ -189,7 +210,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
         id: nextId("layer"),
         name: normalized || nextLayerName(layers),
         spalten: DEFAULT_LAYOUT.spalten,
-        zeilenHoehe: DEFAULT_LAYOUT.zeilenHoehe,
+        zeilen: DEFAULT_LAYOUT.zeilen,
         abstand: DEFAULT_LAYOUT.abstand,
         items: [],
       };

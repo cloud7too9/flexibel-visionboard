@@ -53,13 +53,20 @@ die App aus.
 - Reihenfolge der Layer ändern.
 - Auf Mobil per Wischgeste zwischen Layern wechseln.
 - Eigene Layouts pro Bildschirmgröße speichern, statt sie aus dem
-  Desktop-Raster abzuleiten.
+  Desktop-Raster abzuleiten. Mit fester Fläche ohne Scrollen dringlicher:
+  Auf dem Handy werden viele Widgets eines Layers sehr flach. Damit wäre
+  auch Verschieben und Skalieren auf Touch-Geräten möglich, weil die Seite
+  nicht mehr scrollt.
 - Widget-Titel umbenennen.
 - Tastaturbedienung für Verschieben und Skalieren.
 - Undo für Layout-Änderungen.
 
 ## Erledigt
 
+- 2026-09-30 · Feste Fläche ohne Seiten-Scroll, feines Raster (96 × 48 auf
+  Desktop) mit freien Größen statt fester Stufen, Gitterlinien im
+  Bearbeitungszustand auf allen Bildschirmgrößen, Umrechnung gespeicherter
+  Layouts (Schema-Version 3).
 - 2026-09-29 · Docker: mehrstufiges Image mit nginx, Compose mit
   Produktions- und Entwicklungsprofil (Hot Reload), Health-Check.
 - 2026-09-29 · Tests für den Workspace-Store (Widgets und Layer).

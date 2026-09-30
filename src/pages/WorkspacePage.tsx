@@ -13,10 +13,12 @@ export function WorkspacePage() {
   }, [loadWorkspace]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface text-text">
+    // Feste Bildschirmhöhe ohne Seiten-Scroll: Header oben, die Fläche füllt
+    // den Rest. So kollidiert Ziehen und Skalieren auf Touch nie mit Scrollen.
+    <div className="flex h-dvh flex-col overflow-hidden bg-surface text-text">
       <WorkspaceHeader />
-      <main className="flex-1 px-3 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5">
-        <div className="mx-auto w-full max-w-screen-2xl">
+      <main className="flex min-h-0 flex-1 flex-col p-2 sm:p-3 lg:px-5 lg:py-4">
+        <div className="mx-auto min-h-0 w-full max-w-screen-2xl flex-1">
           {/* key: Beim Layer-Wechsel startet das Grid frisch (kein hängender Drag). */}
           <WorkspaceGrid key={activeLayerId} />
         </div>

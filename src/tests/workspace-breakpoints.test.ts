@@ -36,6 +36,7 @@ describe("BREAKPOINTS", () => {
   it("uses the default layout's column count as the canonical grid", () => {
     const canonical = getBreakpoint(CANONICAL_BREAKPOINT);
     expect(canonical.spalten).toBe(DEFAULT_LAYOUT.spalten);
+    expect(canonical.zeilen).toBe(DEFAULT_LAYOUT.zeilen);
     expect(canonical.erlaubtAnordnen).toBe(true);
   });
 });

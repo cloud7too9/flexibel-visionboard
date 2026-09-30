@@ -9,6 +9,14 @@ body,
   height: 100%;
 }
 
+/* Die Seite scrollt nie. Auch Gummiband-Effekt und Pull-to-Refresh sind aus,
+   damit Gesten auf der Fläche nicht mit dem Browser kollidieren. */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   background-color: rgb(var(--color-surface));

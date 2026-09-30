@@ -7,7 +7,7 @@ export function EmptyGridHint() {
   const setEditMode = useWorkspaceStore((s) => s.setEditMode);
 
   return (
-    <div className="flex min-h-[200px] flex-col items-center justify-center rounded-panel border border-dashed border-border px-4 py-10 text-center sm:min-h-[240px] sm:py-16">
+    <div className="flex w-full max-w-md flex-col items-center justify-center rounded-panel border border-dashed border-border bg-surface/80 px-4 py-8 text-center sm:py-12">
       <div className="text-lg font-medium">Dein Workspace ist leer</div>
       <p className="mt-1 max-w-sm text-sm text-text-muted">
         Füge Widgets hinzu, um deinen Arbeitsbereich zu gestalten.
