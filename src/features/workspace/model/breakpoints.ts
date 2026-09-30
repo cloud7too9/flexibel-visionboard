@@ -5,10 +5,12 @@
  * damit CSS-Utilities (z. B. `sm:`, `lg:`) und die Grid-Logik dieselben
  * Schwellen verwenden.
  *
- * Das gespeicherte Layout ist immer im kanonischen Desktop-Raster (12 Spalten)
+ * Das gespeicherte Layout ist immer im kanonischen Desktop-Raster (96 × 48)
  * abgelegt. Für kleinere Bildschirme wird daraus zur Laufzeit ein abgeleitetes
  * Layout mit weniger Spalten berechnet (siehe `responsive-layout.ts`).
  */
+
+import { CANONICAL_SPALTEN, CANONICAL_ZEILEN } from "./default-layout";
 
 export type Breakpoint = "mobile" | "tablet" | "desktop";
 
@@ -17,12 +19,14 @@ export interface BreakpointDefinition {
   label: string;
   /** Erste Viewport-Breite (inklusive), ab der dieser Breakpoint gilt. */
   minWidth: number;
-  /** Spaltenzahl des Grids in diesem Breakpoint. */
+  /** Spaltenzahl des Rasters in diesem Breakpoint. */
   spalten: number;
-  /** Abstand zwischen Zellen in Pixeln. */
+  /** Zeilenzahl des Rasters. Die Fläche füllt den Bildschirm und scrollt nicht. */
+  zeilen: number;
+  /** Sichtbarer Abstand zwischen Widgets in Pixeln. */
   abstand: number;
-  /** Zeilenhöhe in Pixeln. */
-  zeilenHoehe: number;
+  /** Mindestbreite abgeleiteter Widgets in Spalten (Lesbarkeit auf kleinen Bildschirmen). */
+  minWidgetSpalten: number;
   /** Ob Panels per Drag & Drop verschoben und skaliert werden dürfen. */
   erlaubtAnordnen: boolean;
 }
@@ -33,27 +37,30 @@ export const BREAKPOINTS: readonly BreakpointDefinition[] = [
     name: "mobile",
     label: "Mobil",
     minWidth: 0,
-    spalten: 2,
-    abstand: 8,
-    zeilenHoehe: 72,
+    spalten: 24,
+    zeilen: 48,
+    abstand: 6,
+    minWidgetSpalten: 24,
     erlaubtAnordnen: false,
   },
   {
     name: "tablet",
     label: "Tablet",
     minWidth: 640,
-    spalten: 6,
-    abstand: 10,
-    zeilenHoehe: 80,
+    spalten: 48,
+    zeilen: 64,
+    abstand: 8,
+    minWidgetSpalten: 16,
     erlaubtAnordnen: false,
   },
   {
     name: "desktop",
     label: "Desktop",
     minWidth: 1024,
-    spalten: 12,
-    abstand: 12,
-    zeilenHoehe: 80,
+    spalten: CANONICAL_SPALTEN,
+    zeilen: CANONICAL_ZEILEN,
+    abstand: 8,
+    minWidgetSpalten: 1,
     erlaubtAnordnen: true,
   },
 ] as const;

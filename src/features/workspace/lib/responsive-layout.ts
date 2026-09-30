@@ -1,19 +1,6 @@
 import type { LayoutItem, WorkspaceLayout } from "../model/workspace.types";
-import { PANEL_REGISTRY } from "../model/panel-registry";
-import { clamp, rectsOverlap } from "./layout-utils";
+import { clamp, fitItemsToRows, rectsOverlap } from "./layout-utils";
 import type { BreakpointDefinition } from "../model/breakpoints";
-
-/**
- * Skaliert die Breite eines Items proportional von `fromCols` auf `toCols`
- * Spalten. Die Mindestbreite aus der Panel-Registry bleibt erhalten, wird
- * aber nie größer als das Zielraster.
- */
-export function scaleItemWidth(item: LayoutItem, fromCols: number, toCols: number): number {
-  const def = PANEL_REGISTRY[item.panelTyp];
-  const minW = Math.min(item.minW ?? def?.minBreite ?? 1, toCols);
-  const scaled = Math.round((item.w * toCols) / fromCols);
-  return clamp(scaled, minW, toCols);
-}
 
 /**
  * Ordnet Items ohne Überlappung in einem Raster mit `cols` Spalten an.
@@ -21,6 +8,7 @@ export function scaleItemWidth(item: LayoutItem, fromCols: number, toCols: numbe
  * Die Items werden in Lesereihenfolge (erst nach `y`, dann nach `x`) verarbeitet
  * und jeweils an die erste freie Position gesetzt. Dadurch bleibt die
  * ursprüngliche Reihenfolge erhalten, und es entstehen keine Lücken nach oben.
+ * Die Höhe ist hier unbegrenzt; eingepasst wird danach mit `fitItemsToRows`.
  */
 export function reflowItems(items: LayoutItem[], cols: number): LayoutItem[] {
   const ordered = [...items].sort((a, b) => a.y - b.y || a.x - b.x);
@@ -50,34 +38,38 @@ export function reflowItems(items: LayoutItem[], cols: number): LayoutItem[] {
 }
 
 /**
- * Leitet aus dem kanonischen Layout (z. B. 12 Spalten) ein Layout für einen
- * anderen Breakpoint ab. Bei gleicher Spaltenzahl wird das Layout nur um die
- * Breakpoint-Parameter (Abstand, Zeilenhöhe) ergänzt und unverändert
- * zurückgegeben.
+ * Leitet aus dem kanonischen Layout (Desktop-Raster) ein Layout für einen
+ * anderen Breakpoint ab: Maße proportional skalieren, Mindestbreite für
+ * Lesbarkeit erzwingen, ohne Überlappung neu anordnen und zum Schluss in die
+ * Höhe der Fläche einpassen, weil die Seite nicht scrollt.
  */
 export function adaptLayoutToBreakpoint(
   layout: WorkspaceLayout,
   breakpoint: BreakpointDefinition,
 ): WorkspaceLayout {
   const fromCols = layout.spalten;
+  const fromRows = layout.zeilen;
   const toCols = breakpoint.spalten;
+  const toRows = breakpoint.zeilen;
 
-  if (fromCols === toCols) {
-    return { ...layout, abstand: breakpoint.abstand, zeilenHoehe: breakpoint.zeilenHoehe };
+  if (fromCols === toCols && fromRows === toRows) {
+    return { ...layout, abstand: breakpoint.abstand };
   }
 
+  const minW = Math.min(breakpoint.minWidgetSpalten, toCols);
   const scaled = layout.items.map((item) => ({
     ...item,
-    w: scaleItemWidth(item, fromCols, toCols),
-    // x proportional skalieren, damit die Lesereihenfolge beim Reflow stimmt.
+    w: clamp(Math.round((item.w * toCols) / fromCols), minW, toCols),
     x: Math.round((item.x * toCols) / fromCols),
+    h: Math.max(1, Math.round((item.h * toRows) / fromRows)),
+    y: Math.round((item.y * toRows) / fromRows),
   }));
 
   return {
     ...layout,
     spalten: toCols,
+    zeilen: toRows,
     abstand: breakpoint.abstand,
-    zeilenHoehe: breakpoint.zeilenHoehe,
-    items: reflowItems(scaled, toCols),
+    items: fitItemsToRows(reflowItems(scaled, toCols), toRows),
   };
 }

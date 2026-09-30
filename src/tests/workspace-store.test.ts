@@ -111,21 +111,44 @@ describe("widgets act on the active layer only", () => {
     expect(active().items.filter((i) => i.panelTyp === "dateien")).toHaveLength(2);
   });
 
-  it("moves a widget and rejects collisions", () => {
-    expect(store().moveItem("panel-toolstart", 10, 4)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ x: 10, y: 4 });
+  it("moves a widget in fine steps and rejects collisions", () => {
+    expect(store().moveItem("panel-toolstart", 67, 33)).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ x: 67, y: 32 });
     // Schnellnotiz liegt bei (0,0) – Kollision.
     expect(store().moveItem("panel-toolstart", 0, 0)).toBe(false);
   });
 
-  it("resizes a widget and respects minimum size and collisions", () => {
-    // Dateien liegt bei (0,2) mit 4×2, darunter ist frei.
-    expect(store().resizeItem("panel-dateien", 4, 3)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ w: 4, h: 3 });
-    // Aufgaben hat minHoehe 2: kleiner geht nicht, also keine Änderung.
-    expect(store().resizeItem("panel-aufgaben", 3, 1)).toBe(false);
+  it("keeps moved widgets inside the area (no scrolling below)", () => {
+    store().moveItem("panel-toolstart", 80, 500);
+    const t = active().items.find((i) => i.id === "panel-toolstart")!;
+    expect(t.y + t.h).toBeLessThanOrEqual(active().zeilen);
+  });
+
+  it("resizes freely in cell steps and respects minimum size, edges and collisions", () => {
+    // Dateien liegt bei (0,16) mit 32×16, darunter ist frei.
+    expect(store().resizeItem("panel-dateien", 29, 23)).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ w: 29, h: 23 });
+    // Größer als die Fläche wird am unteren Rand begrenzt, ohne zu verschieben.
+    store().resizeItem("panel-dateien", 29, 500);
+    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ y: 16, h: 32 });
+    // Aufgaben hat minHoehe 8: kleiner wird auf 8 begrenzt.
+    store().resizeItem("panel-aufgaben", 24, 1);
+    expect(active().items.find((i) => i.id === "panel-aufgaben")!.h).toBe(8);
     // Breiter würde in Projektstatus hineinragen.
-    expect(store().resizeItem("panel-aufgaben", 4, 2)).toBe(false);
+    expect(store().resizeItem("panel-aufgaben", 30, 8)).toBe(false);
+  });
+
+  it("reports when a layer is full", () => {
+    store().addLayer();
+    let added = 0;
+    while (store().addItem("toolstart")) added++;
+    expect(added).toBeGreaterThan(0);
+    expect(store().addItem("toolstart")).toBe(false);
+    expect(store().duplicateItem(active().items[0].id)).toBe(false);
+    for (const it of active().items) {
+      expect(it.x + it.w).toBeLessThanOrEqual(active().spalten);
+      expect(it.y + it.h).toBeLessThanOrEqual(active().zeilen);
+    }
   });
 
   it("persists widget changes of the active layer", () => {

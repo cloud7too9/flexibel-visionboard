@@ -29,8 +29,11 @@ export interface LayoutItem {
 export interface WorkspaceLayout {
   id: Id;
   name: string;
+  /** Anzahl Rasterspalten der Fläche. */
   spalten: number;
-  zeilenHoehe: number;
+  /** Anzahl Rasterzeilen der Fläche. Die Fläche scrollt nicht. */
+  zeilen: number;
+  /** Sichtbarer Abstand zwischen Widgets in Pixeln. */
   abstand: number;
   items: LayoutItem[];
 }
@@ -50,20 +53,5 @@ export interface PanelDefinition {
   minHoehe: number;
   erlaubtResize: boolean;
 }
-
-export interface AllowedSize {
-  w: number;
-  h: number;
-}
-
-export const ALLOWED_SIZES: AllowedSize[] = [
-  { w: 1, h: 1 },
-  { w: 2, h: 1 },
-  { w: 2, h: 2 },
-  { w: 3, h: 2 },
-  { w: 4, h: 2 },
-  { w: 4, h: 3 },
-  { w: 6, h: 3 },
-];
 
 export type EditMode = "normal" | "edit";

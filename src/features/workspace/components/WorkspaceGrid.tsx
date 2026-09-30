@@ -3,15 +3,15 @@ import {
   useLayoutEffect,
   useMemo,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { selectActiveLayer, useWorkspaceStore } from "../model/workspace.store";
 import {
+  cellSize,
   cellToPixel,
-  columnWidth,
+  clamp,
   clampItemToGrid,
-  gridRowCount,
-  snapSize,
   type GridConfig,
   type PixelRect,
 } from "../lib/layout-utils";
@@ -24,6 +24,9 @@ import { EmptyGridHint } from "./EmptyGridHint";
 import { useBreakpoint } from "../../../shared/hooks/useBreakpoint";
 import { adaptLayoutToBreakpoint } from "../lib/responsive-layout";
 import { useLongPress } from "../hooks/useLongPress";
+
+/** Alle so viele Zellen wird eine kräftigere Hilfslinie gezeichnet. */
+export const MAJOR_GRID_EVERY = 8;
 
 type DragState =
   | { kind: "idle" }
@@ -46,6 +49,26 @@ type DragState =
       valid: boolean;
     };
 
+/** Gitterlinien als Hintergrund: feine Linien je Zelle, kräftige alle 8 Zellen. */
+function gridLinesStyle(cell: { w: number; h: number }): CSSProperties {
+  if (cell.w <= 0 || cell.h <= 0) return {};
+  const minor = "rgb(var(--color-border) / 0.45)";
+  const major = "rgb(var(--color-border-strong) / 0.55)";
+  const mw = cell.w * MAJOR_GRID_EVERY;
+  const mh = cell.h * MAJOR_GRID_EVERY;
+  return {
+    backgroundImage: [
+      `linear-gradient(to right, ${major} 1px, transparent 1px)`,
+      `linear-gradient(to bottom, ${major} 1px, transparent 1px)`,
+      `linear-gradient(to right, ${minor} 1px, transparent 1px)`,
+      `linear-gradient(to bottom, ${minor} 1px, transparent 1px)`,
+    ].join(", "),
+    backgroundSize: `${mw}px ${mh}px, ${mw}px ${mh}px, ${cell.w}px ${cell.h}px, ${cell.w}px ${cell.h}px`,
+    // Rechter und unterer Rand der Fläche.
+    boxShadow: `inset -1px -1px 0 ${major}`,
+  };
+}
+
 export function WorkspaceGrid() {
   const layout = useWorkspaceStore(selectActiveLayer);
   const editMode = useWorkspaceStore((s) => s.editMode);
@@ -55,16 +78,25 @@ export function WorkspaceGrid() {
   const moveItem = useWorkspaceStore((s) => s.moveItem);
   const resizeItem = useWorkspaceStore((s) => s.resizeItem);
 
-  // Callback-Ref statt useRef: Der Container existiert nicht, solange der
-  // Layer leer ist. So wird die Breite gemessen, sobald er erscheint.
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
+  const [size, setSize] = useState({ width: 0, height: 0 });
   const [drag, setDrag] = useState<DragState>({ kind: "idle" });
 
-  // Bildschirmgröße: Das gespeicherte Layout ist im Desktop-Raster (12 Spalten)
-  // abgelegt. Für Tablet/Mobil wird daraus ein Layout mit weniger Spalten
-  // abgeleitet. Verschieben/Skalieren ist nur im kanonischen Raster erlaubt,
-  // damit die Bearbeitung 1:1 gespeichert werden kann.
+  // Die Fläche füllt den verfügbaren Platz; Breite und Höhe bestimmen die
+  // Zellgröße. Die Seite selbst scrollt nie.
+  useLayoutEffect(() => {
+    const el = containerEl;
+    if (!el) return;
+    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [containerEl]);
+
+  // Das gespeicherte Layout liegt im Desktop-Raster. Für Tablet/Mobil wird
+  // ein Layout mit weniger Spalten abgeleitet und in die Höhe eingepasst.
+  // Verschieben/Skalieren ist nur im kanonischen Raster erlaubt.
   const breakpoint = useBreakpoint();
   const displayLayout = useMemo(
     () => adaptLayoutToBreakpoint(layout, breakpoint),
@@ -73,8 +105,7 @@ export function WorkspaceGrid() {
   const canArrange = editMode && breakpoint.erlaubtAnordnen;
 
   // Langes Drücken auf die Kopfzeile eines Widgets (ohne Verschieben) schaltet
-  // die gesamte Oberfläche in den Bearbeitungszustand. Gilt für alle
-  // Bildschirmgrößen; auf Touch-Geräten ist das der einzige Einstieg.
+  // die gesamte Oberfläche in den Bearbeitungszustand.
   const longPress = useLongPress<Id>((id) => {
     selectPanel(id);
     setEditMode(true);
@@ -83,30 +114,17 @@ export function WorkspaceGrid() {
     }
   });
 
-  useLayoutEffect(() => {
-    const el = containerEl;
-    if (!el) return;
-    const update = () => setContainerWidth(el.clientWidth);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [containerEl]);
-
   const config: GridConfig = useMemo(
     () => ({
       cols: displayLayout.spalten,
-      rowHeight: displayLayout.zeilenHoehe,
+      rows: displayLayout.zeilen,
       gap: displayLayout.abstand,
-      containerWidth,
+      containerWidth: size.width,
+      containerHeight: size.height,
     }),
-    [displayLayout.spalten, displayLayout.zeilenHoehe, displayLayout.abstand, containerWidth],
+    [displayLayout.spalten, displayLayout.zeilen, displayLayout.abstand, size],
   );
-
-  // Auf kleinen Bildschirmen keine zusätzlichen Leerzeilen unter dem Inhalt.
-  const totalRows = gridRowCount(displayLayout.items, breakpoint.erlaubtAnordnen ? 6 : 1);
-  const totalHeight =
-    totalRows * displayLayout.zeilenHoehe + (totalRows - 1) * displayLayout.abstand;
+  const cell = cellSize(config);
 
   const onHeaderPointerDown = (e: ReactPointerEvent, id: Id) => {
     if (!editMode) {
@@ -155,51 +173,41 @@ export function WorkspaceGrid() {
 
   useEffect(() => {
     if (drag.kind === "idle") return;
+    if (cell.w <= 0 || cell.h <= 0) return;
 
     const onMove = (e: PointerEvent) => {
       if (e.pointerId !== drag.pointerId) return;
-      const dx = e.clientX - drag.startPointer.x;
-      const dy = e.clientY - drag.startPointer.y;
+      const item = layout.items.find((i) => i.id === drag.id);
+      if (!item) return;
+      const dx = (e.clientX - drag.startPointer.x) / cell.w;
+      const dy = (e.clientY - drag.startPointer.y) / cell.h;
 
       if (drag.kind === "move") {
-        const item = layout.items.find((i) => i.id === drag.id);
-        if (!item) return;
-        const colGap = columnWidth(config) + config.gap;
-        const rowGap = config.rowHeight + config.gap;
-        const dxCells = Math.round(dx / colGap);
-        const dyCells = Math.round(dy / rowGap);
         const target = clampItemToGrid(
           {
             ...item,
-            x: drag.startCell.x + dxCells,
-            y: Math.max(0, drag.startCell.y + dyCells),
+            x: drag.startCell.x + Math.round(dx),
+            y: drag.startCell.y + Math.round(dy),
           },
           layout.spalten,
+          layout.zeilen,
         );
-        const valid = !hasCollision(target, layout.items);
         setDrag({
           ...drag,
           previewCell: { x: target.x, y: target.y },
-          valid,
+          valid: !hasCollision(target, layout.items),
         });
-      } else if (drag.kind === "resize") {
-        const item = layout.items.find((i) => i.id === drag.id);
-        if (!item) return;
-        const colGap = columnWidth(config) + config.gap;
-        const rowGap = config.rowHeight + config.gap;
-        const rawW = drag.startSize.w + dx / colGap;
-        const rawH = drag.startSize.h + dy / rowGap;
+      } else {
         const def = PANEL_REGISTRY[item.panelTyp];
-        const snapped = snapSize(Math.max(def.minBreite, rawW), Math.max(def.minHoehe, rawH));
-        const candidate: LayoutItem = clampItemToGrid(
-          { ...item, w: snapped.w, h: snapped.h },
-          layout.spalten,
-        );
-        const valid = !hasCollision(candidate, layout.items);
+        const minW = Math.min(item.minW ?? def.minBreite, layout.spalten);
+        const minH = Math.min(item.minH ?? def.minHoehe, layout.zeilen);
+        const w = clamp(Math.round(drag.startSize.w + dx), minW, layout.spalten - item.x);
+        const h = clamp(Math.round(drag.startSize.h + dy), minH, layout.zeilen - item.y);
+        const candidate: LayoutItem = { ...item, w, h };
         setDrag({
           ...drag,
-          previewSize: { w: candidate.w, h: candidate.h },
-          valid,
+          previewSize: { w, h },
+          valid: !hasCollision(candidate, layout.items),
         });
       }
     };
@@ -225,41 +233,37 @@ export function WorkspaceGrid() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
     };
-  }, [drag, config, layout, moveItem, resizeItem]);
+  }, [drag, cell.w, cell.h, layout, moveItem, resizeItem]);
 
-  if (displayLayout.items.length === 0) {
-    return <EmptyGridHint />;
-  }
-
-  const col = columnWidth(config);
-  const gridBackground = canArrange
-    ? {
-        backgroundImage: `repeating-linear-gradient(to right, rgb(var(--color-border) / 0.35) 0, rgb(var(--color-border) / 0.35) 1px, transparent 1px, transparent ${col + config.gap}px), repeating-linear-gradient(to bottom, rgb(var(--color-border) / 0.35) 0, rgb(var(--color-border) / 0.35) 1px, transparent 1px, transparent ${config.rowHeight + config.gap}px)`,
-      }
-    : {};
+  const hasSize = size.width > 0 && size.height > 0;
 
   return (
     <div
       ref={setContainerEl}
       data-breakpoint={breakpoint.name}
-      className="relative w-full"
-      style={{ height: totalHeight, ...gridBackground }}
+      data-grid={`${displayLayout.spalten}x${displayLayout.zeilen}`}
+      className="relative h-full w-full overflow-hidden"
+      style={editMode ? gridLinesStyle(cell) : undefined}
     >
-      {displayLayout.items.map((item) => {
-        const rect = cellToPixel(item.x, item.y, item.w, item.h, config);
-        return (
+      {displayLayout.items.length === 0 ? (
+        <div className="absolute inset-0 flex items-center justify-center p-4">
+          <EmptyGridHint />
+        </div>
+      ) : (
+        hasSize &&
+        displayLayout.items.map((item) => (
           <WorkspacePanel
             key={item.id}
             item={item}
-            rect={rect}
+            rect={cellToPixel(item.x, item.y, item.w, item.h, config)}
             editMode={editMode}
             arrangeable={canArrange}
             selected={selectedPanelId === item.id}
             onHeaderPointerDown={onHeaderPointerDown}
             onResizePointerDown={onResizePointerDown}
           />
-        );
-      })}
+        ))
+      )}
       {drag.kind !== "idle" && (
         <DragPreview drag={drag} config={config} layout={displayLayout.items} />
       )}

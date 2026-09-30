@@ -27,10 +27,10 @@ export function WorkspaceHeader() {
           <LayerSwitcher />
           <span
             className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-text-muted"
-            title={`Aktive Bildschirmgröße: ${breakpoint.label} (${breakpoint.spalten} Spalten)`}
+            title={`Aktive Bildschirmgröße: ${breakpoint.label} (Raster ${breakpoint.spalten} × ${breakpoint.zeilen})`}
             data-testid="breakpoint-badge"
           >
-            {breakpoint.label} · {breakpoint.spalten} Sp.
+            {breakpoint.label} · {breakpoint.spalten}×{breakpoint.zeilen}
           </span>
         </div>
         {(editMode || showEditButton) && (
@@ -68,9 +68,8 @@ export function WorkspaceHeader() {
           role="status"
           className="border-t border-border bg-surface px-3 py-2 text-xs text-text-muted sm:px-4"
         >
-          Auf {breakpoint.label}-Größe werden Widgets automatisch angeordnet. Verschieben und
-          Skalieren ist ab {canonical.label}-Breite (≥ {canonical.minWidth}px) möglich.
-          Hinzufügen, Duplizieren und Entfernen funktionieren hier weiterhin.
+          Automatisch angeordnet. Verschieben und Skalieren ab {canonical.label}-Breite (≥{" "}
+          {canonical.minWidth}px).
         </p>
       )}
     </header>

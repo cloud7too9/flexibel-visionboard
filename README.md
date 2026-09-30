@@ -38,22 +38,33 @@ docker run --rm -p 8080:80 mainhub-frontend
 - `src/shared/` – Wiederverwendbare UI und Tokens
 - `src/tests/` – Unit-Tests
 
-Designregeln: 12-Spalten-Grid, feste Größenstufen, getrennter Bearbeitungsmodus.
+Designregeln: feines Raster (96 × 48 Zellen auf Desktop), freie Größen mit
+Mindestmaßen, feste Fläche ohne Seiten-Scroll, getrennter Bearbeitungsmodus.
 Nächste Schritte und offene Ideen stehen in `docs/ROADMAP.md`.
+
+## Raster und Fläche
+
+Die Seite scrollt nie. Die Widget-Fläche füllt den Bildschirm unter dem
+Header und ist in ein festes Raster geteilt; die Zellgröße ergibt sich aus
+der verfügbaren Breite und Höhe. Widgets bleiben immer vollständig in der
+Fläche. Ist kein Platz mehr frei, meldet „Widget hinzufügen“ das, statt die
+Seite zu verlängern. Im Bearbeitungszustand zeigt die Fläche feine
+Gitterlinien je Zelle und kräftigere alle 8 Zellen. Größen sind frei in
+Zellschritten wählbar; es gelten nur die Mindestmaße aus der Registry.
 
 ## Bildschirmgrößen
 
-Das Layout wird immer im kanonischen Desktop-Raster (12 Spalten) gespeichert.
+Das Layout wird immer im kanonischen Desktop-Raster (96 × 48) gespeichert.
 Für kleinere Bildschirme wird daraus zur Laufzeit ein Layout mit weniger
 Spalten abgeleitet (`src/features/workspace/lib/responsive-layout.ts`):
-Breiten werden proportional skaliert, Panels in Lesereihenfolge ohne
-Überlappung neu angeordnet.
+Maße werden proportional skaliert, Widgets in Lesereihenfolge ohne
+Überlappung neu angeordnet und danach in die Höhe der Fläche eingepasst.
 
-| Breakpoint | Viewport-Breite | Spalten | Abstand | Zeilenhöhe | Verschieben/Skalieren |
-|------------|-----------------|---------|---------|------------|------------------------|
-| Mobil      | < 640px         | 2       | 8px     | 72px       | nein (automatisch)     |
-| Tablet     | 640–1023px      | 6       | 10px    | 80px       | nein (automatisch)     |
-| Desktop    | ≥ 1024px        | 12      | 12px    | 80px       | ja                     |
+| Breakpoint | Viewport-Breite | Raster  | Verschieben/Skalieren |
+|------------|-----------------|---------|------------------------|
+| Mobil      | < 640px         | 24 × 48 | nein (automatisch)     |
+| Tablet     | 640–1023px      | 48 × 64 | nein (automatisch)     |
+| Desktop    | ≥ 1024px        | 96 × 48 | ja                     |
 
 Die Grenzen entsprechen den Tailwind-Breakpoints `sm` und `lg`. Definiert sind
 sie in `src/features/workspace/model/breakpoints.ts`; der aktive Breakpoint
@@ -67,5 +78,6 @@ damit Änderungen 1:1 im gespeicherten Raster landen.
 Der Workspace besteht aus einem oder mehreren Layern mit jeweils eigener
 Widget-Anordnung. Der Umschalter im Header wechselt jederzeit den Layer;
 Anlegen, Umbenennen und Entfernen gehen im Bearbeitungszustand. Gespeichert
-wird im `localStorage` (Schema-Version 2). Daten aus Version 1 werden beim
-Laden automatisch zu einem Layer migriert.
+wird im `localStorage` (Schema-Version 3). Daten aus Version 1 und 2
+(grobes 12-Spalten-Raster) werden beim Laden automatisch ins feine Raster
+umgerechnet.
