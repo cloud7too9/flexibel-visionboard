@@ -1,6 +1,8 @@
 # Übergabe · Minecraft Companion & Koordinaten-Board
 
-Stand: 29.09.2026 · Einstieg für einen neuen Chat
+Stand: 01.10.2026 · Einstieg für einen neuen Chat
+
+> **Stand der Umsetzung von `planung/PLAN.md`** (Widget-Dashboard, Welt-Import, Accounts): [`planung/UEBERGABE.md`](planung/UEBERGABE.md) – was gebaut ist, Branches, Starten, Tests, nächste Schritte. Was auf Max wartet: [`planung/WARTELISTE.md`](planung/WARTELISTE.md).
 
 Diese Datei enthält, was **für beide Projekte** gilt: Arbeitsweise, Zusammenspiel, gemeinsame Referenz und projektübergreifende Entscheidungen. Alles Projektspezifische steht in der Übergabe des jeweiligen Projekts:
 
@@ -21,6 +23,10 @@ Diese Datei enthält, was **für beide Projekte** gilt: Arbeitsweise, Zusammensp
 > Lies `UEBERGABE.md`, danach `companion/UEBERGABE.md`. Wir machen mit der Companion-PWA weiter: Bereich **Handbuch**.
 
 Geht es ums Raum-Board, statt der Companion-Übergabe `koordinaten-board/UEBERGABE.md` lesen.
+
+Geht es mit dem Plan weiter (Widget-Dashboard, Offline, Accounts), zum Beispiel:
+
+> Lies `UEBERGABE.md`, danach `planung/UEBERGABE.md` und `planung/WARTELISTE.md`. N5 ist entschieden: … – mach mit B3 weiter.
 
 ---
 

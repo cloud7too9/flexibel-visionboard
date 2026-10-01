@@ -17,13 +17,12 @@ Bei jedem Haltepunkt stehen Branch und Screenshots. Die Screenshots erzeugen die
 | H3 | **A2 · Raster** mit Platzhalter-Widgets auf 16:9 und 4:3 | `bereich/widgets-groessen` | `w1-raster-16x9.png`, `w1-raster-4x3.png`, `w2-stufen.png` |
 | H4 | **A4 · Galerie mit allen 13 Typen** und Karten vom Board | `bereich/widgets-register` | `w4-galerie.png`, `w6-quelle-waehlen.png`, `w5-beispielkarten.png` (ohne Board). Live ausprobieren: `npm run dev` in `companion/widgets` (ohne Board, Galerie im Bearbeiten-Modus) |
 | H5 | **A5 · Bereichs-Themes** (nicht als Haltepunkt im Plan, aber zum Anschauen) | `bereich/widgets-themes` | `w8-themes.png` (Handbuch als Buch, Baupläne blau, Portale lila), `w7-board-karten.png` (Karte: Oberwelt grün, Nether rot) |
-
 | H6 | **A6 · Anzeige am Handy anordnen** (Haltepunkt laut Plan): im Querformat ein Layout für die Anzeige im Zimmer anordnen | `bereich/widgets-anzeigen` | `w9-companion-anordnen-knopf.png`, `w9-anordnen-handy.png`, `w9-anordnen-auswahl.png`, `w10-anzeige-nach-anordnen.png`, `w11-anzeige-vollbild.png`. Live: Board starten, `npm run dashboard:installieren && npm run dashboard:build`, am Handy beitreten → Board → Anzeigen → „Anzeige anordnen“ |
 
 Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
 
-**Pull Requests:** Es ist noch keiner offen. Gemergt wird nach Plan durch Max per PR nach `main`, nach jedem Strang bzw. Haltepunkt mit OK. Die Branches bauen aufeinander auf:
-`bereich/karte-welt-upload` → `board/anzeige-link` → `bereich/widgets-uebernahme` → `-raster` → `-groessen` → `-struktur` → `-register` → `-themes` → `-anzeigen` → `board/identitaet` (Strang C und der Anzeige-Link sind in die Widgets-Kette gemergt).
+**Pull Requests:** Es ist noch keiner offen. Gemergt wird nach Plan durch Max per PR nach `main`, nach jedem Strang bzw. Haltepunkt mit OK. Die Branches bauen aufeinander auf (Übersicht und Merge-Vorschlag in [`UEBERGABE.md`](UEBERGABE.md), Kapitel 3):
+`bereich/mainhub-visionboard` (noch nicht in `main`) bzw. `bereich/karte-welt-upload` → `board/anzeige-link` → `bereich/widgets-uebernahme` → `-raster` → `-groessen` → `-struktur` → `-register` → `-themes` → `-anzeigen` → `board/identitaet` (Strang C und der Anzeige-Link sind in die Widgets-Kette gemergt).
 
 ---
 
@@ -33,7 +32,7 @@ Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
 |---|---|---|
 | ~~N1~~ | **Entschieden:** Abgehakt wird im Bereich der Companion (wie heute). „Anzeige anordnen“ ordnet nur an. | – |
 | ~~N2~~ | **Entschieden: Weg 1** – React-Route `/dashboard/anordnen` aus `companion/widgets/`, geöffnet aus der Companion (Board → Anzeigen → „Anzeige anordnen“). Gebaut auf `bereich/widgets-anzeigen`. | – |
-| ~~N4~~ | **Entschieden („Ja“):** Die Board-PIN im QR-Code bleibt als Zugang zum Server, die Account-PIN kommt dazu. **B2 ist gebaut** (Branch `board/identitaet`): Accounts mit eigener PIN, Auswahl beim Beitreten, Geräteschlüssel, `werBistDu()`. Wer schon beigetreten war, meldet sich einmal neu an (Name + eigene PIN). | **B2: Accounts mit PIN.** B1 ist gebaut (Branch `board/identitaet`): IDs vom Handy, `erstellerId` – bis zu den Accounts „unbekannt“ –, leere Sammlungen für Benutzer, Profile, Geräte. |
+| ~~N4~~ | **Entschieden („Ja“):** Die Board-PIN im QR-Code bleibt als Zugang zum Server, die Account-PIN kommt dazu. **B2 ist gebaut** (Branch `board/identitaet`): Accounts mit eigener PIN, Auswahl beim Beitreten, Geräteschlüssel, `werBistDu()`. Wer schon beigetreten war, meldet sich einmal neu an (Name + eigene PIN). | – |
 | N5 *(neu)* | **Offline braucht HTTPS.** Service Worker (B3) laufen nur in sicheren Kontexten (https oder localhost). Die Companion läuft am Handy über `http://192.168…:3000`, dort startet kein Service Worker. Möglichkeiten: HTTPS am Board mit eigenem Zertifikat (das iPhone muss ihm einmal vertrauen), ein Zertifikat für eine eigene Domain, oder Offline ohne Service Worker (dann lädt die Seite ohne Netz nicht). | **B3–B5** (Offline-Betrieb, Warteschlange, Zustandswechsel offline) |
 
 ---
