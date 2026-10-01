@@ -25,13 +25,35 @@ function typ(id: string, bereich: BereichId, name: string, stufen: Groessenstufe
   return { id, bereich, name, vertrag: vertragRegistrieren(id, { stufen, mindest, maximal, vollbild }), mehrfach: Boolean(extra.quelle), ...rest };
 }
 
+/** Platzhalter-Stufe für Typen, deren Größen A7 noch festlegt */
+const platzhalter = (breite: number, hoehe: number, informationsumfang: string) => [stufe("standard", breite, hoehe, informationsumfang)];
+
+/** Alle 13 Typen aus dem Bauplan, je Bereich in der Reihenfolge der Tabelle */
 export const WIDGET_TYPEN: readonly WidgetTyp[] = [
   typ("karte.gesamtkarte", "karte", "Gesamtkarte", [stufe("standard", 12, 8, "Karte mit Markern, ausrichtbar auf Punkt oder Koordinate")], { vollbild: true }),
+  typ("karte.einzelkoordinate", "karte", "Einzelkoordinate", platzhalter(6, 4, "eine Koordinate mit Umrechnung"),
+    { optional: true, quelle: "Koordinate" }),
+  typ("karte.koordinatensammlung", "karte", "Koordinatensammlung", platzhalter(8, 6, "mehrere Koordinaten einer Sammlung"),
+    { optional: true, quelle: "Sammlung" }),
   typ("sammelobjekte.gesamtauflistung", "sammelobjekte", "Alle Sammelobjekte", [stufe("standard", 8, 8, "alle Sammelobjekte mit Stand")]),
+  typ("sammelobjekte.eigeneliste", "sammelobjekte", "Eigene Liste", platzhalter(6, 6, "frei zusammengestellte Sammelobjekte"),
+    { quelle: "Liste" }),
+  typ("sammelobjekte.einzelobjekt", "sammelobjekte", "Einzelobjekt", platzhalter(6, 4, "„suche ich als Nächstes“ mit nächstem Fundort"),
+    { quelle: "Objekt" }),
   typ("sammelobjekte.status", "sammelobjekte", "Sammel-Fortschritt", [stufe("standard", 4, 3, "Fortschritt als Kennzahl")]),
   typ("portale.verbindungen", "portale", "Portalverbindungen",
     [stufe("standard", 10, 6, "alle Verbindungen Oberwelt ↔ Nether mit Koordinaten"), stufe("groß", 12, 9, "Verbindungen und Tipps")],
     { zusatzinhalte: [{ abStufe: "groß", inhalt: "Tipps: Mindestabstand zwischen Portalen je Dimension" }], vollbild: true }),
+  typ("handbuch.eintrag", "handbuch", "Handbuch-Eintrag", platzhalter(6, 6, "ein Brau-, Crafting-Rezept, eine Verzauberung …"),
+    { quelle: "Eintrag" }),
+  typ("handbuch.materialliste", "handbuch", "Materialliste", platzhalter(6, 6, "Materialien zum Abhaken"),
+    { quelle: "Liste" }),
+  typ("bauplaene.bauplan", "bauplaene", "Bauplan", platzhalter(8, 6, "ein einzelner Bauplan"),
+    { quelle: "Bauplan" }),
+  typ("banner.banner", "banner", "Banner", platzhalter(8, 6, "Motiv und Herstellungsschritte"),
+    { quelle: "Banner" }),
+  typ("ruestung.set", "ruestung", "Rüstungs-Set", platzhalter(8, 6, "Set mit Teilen und Besätzen"),
+    { quelle: "Set" }),
 ];
 
 const NACH_ID = new Map(WIDGET_TYPEN.map((t) => [t.id, t]));

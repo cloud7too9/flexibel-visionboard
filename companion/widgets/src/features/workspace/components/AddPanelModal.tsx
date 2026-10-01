@@ -82,9 +82,9 @@ export function AddPanelModal() {
                       style={{ width: s.breite * VORSCHAU_ZELLE, height: s.hoehe * VORSCHAU_ZELLE }}
                     />
                     <span className="min-w-0">
-                      <span className="block font-medium">
-                        {t.name}
-                        {t.optional && <span className="ml-1.5 text-[10px] font-normal uppercase tracking-wide text-text-muted">optional</span>}
+                      <span className="flex flex-wrap items-baseline gap-x-1.5 font-medium">
+                        <span>{t.name}</span>
+                        {t.optional && <span className="text-[10px] font-normal uppercase tracking-wide text-text-muted">optional</span>}
                       </span>
                       <span className="block text-xs text-text-muted">
                         {da ? "liegt schon auf diesem Layer" : `${s.breite}×${s.hoehe} · ${s.informationsumfang}`}

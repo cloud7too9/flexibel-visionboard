@@ -130,6 +130,16 @@ describe("widgets act on the active layer only", () => {
     expect(store().addItem("portale.verbindungen")).toBe(true);   // wieder frei
   });
 
+  it("types with a source are multiple: each instance with its own source, duplicates keep it", () => {
+    store().addLayer();
+    expect(store().addItem("banner.banner", "b_1")).toBe(true);
+    expect(store().addItem("banner.banner", "b_2")).toBe(true);
+    expect(active().instanzen.map((i) => i.quelle)).toEqual(["b_1", "b_2"]);
+    expect(store().duplicateItem(active().instanzen[0].id)).toBe(true);
+    expect(active().instanzen.at(-1)).toMatchObject({ typ: "banner.banner", quelle: "b_1" });
+    expect(active().instanzen.at(-1)!.id).not.toBe(active().instanzen[0].id);
+  });
+
   it("moves a widget cell by cell and rejects collisions", () => {
     expect(store().moveItem("w-sammelstatus", 28, 16)).toBe(true);
     // 3 Reihen hoch: bei 18 Reihen spätestens ab Reihe 15
