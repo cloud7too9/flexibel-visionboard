@@ -8,7 +8,7 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 
 **Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop) – dann läuft der DEMO-Mock mit Beispielwelt. **Live** läuft die Companion, wenn das Koordinaten-Board sie ausliefert: Board starten, `http://<board>:3000/?pin=<PIN>` öffnen oder den QR-Code der Anzeige mit der Kamera-App scannen (siehe „Live-Betrieb“). Mit `?modul=sammelobjekte`, `?modul=portale`, `?modul=banner` oder `?modul=ruestung` startet man direkt im jeweiligen Bereich, `?demo=1` erzwingt den Mock.
 
-Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-Server lädt), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen für Rüstung und Sammelobjekte) in denselben Ordner.
+Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-Server lädt), `board-karten.js` (Anzeigeschemas, lädt der Board-Server ebenfalls), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen für Rüstung und Sammelobjekte) in denselben Ordner.
 
 ## Was drin ist
 
@@ -167,7 +167,7 @@ Verbindet die Companion mit dem Koordinaten-Board im Zimmer. Das ist kein Bereic
 
 Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte liegt dort, bis die nächste kommt oder jemand sie wegnimmt. Das Board speichert sie nicht; nach einem Neustart ist die Anzeige frei.
 
-**Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): `BOARD_KARTEN` ist das Verzeichnis, je Inhaltsart `{ titel, karte(id) }`. Die Funktion übersetzt den Inhalt in das allgemeine Kartenformat des Boards; das Board kennt keine Bereiche.
+**Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): `BOARD_KARTEN` in `board-karten.js` ist das Verzeichnis, je Inhaltsart `{ titel, karte(ctx, id) }`. Die Funktion übersetzt den Inhalt in das allgemeine Kartenformat des Boards; das Board kennt keine Bereiche. Die Daten kommen über den Kontext `ctx` (in der Seite `boardKontext()`), deshalb baut der Board-Server mit genau diesen Funktionen auch die Widgets des Dashboards (`GET /api/widgets/:typ`).
 
 | Schema | Quelle | Knopf | Inhalt der Karte |
 |---|---|---|---|
@@ -177,10 +177,13 @@ Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte li
 | Portal-Verbindung | `portal:<id>` | Portal-Detail | beide Portale mit Dimension, Status, Abstand zum Idealpunkt, Vorschlag |
 | Banner-Bauplan | `banner:<id>` | Banner-Detail | Vorschau als Bild (pixelgenau), Material, Bannervorlagen |
 | Rüstungs-Set | `ruestung:<id>` | Rüstungs-Detail | Figur als Bild (3D-Aufnahme, sonst 2D; als Datei ohne Bild), je Teil Besatz · Material · Farbe · verzaubert, welche Besätze in der Welt noch fehlen |
+| Alle Sammelobjekte | `sammelliste` | – (Widget) | alle Besätze mit gefunden von oder Fundort, je Dimension ein Block |
+| Portalverbindungen | `portalliste` | – (Widget) | jede Verbindung mit Status und beiden Koordinaten |
+| Gesamtkarte | `welt` | – (Widget) | Orte je Dimension und angeheftete Orte, bis die Karte einen eigenen Block hat |
 
 - Liegt der eigene Inhalt auf dem Board, wird der Knopf zu „Liegt auf dem Board · Wegnehmen“. Das Board-Sheet zeigt unter „Auf der Anzeige“, was gerade dort liegt und von wem, mit „Wegnehmen“.
 - Die Knöpfe erscheinen nur, wenn das Gerät mit einem Board verbunden ist.
-- **Neuer Bereich**: Schema in `BOARD_KARTEN` eintragen und im Detail `boardZeigenKnopf("<art>:<id>")` einbauen, danach `boardZeigenKnoepfe()` aufrufen. Das Board bleibt unverändert. `karte(id)` darf async sein (die Rüstung rendert erst die Figur).
+- **Neuer Bereich**: Schema in `BOARD_KARTEN` eintragen und im Detail `boardZeigenKnopf("<art>:<id>")` einbauen, danach `boardZeigenKnoepfe()` aufrufen. Das Board bleibt unverändert. `karte(ctx, id)` darf async sein (die Rüstung rendert erst die Figur).
 
 Nachrichten über die bestehende Live-Verbindung: `{ art:"zeigen", karte }` und `{ art:"verbergen", id }`, Antwort `ok`/`fehler`, an alle geht `{ art:"gezeigt", karte|null }`. Das Board prüft die Karte (`koordinaten-board/server/src/zeigen.js`):
 
@@ -261,7 +264,7 @@ Live gelten alle Pfade mit Präfix `/api` und Bearer-Token. Die Texterkennung (`
 - **Welt-Import**: `biom-ids.js` vor dem Haupt-Script einbinden; `biom-import.worker.js`, `biom-welt.js`, `biom-dekoder.js` und `vendor/` neben die Hauptdatei legen (der Worker lädt sie als ES-Module, nur über http). Der Service Worker der PWA muss sie im Precache haben. Abschnitt 9h und `<input id="weltDatei">` übernehmen, auf dem Board liefern sie die Routen in `server.js` aus
 - JS-Abschnitte 2–9 übernehmen; `api()`, `esc()`, `THEMES` gibt es dort schon
 - Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung)
-- `regeln.js` neben die Hauptdatei legen und vor dem Haupt-Script einbinden (`<script src="regeln.js">`); das Board liefert dann statt der Prototyp-Datei die Hauptdatei aus (`COMPANION_DATEI`)
+- `regeln.js` und `board-karten.js` neben die Hauptdatei legen und in dieser Reihenfolge vor dem Haupt-Script einbinden (`<script src="regeln.js">`, `<script src="board-karten.js">`); das Board liefert dann statt der Prototyp-Datei die Hauptdatei aus (`COMPANION_DATEI`)
 - Ordner `icons/` neben die Hauptdatei legen (Kennblöcke für Karte und Sammelobjekte, Pfad `KENNBLOCK_PFAD`). Fehlt er, stehen überall die Symbole
 - Ordner `ruestungs-baukasten/` neben die Hauptdatei legen (Pfad `BAUKASTEN`); das Board liefert ihn unter `/ruestungs-baukasten/` aus
 - Die Canvas-Marker zeichnet dort der bestehende Renderer: Kennblock über `kennblockBild(kategorie)` holen (liefert das geladene Bild oder `null`, dann das Symbol)

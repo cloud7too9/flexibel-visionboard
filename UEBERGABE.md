@@ -39,7 +39,7 @@ referenz/                 ← gemeinsame Referenz (Datenmodell, Seed-Map, Dashbo
 Was wohin gehört:
 
 - Code, Tests und Doku eines Projekts bleiben in dessen Ordner.
-- **Seit der Zusammenführung** gibt es genau zwei gewollte Verbindungen: Der Board-Server liefert `companion/` aus (Seite, `regeln.js`, `icons/`, `ruestungs-baukasten/`) und lädt `companion/regeln.js`, damit Handy und Server mit denselben Regeln prüfen. Pfad einstellbar über `COMPANION_ORDNER`. Sonst greift kein Projekt in den Ordner des anderen; die Playwright-Tests der Companion starten das Board als eigenen Prozess.
+- **Seit der Zusammenführung** gibt es genau zwei gewollte Verbindungen: Der Board-Server liefert `companion/` aus (Seite, `regeln.js`, `board-karten.js`, `icons/`, `ruestungs-baukasten/`, den Build von `widgets/` unter `/dashboard`) und lädt `companion/regeln.js` und `companion/board-karten.js`, damit Handy und Server mit denselben Regeln prüfen und dieselben Karten bauen. Pfad einstellbar über `COMPANION_ORDNER`. Sonst greift kein Projekt in den Ordner des anderen; die Playwright-Tests der Companion starten das Board als eigenen Prozess.
 - `referenz/` bekommt nur, was **beide** Projekte betrifft. Referenzbilder für einen einzelnen Companion-Bereich liegen in `companion/referenz/`.
 
 ---

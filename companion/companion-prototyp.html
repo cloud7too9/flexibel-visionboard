@@ -2714,10 +2714,10 @@ function toast(text, fehler){
    ----------------------------------------------------------------------------
    Jeder Bereich ist in sich geschlossen: eigener State, eigene API-Pfade,
    eigenes Rendering. Modul-Vertrag:
-     { key, titel, icon, mount(el), unmount(),
-       ansichten: [{ key, titel, groessen:["1x1","2x1","2x2"], render(el, groesse) }] }
-   „ansichten“ kommt später: Dashboard-Ansichten pro Bereich, nach dem Vorbild
-   des iOS-Kontrollzentrums (siehe README → Dashboard-Ansichten).
+     { key, titel, icon, mount(el), unmount() }
+   Die Dashboard-Widgets der Bereiche stehen nicht hier, sondern im Register von
+   companion/widgets (widget-register.ts, Bereichs-IDs wie diese keys); ihre
+   Inhalte baut der Board-Server aus BOARD_KARTEN (board-karten.js).
    Bereiche: Karte (Live-Karte + Koordinaten-Sammlung), Sammelobjekte,
    Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung.
    Umgesetzt sind Karte, Sammelobjekte, Portal-Verwaltung, Banner und Rüstung; ohne mount()
@@ -3506,8 +3506,10 @@ document.getElementById("portalWeltBtn").addEventListener("click", () => weltOef
        optional typ (Seed-Map-Typ) → die Anzeige zeigt den Kennblock neben dem Titel.
    Das Board prüft die Karte (koordinaten-board/server/src/zeigen.js) und zeigt
    sie groß, bis die nächste kommt oder jemand sie wegnimmt.
-   ANZEIGESCHEMA: Jeder Inhalt, der aufs Board kann, hat in BOARD_KARTEN eine
-   Funktion id → Karte. Das Board selbst kennt keine Bereiche; ein neuer Bereich
+   ANZEIGESCHEMA: Jeder Inhalt, der aufs Board kann, hat in BOARD_KARTEN
+   (board-karten.js) eine Funktion (ctx, id) → Karte; ctx baut boardKontext() aus
+   dem Zustand der Seite. Der Board-Server baut mit denselben Funktionen die Karten
+   der Dashboard-Widgets. Das Board selbst kennt keine Bereiche; ein neuer Bereich
    trägt dort sein Schema ein und baut boardZeigenKnopf("<art>:<id>") in sein Detail.
    ========================================================================== */
 const bd = {
