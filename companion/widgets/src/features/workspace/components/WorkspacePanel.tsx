@@ -5,6 +5,7 @@ import { widgetTyp } from "../model/widget-register";
 import { stufeVon } from "../model/widget-vertrag";
 import { WidgetInhalt } from "./WidgetInhalt";
 import { PanelToolbar } from "./PanelToolbar";
+import { WidgetGehaeuse } from "./WidgetGehaeuse";
 
 interface Props {
   instanz: WidgetInstanz;
@@ -18,6 +19,10 @@ interface Props {
   onResizePointerDown: (e: ReactPointerEvent, id: string) => void;
 }
 
+/**
+ * Ein Widget an seiner Stelle im Raster: das Gehäuse mit dem Inhalt, im
+ * Bearbeiten-Modus dazu Stufe, Werkzeuge und der Griff für die Größenstufe.
+ */
 export function WorkspacePanel({
   instanz: item,
   rect,
@@ -40,39 +45,30 @@ export function WorkspacePanel({
         width: rect.width,
         height: rect.height,
       }}
-      className={[
-        "flex flex-col overflow-hidden rounded-panel border bg-surface-muted transition-colors",
-        editMode
-          ? selected
-            ? "border-accent shadow-lg shadow-accent/10"
-            : "border-border-strong"
-          : "border-border",
-      ].join(" ")}
     >
-      <div
-        className={[
-          "long-press-target flex items-center justify-between gap-2 border-b border-border px-2.5 py-1.5 text-sm font-medium sm:px-3 sm:py-2",
-          editMode ? "bg-surface-raised" : "",
-          arrangeable ? "cursor-move touch-none" : "",
-        ].join(" ")}
-        onPointerDown={(e) => onHeaderPointerDown(e, item.id)}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        <span className="truncate">{typ?.name ?? "Unbekanntes Widget"}</span>
-        {editMode && (
-          <span
-            className="ml-auto shrink-0 rounded-full border border-border px-1.5 text-[10px] leading-4 text-text-muted"
-            data-testid="stufe"
-            title="Größenstufe · Breite × Höhe in Zellen"
-          >
-            {item.stufe} · {stufe?.breite}×{stufe?.hoehe}
-          </span>
+      <WidgetGehaeuse
+        typ={typ}
+        zustand={editMode ? (selected ? "ausgewaehlt" : "bearbeiten") : "normal"}
+        kopfProps={{
+          className: ["long-press-target", arrangeable ? "cursor-move touch-none" : ""].join(" "),
+          onPointerDown: (e) => onHeaderPointerDown(e, item.id),
+          onContextMenu: (e) => e.preventDefault(),
+        }}
+        kopfZusatz={editMode && (
+          <>
+            <span
+              className="ml-auto shrink-0 rounded-full border border-border px-1.5 text-[10px] leading-4 text-text-muted"
+              data-testid="stufe"
+              title="Größenstufe · Breite × Höhe in Zellen"
+            >
+              {item.stufe} · {stufe?.breite}×{stufe?.hoehe}
+            </span>
+            <PanelToolbar panelId={item.id} typ={item.typ} />
+          </>
         )}
-        {editMode && <PanelToolbar panelId={item.id} typ={item.typ} />}
-      </div>
-      <div className="flex-1 overflow-auto p-2.5 sm:p-3">
+      >
         <WidgetInhalt instanz={item} />
-      </div>
+      </WidgetGehaeuse>
       {arrangeable && (
         <div
           role="button"
