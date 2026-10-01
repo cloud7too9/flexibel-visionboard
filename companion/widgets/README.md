@@ -5,13 +5,14 @@ iOS-Kontrollzentrums. Grundlage ist der MainHub-Workspace
 (`cloud7too9/mainhub-frontend`, per `git subtree` mit Verlauf übernommen):
 Grid, Layer, Bearbeitungsmodus und Galerie.
 
-**Stand:** Phasen A1–A5 aus [`planung/PLAN.md`](../../planung/PLAN.md):
-Raster mit 32 Spalten, Größenstufen statt freier Größen, Vollbild als eigene
-Route, Widget-Struktur (Bereich → Widget-Typ → Instanz) mit Galerie, das
-Register mit allen 13 Typen, Inhalte als **Karten vom Board** und die
-**Bereichs-Themes**. Der Board-Server liefert das Dashboard unter `/dashboard`
-aus. Das Layout liegt noch im `localStorage`. Es folgen Layout pro Anzeige und
-Anordnen am Handy (A6).
+**Stand:** Phasen A1–A5 aus [`planung/PLAN.md`](../../planung/PLAN.md) und
+von A6 der Teil ohne Handy: Raster mit 32 Spalten, Größenstufen statt freier
+Größen, Vollbild als eigene Route, Widget-Struktur (Bereich → Widget-Typ →
+Instanz) mit Galerie, das Register mit allen 13 Typen, Inhalte als **Karten vom
+Board**, die **Bereichs-Themes** und **ein Layout pro Anzeige** am Server. Der
+Board-Server liefert das Dashboard unter `/dashboard` aus. Es fehlt das
+**Anordnen am Handy** (A6, wartet auf Nachfrage N2, siehe
+`planung/WARTELISTE.md`).
 
 ## Starten
 
@@ -169,9 +170,28 @@ Bauplan: `planung/bauplaene/Bauplan-Bereichs-Themes.md`.
   Oberwelt-Grün mit eigener Theme-ID je Bereich, austauschbar nur in
   `themes.css`.
 
+## Layout pro Anzeige (A6)
+
+- **Am Board** (`GET /api/server` meldet das Board) ist das Dashboard reine
+  Anzeige (`nurAnzeige` im Store): Es lädt das Layout seiner Anzeige
+  (`GET /api/anzeige/layout`; welche Anzeige, sagt der Anzeige-Link, localhost
+  ohne Link ist „Board“), zeigt den aktiven Layer ohne Bearbeiten-Modus und
+  Layer-Umschalter, im Kopf „Anzeige <Name>“. Gespeichert wird nichts im
+  Browser. Hat die Anzeige noch kein Layout, gilt das Start-Layout.
+- Ein neues Layout oder ein anderer aktiver Layer kommt **live** an
+  (`geaendert` „layout“ über `/ws`).
+- Die Anzeige **meldet ihre Reihen** (`PUT /api/anzeige/reihen`), sobald das
+  Raster die Fläche gemessen hat – damit das Handy die Fläche im richtigen
+  Seitenverhältnis zeigen kann.
+- Gespeichert wird das Layout von beigetretenen Handys
+  (`PUT /api/anzeigen/:id/layout`). Die Oberfläche dafür („Anzeige anordnen“)
+  fehlt noch (N2). Bis dahin bearbeitet man das Layout nur ohne Board
+  (`npm run dev`, Beispielkarten, `localStorage`).
+
 ## Layer
 
 Der Workspace besteht aus einem oder mehreren Layern mit jeweils eigener
 Widget-Anordnung. Der Umschalter im Header wechselt jederzeit den Layer;
-Anlegen, Umbenennen und Entfernen gehen im Bearbeitungszustand. Gespeichert
-wird im `localStorage` (Schema-Version 6; ältere Stände werden verworfen).
+Anlegen, Umbenennen und Entfernen gehen im Bearbeitungszustand. Ohne Board
+wird im `localStorage` gespeichert (Schema-Version 6; ältere Stände werden
+verworfen), am Board kommt das Layout vom Server (siehe oben).
