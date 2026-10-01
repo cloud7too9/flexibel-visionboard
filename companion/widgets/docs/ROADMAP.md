@@ -1,5 +1,10 @@
 # Roadmap
 
+> **Abgelöst** seit der Übernahme in die Companion (01.10.2026). Was als
+> Nächstes kommt, steht in [`planung/PLAN.md`](../../../planung/PLAN.md).
+> Diese Roadmap aus MainHub bleibt als Hintergrund stehen. Das Docker-Image
+> gibt es nicht mehr: Ausgeliefert wird vom Board-Server.
+
 Arbeitsweise: Pro Session ein Punkt aus „Als Nächstes“, ein Branch, ein Commit.
 Neue Ideen landen sofort unter „Später“, ohne Diskussion. Sortiert wird erst,
 wenn „Als Nächstes“ leer wird. Erledigte Punkte wandern nach „Erledigt“ mit

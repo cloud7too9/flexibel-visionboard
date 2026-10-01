@@ -304,7 +304,8 @@ companion/
 │   ├── sammelobjekte/  Trails-&-Tales-Übersicht der Fundorte
 │   ├── banner/         Beispiel aus einem Banner-Editor
 │   └── ruestung/       3 Sets + 4 Verzauberungs-Reihenfolgen
-└── tests/              Playwright-Tests: Banner, Portale, Sammelobjekte, Kennblöcke, Board, Live-Betrieb, Anzeigeschema, Rüstung
+├── tests/              Playwright-Tests: Banner, Portale, Sammelobjekte, Kennblöcke, Board, Live-Betrieb, Anzeigeschema, Rüstung
+└── widgets/            Widget-Ansicht fürs Board (Vite + React + TS, aus MainHub), Umbau laut ../planung/PLAN.md
 ```
 
 Datenmodell, Seed-Map-Screenshots und das Dashboard-Vorbild liegen in `../referenz/`.
