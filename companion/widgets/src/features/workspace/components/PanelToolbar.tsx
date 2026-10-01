@@ -1,13 +1,13 @@
 import { IconButton } from "../../../shared/ui/IconButton";
 import { useWorkspaceStore } from "../model/workspace.store";
-import { PANEL_REGISTRY } from "../model/panel-registry";
+import { widgetTyp } from "../model/widget-register";
 import { navigieren, vollbildPfad } from "../../../app/navigation";
 import type { Id } from "../../../shared/types/common.types";
-import type { PanelTyp } from "../model/workspace.types";
 
 interface Props {
   panelId: Id;
-  typ: PanelTyp;
+  /** WidgetTyp.id */
+  typ: string;
 }
 
 export function PanelToolbar({ panelId, typ }: Props) {
@@ -16,7 +16,7 @@ export function PanelToolbar({ panelId, typ }: Props) {
 
   return (
     <div className="flex items-center gap-0.5" onPointerDown={(e) => e.stopPropagation()}>
-      {PANEL_REGISTRY[typ].vertrag.vollbild && (
+      {widgetTyp(typ)?.vertrag.vollbild && (
         <IconButton label="Vollbild" onClick={() => navigieren(vollbildPfad(panelId))}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />

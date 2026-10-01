@@ -15,9 +15,8 @@ import {
   type Rect,
 } from "../lib/layout-utils";
 import { passt } from "../lib/collision-utils";
-import { PANEL_REGISTRY } from "../model/panel-registry";
+import { instanzRect, instanzRects, widgetTyp } from "../model/widget-register";
 import type { Id } from "../../../shared/types/common.types";
-import type { LayoutItem } from "../model/workspace.types";
 import { WorkspacePanel } from "./WorkspacePanel";
 import { EmptyGridHint } from "./EmptyGridHint";
 import { RASTER_SPALTEN, abstandPx, useRaster } from "../lib/raster";
@@ -97,6 +96,8 @@ export function WorkspaceGrid() {
     if (reihen > 0) setReihen(reihen);
   }, [reihen, setReihen]);
   const canArrange = editMode;
+  // Rechtecke der Instanzen: Größe aus der Stufe
+  const rects = useMemo(() => instanzRects(layout.instanzen), [layout.instanzen]);
 
   // Langes Drücken auf die Kopfzeile eines Widgets (ohne Verschieben) schaltet
   // die gesamte Oberfläche in den Bearbeitungszustand.
@@ -121,7 +122,7 @@ export function WorkspaceGrid() {
     }
     if (!canArrange) return;
     e.preventDefault();
-    const item = layout.items.find((i) => i.id === id);
+    const item = rects.find((i) => i.id === id);
     if (!item) return;
     selectPanel(id);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -140,8 +141,9 @@ export function WorkspaceGrid() {
     if (!canArrange) return;
     e.preventDefault();
     e.stopPropagation();
-    const item = layout.items.find((i) => i.id === id);
-    if (!item) return;
+    const item = rects.find((i) => i.id === id);
+    const instanz = layout.instanzen.find((i) => i.id === id);
+    if (!item || !instanz) return;
     selectPanel(id);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setDrag({
@@ -150,7 +152,7 @@ export function WorkspaceGrid() {
       pointerId: e.pointerId,
       startPointer: { x: e.clientX, y: e.clientY },
       startSize: { w: item.w, h: item.h },
-      previewStufe: item.stufe,
+      previewStufe: instanz.stufe,
       previewRect: { x: item.x, y: item.y, w: item.w, h: item.h },
       bewegt: false,
       valid: true,
@@ -167,8 +169,10 @@ export function WorkspaceGrid() {
 
     const onMove = (e: PointerEvent) => {
       if (e.pointerId !== drag.pointerId) return;
-      const item = layout.items.find((i) => i.id === drag.id);
-      if (!item) return;
+      const item = rects.find((i) => i.id === drag.id);
+      const instanz = layout.instanzen.find((i) => i.id === drag.id);
+      const typ = instanz && widgetTyp(instanz.typ);
+      if (!item || !instanz || !typ) return;
       const dx = (e.clientX - drag.startPointer.x) / cell.w;
       const dy = (e.clientY - drag.startPointer.y) / cell.h;
 
@@ -185,25 +189,25 @@ export function WorkspaceGrid() {
         setDrag({
           ...drag,
           previewCell: { x: target.x, y: target.y },
-          valid: passt(target, layout.items, reihen).passt,
+          valid: passt(target, rects, reihen).passt,
         });
       } else {
         const bewegt = drag.bewegt || Math.hypot(e.clientX - drag.startPointer.x, e.clientY - drag.startPointer.y) > ZIEH_SCHWELLE;
         if (!bewegt) return;
         // Gewünschte Größe in Zellen → nächstgelegene Stufe, die hier passt
         const wunsch = { w: drag.startSize.w + dx, h: drag.startSize.h + dy };
-        const { vertrag } = PANEL_REGISTRY[item.panelTyp];
+        const { vertrag } = typ;
         let beste: { stufe: string; rect: Rect; abstand: number } | null = null;
         for (const s of vertrag.stufen) {
           const rect = clampItemToGrid({ ...item, w: s.breite, h: s.hoehe }, RASTER_SPALTEN, reihen);
-          if (rect.w !== s.breite || rect.h !== s.hoehe || !passt(rect, layout.items, reihen, vertrag).passt) continue;
+          if (rect.w !== s.breite || rect.h !== s.hoehe || !passt(rect, rects, reihen, vertrag).passt) continue;
           const abstand = Math.abs(s.breite - wunsch.w) + Math.abs(s.hoehe - wunsch.h);
           if (!beste || abstand < beste.abstand) beste = { stufe: s.name, rect: { x: rect.x, y: rect.y, w: rect.w, h: rect.h }, abstand };
         }
         setDrag({
           ...drag,
           bewegt,
-          previewStufe: beste?.stufe ?? item.stufe,
+          previewStufe: beste?.stufe ?? instanz.stufe,
           previewRect: beste?.rect ?? { x: item.x, y: item.y, w: item.w, h: item.h },
           valid: Boolean(beste),
         });
@@ -232,7 +236,7 @@ export function WorkspaceGrid() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
     };
-  }, [drag, cell.w, cell.h, layout, moveItem, setStufe, naechsteStufe, reihen]);
+  }, [drag, cell.w, cell.h, layout, rects, moveItem, setStufe, naechsteStufe, reihen]);
 
   const hasSize = raster.zellePx > 0 && reihen > 0;
 
@@ -245,27 +249,30 @@ export function WorkspaceGrid() {
         className="absolute left-0 top-0 w-full"
         style={{ height: reihen * raster.zellePx, ...(editMode ? gridLinesStyle(cell) : {}) }}
       >
-      {layout.items.length === 0 ? (
+      {layout.instanzen.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center p-4">
           <EmptyGridHint />
         </div>
       ) : (
         hasSize &&
-        layout.items.map((item) => (
+        layout.instanzen.map((instanz) => {
+          const r = instanzRect(instanz);
+          return r && (
           <WorkspacePanel
-            key={item.id}
-            item={item}
-            rect={cellToPixel(item.x, item.y, item.w, item.h, config)}
+            key={instanz.id}
+            instanz={instanz}
+            rect={cellToPixel(r.x, r.y, r.w, r.h, config)}
             editMode={editMode}
             arrangeable={canArrange}
-            selected={selectedPanelId === item.id}
+            selected={selectedPanelId === instanz.id}
             onHeaderPointerDown={onHeaderPointerDown}
             onResizePointerDown={onResizePointerDown}
           />
-        ))
+          );
+        })
       )}
       {drag.kind !== "idle" && (
-        <DragPreview drag={drag} config={config} layout={layout.items} />
+        <DragPreview drag={drag} config={config} layout={rects} />
       )}
       </div>
     </div>
@@ -279,7 +286,7 @@ function DragPreview({
 }: {
   drag: Exclude<DragState, { kind: "idle" }>;
   config: GridConfig;
-  layout: LayoutItem[];
+  layout: (Rect & { id: string })[];
 }) {
   const item = layout.find((i) => i.id === drag.id);
   if (!item) return null;

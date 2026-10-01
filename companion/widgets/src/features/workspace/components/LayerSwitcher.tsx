@@ -87,8 +87,8 @@ export function LayerSwitcher() {
     const layer = layers.find((l) => l.id === id);
     if (!layer) return;
     if (
-      layer.items.length > 0 &&
-      !confirm(`Layer „${layer.name}“ mit ${widgetCountLabel(layer.items.length)} entfernen?`)
+      layer.instanzen.length > 0 &&
+      !confirm(`Layer „${layer.name}“ mit ${widgetCountLabel(layer.instanzen.length)} entfernen?`)
     ) {
       return;
     }
@@ -166,7 +166,7 @@ export function LayerSwitcher() {
                     />
                     <span className="min-w-0 flex-1 truncate">{layer.name}</span>
                     <span className="shrink-0 text-xs text-text-muted">
-                      {widgetCountLabel(layer.items.length)}
+                      {widgetCountLabel(layer.instanzen.length)}
                     </span>
                   </button>
                   {editMode && (

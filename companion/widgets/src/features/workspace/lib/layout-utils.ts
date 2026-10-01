@@ -1,5 +1,3 @@
-import type { LayoutItem } from "../model/workspace.types";
-
 export interface GridConfig {
   cols: number;
   rows: number;
@@ -66,7 +64,7 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 /** Hält ein Item vollständig innerhalb der Fläche (cols × rows). */
-export function clampItemToGrid(item: LayoutItem, cols: number, rows: number): LayoutItem {
+export function clampItemToGrid<T extends Rect>(item: T, cols: number, rows: number): T {
   const w = clamp(item.w, 1, cols);
   const h = clamp(item.h, 1, rows);
   const x = clamp(item.x, 0, cols - w);

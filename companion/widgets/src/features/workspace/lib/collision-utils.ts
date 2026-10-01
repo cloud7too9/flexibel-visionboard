@@ -1,9 +1,8 @@
-import type { LayoutItem } from "../model/workspace.types";
 import type { WidgetVertrag } from "../model/widget-vertrag";
 import { RASTER_SPALTEN } from "./raster";
 import { rectsOverlap, type Rect } from "./layout-utils";
 
-export function hasCollision(candidate: LayoutItem, others: LayoutItem[]): boolean {
+export function hasCollision(candidate: Rect & { id: string }, others: (Rect & { id: string })[]): boolean {
   return others.some((o) => o.id !== candidate.id && rectsOverlap(candidate, o));
 }
 
