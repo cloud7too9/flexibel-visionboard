@@ -196,6 +196,29 @@ app.get('/api/anzeige', async (req, reply) => {
   };
 });
 
+// Widget-Dashboard (A6): Die Anzeige liest ihr Layout und meldet ihre Reihen. Welche Anzeige sie ist,
+// sagt der Anzeige-Link; das Board-Gerät selbst (localhost) ohne Link ist die erste Anzeige („Board“).
+function anzeigeVonAnfrage(req, reply) {
+  const zugang = anzeigeZugang(req);
+  if (!zugang.erlaubt) {
+    reply.code(403).send({ fehler: 'Anzeige nur mit Anzeige-Link oder auf dem Board-Gerät' });
+    return null;
+  }
+  return zugang.anzeige ?? daten.anzeigeLokal();
+}
+app.get('/api/anzeige/layout', async (req, reply) => {
+  const a = anzeigeVonAnfrage(req, reply);
+  return a && daten.anzeigeLayout(a.id);
+});
+app.put('/api/anzeige/reihen', async (req, reply) => {
+  const a = anzeigeVonAnfrage(req, reply);
+  if (!a) return reply;
+  const reihen = req.body?.reihen;
+  if (!Number.isInteger(reihen) || reihen < 1 || reihen > 200) return reply.code(400).send({ fehler: 'Reihen müssen eine ganze Zahl von 1 bis 200 sein' });
+  if (daten.anzeigeReihenSetzen(a.id, reihen)) anAlle({ art: 'geaendert', bereich: 'anzeigen', weltId: null });
+  return { reihen };
+});
+
 // Daran erkennt die Companion, dass sie vom Board ausgeliefert wird (Live-Betrieb statt DEMO)
 app.get('/api/server', async () => ({ name: 'koordinaten-board' }));
 

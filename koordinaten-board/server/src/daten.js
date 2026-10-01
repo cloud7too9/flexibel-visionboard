@@ -9,6 +9,8 @@ import { readFile, writeFile, rename, mkdir, rm } from 'node:fs/promises';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import { regeln } from './regeln.js';
+import { layoutPruefen, reihenGueltig } from './layout.js';
+import { WIDGETS } from './widgets.js';
 
 const { DIM_ORDER, BIOMES, SAMMELOBJEKTE, WELTGRENZE } = regeln;
 
@@ -31,7 +33,7 @@ const leer = () => ({
   banner: [],        // { id, name, basis, ebenen, von, am }
   ruestung: [],      // { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster, material, farbe, verzaubert }|null }, von, am }
   portale: [],       // { id, weltId, name, oberwelt, nether, von, am }
-  anzeigen: [],      // { id, name, schluessel, am } – Geräte, die als Anzeige laufen dürfen (Anzeige-Link)
+  anzeigen: [],      // { id, name, schluessel, am, reihen?, layout? } – Geräte, die als Anzeige laufen dürfen (Anzeige-Link), mit ihrem Widget-Layout
   einstellungen: { ...STANDARD_EINSTELLUNGEN },
 });
 /** Zufälliger Anzeige-Schlüssel für den Link (URL-tauglich) */
@@ -383,8 +385,9 @@ export class Daten {
     this.speichernVerzoegert();
   }
 
+  /** Anzeigen ohne Layout (das holt man einzeln), reihen: null, solange sie sich nicht gemeldet hat */
   anzeigenListe() {
-    return kopie(this.inhalt.anzeigen);
+    return this.inhalt.anzeigen.map(({ layout: _l, ...a }) => ({ ...kopie(a), reihen: a.reihen ?? null }));
   }
 
   anzeige(id) {
@@ -411,6 +414,37 @@ export class Daten {
     a.schluessel = neuerSchluessel();
     this.speichernVerzoegert();
     return kopie(a);
+  }
+
+  /** Die Anzeige des Board-Geräts selbst (localhost ohne Link): die erste, beim ersten Start „Board“ */
+  anzeigeLokal() {
+    this.anzeigenSicherstellen();
+    return kopie(this.inhalt.anzeigen[0]);
+  }
+
+  /** Layout einer Anzeige: { anzeige, reihen, layout } – layout null, solange keins gespeichert ist */
+  anzeigeLayout(id) {
+    const a = this.anzeige(id);
+    return { anzeige: { id: a.id, name: a.name }, reihen: a.reihen ?? null, layout: kopie(a.layout ?? null) };
+  }
+
+  anzeigeLayoutSetzen(id, body) {
+    const a = this.anzeige(id);
+    const { layout, fehler: problem } = layoutPruefen(body, Object.keys(WIDGETS));
+    if (problem) fehler(422, problem);
+    a.layout = layout;
+    this.speichernVerzoegert();
+    return this.anzeigeLayout(id);
+  }
+
+  /** Eine Anzeige meldet, wie viele Reihen auf ihren Bildschirm passen – true, wenn sich etwas geändert hat */
+  anzeigeReihenSetzen(id, reihen) {
+    const a = this.anzeige(id);
+    if (!reihenGueltig(reihen)) fehler(400, 'Reihen müssen eine ganze Zahl von 1 bis 200 sein');
+    if (a.reihen === reihen) return false;
+    a.reihen = reihen;
+    this.speichernVerzoegert();
+    return true;
   }
 
   /** Anzeige zu id + Schlüssel aus dem Link, sonst null (Vergleich in konstanter Zeit) */
