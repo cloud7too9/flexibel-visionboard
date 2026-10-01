@@ -258,6 +258,10 @@ test('Widget-Layout: Handy speichert, Anzeige liest ihres und meldet ihre Reihen
   assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/layout`, max, { layer: [] })).status, 422);
   r = await anfrage('GET', '/api/anzeige/layout');
   assert.deepEqual([r.daten.reihen, r.daten.layout.layer[0].instanzen[0].typ], [24, 'sammelobjekte.status']);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/vollbild`, max, { instanzId: 'w1' })).daten.vollbild, 'w1');
+  assert.equal((await anfrage('GET', '/api/anzeige/layout')).daten.vollbild, 'w1', 'die Anzeige sieht das Vollbild');
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/vollbild`, max, { instanzId: 'gibt-es-nicht' })).status, 422);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/vollbild`, max, { instanzId: null })).daten.vollbild, null);
   await new Promise((ok) => setTimeout(ok, 150));
   assert.ok(nachrichten.some((n) => n.art === 'geaendert' && n.bereich === 'layout'), 'Layout-Änderung kommt live an');
   assert.ok(nachrichten.some((n) => n.art === 'geaendert' && n.bereich === 'anzeigen'), 'neue Reihen kommen live an');

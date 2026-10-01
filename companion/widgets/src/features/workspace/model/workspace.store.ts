@@ -27,6 +27,10 @@ interface WorkspaceState {
    * nichts bearbeitet und nichts im Browser gespeichert. Angeordnet wird am Handy.
    */
   nurAnzeige: boolean;
+  /** Wohin Änderungen gehen: ohne Ziel in den Browser-Speicher, beim Anordnen am Handy ans Board */
+  ablage: ((data: WorkspaceData) => void) | null;
+  /** Vollbild-Knopf: ohne Aktion die eigene Route, beim Anordnen startet er das Vollbild an der Anzeige */
+  vollbildAktion: ((instanzId: Id) => void) | null;
 
   setReihen: (reihen: number) => void;
   setEditMode: (value: boolean) => void;
@@ -60,6 +64,14 @@ interface WorkspaceState {
   loadWorkspace: () => void;
   /** Layout der Anzeige vom Board übernehmen (null: noch keins gespeichert → Start-Layout); schaltet auf nurAnzeige */
   layoutUebernehmen: (layout: { layer: unknown[]; aktiverLayer: string } | null) => void;
+  /**
+   * Anordnen am Handy (A6): Layout einer Anzeige bearbeiten (null → Start-Layout). Änderungen gehen an
+   * `ablage`; Auswahl und offene Galerie bleiben, wenn ein anderes Handy gleichzeitig ändert.
+   */
+  layoutBearbeiten: (
+    layout: { layer: unknown[]; aktiverLayer: string } | null,
+    ziel: { ablage: (data: WorkspaceData) => void; vollbildAktion: (instanzId: Id) => void },
+  ) => void;
 }
 
 function cloneLayout(layout: WorkspaceLayout): WorkspaceLayout {
@@ -122,7 +134,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
   /** Setzt Layer-Daten und speichert sie. */
   const commit = (data: WorkspaceData, extra: Partial<WorkspaceState> = {}) => {
     set({ ...data, ...extra });
-    saveWorkspaceToStorage(data);
+    (get().ablage ?? saveWorkspaceToStorage)(data);
   };
 
   /** Ersetzt die Instanzen des aktiven Layers. */
@@ -141,6 +153,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     reihen: STANDARD_REIHEN,
     reihenGemessen: false,
     nurAnzeige: false,
+    ablage: null,
+    vollbildAktion: null,
 
     setReihen: (reihen) => {
       if (reihen > 0 && (reihen !== get().reihen || !get().reihenGemessen)) set({ reihen, reihenGemessen: true });
@@ -278,7 +292,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     },
 
     loadWorkspace: () => {
-      if (get().nurAnzeige) return;
+      if (get().nurAnzeige || get().ablage) return;
       const loaded = loadWorkspaceFromStorage();
       if (loaded) set({ ...loaded, selectedPanelId: null });
     },
@@ -287,6 +301,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       // Gleiche Normalisierung wie beim Laden aus dem Browser: unbekannte Typen fallen weg, Stufen passen
       const geladen = layout && parsePersistedWorkspace({ version: SCHEMA_VERSION, layers: layout.layer, activeLayerId: layout.aktiverLayer });
       set({ ...(geladen ?? createInitialWorkspace()), nurAnzeige: true, editMode: false, selectedPanelId: null, addPanelOpen: false });
+    },
+
+    layoutBearbeiten: (layout, { ablage, vollbildAktion }) => {
+      const geladen = layout && parsePersistedWorkspace({ version: SCHEMA_VERSION, layers: layout.layer, activeLayerId: layout.aktiverLayer });
+      const daten = geladen ?? createInitialWorkspace();
+      const { selectedPanelId } = get();
+      const nochDa = daten.layers.some((l) => l.instanzen.some((i) => i.id === selectedPanelId));
+      set({ ...daten, nurAnzeige: false, editMode: true, ablage, vollbildAktion, selectedPanelId: nochDa ? selectedPanelId : null });
     },
   };
 });

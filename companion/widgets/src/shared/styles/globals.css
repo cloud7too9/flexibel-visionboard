@@ -55,3 +55,10 @@ body {
 .widget-gehaeuse {
   border-top: 3px solid rgb(var(--color-theme-akzent, var(--color-accent)));
 }
+
+/* Leere Widgets beim Anordnen: Name so groß, wie die Zelle es erlaubt (auch 4×3 am Handy) */
+.leer-titel {
+  font-size: clamp(9px, calc(var(--zelle, 20px) * 0.55), 15px);
+  hyphens: auto;   /* braucht lang="de" in index.html */
+  overflow-wrap: anywhere;
+}

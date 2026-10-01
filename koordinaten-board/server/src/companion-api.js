@@ -148,7 +148,7 @@ export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink 
   });
 
   // ---- Anzeigen: Link mit eigenem Schlüssel, damit ein anderes Gerät (TV, Tablet) Anzeige sein darf ----
-  const mitLink = ({ schluessel: _s, layout: _l, ...a }) => ({ ...a, link: anzeigeLink({ id: a.id, schluessel: _s }) });
+  const mitLink = ({ schluessel: _s, layout: _l, vollbild: _v, ...a }) => ({ ...a, link: anzeigeLink({ id: a.id, schluessel: _s }) });
   app.get('/anzeigen', async () => ({ anzeigen: daten.anzeigenListe().map(mitLink) }));
   app.post('/anzeigen', async (req, reply) => {
     const anzeige = mitLink(daten.anzeigeAnlegen(req.body));
@@ -174,6 +174,12 @@ export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink 
   app.get('/anzeigen/:id/layout', async (req) => daten.anzeigeLayout(req.params.id));
   app.put('/anzeigen/:id/layout', async (req) => {
     const antwort = daten.anzeigeLayoutSetzen(req.params.id, req.body);
+    geaendert('layout');
+    return antwort;
+  });
+  // Vollbild startet das Handy: { instanzId } eines Widgets im aktiven Layer, null beendet es
+  app.put('/anzeigen/:id/vollbild', async (req) => {
+    const antwort = daten.anzeigeVollbildSetzen(req.params.id, req.body?.instanzId ?? null);
     geaendert('layout');
     return antwort;
   });

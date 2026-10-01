@@ -17,7 +17,9 @@ Bei jedem Haltepunkt stehen Branch und Screenshots. Die Screenshots erzeugen die
 | H3 | **A2 · Raster** mit Platzhalter-Widgets auf 16:9 und 4:3 | `bereich/widgets-groessen` | `w1-raster-16x9.png`, `w1-raster-4x3.png`, `w2-stufen.png` |
 | H4 | **A4 · Galerie mit allen 13 Typen** und Karten vom Board | `bereich/widgets-register` | `w4-galerie.png`, `w6-quelle-waehlen.png`, `w7-board-karten.png` (echtes Board), `w5-beispielkarten.png` (ohne Board) |
 
-Später, wenn es so weit ist: A6 (Layout am Handy anordnen), B3 (am echten iPhone im Flugmodus).
+| H6 | **A6 · Anzeige am Handy anordnen** (Haltepunkt laut Plan): im Querformat ein Layout für die Anzeige im Zimmer anordnen | `bereich/widgets-anzeigen` | `w9-companion-anordnen-knopf.png`, `w9-anordnen-handy.png`, `w9-anordnen-auswahl.png`, `w10-anzeige-nach-anordnen.png`, `w11-anzeige-vollbild.png`. Live: Board starten, `npm run dashboard:installieren && npm run dashboard:build`, am Handy beitreten → Board → Anzeigen → „Anzeige anordnen“ |
+
+Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
 
 **Pull Requests:** Es ist noch keiner offen. Gemergt wird nach Plan durch Max per PR nach `main`, nach jedem Strang bzw. Haltepunkt mit OK. Die Branches bauen aufeinander auf:
 `bereich/karte-welt-upload` → `board/anzeige-link` → `bereich/widgets-uebernahme` → `-raster` → `-groessen` → `-struktur` → `-register` → `-themes` → `-anzeigen` (Strang C und der Anzeige-Link sind in die Widgets-Kette gemergt).
@@ -29,7 +31,7 @@ Später, wenn es so weit ist: A6 (Layout am Handy anordnen), B3 (am echten iPhon
 | Nr. | Frage | blockiert |
 |---|---|---|
 | N1 | Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet? | nichts Gebautes; betrifft A6 |
-| N2 | Wie kommt die Steuerung ans Handy? React-Route `/dashboard/anordnen` aus `companion/widgets/` (Vorschlag) oder in der Vanilla-Seite nachgebaut? | **A6: „Anordnen am Handy“.** Alles andere aus A6 ist gebaut (Branch `bereich/widgets-anzeigen`): Layout und Reihen je Anzeige am Server, das Dashboard zeigt am Board das Layout seiner Anzeige live und ohne Bearbeiten. **Bis N2 lässt sich das Layout am Board nur über die API ändern** (`PUT /api/anzeigen/:id/layout`); bearbeiten geht nur ohne Board (`npm run dev`). |
+| ~~N2~~ | **Entschieden: Weg 1** – React-Route `/dashboard/anordnen` aus `companion/widgets/`, geöffnet aus der Companion (Board → Anzeigen → „Anzeige anordnen“). Gebaut auf `bereich/widgets-anzeigen`. | – |
 | N4 | Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz? | **B2: Accounts mit PIN** |
 
 ---

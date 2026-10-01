@@ -12,10 +12,11 @@ import { navigieren } from "../app/navigation";
  * Rasters – ein Widget allein über die ganze Fläche, mit vollem Inhalt. Nur
  * für Typen mit `vollbild: true` im Vertrag (E7). „Zurück“ zeigt wieder das
  * Raster; das Layout ändert sich dabei nicht, die Rasterposition bleibt also.
- * Später löst das Handy das Vollbild an der Anzeige aus (Phase A6).
+ * Am Board startet und beendet es das Handy beim Anordnen (A6); die Anzeige folgt.
  */
 export function VollbildPage({ instanzId }: { instanzId: string }) {
   const loadWorkspace = useWorkspaceStore((s) => s.loadWorkspace);
+  const nurAnzeige = useWorkspaceStore((s) => s.nurAnzeige);
   const item = useWorkspaceStore((s) => s.layers.flatMap((l) => l.instanzen).find((i) => i.id === instanzId));
   const typ = item && widgetTyp(item.typ);
   const antwort = useKarte(item?.typ ?? "", item?.quelle);
@@ -35,9 +36,12 @@ export function VollbildPage({ instanzId }: { instanzId: string }) {
     >
       <header className="flex items-center justify-between gap-3 border-b border-border bg-surface-muted px-3 py-2.5 sm:px-4">
         <h1 className="truncate text-base font-semibold sm:text-lg">{typ?.name ?? "Widget"}</h1>
-        <Button variant="ghost" onClick={() => navigieren("/")}>
-          Zurück
-        </Button>
+        {/* Am Board beendet das Handy das Vollbild – die Anzeige hat keine Bedienelemente */}
+        {!nurAnzeige && (
+          <Button variant="ghost" onClick={() => navigieren("/")}>
+            Zurück
+          </Button>
+        )}
       </header>
       <main className="min-h-0 flex-1 overflow-auto p-3 sm:p-5">
         {erlaubt && item ? (
