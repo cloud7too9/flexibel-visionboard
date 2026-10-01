@@ -30,7 +30,9 @@ Geht es ums Raum-Board, statt der Companion-Übergabe `koordinaten-board/UEBERGA
 README.md                 ← Überblick
 UEBERGABE.md              ← diese Datei (projektübergreifend)
 companion/                ← Companion: Seite + regeln.js + icons/ + ruestungs-baukasten/, Tests, Entwürfe, eigene Referenzbilder
+companion/widgets/        ← Widget-Ansicht fürs Board (Vite + React + TS, aus MainHub), Umbau laut planung/PLAN.md
 koordinaten-board/        ← Board: Server der Companion (Fastify) + Anzeige (React)
+planung/                  ← Gesamtplan (PLAN.md), Ideen und Baupläne der Planungskommission
 referenz/                 ← gemeinsame Referenz (Datenmodell, Seed-Map, Dashboard-Vorbild)
 ```
 

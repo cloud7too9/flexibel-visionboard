@@ -5,6 +5,7 @@ Zwei Projekte für eine gemeinsame Minecraft-Welt im Raum – seit dem 29.09.202
 | Ordner | Projekt | Stand |
 |---|---|---|
 | [`companion/`](companion/) | **Companion**: die App am Handy – Karte, Sammelobjekte, Portal-Verwaltung, Banner, Rüstung (eine HTML-Seite + `regeln.js`, Vanilla JS) | aktuelle Arbeit |
+| [`companion/widgets/`](companion/widgets/) | **Widgets**: Widget-Ansicht der Companion fürs Board (Vite + React + TypeScript), übernommen aus MainHub | Umbau laut Plan |
 | [`koordinaten-board/`](koordinaten-board/) | **Koordinaten-Board**: Server der Companion (Daten, OCR, Live-Sync) und Anzeige im Zimmer (Fastify + React) | zusammengeführt |
 | [`planung/`](planung/) | **Planung**: Gesamtplan Widget-Dashboard, Offline-Sync, Welt-Import ([`PLAN.md`](planung/PLAN.md)) plus Ideen und Baupläne der Planungskommission | 01.10.2026 |
 | [`referenz/`](referenz/) | **Gemeinsame Referenz**: Datenmodell, Seed-Map-Screenshots, Dashboard-Vorbild | – |
@@ -33,6 +34,7 @@ open companion/companion-prototyp.html
 # Tests
 cd koordinaten-board && npm test                        # Server: Daten, API, Regeln, Erkennung …
 cd companion/tests && npm install && npm test           # Playwright, auch gegen ein echtes Board (vorher: Board bauen)
+cd companion/widgets && npm install && npm test         # Widgets: Vitest
 ```
 
 Details stehen jeweils in `companion/README.md` und `koordinaten-board/README.md`.

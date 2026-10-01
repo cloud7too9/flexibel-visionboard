@@ -1,34 +1,29 @@
-# MainHub Frontend
+# Companion · Widgets
 
-Modulares Workspace-Layout-System für MainHub. Grid-basierte Panels, verschiebbar, skalierbar, lokal persistiert.
+Widget-Ansicht der Companion für das Board im Zimmer, nach dem Vorbild des
+iOS-Kontrollzentrums. Grundlage ist der MainHub-Workspace
+(`cloud7too9/mainhub-frontend`, per `git subtree` mit Verlauf übernommen):
+Grid, Layer, Bearbeitungsmodus und Galerie.
 
-## Getting Started
+**Stand:** Phase A0 aus [`planung/PLAN.md`](../../planung/PLAN.md). Der
+Ordner läuft unverändert wie MainHub (eigene Beispiel-Panels, Layout im
+`localStorage`). Der Umbau folgt den Phasen A1–A6 im Plan: 32 Spalten,
+Größenstufen, Companion-Register, Karten vom Server, Layout pro Anzeige,
+Anordnen am Handy. Was unten zu Raster und Bildschirmgrößen steht, gilt bis
+dahin.
+
+## Starten
 
 ```bash
 npm install
 npm run dev          # http://localhost:5173
-npm run build        # Produktions-Build
-npm run test         # Unit-Tests
+npm run build        # Produktions-Build nach dist/
+npm test             # Unit-Tests (Vitest)
 npm run typecheck    # TS-Check
 ```
 
-## Docker
-
-```bash
-docker compose up --build              # Produktions-Build über nginx → http://localhost:8080
-docker compose --profile dev up dev    # Vite mit Hot Reload       → http://localhost:5173
-```
-
-Die Ports lassen sich über `MAINHUB_PORT` und `MAINHUB_DEV_PORT` ändern.
-Das Image baut die App in einer Node-Stufe und liefert `dist/` über nginx aus
-(`docker/nginx.conf`): Assets mit Hash werden ein Jahr gecacht, `index.html`
-nie, unbekannte Pfade fallen auf die App zurück, und `/healthz` dient dem
-Health-Check. Ohne Compose:
-
-```bash
-docker build -t mainhub-frontend .
-docker run --rm -p 8080:80 mainhub-frontend
-```
+Ausgeliefert wird später vom Board-Server unter `/dashboard` (Phase A6),
+wie heute `/anzeige`. Ein eigenes Docker-Image gibt es deshalb nicht mehr.
 
 ## Architektur
 
@@ -40,7 +35,8 @@ docker run --rm -p 8080:80 mainhub-frontend
 
 Designregeln: feines Raster (96 × 48 Zellen auf Desktop), freie Größen mit
 Mindestmaßen, feste Fläche ohne Seiten-Scroll, getrennter Bearbeitungsmodus.
-Nächste Schritte und offene Ideen stehen in `docs/ROADMAP.md`.
+Wie es weitergeht, steht in `planung/PLAN.md`. `docs/ROADMAP.md` ist die
+Roadmap aus MainHub und nur noch Hintergrund.
 
 ## Raster und Fläche
 
