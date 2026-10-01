@@ -84,3 +84,27 @@
   --color-dim-nether: 196 140 255;
   --color-dim-ende: 236 220 160;
 }
+
+/* Karte: dynamisch nach angezeigter Dimension (Werte wie THEMES.nether / THEMES.end der Companion) */
+[data-theme="karte-nether"] {
+  --color-surface: 17 10 10;
+  --color-surface-muted: 28 18 18;
+  --color-surface-raised: 37 22 22;
+  --color-border: 58 36 34;
+  --color-border-strong: 96 60 56;
+  --color-text: 246 237 237;
+  --color-text-muted: 169 140 138;
+  --color-accent: 232 68 60;
+  --color-theme-akzent: 232 68 60;
+}
+[data-theme="karte-end"] {
+  --color-surface: 12 10 19;
+  --color-surface-muted: 21 18 31;
+  --color-surface-raised: 28 24 41;
+  --color-border: 46 39 66;
+  --color-border-strong: 78 66 110;
+  --color-text: 241 238 248;
+  --color-text-muted: 148 138 171;
+  --color-accent: 178 116 230;
+  --color-theme-akzent: 178 116 230;
+}

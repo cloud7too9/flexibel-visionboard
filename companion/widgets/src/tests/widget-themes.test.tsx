@@ -11,6 +11,15 @@ describe("Bereichs-Themes", () => {
     expect(themeFuer(undefined)).toBe("standard");
   });
 
+  it("Karte: dynamisch nach angezeigter Dimension, ohne Dimension Oberwelt", () => {
+    expect(BEREICH_THEMES.karte.art).toBe("dynamisch");
+    expect(themeFuer("karte", { dimension: "nether" })).toBe("karte-nether");
+    expect(themeFuer("karte", { dimension: "ende" })).toBe("karte-end");
+    expect(themeFuer("karte", { dimension: "oberwelt" })).toBe("karte-oberwelt");
+    expect(themeFuer("karte")).toBe("karte-oberwelt");
+    expect(themeFuer("portale", { dimension: "nether" })).toBe("portale");   // feste Themes bleiben
+  });
+
   it("Platzhalter (E8) mit eigener Theme-ID je Bereich", () => {
     expect(["sammelobjekte", "banner", "ruestung"].map((b) => themeFuer(b as never))).toEqual(["sammelobjekte", "banner", "ruestung"]);
   });
@@ -20,6 +29,8 @@ describe("Bereichs-Themes", () => {
     const g = container.querySelector('[data-testid="gehaeuse"]')!;
     expect(g.getAttribute("data-theme")).toBe("banner");
     expect(g.getAttribute("data-bereich")).toBe("banner");
+    const karte = render(<WidgetGehaeuse typ={widgetTyp("karte.einzelkoordinate")} themeZustand={{ dimension: "nether" }} />);
+    expect(karte.container.querySelector("[data-theme]")!.getAttribute("data-theme")).toBe("karte-nether");
   });
 
   it("Handbuch: Inhalt im Buchrahmen, andere Bereiche ohne Rahmen", () => {

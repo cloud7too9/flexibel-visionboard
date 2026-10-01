@@ -31,7 +31,9 @@ const fest = (theme: ThemeId): ThemeQuelle => ({ art: "fest", theme });
  * ersetzt werden können.
  */
 export const BEREICH_THEMES: Readonly<Record<BereichId, ThemeQuelle>> = {
-  karte: fest("karte-oberwelt"),
+  // Die angezeigte Dimension bestimmt das Theme; ohne Dimension Oberwelt
+  karte: { art: "dynamisch", waehle: ({ dimension }) =>
+    dimension === "nether" ? "karte-nether" : dimension === "ende" ? "karte-end" : "karte-oberwelt" },
   sammelobjekte: fest("sammelobjekte"),
   portale: fest("portale"),
   handbuch: fest("handbuch"),

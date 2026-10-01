@@ -83,6 +83,14 @@ try {
   await p.click(`[data-quelle="${basis.id}"]`);
   await p.waitForSelector('[data-typ="karte.einzelkoordinate"] [data-testid="karte"]');
   pruefe((await karteText('[data-typ="karte.einzelkoordinate"]')).includes("X 260 · Y 80 · Z −420"), "Einzelkoordinate zeigt die gewählte Koordinate");
+  // Theme der Karte nach angezeigter Dimension (A5)
+  const festung = (await api("POST", "/api/orte/instanzen",
+    { dimensionId: `d_${welt.id}_nether`, kategorie: "Nether Fortress", variante: null, x: -200, y: 70, z: 96, quelle: "manuell" })).instanz;
+  await hinzufuegen("karte.einzelkoordinate", festung.id);
+  const kartenThemes = () => p.$$eval('[data-typ="karte.einzelkoordinate"] [data-testid="gehaeuse"]', (l) => l.map((g) => g.dataset.theme).sort().join());
+  pruefe(await p.waitForFunction(() => [...document.querySelectorAll('[data-typ="karte.einzelkoordinate"] [data-testid="gehaeuse"]')]
+    .map((g) => g.dataset.theme).sort().join() === "karte-nether,karte-oberwelt", null, { timeout: 8000 }).then(() => true, () => false),
+    `Karte: Theme nach Dimension (${await kartenThemes()})`);
   await hinzufuegen("banner.banner", banner.id);
   pruefe(await p.waitForFunction(() => {
     const img = document.querySelector('[data-typ="banner.banner"] [data-testid="karte"] img');

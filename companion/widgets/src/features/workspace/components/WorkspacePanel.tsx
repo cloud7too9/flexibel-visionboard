@@ -6,6 +6,7 @@ import { stufeVon } from "../model/widget-vertrag";
 import { WidgetInhalt } from "./WidgetInhalt";
 import { PanelToolbar } from "./PanelToolbar";
 import { WidgetGehaeuse } from "./WidgetGehaeuse";
+import { useKarte } from "../../karten/hooks/useKarte";
 
 interface Props {
   instanz: WidgetInstanz;
@@ -34,6 +35,7 @@ export function WorkspacePanel({
 }: Props) {
   const typ = widgetTyp(item.typ);
   const stufe = typ && stufeVon(typ.vertrag, item.stufe);
+  const antwort = useKarte(item.typ, item.quelle);
   return (
     <div
       data-panel-id={item.id}
@@ -49,6 +51,7 @@ export function WorkspacePanel({
       <WidgetGehaeuse
         typ={typ}
         zustand={editMode ? (selected ? "ausgewaehlt" : "bearbeiten") : "normal"}
+        themeZustand={{ dimension: antwort?.karte?.dimension }}
         kopfProps={{
           className: ["long-press-target", arrangeable ? "cursor-move touch-none" : ""].join(" "),
           onPointerDown: (e) => onHeaderPointerDown(e, item.id),
@@ -67,7 +70,7 @@ export function WorkspacePanel({
           </>
         )}
       >
-        <WidgetInhalt instanz={item} />
+        <WidgetInhalt instanz={item} antwort={antwort} />
       </WidgetGehaeuse>
       {arrangeable && (
         <div
