@@ -17,9 +17,32 @@ test('Karte: dieselben Regeln wie in der Companion', () => {
   assert.equal(regeln.instanzPruefen({ ...ort, x: 1.5 }, 'overworld', true), 'Ungültige Koordinaten');
   assert.equal(regeln.instanzPruefen({ ...ort, kategorie: 'Bastion' }, 'overworld', true), '„Bastion“ gibt es in der Oberwelt nicht');
   const biom = { x: 0, y: null, z: 0, kategorie: 'Biomes', variante: 'Soul Sand Valley', quelle: 'screenshot' };
-  assert.equal(regeln.instanzPruefen(biom, 'overworld', false), 'Soul Sand Valley liegt im Nether');
-  assert.equal(regeln.instanzPruefen({ ...biom, quelle: 'manuell' }, 'nether', false), 'Biome können nur per Screenshot hinzugefügt werden');
+  assert.equal(regeln.instanzPruefen(biom, 'nether', true), 'Biome kommen nur aus dem Welt-Import');
   assert.equal(regeln.instanzPruefen({ x: 0, y: 64, z: 0, kategorie: 'Eigene Orte', variante: ' ', quelle: 'manuell' }, 'overworld', false), 'Eigene Orte brauchen einen Namen');
+});
+
+test('Welt-Import: Seed, Dimension, Kachelgröße, Grenzen, Dubletten', () => {
+  const daten = Buffer.alloc(2048).toString('base64');
+  const welt = { id: 'w_1', seed: '-4719278516927443210' };
+  const imp = { seed: '-4719278516927443210', weltname: 'Realm', chunks: { overworld: 1 } };
+  const kachel = { dim: 'overworld', kx: -1, kz: 0, daten };
+  assert.equal(regeln.biomImportPruefen({ import: imp, kacheln: [kachel, { ...kachel, dim: 'nether' }] }, welt), null);
+  assert.equal(regeln.biomImportPruefen({ import: { ...imp, seed: '1' }, kacheln: [] }, welt), 'Diese Welt hat einen anderen Seed');
+  assert.equal(regeln.biomImportPruefen({ kacheln: [] }, welt), 'Angaben zur Welt fehlen');
+  assert.equal(regeln.biomImportPruefen({ import: imp }, welt), 'Kacheln fehlen');
+  assert.equal(regeln.biomImportPruefen({ import: imp, kacheln: [{ ...kachel, dim: 'mond' }] }, welt), 'Unbekannte Dimension');
+  assert.equal(regeln.biomImportPruefen({ import: imp, kacheln: [{ ...kachel, kx: 58595 }] }, welt), 'Kachel liegt außerhalb der Welt');
+  assert.equal(regeln.biomImportPruefen({ import: imp, kacheln: [{ ...kachel, kx: 0.5 }] }, welt), 'Kachel liegt außerhalb der Welt');
+  assert.equal(regeln.biomImportPruefen({ import: imp, kacheln: [{ ...kachel, daten: daten.slice(4) }] }, welt), 'Kachel hat nicht 2048 Byte');
+  assert.equal(regeln.biomImportPruefen({ import: imp, kacheln: [{ ...kachel, daten: `${daten.slice(1)}!` }] }, welt), 'Kachel hat nicht 2048 Byte');
+  assert.equal(regeln.biomImportPruefen({ import: imp, kacheln: [kachel, { ...kachel }] }, welt), 'Kachel doppelt');
+  const sauber = JSON.parse(JSON.stringify(regeln.biomImportSauber({ import: { ...imp, weltname: ' Realm ', extra: 1,
+    unbekannt: [{ bedrockId: 192, chunks: 3, beispiel: { dim: 'overworld', x: 488, z: 8 } }, { bedrockId: 'x' }] }, kacheln: [{ ...kachel, extra: 1 }] })));
+  assert.deepEqual(sauber, {
+    import: { dateiname: '', weltname: 'Realm', seed: imp.seed, spielversion: null, chunks: { overworld: 1, nether: 0, end: 0 },
+      unbekannt: [{ bedrockId: 192, chunks: 3, beispiel: { dim: 'overworld', x: 488, z: 8 } }] },
+    kacheln: [kachel],
+  });
 });
 
 test('Banner und Portale: dieselben Regeln wie in der Companion', () => {

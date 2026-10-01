@@ -281,18 +281,66 @@ function instanzPruefen(e, dimType, typVorhanden){
   if(!ganz(e.x) || !ganz(e.z) || (e.y != null && !ganz(e.y))) return "Ungültige Koordinaten";
   if(e.kategorie !== EIGENE_ORTE && !FEATURE_KATEGORIEN[dimType].includes(e.kategorie))
     return `„${e.kategorie}“ gibt es ${inDim(dimType)} nicht`;
-  if(e.kategorie === BIOMES){
-    if(e.quelle !== "screenshot") return "Biome können nur per Screenshot hinzugefügt werden";
-    const b = biomFinden(e.variante);
-    if(!b) return `„${e.variante}“ steht nicht in der Biom-Liste`;
-    if(b.dimension !== dimType) return `${b.name} liegt ${inDim(b.dimension)}`;
-  }
+  if(e.kategorie === BIOMES) return "Biome kommen nur aus dem Welt-Import";
   if(e.kategorie === EIGENE_ORTE && !String(e.variante || "").trim()) return "Eigene Orte brauchen einen Namen";
   // Neue Varianten nur aus Screenshots – außer bei „Eigene Orte“
   if(!typVorhanden && e.variante && e.quelle !== "screenshot" && e.kategorie !== EIGENE_ORTE)
     return "Neue Varianten entstehen nur aus Screenshots";
   return null;
 }
+
+/* ---- Regeln · Welt-Import (Biome aus .mcworld/.zip) --------------------- */
+/* Pro Welt genau ein Import; ein neuer ersetzt den alten ganz. Die Biome liegen in Kacheln
+   zu 32 × 32 Chunks (512 × 512 Blöcke), je Chunk ein Wert: Bedrock-ID + 1, 0 = unerkundet,
+   als Uint16 Little Endian → 2048 Byte, im Transport Base64. Dekoder: biom-dekoder.js. */
+const KACHEL_CHUNKS = 32;
+const KACHEL_BYTES = KACHEL_CHUNKS * KACHEL_CHUNKS * 2;
+const KACHEL_GRENZE = Math.ceil(WELTGRENZE / (KACHEL_CHUNKS * 16));
+const MAX_KACHELN = 20000;   // je 512 × 512 Blöcke – weit mehr, als jemand erkundet (≈ 55 MB als Base64)
+
+/** Länge der Bytes hinter einem Base64-Text, -1 wenn es kein gültiges Base64 ist (ohne atob: läuft auch im Server-vm) */
+function base64Laenge(text){
+  if(typeof text !== "string" || text.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(text)) return -1;
+  return text.length / 4 * 3 - (text.endsWith("==") ? 2 : text.endsWith("=") ? 1 : 0);
+}
+
+/** Regeln für einen Welt-Import { import, kacheln } – identisch im Server umzusetzen. Fehlertext oder null. */
+function biomImportPruefen(body, welt){
+  const imp = body?.import;
+  if(!imp || typeof imp !== "object") return "Angaben zur Welt fehlen";
+  if(String(imp.seed ?? "") !== String(welt?.seed ?? "")) return "Diese Welt hat einen anderen Seed";
+  if(!Array.isArray(body.kacheln)) return "Kacheln fehlen";
+  if(body.kacheln.length > MAX_KACHELN) return "Die Welt ist zu groß für den Import";
+  const gesehen = new Set();
+  for(const k of body.kacheln){
+    if(!DIM_ORDER.includes(k?.dim)) return "Unbekannte Dimension";
+    if(!Number.isInteger(k.kx) || !Number.isInteger(k.kz) || Math.abs(k.kx) > KACHEL_GRENZE || Math.abs(k.kz) > KACHEL_GRENZE)
+      return "Kachel liegt außerhalb der Welt";
+    if(base64Laenge(k.daten) !== KACHEL_BYTES) return `Kachel hat nicht ${KACHEL_BYTES} Byte`;
+    const schluessel = `${k.dim}:${k.kx}:${k.kz}`;
+    if(gesehen.has(schluessel)) return "Kachel doppelt";
+    gesehen.add(schluessel);
+  }
+  return null;
+}
+/** Nur bekannte Felder. Wer und wann setzt der Server (bzw. der Mock). */
+const biomImportSauber = (body) => {
+  const imp = body.import, text = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
+  const anzahl = (v) => (Number.isInteger(v) && v >= 0 ? v : 0);
+  return {
+    import: {
+      dateiname:text(imp.dateiname, 120), weltname:text(imp.weltname, 60), seed:String(imp.seed),
+      spielversion:text(imp.spielversion, 20) || null,
+      chunks:Object.fromEntries(DIM_ORDER.map((d) => [d, anzahl(imp.chunks?.[d])])),
+      unbekannt:(Array.isArray(imp.unbekannt) ? imp.unbekannt : []).slice(0, 50)
+        .filter((u) => Number.isInteger(u?.bedrockId))
+        .map((u) => ({ bedrockId:u.bedrockId, chunks:anzahl(u.chunks),
+          beispiel:{ dim:DIM_ORDER.includes(u.beispiel?.dim) ? u.beispiel.dim : "overworld",
+                     x:Number.isInteger(u.beispiel?.x) ? u.beispiel.x : 0, z:Number.isInteger(u.beispiel?.z) ? u.beispiel.z : 0 } })),
+    },
+    kacheln:body.kacheln.map(({ dim, kx, kz, daten }) => ({ dim, kx, kz, daten })),
+  };
+};
 
 /* ---- Regeln · Portal-Verbindungen -------------------------------------- */
 /** Regeln für eine Verbindung – identisch im Server umzusetzen. Gibt Fehlertext oder null zurück. */

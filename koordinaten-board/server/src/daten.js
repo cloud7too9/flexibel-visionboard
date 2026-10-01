@@ -3,7 +3,10 @@
 // Portal-Verbindungen und die Einstellungen der Anzeige. Die Abläufe entsprechen dem DEMO-Mock der
 // Companion (mockApi in companion-prototyp.html), geprüft wird mit denselben
 // Regeln (companion/regeln.js).
-import { readFile, writeFile, rename, mkdir } from 'node:fs/promises';
+// Der Welt-Import (Biome) liegt je Welt in biome/<weltId>.json: Die Kacheln sind groß und sollen
+// nicht bei jeder kleinen Änderung mit daten.json neu geschrieben werden.
+import { readFile, writeFile, rename, mkdir, rm } from 'node:fs/promises';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import { regeln } from './regeln.js';
 
@@ -28,10 +31,18 @@ const leer = () => ({
   banner: [],        // { id, name, basis, ebenen, von, am }
   ruestung: [],      // { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster, material, farbe, verzaubert }|null }, von, am }
   portale: [],       // { id, weltId, name, oberwelt, nether, von, am }
+  anzeigen: [],      // { id, name, schluessel, am } – Geräte, die als Anzeige laufen dürfen (Anzeige-Link)
   einstellungen: { ...STANDARD_EINSTELLUNGEN },
 });
+/** Zufälliger Anzeige-Schlüssel für den Link (URL-tauglich) */
+const neuerSchluessel = () => randomBytes(18).toString('base64url');
 
 const tag = () => new Date().toISOString().slice(0, 10);
+function anzeigeName(body) {
+  const name = String(body?.name ?? '').trim().slice(0, 40);
+  if (!name) fehler(400, 'Bitte einen Namen für die Anzeige eingeben');
+  return name;
+}
 const kopie = (x) => structuredClone(x);
 const dimensionenVon = (welt) => DIM_ORDER.map((type) => ({ id: `d_${welt.id}_${type}`, worldId: welt.id, type }));
 const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= WELTGRENZE;
@@ -39,19 +50,39 @@ const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= WELTGRENZE;
 export class Daten {
   constructor(ordner) {
     this.datei = path.join(ordner, 'daten.json');
+    this.biomeOrdner = path.join(ordner, 'biome');
     this.inhalt = leer();
     this.version = 0;
     this.timer = null;
+    this.biomeReihe = Promise.resolve();   // Biom-Dateien nacheinander schreiben
   }
 
   async laden() {
     await mkdir(path.dirname(this.datei), { recursive: true });
+    let text;
     try {
-      const roh = JSON.parse(await readFile(this.datei, 'utf8'));
+      text = await readFile(this.datei, 'utf8');
+      const roh = JSON.parse(text);
       this.inhalt = { ...leer(), ...roh, einstellungen: { ...STANDARD_EINSTELLUNGEN, ...roh.einstellungen } };
     } catch (f) {
       if (f.code !== 'ENOENT') console.warn('daten.json unlesbar, starte leer:', f.message);
+      text = null;
     }
+    if (text) await this.biomPunkteEntfernen(text);
+    this.anzeigenSicherstellen();
+  }
+
+  /** Biome kommen nur noch aus dem Welt-Import (regeln.js): alte Biom-Punkte aus Screenshots
+      entfernen, vorher den alten Stand einmal als daten.vor-welt-import.json sichern. */
+  async biomPunkteEntfernen(alterText) {
+    const biomTypen = new Set(this.inhalt.typen.filter((t) => t.kategorie === BIOMES).map((t) => t.id));
+    const weg = this.inhalt.instanzen.filter((i) => biomTypen.has(i.featureTypeId));
+    if (!biomTypen.size) return;
+    await writeFile(path.join(path.dirname(this.datei), 'daten.vor-welt-import.json'), alterText);
+    this.inhalt.instanzen = this.inhalt.instanzen.filter((i) => !biomTypen.has(i.featureTypeId));
+    this.inhalt.typen = this.inhalt.typen.filter((t) => !biomTypen.has(t.id));
+    await this.speichern();
+    console.log(`  ${weg.length} Biom-Punkte aus Screenshots entfernt – Biome kommen jetzt aus dem Welt-Import (Sicherung: daten.vor-welt-import.json).`);
   }
 
   speichernVerzoegert() {
@@ -151,19 +182,15 @@ export class Daten {
 
   instanzAendern(id, body) {
     const i = this.instanz(id);
-    const t = this.inhalt.typen.find((x) => x.id === i.featureTypeId);
-    if (t?.kategorie === BIOMES) fehler(403, 'Biome stammen aus Screenshots und sind fest');
     if (!ganz(body?.x) || !ganz(body?.z) || (body.y != null && !ganz(body.y))) fehler(400, 'Ungültige Koordinaten');
     Object.assign(i, { x: body.x, y: body.y ?? null, z: body.z, geaendert: new Date().toISOString() });
     this.speichernVerzoegert();
     return { instanz: kopie(i), weltId: this.dimension(i.dimensionId)?.worldId };
   }
 
-  /** Für die großen Karten der Anzeige – Biome zeigt die Anzeige nicht, also auch nicht anheftbar */
+  /** Für die großen Karten der Anzeige */
   instanzAnheften(id, body) {
     const i = this.instanz(id);
-    const t = this.inhalt.typen.find((x) => x.id === i.featureTypeId);
-    if (t?.kategorie === BIOMES) fehler(403, 'Biome zeigt die Anzeige nicht');
     Object.assign(i, { angeheftet: Boolean(body?.angeheftet), geaendert: new Date().toISOString() });
     this.speichernVerzoegert();
     return { instanz: kopie(i), weltId: this.dimension(i.dimensionId)?.worldId };
@@ -174,6 +201,53 @@ export class Daten {
     this.inhalt.instanzen.splice(this.inhalt.instanzen.indexOf(i), 1);
     this.speichernVerzoegert();
     return { weltId: this.dimension(i.dimensionId)?.worldId };
+  }
+
+  // ---------- Welt-Import: Biome je Welt ----------
+
+  biomDatei(weltId) {
+    this.welt(weltId);
+    return path.join(this.biomeOrdner, `${weltId.replace(/[^\w-]/g, '_')}.json`);
+  }
+
+  /** → { import: WeltImport | null, kacheln: [{ dim, kx, kz, daten }] } */
+  async biomeLesen(weltId) {
+    try {
+      return JSON.parse(await readFile(this.biomDatei(weltId), 'utf8'));
+    } catch (f) {
+      if (f instanceof DatenFehler) throw f;
+      if (f.code !== 'ENOENT') console.warn(`Biome von ${weltId} unlesbar:`, f.message);
+      return { import: null, kacheln: [] };
+    }
+  }
+
+  /** Ersetzt Import und alle Kacheln der Welt in einem Schritt → { import } */
+  async biomeSetzen(weltId, body, von) {
+    const datei = this.biomDatei(weltId);
+    const problem = regeln.biomImportPruefen(body, this.welt(weltId));
+    if (problem) fehler(422, problem);
+    const sauber = regeln.biomImportSauber(body);
+    const imp = { id: this.neueId('bi'), weltId, ...kopie(sauber.import), von, importiertAm: new Date().toISOString() };
+    this.speichernVerzoegert();   // Zähler der IDs
+    await this.biomeSchreiben(datei, JSON.stringify({ import: imp, kacheln: sauber.kacheln }));
+    return { import: imp };
+  }
+
+  async biomeLoeschen(weltId) {
+    const datei = this.biomDatei(weltId);
+    await this.biomeSchreiben(datei, null);
+  }
+
+  /** Atomar schreiben (oder löschen, inhalt null) – eins nach dem anderen */
+  biomeSchreiben(datei, inhalt) {
+    const lauf = this.biomeReihe.then(async () => {
+      if (inhalt === null) return rm(datei, { force: true });
+      await mkdir(this.biomeOrdner, { recursive: true });
+      await writeFile(`${datei}.tmp`, inhalt);
+      await rename(`${datei}.tmp`, datei);
+    });
+    this.biomeReihe = lauf.catch(() => {});
+    return lauf;
   }
 
   // ---------- Sammelobjekte ----------
@@ -298,6 +372,53 @@ export class Daten {
     const s = this.ruestungSet(id);
     this.inhalt.ruestung.splice(this.inhalt.ruestung.indexOf(s), 1);
     this.speichernVerzoegert();
+  }
+
+  // ---------- Anzeigen: Geräte mit Anzeige-Link ----------
+
+  /** Beim ersten Start gibt es eine Anzeige „Board“ (läuft meist auf dem Server selbst, localhost) */
+  anzeigenSicherstellen() {
+    if (this.inhalt.anzeigen.length) return;
+    this.inhalt.anzeigen.push({ id: this.neueId('a'), name: 'Board', schluessel: neuerSchluessel(), am: new Date().toISOString() });
+    this.speichernVerzoegert();
+  }
+
+  anzeigenListe() {
+    return kopie(this.inhalt.anzeigen);
+  }
+
+  anzeige(id) {
+    return this.inhalt.anzeigen.find((a) => a.id === id) ?? fehler(404, 'Anzeige nicht gefunden');
+  }
+
+  anzeigeAnlegen(body) {
+    const a = { id: this.neueId('a'), name: anzeigeName(body), schluessel: neuerSchluessel(), am: new Date().toISOString() };
+    this.inhalt.anzeigen.push(a);
+    this.speichernVerzoegert();
+    return kopie(a);
+  }
+
+  anzeigeUmbenennen(id, body) {
+    const a = this.anzeige(id);
+    a.name = anzeigeName(body);
+    this.speichernVerzoegert();
+    return kopie(a);
+  }
+
+  /** Neuer Schlüssel – alte Links gelten danach nicht mehr */
+  anzeigeSchluesselNeu(id) {
+    const a = this.anzeige(id);
+    a.schluessel = neuerSchluessel();
+    this.speichernVerzoegert();
+    return kopie(a);
+  }
+
+  /** Anzeige zu id + Schlüssel aus dem Link, sonst null (Vergleich in konstanter Zeit) */
+  anzeigeMitSchluessel(id, schluessel) {
+    const a = this.inhalt.anzeigen.find((x) => x.id === id);
+    if (!a || typeof schluessel !== 'string') return null;
+    const soll = Buffer.from(a.schluessel), ist = Buffer.from(schluessel);
+    return soll.length === ist.length && timingSafeEqual(soll, ist) ? kopie(a) : null;
   }
 
   // ---------- Einstellungen der Anzeige ----------

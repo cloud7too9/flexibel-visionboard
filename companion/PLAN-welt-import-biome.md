@@ -1,6 +1,8 @@
 # Bauplan: Biome aus `.mcworld` – Bereich Karte
 
 > Für Claude Code · Repo `companion-orte` · Datei `companion-prototyp.html` · Stand 29.09.2026
+>
+> **Stand 01.10.2026:** Phasen 1–6 gebaut (Branch `bereich/karte-mcworld`, dann `bereich/karte-welt-upload` zusammen mit Strang C aus `../planung/PLAN.md`). Abweichungen: Upload als `.zip` aus der Dateien-App mit Aufbauprüfung und Anleitung (Strang C); der Worker schickt die Kacheln als Base64; der Mock erzeugt seine Biome (`demoBiome()`), weil die Fixture-Welt fehlt; das Board speichert je Welt in `biome/<weltId>.json`. **Offen bleibt der Haltepunkt nach Phase 1:** die Prüfungen an echten Welten von Max (⚠ in Kapitel 3).
 
 ---
 

@@ -17,6 +17,7 @@
     "fastify": "^5.2.1",
     "jpeg-js": "^0.4.4",
     "pngjs": "^7.0.0",
+    "qrcode": "^1.5.4",
     "tesseract.js": "^7.0.0"
   }
 }
