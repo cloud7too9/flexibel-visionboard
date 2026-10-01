@@ -127,7 +127,15 @@ try {
     "Typ ohne Quelle liegt schon da → gesperrt");
   await p.fill('input[aria-label="Widgets suchen"]', "banner");
   await p.click('[data-widget-typ="banner.banner"]');
+  await p.waitForSelector("[data-quelle]");
+  pruefe(JSON.stringify(await p.$$eval("[data-quelle]", (l) => l.map((e) => e.dataset.quelle))) === '["b_1","b_2"]'
+    && (await p.textContent('[role="dialog"] h3')) === "Banner wählen", "Typ mit Quelle: Banner wählen");
+  await p.screenshot({ path: `${DIR}/w6-quelle-waehlen.png` });
+  await p.click('[data-quelle="b_1"]');
   pruefe(await p.locator('[data-typ="banner.banner"]').count() === 1, "Hinzugefügt an der ersten freien Stelle, Galerie zu");
+  pruefe(await p.evaluate(() => JSON.parse(localStorage.getItem("mainhub.workspace.v1")).layers[0].instanzen.find((i) => i.typ === "banner.banner").quelle) === "b_1"
+    && await p.waitForFunction(() => document.querySelector('[data-typ="banner.banner"] [data-testid="karte"]')?.textContent.includes("Wappen")).then(() => true, () => false),
+    "Instanz merkt sich die Quelle und zeigt deren Karte");
   // Bereich ohne Inhalt: leerer Zustand mit Hinweis
   await p.getByRole("button", { name: "Widget hinzufügen" }).first().click();
   await p.fill('input[aria-label="Widgets suchen"]', "handbuch-eintrag");

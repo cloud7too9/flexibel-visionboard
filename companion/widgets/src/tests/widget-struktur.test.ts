@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BEREICHE, zusatzinhalteFuer } from "@/features/workspace/model/widget-struktur";
 import { WIDGET_TYPEN, instanzRect, widgetTyp } from "@/features/workspace/model/widget-register";
-import { galerieGruppen } from "@/features/workspace/components/AddPanelModal";
+import { galerieGruppen, quellenFiltern } from "@/features/workspace/components/AddPanelModal";
 
 describe("Widget-Struktur", () => {
   it("Bereichs-IDs wie in BEREICHE der Companion", () => {
@@ -55,5 +55,14 @@ describe("Galerie", () => {
     expect(galerieGruppen("portal-verwaltung").map((g) => g.bereich.id)).toEqual(["portale"]);
     expect(galerieGruppen("liste").flatMap((g) => g.typen.map((t) => t.id))).toEqual(["sammelobjekte.eigeneliste", "handbuch.materialliste"]);
     expect(galerieGruppen("xyz")).toEqual([]);
+  });
+});
+
+describe("Quelle wählen", () => {
+  it("filtert die Quellen nach Name und Zusatz", () => {
+    const quellen = [{ id: "i_1", name: "Hauptbasis", unter: "Oberwelt" }, { id: "i_2", name: "Nether Fortress", unter: "Nether" }];
+    expect(quellenFiltern(quellen, "").map((q) => q.id)).toEqual(["i_1", "i_2"]);
+    expect(quellenFiltern(quellen, "nether").map((q) => q.id)).toEqual(["i_2"]);
+    expect(quellenFiltern(quellen, " oberwelt ").map((q) => q.id)).toEqual(["i_1"]);
   });
 });
