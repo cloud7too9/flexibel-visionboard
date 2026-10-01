@@ -29,6 +29,7 @@ Die Companion bekommt eine **Widget-Ansicht** nach dem Vorbild von MainHub und d
 - Die Widget-Ansicht läuft am Board unter **`/dashboard`**, neben der bisherigen `/anzeige`. Das Board zeigt nur an.
 - **Angeordnet wird am Handy.** Das Handy sieht die Fläche einer Anzeige mit leeren Widgets, also nur Rahmen, Titel und Theme. Dort verschiebt man Widgets, fügt neue hinzu und wechselt die Größe. Am besten geht das im Querformat.
 - **Jede Anzeige hat ihr eigenes Layout** am Server (E5).
+- **Anzeige auf einem anderen Gerät:** Der Server läuft auf einem Rechner, die Anzeige kann auf einem beliebigen Gerät im Netz laufen (TV-Browser, Tablet, zweiter Laptop). Dafür gibt es pro Anzeige einen **Anzeige-Link**, siehe A6.
 
 Daneben laufen zwei unabhängige Stränge:
 
@@ -47,7 +48,7 @@ Daneben laufen zwei unabhängige Stränge:
 | Widget-Registry von MainHub | `model/panel-registry.ts` | 6 Beispiel-Panels | wird durch das Companion-Register ersetzt |
 | Modul-Vertrag `BEREICHE` | `companion/companion-prototyp.html` (Abschnitt 9b) | `ansichten` nur dokumentiert: 1×1/2×1/2×2 auf 4 Spalten | **wird abgelöst** durch Register und Größen-Vertrag. Den Kommentar dort nachziehen. |
 | Anzeigeschemas `BOARD_KARTEN` | `companion-prototyp.html`, geprüft in `koordinaten-board/server/src/zeigen.js` | Ort, Sammelobjekt, Portal, Banner und Rüstung als allgemeine Karten | **wandern in den Server** (E3). Das Dashboard bekommt fertige Karten. |
-| Board-Anzeige | `koordinaten-board/client/` (React) unter `/anzeige` | Orte der aktiven Welt und „Aufs Board“ | bleibt vorerst. Geht später in `/dashboard` auf. |
+| Board-Anzeige | `koordinaten-board/client/` (React) unter `/anzeige` | Orte der aktiven Welt und „Aufs Board“. **Nur auf `localhost`** (`istLokal` in `server.js`), sonst nur mit `ANZEIGE_OFFEN=1`, dann aber für jedes Gerät im Netz und ohne Schutz | bleibt vorerst. Geht später in `/dashboard` auf. Bekommt vorher schon den Anzeige-Link (A6). |
 | Daten | `koordinaten-board/server/src/daten.js` | IDs vom Server (`neueId`), Urheber als Name im Feld `von` | stabile Benutzer-ID, Client-IDs |
 | Beitreten | QR-Code → `/?pin=…`, Name frei, `sperre.js` | Board-PIN + freier Name | wird **Account mit PIN**, die Anmeldung erreicht man über den QR-Code (E9) |
 | Offline | `localStorage` für Verbindung und Name | kein Service Worker, keine IndexedDB | neu |
@@ -135,8 +136,19 @@ Grund: E4 und E5. Ein Bauplan dafür gibt es nicht.
   - Hier verschiebt man Widgets, wechselt die Stufe, entfernt sie, fügt über die Galerie hinzu, wechselt den Layer und startet das Vollbild.
   - Im Hochformat erscheint ein Hinweis „Querformat empfohlen“.
   - ⚖ Wie die React-Steuerung in die Vanilla-Companion kommt, klärt Nachfrage N2.
-- **Ausliefern:** Der Board-Server liefert den Build von `companion/widgets/` unter `/dashboard` aus, so wie `/anzeige`. Wie die Anzeige weiß, welche sie ist: Nachfrage N3.
-- Commits: „Anzeigen-Layout am Server“, „Dashboard unter /dashboard“, „Anordnen am Handy“
+- **Ausliefern:** Der Board-Server liefert den Build von `companion/widgets/` unter `/dashboard` aus, so wie `/anzeige`.
+- **Anzeige-Link (Anzeige auf einem anderen Gerät als dem Server):**
+  - Jede Anzeige bekommt am Server einen eigenen, zufälligen **Anzeige-Schlüssel**. Der Link lautet `http://<adresse>:3000/dashboard?anzeige=<id>&schluessel=<schluessel>`. Die Adresse ist dieselbe wie im QR-Code der Handys (`netzwerk.js`, `adresse.txt`, `OEFFENTLICHE_URL`).
+  - Wer den Link öffnet, wird zu genau dieser Anzeige. Der Browser merkt sich den Schlüssel, damit ein Neustart des TVs ohne Link geht.
+  - Der Server lässt die Anzeige-Verbindung (`/ws` mit Rolle `anzeige`, `/api/anzeige`) zu, wenn sie von `localhost` kommt **oder** einen gültigen Schlüssel trägt. `ANZEIGE_OFFEN=1` bleibt als Notschalter.
+  - **Wo der Link steht:**
+    - in der Companion im Board-Sheet unter „Anzeigen“: anlegen, umbenennen, Link kopieren, als QR-Code zeigen (zum Abscannen mit dem Tablet), Schlüssel neu erzeugen (macht alte Links ungültig)
+    - in der Konsole beim Start, neben der Handy-Adresse: `Anzeige auf anderem Gerät: http://…`
+    - in `koordinaten-board/README.md` unter Start, mit dem Hinweis auf die Firewall (Private Netzwerke erlauben)
+  - Wer Anzeigen anlegt: jedes beigetretene Handy, nach B2 jeder Account. Beim ersten Start legt der Server eine Anzeige „Board“ für `localhost` an.
+  - **Gilt auch für `/anzeige`**, solange es sie noch gibt. Dieser Teil hängt nicht am Widget-Dashboard und kann deshalb schon vor A1 als kleiner Schritt kommen (Branch `board/anzeige-link`).
+  - Tests: Zugriff ohne Schlüssel von außen → 403; mit gültigem Schlüssel → erlaubt; nach dem Neu-Erzeugen ist der alte Schlüssel → 403.
+- Commits: „Anzeige-Link für andere Geräte“, „Anzeigen-Layout am Server“, „Dashboard unter /dashboard“, „Anordnen am Handy“
 - ⏸ **Haltepunkt:** Max am Handy im Querformat ein Layout am Board anordnen lassen.
 
 ### Phase A7 · Größenstufen je Widget ⏸ (Planung)
@@ -214,11 +226,12 @@ Betrifft die Karte in `companion-prototyp.html` und `biom-welt.js`. Branch: `ber
 ## 6. Reihenfolge
 
 ```
-A0 ─ C ─ A1 ─ A2⏸ ─ A3 ─ A4⏸ ─ A5 ─ A6⏸ ─ (Planung A7⏸)
+A0 ─ C ─ Anzeige-Link ─ A1 ─ A2⏸ ─ A3 ─ A4⏸ ─ A5 ─ A6⏸ ─ (Planung A7⏸)
 B1 ─ B2 ─ B3⏸ ─ B4 ─ B5      nach A6
 ```
 
 - A0 zuerst, dann C: ein kleiner Strang, der den Biom-Import abschließt.
+- Danach der Anzeige-Link aus A6, weil er schon für die heutige `/anzeige` hilft.
 - Danach A1 bis A6.
 - Strang B kommt nach A6. Er ändert das Datenmodell des Servers, und A4 bzw. A6 legen dort Karten und Anzeigen an. So wird jede Stelle nur einmal angepasst.
 - Ob „Anzeige anordnen“ (A6) einen Account braucht, ist erst nach B2 möglich. Bis dahin genügt der heutige Beitritt.
@@ -256,7 +269,7 @@ Git: Nach jeder Phase pushen. Nach jedem Strang (bzw. nach jedem Haltepunkt mit 
 |---|---|---|
 | N1 | Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet? | A4 |
 | N2 | Wie kommt die Steuerung ans Handy? Als Teil von `companion/widgets/` (React, eigene Route `/dashboard/anordnen`, aus der Companion verlinkt) oder in der Vanilla-Seite nachgebaut? Vorschlag: React-Route, weil sie dieselben Komponenten nutzt. | A6 |
-| N3 | Woher weiß eine Anzeige, welche sie ist (z. B. `/dashboard?anzeige=wohnzimmer`), und wer legt Anzeigen an? | A6 |
+| N3 | ~~Woher weiß eine Anzeige, welche sie ist?~~ Geklärt über den Anzeige-Link (A6). Noch offen: Ist der Schlüssel im Link als Schutz genug, oder soll eine neue Anzeige zusätzlich am Handy bestätigt werden? Vorschlag: Der Schlüssel reicht. | A6 |
 | N4 | Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz? | B2 |
 
 **Weiter offen aus den Ideen:**
