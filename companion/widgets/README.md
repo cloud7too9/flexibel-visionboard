@@ -5,11 +5,13 @@ iOS-Kontrollzentrums. Grundlage ist der MainHub-Workspace
 (`cloud7too9/mainhub-frontend`, per `git subtree` mit Verlauf übernommen):
 Grid, Layer, Bearbeitungsmodus und Galerie.
 
-**Stand:** Phasen A1 und A2 aus [`planung/PLAN.md`](../../planung/PLAN.md):
+**Stand:** Phasen A1–A3 aus [`planung/PLAN.md`](../../planung/PLAN.md):
 Raster mit 32 Spalten, Größenstufen statt freier Größen, Vollbild als eigene
-Route. Noch mit den MainHub-Beispiel-Panels (vorläufige Stufen) und dem Layout
-im `localStorage`. Es folgen Companion-Register, Karten vom Server, Themes,
-Layout pro Anzeige und Anordnen am Handy (A3–A6).
+Route, Widget-Struktur (Bereich → Widget-Typ → Instanz) mit Galerie. Die
+MainHub-Beispiel-Panels sind ersetzt durch die ersten Companion-Widgets, noch
+mit Platzhalter-Inhalt; das Layout liegt noch im `localStorage`. Es folgen das
+ganze Register mit Karten vom Server, Themes, Layout pro Anzeige und Anordnen
+am Handy (A4–A6).
 
 ## Starten
 
@@ -86,9 +88,31 @@ Bauplan: `planung/bauplaene/Bauplan-Widget-Groessensystem.md`.
   deshalb gibt es die größte Rasterstufe (`32 − Seitenleiste`) noch nicht. Die
   Stufen der Beispiel-Panels sind vorläufig.
 
+## Widget-Struktur (`src/features/workspace/model/widget-struktur.ts`)
+
+Bauplan: `planung/bauplaene/Bauplan-Widget-Struktur.md`.
+
+- **Bereich** (`BEREICHE`, IDs wie in der Companion: `karte`, `sammelobjekte`,
+  `portale`, `handbuch`, `bauplaene`, `banner`, `ruestung`) ist nur eine
+  Überkategorie zum Sortieren.
+- **WidgetTyp** (`model/widget-register.ts`): ein einzelner Inhalt mit stabiler
+  ID (`portale.verbindungen`), Bereich, Name, Größen-Vertrag und optionalen
+  Zusatzinhalten. Stand A3: Gesamtkarte, Alle Sammelobjekte, Sammel-Fortschritt,
+  Portalverbindungen – die Typen mit Quelle kommen mit A4.
+- **WidgetInstanz** (`{ id, typ, stufe, x, y }`): was auf dem Dashboard liegt.
+  `typ` verweist immer auf einen Widget-Typ, nie auf einen Bereich; Breite und
+  Höhe folgen aus der Stufe (`instanzRect`). Vollbild ist keine Stufe, sondern
+  die eigene Route.
+- **Zusatzinhalte** hängen an einer Stufe und erscheinen ab dieser Stufe (z. B.
+  die Tipps der Portalverbindungen ab „groß“), im Vollbild immer.
+- **Galerie** („Widget hinzufügen“): gruppiert nach Bereich in der Reihenfolge
+  der Companion, mit Suche nach Widget- und Bereichsnamen, je Typ eine
+  maßstäbliche Vorschau in der kleinsten Stufe. Hinzufügen legt die Instanz an
+  der ersten freien passenden Stelle an.
+
 ## Layer
 
 Der Workspace besteht aus einem oder mehreren Layern mit jeweils eigener
 Widget-Anordnung. Der Umschalter im Header wechselt jederzeit den Layer;
 Anlegen, Umbenennen und Entfernen gehen im Bearbeitungszustand. Gespeichert
-wird im `localStorage` (Schema-Version 5; ältere Stände werden verworfen).
+wird im `localStorage` (Schema-Version 6; ältere Stände werden verworfen).

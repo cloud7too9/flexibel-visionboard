@@ -8,6 +8,7 @@ import {
 import { DEFAULT_LAYOUT } from "../features/workspace/model/default-layout";
 import { loadWorkspaceFromStorage } from "../features/workspace/lib/storage";
 import { RASTER_SPALTEN } from "../features/workspace/lib/raster";
+import { instanzRect } from "../features/workspace/model/widget-register";
 
 const initialState = useWorkspaceStore.getState();
 const store = () => useWorkspaceStore.getState();
@@ -25,7 +26,7 @@ describe("initial state", () => {
   it("starts with a single default layer", () => {
     expect(store().layers).toHaveLength(1);
     expect(active().id).toBe(DEFAULT_LAYOUT.id);
-    expect(active().items.length).toBe(DEFAULT_LAYOUT.items.length);
+    expect(active().instanzen.length).toBe(DEFAULT_LAYOUT.instanzen.length);
   });
 });
 
@@ -34,7 +35,7 @@ describe("layers", () => {
     const id = store().addLayer();
     expect(store().layers).toHaveLength(2);
     expect(store().activeLayerId).toBe(id);
-    expect(active().items).toEqual([]);
+    expect(active().instanzen).toEqual([]);
     expect(active().name).toBe("Layer 2");
     expect(loadWorkspaceFromStorage()!.activeLayerId).toBe(id);
   });
@@ -55,7 +56,7 @@ describe("layers", () => {
   it("switches the active layer and clears the selection", () => {
     const second = store().addLayer();
     store().setActiveLayer(DEFAULT_LAYOUT.id);
-    store().selectPanel("panel-aufgaben");
+    store().selectPanel("w-portale");
     store().setActiveLayer(second);
     expect(store().activeLayerId).toBe(second);
     expect(store().selectedPanelId).toBeNull();
@@ -95,120 +96,114 @@ describe("layers", () => {
 });
 
 describe("widgets act on the active layer only", () => {
+  const inst = (id: string) => active().instanzen.find((i) => i.id === id)!;
+
   it("adds widgets to the active layer", () => {
     const second = store().addLayer();
-    store().addItem("aufgaben");
+    store().addItem("sammelobjekte.status");
     const layers = store().layers;
-    expect(layers.find((l) => l.id === second)!.items).toHaveLength(1);
-    expect(layers.find((l) => l.id === DEFAULT_LAYOUT.id)!.items.length).toBe(
-      DEFAULT_LAYOUT.items.length,
-    );
+    expect(layers.find((l) => l.id === second)!.instanzen).toHaveLength(1);
+    expect(layers.find((l) => l.id === DEFAULT_LAYOUT.id)!.instanzen.length).toBe(DEFAULT_LAYOUT.instanzen.length);
+  });
+
+  it("only widget types go onto the dashboard, never a whole area", () => {
+    expect(store().addItem("portale")).toBe(false);
+    expect(store().addItem("gibt.es.nicht")).toBe(false);
+    expect(store().addItem("portale.verbindungen")).toBe(true);
+    expect(active().instanzen.at(-1)).toMatchObject({ typ: "portale.verbindungen", stufe: "standard" });
   });
 
   it("removes and duplicates within the active layer", () => {
-    store().removeItem("panel-aufgaben");
-    expect(active().items.some((i) => i.id === "panel-aufgaben")).toBe(false);
-    store().duplicateItem("panel-dateien");
-    expect(active().items.filter((i) => i.panelTyp === "dateien")).toHaveLength(2);
+    store().removeItem("w-sammelstatus");
+    expect(active().instanzen.some((i) => i.id === "w-sammelstatus")).toBe(false);
+    store().duplicateItem("w-portale");
+    expect(active().instanzen.filter((i) => i.typ === "portale.verbindungen")).toHaveLength(2);
   });
 
   it("moves a widget cell by cell and rejects collisions", () => {
-    // Bei 18 Reihen endet ein 6 Reihen hohes Widget spätestens in Reihe 12.
-    expect(store().moveItem("panel-toolstart", 25, 13)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ x: 25, y: 12 });
-    // Schnellnotiz liegt bei (0,0) – Kollision.
-    expect(store().moveItem("panel-toolstart", 0, 0)).toBe(false);
+    expect(store().moveItem("w-sammelstatus", 28, 16)).toBe(true);
+    // 3 Reihen hoch: bei 18 Reihen spätestens ab Reihe 15
+    expect(inst("w-sammelstatus")).toMatchObject({ x: 28, y: 15 });
+    expect(store().moveItem("w-sammelstatus", 0, 0)).toBe(false);
   });
 
   it("keeps moved widgets inside the visible rows (no scrolling below)", () => {
-    store().moveItem("panel-toolstart", 20, 500);
-    const t = active().items.find((i) => i.id === "panel-toolstart")!;
-    expect(t.y + t.h).toBeLessThanOrEqual(store().reihen);
+    store().moveItem("w-sammelstatus", 20, 500);
+    const r = instanzRect(inst("w-sammelstatus"))!;
+    expect(r.y + r.h).toBeLessThanOrEqual(store().reihen);
   });
 
   it("uses the rows of the measured area", () => {
     store().setReihen(24);   // 4:3
-    expect(store().moveItem("panel-toolstart", 26, 30)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ y: 18 });
+    expect(store().moveItem("w-sammelstatus", 28, 30)).toBe(true);
+    expect(inst("w-sammelstatus")).toMatchObject({ y: 21 });
     store().setReihen(0);    // ungemessen: bleibt
     expect(store().reihen).toBe(24);
   });
 
-  it("switches to an offered stage, keeps the top left corner and rejects collisions", () => {
-    // Aufgaben liegt bei (8,0) in „mittel“ 8×6.
-    expect(store().setStufe("panel-aufgaben", "klein")).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-aufgaben")).toMatchObject({ stufe: "klein", x: 8, y: 0, w: 6, h: 4 });
-    // „groß“ (10×9) würde in Projektstatus hineinragen.
-    expect(store().setStufe("panel-aufgaben", "groß")).toBe(false);
-    // Unbekannte Stufe, gleiche Stufe: nichts passiert.
-    expect(store().setStufe("panel-aufgaben", "riesig")).toBe(false);
-    expect(store().setStufe("panel-aufgaben", "klein")).toBe(false);
+  it("size follows the stage; switching keeps the top left corner and rejects collisions", () => {
+    expect(instanzRect(inst("w-portale"))).toMatchObject({ w: 10, h: 6 });
+    // „groß“ (12×9) würde in den Sammel-Fortschritt bei (22,0) ragen
+    expect(store().setStufe("w-portale", "groß")).toBe(false);
+    store().moveItem("w-sammelstatus", 28, 15);
+    expect(store().setStufe("w-portale", "groß")).toBe(true);
+    expect(inst("w-portale")).toMatchObject({ stufe: "groß", x: 12, y: 0 });
+    expect(instanzRect(inst("w-portale"))).toMatchObject({ w: 12, h: 9 });
+    expect(store().setStufe("w-portale", "riesig")).toBe(false);
+    expect(store().setStufe("w-portale", "groß")).toBe(false);
   });
 
   it("moves inward when the new stage would cross the edge", () => {
-    expect(store().moveItem("panel-letzteInhalte", 22, 12)).toBe(true);
-    expect(store().setStufe("panel-letzteInhalte", "groß")).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-letzteInhalte")).toMatchObject({ stufe: "groß", x: 20, y: 9, w: 12, h: 9 });
+    store().moveItem("w-sammelstatus", 12, 15);
+    expect(store().moveItem("w-portale", 22, 10)).toBe(true);
+    // 12×9 ab (22,10) ragte rechts und unten hinaus → rückt nach (20,9)
+    expect(store().setStufe("w-portale", "groß")).toBe(true);
+    expect(inst("w-portale")).toMatchObject({ stufe: "groß", x: 20, y: 9 });
   });
 
-  it("the handle cycles through the stages that fit (no free scaling)", () => {
-    // Tool-Start: „mittel“ 6×6 → „klein“ 6×4 → wieder „mittel“
-    expect(store().naechsteStufe("panel-toolstart")).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ stufe: "klein", w: 6, h: 4 });
-    expect(store().naechsteStufe("panel-toolstart")).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ stufe: "mittel", w: 6, h: 6 });
-    // Aufgaben: „klein“ passt, „groß“ nicht → mittel → klein → mittel
-    store().naechsteStufe("panel-aufgaben");
-    expect(active().items.find((i) => i.id === "panel-aufgaben")!.stufe).toBe("klein");
-    store().naechsteStufe("panel-aufgaben");
-    expect(active().items.find((i) => i.id === "panel-aufgaben")!.stufe).toBe("mittel");
-  });
-
-  it("adds in the standard stage, falls back to a smaller stage when space runs out", () => {
-    store().addLayer();
-    expect(store().addItem("schnellnotiz")).toBe(true);
-    expect(active().items[0]).toMatchObject({ stufe: "mittel", w: 8, h: 6, x: 0, y: 0 });
-    store().setReihen(4);   // nur noch 4 Reihen: „mittel“ (6 hoch) passt nicht, „klein“ (6×4) schon
-    expect(store().addItem("schnellnotiz")).toBe(true);
-    expect(active().items[1]).toMatchObject({ stufe: "klein", w: 6, h: 4, x: 8, y: 0 });
-    store().setReihen(3);   // 3 Reihen: keine Stufe passt mehr
-    expect(store().addItem("schnellnotiz")).toBe(false);
+  it("the handle cycles through the stages that fit; a single stage stays", () => {
+    store().moveItem("w-sammelstatus", 28, 15);
+    expect(store().naechsteStufe("w-portale")).toBe(true);
+    expect(inst("w-portale").stufe).toBe("groß");
+    expect(store().naechsteStufe("w-portale")).toBe(true);
+    expect(inst("w-portale").stufe).toBe("standard");
+    expect(store().naechsteStufe("w-sammelstatus")).toBe(false);
   });
 
   it("reports when a layer is full", () => {
     store().addLayer();
     let added = 0;
-    while (store().addItem("toolstart")) added++;
-    expect(added).toBeGreaterThan(0);
-    expect(store().addItem("toolstart")).toBe(false);
-    expect(store().duplicateItem(active().items[0].id)).toBe(false);
-    for (const it of active().items) {
-      expect(it.x + it.w).toBeLessThanOrEqual(RASTER_SPALTEN);
-      expect(it.y + it.h).toBeLessThanOrEqual(store().reihen);
+    while (store().addItem("karte.gesamtkarte")) added++;
+    expect(added).toBe(4);   // 12×8: zwei nebeneinander, zwei Reihen à 8 bei 18 Reihen
+    expect(store().duplicateItem(active().instanzen[0].id)).toBe(false);
+    for (const i of active().instanzen) {
+      const r = instanzRect(i)!;
+      expect(r.x + r.w).toBeLessThanOrEqual(RASTER_SPALTEN);
+      expect(r.y + r.h).toBeLessThanOrEqual(store().reihen);
     }
   });
 
   it("persists widget changes of the active layer", () => {
     const second = store().addLayer();
-    store().addItem("dateien");
+    store().addItem("sammelobjekte.gesamtauflistung");
     const saved = loadWorkspaceFromStorage()!;
-    expect(saved.layers.find((l) => l.id === second)!.items).toHaveLength(1);
+    expect(saved.layers.find((l) => l.id === second)!.instanzen).toHaveLength(1);
   });
 });
 
 describe("resetActiveLayer", () => {
   it("restores default widgets on the start layer", () => {
-    store().removeItem("panel-aufgaben");
+    store().removeItem("w-portale");
     store().resetActiveLayer();
-    expect(active().items.length).toBe(DEFAULT_LAYOUT.items.length);
+    expect(active().instanzen.length).toBe(DEFAULT_LAYOUT.instanzen.length);
   });
 
   it("empties a custom layer without touching others", () => {
     store().addLayer();
-    store().addItem("aufgaben");
+    store().addItem("sammelobjekte.status");
     store().resetActiveLayer();
-    expect(active().items).toEqual([]);
-    expect(store().layers[0].items.length).toBe(DEFAULT_LAYOUT.items.length);
+    expect(active().instanzen).toEqual([]);
+    expect(store().layers[0].instanzen.length).toBe(DEFAULT_LAYOUT.instanzen.length);
   });
 });
 

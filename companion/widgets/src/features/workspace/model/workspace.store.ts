@@ -1,13 +1,14 @@
 import { create } from "zustand";
 import type { Id } from "../../../shared/types/common.types";
-import type { LayoutItem, PanelTyp, WorkspaceData, WorkspaceLayout } from "./workspace.types";
+import type { WorkspaceData, WorkspaceLayout } from "./workspace.types";
+import type { WidgetInstanz } from "./widget-struktur";
 import { DEFAULT_LAYOUT } from "./default-layout";
-import { PANEL_REGISTRY } from "./panel-registry";
+import { instanzRect, instanzRects, widgetTyp } from "./widget-register";
 import { clampItemToGrid } from "../lib/layout-utils";
 import { passt } from "../lib/collision-utils";
-import { stufeVon, type Groessenstufe } from "./widget-vertrag";
 import { loadWorkspaceFromStorage, saveWorkspaceToStorage } from "../lib/storage";
 import { RASTER_SPALTEN, STANDARD_REIHEN } from "../lib/raster";
+import { stufeVon, type Groessenstufe } from "./widget-vertrag";
 
 export const LAYER_NAME_MAX_LENGTH = 40;
 
@@ -33,8 +34,8 @@ interface WorkspaceState {
   setStufe: (id: Id, stufe: string) => boolean;
   /** Griff zum Vergrößern: zur nächsten Stufe, die an dieser Stelle passt (reihum). */
   naechsteStufe: (id: Id) => boolean;
-  /** false, wenn auf dem Layer kein Platz mehr frei ist. */
-  addItem: (typ: PanelTyp) => boolean;
+  /** Neue Instanz eines Widget-Typs; false, wenn auf dem Layer kein Platz mehr frei ist. */
+  addItem: (typ: string) => boolean;
   removeItem: (id: Id) => void;
   /** false, wenn auf dem Layer kein Platz mehr frei ist. */
   duplicateItem: (id: Id) => boolean;
@@ -50,7 +51,7 @@ interface WorkspaceState {
 }
 
 function cloneLayout(layout: WorkspaceLayout): WorkspaceLayout {
-  return { ...layout, items: layout.items.map((i) => ({ ...i })) };
+  return { ...layout, instanzen: layout.instanzen.map((i) => ({ ...i })) };
 }
 
 function nextId(prefix: string): Id {
@@ -76,7 +77,7 @@ function normalizeLayerName(name: string): string {
 }
 
 /**
- * Sucht Platz für ein neues Widget: die Stufen der Reihe nach (zuerst die
+ * Sucht Platz für eine neue Instanz: die Stufen der Reihe nach (zuerst die
  * gewünschte), je Stufe zeilenweise von oben links. `null`, wenn keine Stufe
  * mehr auf die Fläche passt.
  */
@@ -84,12 +85,12 @@ function findSlot(
   layout: WorkspaceLayout,
   reihen: number,
   stufen: Groessenstufe[],
-): { x: number; y: number; w: number; h: number; stufe: string } | null {
+): { x: number; y: number; stufe: string } | null {
+  const belegt = instanzRects(layout.instanzen);
   for (const s of stufen) {
     for (let y = 0; y + s.hoehe <= reihen; y++) {
       for (let x = 0; x + s.breite <= RASTER_SPALTEN; x++) {
-        const kandidat = { x, y, w: s.breite, h: s.hoehe };
-        if (passt(kandidat, layout.items, reihen).passt) return { ...kandidat, stufe: s.name };
+        if (passt({ x, y, w: s.breite, h: s.hoehe }, belegt, reihen).passt) return { x, y, stufe: s.name };
       }
     }
   }
@@ -112,11 +113,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     saveWorkspaceToStorage(data);
   };
 
-  /** Ersetzt die Widgets des aktiven Layers. */
-  const commitActiveItems = (items: LayoutItem[], extra: Partial<WorkspaceState> = {}) => {
+  /** Ersetzt die Instanzen des aktiven Layers. */
+  const commitActiveItems = (instanzen: WidgetInstanz[], extra: Partial<WorkspaceState> = {}) => {
     const { layers, activeLayerId } = get();
     const active = selectActiveLayer(get());
-    const next = layers.map((l) => (l.id === active.id ? { ...l, items } : l));
+    const next = layers.map((l) => (l.id === active.id ? { ...l, instanzen } : l));
     commit({ layers: next, activeLayerId }, extra);
   };
 
@@ -140,35 +141,37 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
 
     moveItem: (id, x, y) => {
       const layout = selectActiveLayer(get());
-      const target = layout.items.find((i) => i.id === id);
-      if (!target) return false;
-      const candidate = clampItemToGrid({ ...target, x, y }, RASTER_SPALTEN, get().reihen);
+      const target = layout.instanzen.find((i) => i.id === id);
+      const rect = target && instanzRect(target);
+      if (!target || !rect) return false;
+      const candidate = clampItemToGrid({ ...rect, x, y }, RASTER_SPALTEN, get().reihen);
       if (candidate.x === target.x && candidate.y === target.y) return false;
-      if (!passt(candidate, layout.items, get().reihen).passt) return false;
-      commitActiveItems(layout.items.map((i) => (i.id === id ? candidate : i)));
+      if (!passt(candidate, instanzRects(layout.instanzen), get().reihen).passt) return false;
+      commitActiveItems(layout.instanzen.map((i) => (i.id === id ? { ...i, x: candidate.x, y: candidate.y } : i)));
       return true;
     },
 
     setStufe: (id, name) => {
       const layout = selectActiveLayer(get());
-      const target = layout.items.find((i) => i.id === id);
-      if (!target) return false;
-      const { vertrag } = PANEL_REGISTRY[target.panelTyp];
-      const s = vertrag.stufen.find((x) => x.name === name);
-      if (!s || (s.name === target.stufe && s.breite === target.w && s.hoehe === target.h)) return false;
+      const target = layout.instanzen.find((i) => i.id === id);
+      const t = target && widgetTyp(target.typ);
+      if (!target || !t) return false;
+      const s = t.vertrag.stufen.find((x) => x.name === name);
+      if (!s || s.name === target.stufe) return false;
       const reihen = get().reihen;
       // Obere linke Ecke bleibt; ragt die neue Stufe über den Rand, rückt das Widget nach innen.
-      const candidate = clampItemToGrid({ ...target, stufe: s.name, w: s.breite, h: s.hoehe }, RASTER_SPALTEN, reihen);
+      const candidate = clampItemToGrid({ id, x: target.x, y: target.y, w: s.breite, h: s.hoehe }, RASTER_SPALTEN, reihen);
       if (candidate.w !== s.breite || candidate.h !== s.hoehe) return false;   // größer als die Fläche
-      if (!passt(candidate, layout.items, reihen, vertrag).passt) return false;
-      commitActiveItems(layout.items.map((i) => (i.id === id ? candidate : i)));
+      if (!passt(candidate, instanzRects(layout.instanzen), reihen, t.vertrag).passt) return false;
+      commitActiveItems(layout.instanzen.map((i) => (i.id === id ? { ...i, stufe: s.name, x: candidate.x, y: candidate.y } : i)));
       return true;
     },
 
     naechsteStufe: (id) => {
-      const target = selectActiveLayer(get()).items.find((i) => i.id === id);
-      if (!target) return false;
-      const { stufen } = PANEL_REGISTRY[target.panelTyp].vertrag;
+      const target = selectActiveLayer(get()).instanzen.find((i) => i.id === id);
+      const t = target && widgetTyp(target.typ);
+      if (!target || !t) return false;
+      const { stufen } = t.vertrag;
       const start = Math.max(0, stufen.findIndex((s) => s.name === target.stufe));
       for (let n = 1; n < stufen.length; n++) {
         if (get().setStufe(id, stufen[(start + n) % stufen.length].name)) return true;
@@ -176,18 +179,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       return false;
     },
 
-    addItem: (typ) => {
+    addItem: (typId) => {
       const layout = selectActiveLayer(get());
-      const def = PANEL_REGISTRY[typ];
-      const slot = findSlot(layout, get().reihen, def.vertrag.stufen);
+      const t = widgetTyp(typId);
+      if (!t) return false;
+      const slot = findSlot(layout, get().reihen, t.vertrag.stufen);
       if (!slot) return false;
-      const item: LayoutItem = {
-        id: nextId(`panel-${typ}`),
-        panelTyp: typ,
-        titel: def.standardTitel,
-        ...slot,
-      };
-      commitActiveItems([...layout.items, item], { addPanelOpen: false });
+      const instanz: WidgetInstanz = { id: nextId("w"), typ: t.id, ...slot };
+      commitActiveItems([...layout.instanzen, instanz], { addPanelOpen: false });
       return true;
     },
 
@@ -195,20 +194,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const layout = selectActiveLayer(get());
       const { selectedPanelId } = get();
       commitActiveItems(
-        layout.items.filter((i) => i.id !== id),
+        layout.instanzen.filter((i) => i.id !== id),
         { selectedPanelId: selectedPanelId === id ? null : selectedPanelId },
       );
     },
 
     duplicateItem: (id) => {
       const layout = selectActiveLayer(get());
-      const target = layout.items.find((i) => i.id === id);
-      if (!target) return false;
-      const def = PANEL_REGISTRY[target.panelTyp];
-      const slot = findSlot(layout, get().reihen, stufenAb(def.vertrag.stufen, stufeVon(def.vertrag, target.stufe).name));
+      const target = layout.instanzen.find((i) => i.id === id);
+      const t = target && widgetTyp(target.typ);
+      if (!target || !t) return false;
+      const slot = findSlot(layout, get().reihen, stufenAb(t.vertrag.stufen, stufeVon(t.vertrag, target.stufe).name));
       if (!slot) return false;
-      const copy: LayoutItem = { ...target, id: nextId(`panel-${target.panelTyp}`), ...slot };
-      commitActiveItems([...layout.items, copy]);
+      commitActiveItems([...layout.instanzen, { ...target, id: nextId("w"), ...slot }]);
       return true;
     },
 
@@ -224,7 +222,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const layer: WorkspaceLayout = {
         id: nextId("layer"),
         name: normalized || nextLayerName(layers),
-        items: [],
+        instanzen: [],
       };
       commit({ layers: [...layers, layer], activeLayerId: layer.id }, { selectedPanelId: null });
       return layer.id;
@@ -259,9 +257,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const active = selectActiveLayer(get());
       // Der Start-Layer kehrt zu den Standard-Widgets zurück, eigene Layer
       // werden geleert (ihr Ausgangszustand).
-      const items =
-        active.id === DEFAULT_LAYOUT.id ? cloneLayout(DEFAULT_LAYOUT).items : [];
-      commitActiveItems(items, { selectedPanelId: null });
+      const instanzen =
+        active.id === DEFAULT_LAYOUT.id ? cloneLayout(DEFAULT_LAYOUT).instanzen : [];
+      commitActiveItems(instanzen, { selectedPanelId: null });
     },
 
     loadWorkspace: () => {

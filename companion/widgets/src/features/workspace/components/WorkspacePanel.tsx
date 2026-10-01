@@ -1,11 +1,13 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { LayoutItem } from "../model/workspace.types";
+import type { WidgetInstanz } from "../model/widget-struktur";
 import type { PixelRect } from "../lib/layout-utils";
-import { PanelContentRenderer } from "./PanelContentRenderer";
+import { widgetTyp } from "../model/widget-register";
+import { stufeVon } from "../model/widget-vertrag";
+import { WidgetInhalt } from "./WidgetInhalt";
 import { PanelToolbar } from "./PanelToolbar";
 
 interface Props {
-  item: LayoutItem;
+  instanz: WidgetInstanz;
   rect: PixelRect;
   editMode: boolean;
   /** Verschieben/Skalieren erlaubt (Bearbeitungsmodus im Desktop-Raster). */
@@ -17,7 +19,7 @@ interface Props {
 }
 
 export function WorkspacePanel({
-  item,
+  instanz: item,
   rect,
   editMode,
   arrangeable,
@@ -25,9 +27,12 @@ export function WorkspacePanel({
   onHeaderPointerDown,
   onResizePointerDown,
 }: Props) {
+  const typ = widgetTyp(item.typ);
+  const stufe = typ && stufeVon(typ.vertrag, item.stufe);
   return (
     <div
       data-panel-id={item.id}
+      data-typ={item.typ}
       style={{
         position: "absolute",
         left: rect.left,
@@ -53,20 +58,20 @@ export function WorkspacePanel({
         onPointerDown={(e) => onHeaderPointerDown(e, item.id)}
         onContextMenu={(e) => e.preventDefault()}
       >
-        <span className="truncate">{item.titel}</span>
+        <span className="truncate">{typ?.name ?? "Unbekanntes Widget"}</span>
         {editMode && (
           <span
             className="ml-auto shrink-0 rounded-full border border-border px-1.5 text-[10px] leading-4 text-text-muted"
             data-testid="stufe"
             title="Größenstufe · Breite × Höhe in Zellen"
           >
-            {item.stufe} · {item.w}×{item.h}
+            {item.stufe} · {stufe?.breite}×{stufe?.hoehe}
           </span>
         )}
-        {editMode && <PanelToolbar panelId={item.id} typ={item.panelTyp} />}
+        {editMode && <PanelToolbar panelId={item.id} typ={item.typ} />}
       </div>
       <div className="flex-1 overflow-auto p-2.5 sm:p-3">
-        <PanelContentRenderer typ={item.panelTyp} />
+        <WidgetInhalt instanz={item} />
       </div>
       {arrangeable && (
         <div

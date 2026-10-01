@@ -1,19 +1,19 @@
 import type { WorkspaceData, WorkspaceLayout } from "../model/workspace.types";
 import { RASTER_SPALTEN } from "./raster";
 import { clamp } from "./layout-utils";
-import { PANEL_REGISTRY } from "../model/panel-registry";
+import { widgetTyp } from "../model/widget-register";
 import { stufeVon } from "../model/widget-vertrag";
 
 export const STORAGE_KEY = "mainhub.workspace.v1";
 /**
- * Version 5: Raster mit 32 Spalten, Größe aus der Stufe des Widgets. Layouts
- * älterer Versionen (96 × 48-Raster, freie Größen) werden verworfen, nicht
- * umgerechnet – es gibt noch keine echten Nutzerdaten (planung/PLAN.md, A1/A2).
+ * Version 6: Widget-Instanzen (Typ aus dem Companion-Register, Stufe, Position).
+ * Layouts älterer Versionen (MainHub-Panels, 96 × 48-Raster, freie Größen)
+ * werden verworfen, nicht umgerechnet – es gibt noch keine echten Nutzerdaten.
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 interface PersistedPayload {
-  version: 5;
+  version: 6;
   layers: WorkspaceLayout[];
   activeLayerId: string;
 }
@@ -21,28 +21,29 @@ interface PersistedPayload {
 function isValidLayout(value: unknown): value is WorkspaceLayout {
   if (!value || typeof value !== "object") return false;
   const l = value as Partial<WorkspaceLayout>;
-  return typeof l.id === "string" && typeof l.name === "string" && Array.isArray(l.items);
+  return typeof l.id === "string" && typeof l.name === "string" && Array.isArray(l.instanzen);
 }
 
 /**
- * Unbekannte Widget-Typen fallen weg, die Größe folgt aus der Stufe (eine
- * unbekannte Stufe wird zur Standardstufe), und alles bleibt in den 32
- * Spalten. Die Reihen hängen von der Fläche ab und werden hier nicht begrenzt.
+ * Instanzen unbekannter Widget-Typen fallen weg, eine unbekannte Stufe wird
+ * zur Standardstufe, und alles bleibt in den 32 Spalten. Die Reihen hängen
+ * von der Fläche ab und werden hier nicht begrenzt.
  */
 function normalizeLayout(layout: WorkspaceLayout): WorkspaceLayout {
   return {
     id: layout.id,
     name: layout.name,
-    items: layout.items.filter((it) => it && it.panelTyp in PANEL_REGISTRY).map((it) => {
-      const s = stufeVon(PANEL_REGISTRY[it.panelTyp].vertrag, it.stufe);
-      return {
-        ...it,
+    instanzen: layout.instanzen.flatMap((i) => {
+      const t = i && typeof i.id === "string" ? widgetTyp(i.typ) : undefined;
+      if (!t) return [];
+      const s = stufeVon(t.vertrag, i.stufe);
+      return [{
+        id: i.id,
+        typ: t.id,
         stufe: s.name,
-        w: s.breite,
-        h: s.hoehe,
-        x: clamp(Math.round(it.x), 0, RASTER_SPALTEN - s.breite),
-        y: Math.max(0, Math.round(it.y)),
-      };
+        x: clamp(Math.round(i.x), 0, RASTER_SPALTEN - s.breite),
+        y: Math.max(0, Math.round(i.y)),
+      }];
     }),
   };
 }
