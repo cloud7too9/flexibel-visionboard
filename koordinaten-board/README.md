@@ -8,7 +8,7 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 
 **Optik:** angelehnt an die Live-Karte der Minecraft Companion PWA – jede Dimension färbt die Oberfläche ein (Oberwelt grün, Nether rot, End violett).
 
-**Anzeige** (`/anzeige`, nur auf dem Board-Gerät selbst)
+**Anzeige** (`/anzeige`, auf dem Board-Gerät selbst oder mit **Anzeige-Link** auf einem anderen Gerät)
 - Angeheftete Orte groß oben (bis zu 6), alle anderen in drei Spalten: Oberwelt, Nether, Ende
 - Automatische Umrechnung Oberwelt ↔ Nether (÷ 8 / × 8) bei jedem Ort
 - Lange Listen scrollen von selbst langsam durch
@@ -45,6 +45,13 @@ npm start
 ```
 
 Die Konsole zeigt dann die Adresse für die Handys und die PIN. Einfacher: den QR-Code auf der Anzeige scannen – die PIN ist darin schon enthalten.
+
+**Anzeige auf einem anderen Gerät** (TV-Browser, Tablet, zweiter Laptop): Der Server läuft auf einem Rechner, die Anzeige kann auf jedem Gerät im WLAN laufen. Dafür hat jede Anzeige einen **Anzeige-Link** mit eigenem Schlüssel:
+- Die Konsole nennt ihn beim Start: `Anzeige auf anderem Gerät: http://192.168.…:3000/anzeige?anzeige=a_1&schluessel=…`
+- In der Companion unter **Board → Anzeigen**: Link kopieren oder als QR-Code zeigen (mit dem Tablet abscannen), Anzeigen anlegen und umbenennen. **Neuer Schlüssel** macht alte Links ungültig; verbundene Anzeigen mit altem Link werden getrennt.
+- Der Browser merkt sich den Schlüssel – nach einem Neustart des TVs reicht `http://…:3000/anzeige`.
+- Wie bei den Handys muss die **Firewall** des Board-Rechners Geräte im eigenen Netz durchlassen (Windows: „Private Netzwerke erlauben“ bzw. `firewall-freigeben.bat`).
+- Auf dem Board-Rechner selbst (`localhost`) braucht die Anzeige keinen Link. `ANZEIGE_OFFEN=1` öffnet sie als Notschalter für jedes Gerät im Netz, ohne Schutz.
 
 ## Handy verbindet nicht?
 
@@ -91,7 +98,7 @@ Neue Feature-Typen für die Texterkennung: Liste `FEATURES` in `server/src/erken
 ## Daten
 
 Alles liegt in `server/daten/`:
-- `daten.json` – alle Welten, Orte, Sammelobjekte, Banner, Rüstungs-Sets, Portal-Verbindungen und die Einstellungen der Anzeige (zum Sichern einfach kopieren)
+- `daten.json` – alle Welten, Orte, Sammelobjekte, Banner, Rüstungs-Sets, Portal-Verbindungen, die Anzeigen mit ihren Schlüsseln und die Einstellungen der Anzeige (zum Sichern einfach kopieren)
 - `biome/<weltId>.json` – Welt-Import je Welt (Angaben zur Welt + Biom-Kacheln); eigene Dateien, weil sie groß werden können
 - `daten.vor-welt-import.json` – Sicherung, falls beim Umstieg auf den Welt-Import alte Biom-Punkte entfernt wurden
 - `zustand.json`, `medien/` – Orte und Bilder der früheren Handy-Oberfläche; werden nicht mehr gelesen und bleiben als Sicherung liegen
@@ -104,7 +111,7 @@ Alles liegt in `server/daten/`:
 |---|---|---|
 | `PORT` | `3000` | Port des Servers |
 | `RAUM_PIN` | zufällig, in `pin.txt` | feste PIN setzen |
-| `ANZEIGE_OFFEN` | aus | `1` = Anzeige darf auch von anderen Geräten geöffnet werden (z. B. Smart-TV-Browser) |
+| `ANZEIGE_OFFEN` | aus | Notschalter: `1` = Anzeige darf von jedem Gerät im Netz geöffnet werden, ohne Anzeige-Link |
 | `OEFFENTLICHE_URL` | automatisch | Adresse im QR-Code, falls die automatische LAN-IP falsch ist |
 | `DATEN_ORDNER` | `server/daten` | Speicherort |
 | `COMPANION_ORDNER` | `../companion` | Ordner mit Companion-Seite, `regeln.js`, `icons/`, `ruestungs-baukasten/` und den Dateien des Welt-Imports (`biom-*.js`, `vendor/`) |

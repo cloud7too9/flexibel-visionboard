@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 import { useBoard } from '../lib/verbindung';
+import { zugangHolen, zugangQuery } from '../lib/zugang';
 import { DIMENSIONEN, KATEGORIEN, dimensionLabel, kategorieLabel, thema, type Ort } from '../lib/typen';
 import { umrechnen, zahl } from '../lib/koordinaten';
 import { Icon } from '../komponenten/Icon';
@@ -84,8 +85,12 @@ const kategorieIndex = (k: Ort['kategorie']) => KATEGORIEN.findIndex((x) => x.we
 const sortieren = (a: Ort, b: Ort) =>
   kategorieIndex(a.kategorie) - kategorieIndex(b.kategorie) || a.name.localeCompare(b.name, 'de');
 
+// Einmal beim Laden: Schlüssel aus dem Anzeige-Link (oder dem Speicher des Browsers)
+const ZUGANG = zugangHolen();
+const ZUGANG_QUERY = zugangQuery(ZUGANG.zugang);
+
 export function Anzeige() {
-  const { zustand, verbunden, teilnehmer, gezeigt } = useBoard({ query: 'rolle=anzeige' });
+  const { zustand, verbunden, teilnehmer, gezeigt } = useBoard({ query: ['rolle=anzeige', ZUGANG_QUERY].filter(Boolean).join('&') });
   const [beitritt, setBeitritt] = useState<Beitritt | null>(null);
   const [qr, setQr] = useState('');
   const [gesperrt, setGesperrt] = useState(false);
@@ -94,7 +99,7 @@ export function Anzeige() {
   useEffect(() => {
     let letzteUrl = '';
     const holen = () =>
-      fetch('/api/anzeige')
+      fetch(`/api/anzeige${ZUGANG_QUERY ? `?${ZUGANG_QUERY}` : ''}`)
         .then((r) => (r.status === 403 ? (setGesperrt(true), null) : r.json()))
         .then((d: Beitritt | null) => {
           if (!d) return;
@@ -122,7 +127,8 @@ export function Anzeige() {
   if (gesperrt) {
     return (
       <div className="a-fehler">
-        Die Anzeige läuft nur direkt auf dem Board-Gerät (localhost).<br />
+        {ZUGANG.zugang ? 'Dieser Anzeige-Link gilt nicht mehr.' : 'Auf einem anderen Gerät braucht die Anzeige ihren Anzeige-Link.'}<br />
+        In der Companion: Board → Anzeigen → Link kopieren oder QR-Code abscannen.<br />
         Zum Eintragen bitte die Startseite öffnen.
       </div>
     );

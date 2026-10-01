@@ -24,8 +24,8 @@ const DATEN = path.resolve(process.env.DATEN_ORDNER ?? path.join(HIER, '..', 'da
 const CLIENT_DIST = path.resolve(HIER, '..', '..', 'client', 'dist');
 // Seite der Companion, die unter / ausgeliefert wird (später z. B. modul-a-live-karte.html)
 const COMPANION_DATEI = process.env.COMPANION_DATEI ?? 'companion-prototyp.html';
-// Anzeige darf standardmäßig nur vom Gerät selbst geöffnet werden (localhost).
-// Läuft die Anzeige auf einem anderen Gerät (z. B. Smart-TV-Browser): ANZEIGE_OFFEN=1
+// Anzeige darf vom Gerät selbst (localhost) oder mit Anzeige-Link (Anzeige + Schlüssel) geöffnet werden.
+// Notschalter für alles im Netz ohne Schutz: ANZEIGE_OFFEN=1
 const ANZEIGE_OFFEN = process.env.ANZEIGE_OFFEN === '1';
 const FARBEN = ['#00e5ff', '#7cff6b', '#ffd23f', '#b98cff', '#ff9f43', '#4dabff'];
 
@@ -67,6 +67,12 @@ function tokenPruefen(token) {
 }
 
 const istLokal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+/** Darf diese Anfrage Anzeige sein? localhost, Notschalter oder gültiger Anzeige-Link (?anzeige=…&schluessel=…) */
+const anzeigeZugang = (req) => {
+  const { anzeige, schluessel } = req.query ?? {};
+  const mitLink = anzeige ? daten.anzeigeMitSchluessel(String(anzeige), String(schluessel ?? '')) : null;
+  return { erlaubt: Boolean(mitLink) || istLokal(req) || ANZEIGE_OFFEN, anzeige: mitLink };
+};
 
 // Netzwerkadresse für QR-Code und Konsole – regelmäßig neu bestimmen (WLAN-Wechsel)
 let netz = await besteAdresse();
@@ -87,6 +93,9 @@ function lanAdresse(ip = qrIp()) {
   if (process.env.OEFFENTLICHE_URL) return process.env.OEFFENTLICHE_URL.replace(/\/$/, '');
   return `http://${ip}:${PORT}`;
 }
+
+/** Anzeige-Link für ein anderes Gerät im Netz – dieselbe Adresse wie im QR-Code der Handys */
+const anzeigeLink = (a) => `${lanAdresse()}/anzeige?anzeige=${encodeURIComponent(a.id)}&schluessel=${encodeURIComponent(a.schluessel)}`;
 
 /** Merkt sich die IP, die ein anderes Gerät in der Adresszeile benutzt hat. */
 function adresseLernen(req) {
@@ -172,8 +181,10 @@ app.get('/api/ich', async (req, reply) => {
 });
 
 app.get('/api/anzeige', async (req, reply) => {
-  if (!istLokal(req) && !ANZEIGE_OFFEN) return reply.code(403).send({ fehler: 'Nur auf dem Anzeigegerät' });
+  const zugang = anzeigeZugang(req);
+  if (!zugang.erlaubt) return reply.code(403).send({ fehler: 'Anzeige nur mit Anzeige-Link oder auf dem Board-Gerät' });
   return {
+    anzeige: zugang.anzeige && { id: zugang.anzeige.id, name: zugang.anzeige.name },
     beitrittsUrl: `${lanAdresse()}/?pin=${PIN}`,
     adresse: lanAdresse(),
     pin: PIN,
@@ -192,12 +203,22 @@ await app.register(companionApi, {
   geaendert: (bereich, weltId = null) => {
     anAlle({ art: 'geaendert', bereich, weltId });
     if (['welten', 'orte', 'einstellungen'].includes(bereich)) anAlle({ art: 'zustand', zustand: anzeigeSicht(daten) });
+    if (bereich === 'anzeigen') veralteteAnzeigenTrennen();
   },
+  anzeigeLink,
 });
 
 // ---------- Echtzeit-Sync ----------
 
-const verbindungen = new Set(); // { socket, rolle, nutzer }
+const verbindungen = new Set(); // { socket, rolle, nutzer, zugang? }
+
+/** Nach „Neuer Schlüssel“: Anzeigen trennen, die nur über den alten Link verbunden waren */
+function veralteteAnzeigenTrennen() {
+  for (const v of verbindungen) {
+    if (v.rolle !== 'anzeige' || !v.zugang) continue;
+    if (!daten.anzeigeMitSchluessel(v.zugang.id, v.zugang.schluessel)) v.socket.close(4003, 'Anzeige-Link nicht mehr gültig');
+  }
+}
 
 function senden(socket, nachricht) {
   if (socket.readyState === 1) socket.send(JSON.stringify(nachricht));
@@ -241,8 +262,11 @@ app.get('/ws', { websocket: true }, (socket, req) => {
   const { token, rolle } = req.query ?? {};
   let verbindung;
   if (rolle === 'anzeige') {
-    if (!istLokal(req) && !ANZEIGE_OFFEN) return socket.close(4003, 'Nur auf dem Anzeigegerät');
-    verbindung = { socket, rolle: 'anzeige', nutzer: null };
+    const zugang = anzeigeZugang(req);
+    if (!zugang.erlaubt) return socket.close(4003, 'Anzeige nur mit Anzeige-Link oder auf dem Board-Gerät');
+    // Nur wer allein über den Link hereinkam, fliegt raus, wenn der Schlüssel neu erzeugt wird
+    const nurLink = zugang.anzeige && !istLokal(req) && !ANZEIGE_OFFEN;
+    verbindung = { socket, rolle: 'anzeige', nutzer: null, zugang: nurLink ? { id: zugang.anzeige.id, schluessel: zugang.anzeige.schluessel } : null };
   } else {
     const nutzer = tokenPruefen(token);
     if (!nutzer) return socket.close(4001, 'Nicht angemeldet');
@@ -318,6 +342,9 @@ await app.listen({ port: PORT, host: '0.0.0.0' });
 console.log('\n  Koordinaten-Board läuft');
 console.log(`  Anzeige (dieses Gerät):  http://localhost:${PORT}/anzeige`);
 console.log(`  Companion (Handys):      ${lanAdresse()}   PIN ${PIN}`);
+for (const a of daten.anzeigenListe()) {
+  console.log(`  Anzeige auf anderem Gerät${daten.anzeigenListe().length > 1 ? ` („${a.name}“)` : ''}: ${anzeigeLink(a)}`);
+}
 if (netz.kandidaten.length > 1) {
   console.log('\n  Weitere Adressen dieses Geräts (falls die obere vom Handy nicht erreichbar ist):');
   for (const k of netz.kandidaten) if (k.adresse !== qrIp()) console.log(`    ${lanAdresse(k.adresse).padEnd(28)} ${k.name}`);
