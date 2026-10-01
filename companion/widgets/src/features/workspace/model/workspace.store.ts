@@ -3,8 +3,9 @@ import type { Id } from "../../../shared/types/common.types";
 import type { LayoutItem, PanelTyp, WorkspaceData, WorkspaceLayout } from "./workspace.types";
 import { DEFAULT_LAYOUT } from "./default-layout";
 import { PANEL_REGISTRY } from "./panel-registry";
-import { clampItemToGrid, findFreePosition } from "../lib/layout-utils";
-import { hasCollision } from "../lib/collision-utils";
+import { clampItemToGrid } from "../lib/layout-utils";
+import { passt } from "../lib/collision-utils";
+import { stufeVon, type Groessenstufe } from "./widget-vertrag";
 import { loadWorkspaceFromStorage, saveWorkspaceToStorage } from "../lib/storage";
 import { RASTER_SPALTEN, STANDARD_REIHEN } from "../lib/raster";
 
@@ -28,7 +29,10 @@ interface WorkspaceState {
 
   // Widgets – wirken immer auf den aktiven Layer.
   moveItem: (id: Id, x: number, y: number) => boolean;
-  resizeItem: (id: Id, w: number, h: number) => boolean;
+  /** Andere Größenstufe aus dem Vertrag; die obere linke Ecke bleibt, am Rand rückt das Widget nach innen. */
+  setStufe: (id: Id, stufe: string) => boolean;
+  /** Griff zum Vergrößern: zur nächsten Stufe, die an dieser Stelle passt (reihum). */
+  naechsteStufe: (id: Id) => boolean;
   /** false, wenn auf dem Layer kein Platz mehr frei ist. */
   addItem: (typ: PanelTyp) => boolean;
   removeItem: (id: Id) => void;
@@ -72,23 +76,29 @@ function normalizeLayerName(name: string): string {
 }
 
 /**
- * Sucht Platz für ein neues Widget: zuerst in Wunschgröße, dann in
- * Mindestgröße. `null`, wenn die Fläche voll ist.
+ * Sucht Platz für ein neues Widget: die Stufen der Reihe nach (zuerst die
+ * gewünschte), je Stufe zeilenweise von oben links. `null`, wenn keine Stufe
+ * mehr auf die Fläche passt.
  */
 function findSlot(
   layout: WorkspaceLayout,
   reihen: number,
-  preferred: { w: number; h: number },
-  minimum: { w: number; h: number },
-): { x: number; y: number; w: number; h: number } | null {
-  for (const size of [preferred, minimum]) {
-    const w = Math.min(size.w, RASTER_SPALTEN);
-    const h = Math.min(size.h, reihen);
-    const pos = findFreePosition(layout.items, w, h, RASTER_SPALTEN, reihen);
-    if (pos) return { ...pos, w, h };
+  stufen: Groessenstufe[],
+): { x: number; y: number; w: number; h: number; stufe: string } | null {
+  for (const s of stufen) {
+    for (let y = 0; y + s.hoehe <= reihen; y++) {
+      for (let x = 0; x + s.breite <= RASTER_SPALTEN; x++) {
+        const kandidat = { x, y, w: s.breite, h: s.hoehe };
+        if (passt(kandidat, layout.items, reihen).passt) return { ...kandidat, stufe: s.name };
+      }
+    }
   }
   return null;
 }
+
+/** Stufen ab der gewünschten, danach die übrigen in Vertragsreihenfolge */
+const stufenAb = (alle: Groessenstufe[], zuerst: string) =>
+  [...alle.filter((s) => s.name === zuerst), ...alle.filter((s) => s.name !== zuerst)];
 
 export function createInitialWorkspace(): WorkspaceData {
   const first = cloneLayout(DEFAULT_LAYOUT);
@@ -134,40 +144,42 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       if (!target) return false;
       const candidate = clampItemToGrid({ ...target, x, y }, RASTER_SPALTEN, get().reihen);
       if (candidate.x === target.x && candidate.y === target.y) return false;
-      if (hasCollision(candidate, layout.items)) return false;
+      if (!passt(candidate, layout.items, get().reihen).passt) return false;
       commitActiveItems(layout.items.map((i) => (i.id === id ? candidate : i)));
       return true;
     },
 
-    resizeItem: (id, w, h) => {
+    setStufe: (id, name) => {
       const layout = selectActiveLayer(get());
       const target = layout.items.find((i) => i.id === id);
       if (!target) return false;
-      const def = PANEL_REGISTRY[target.panelTyp];
-      if (!def.erlaubtResize) return false;
+      const { vertrag } = PANEL_REGISTRY[target.panelTyp];
+      const s = vertrag.stufen.find((x) => x.name === name);
+      if (!s || (s.name === target.stufe && s.breite === target.w && s.hoehe === target.h)) return false;
       const reihen = get().reihen;
-      const minW = Math.min(target.minW ?? def.minBreite, RASTER_SPALTEN);
-      const minH = Math.min(target.minH ?? def.minHoehe, reihen);
-      // Skalieren verschiebt das Widget nicht: Die obere linke Ecke bleibt,
-      // die Größe endet am Rand der Fläche.
-      const clampedW = Math.max(minW, Math.min(Math.round(w), RASTER_SPALTEN - target.x));
-      const clampedH = Math.max(minH, Math.min(Math.round(h), reihen - target.y));
-      const candidate = clampItemToGrid({ ...target, w: clampedW, h: clampedH }, RASTER_SPALTEN, reihen);
-      if (candidate.w === target.w && candidate.h === target.h) return false;
-      if (hasCollision(candidate, layout.items)) return false;
+      // Obere linke Ecke bleibt; ragt die neue Stufe über den Rand, rückt das Widget nach innen.
+      const candidate = clampItemToGrid({ ...target, stufe: s.name, w: s.breite, h: s.hoehe }, RASTER_SPALTEN, reihen);
+      if (candidate.w !== s.breite || candidate.h !== s.hoehe) return false;   // größer als die Fläche
+      if (!passt(candidate, layout.items, reihen, vertrag).passt) return false;
       commitActiveItems(layout.items.map((i) => (i.id === id ? candidate : i)));
       return true;
+    },
+
+    naechsteStufe: (id) => {
+      const target = selectActiveLayer(get()).items.find((i) => i.id === id);
+      if (!target) return false;
+      const { stufen } = PANEL_REGISTRY[target.panelTyp].vertrag;
+      const start = Math.max(0, stufen.findIndex((s) => s.name === target.stufe));
+      for (let n = 1; n < stufen.length; n++) {
+        if (get().setStufe(id, stufen[(start + n) % stufen.length].name)) return true;
+      }
+      return false;
     },
 
     addItem: (typ) => {
       const layout = selectActiveLayer(get());
       const def = PANEL_REGISTRY[typ];
-      const slot = findSlot(
-        layout,
-        get().reihen,
-        { w: def.standardBreite, h: def.standardHoehe },
-        { w: def.minBreite, h: def.minHoehe },
-      );
+      const slot = findSlot(layout, get().reihen, def.vertrag.stufen);
       if (!slot) return false;
       const item: LayoutItem = {
         id: nextId(`panel-${typ}`),
@@ -193,12 +205,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const target = layout.items.find((i) => i.id === id);
       if (!target) return false;
       const def = PANEL_REGISTRY[target.panelTyp];
-      const slot = findSlot(
-        layout,
-        get().reihen,
-        { w: target.w, h: target.h },
-        { w: target.minW ?? def.minBreite, h: target.minH ?? def.minHoehe },
-      );
+      const slot = findSlot(layout, get().reihen, stufenAb(def.vertrag.stufen, stufeVon(def.vertrag, target.stufe).name));
       if (!slot) return false;
       const copy: LayoutItem = { ...target, id: nextId(`panel-${target.panelTyp}`), ...slot };
       commitActiveItems([...layout.items, copy]);

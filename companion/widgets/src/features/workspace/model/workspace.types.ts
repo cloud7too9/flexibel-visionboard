@@ -1,4 +1,5 @@
 import type { Id } from "../../../shared/types/common.types";
+import type { WidgetVertrag } from "./widget-vertrag";
 
 export type PanelTyp =
   | "schnellnotiz"
@@ -12,14 +13,12 @@ export interface LayoutItem {
   id: Id;
   panelTyp: PanelTyp;
   titel: string;
+  /** Name der Größenstufe aus dem Vertrag des Widgets; w und h folgen daraus. */
+  stufe: string;
   x: number;
   y: number;
   w: number;
   h: number;
-  minW?: number;
-  minH?: number;
-  maxW?: number;
-  maxH?: number;
 }
 
 /**
@@ -40,14 +39,11 @@ export interface WorkspaceData {
   activeLayerId: Id;
 }
 
+/** Eintrag im Register: Titel und Größen-Vertrag (ersetzt die freien Maße von MainHub). */
 export interface PanelDefinition {
   typ: PanelTyp;
   standardTitel: string;
-  standardBreite: number;
-  standardHoehe: number;
-  minBreite: number;
-  minHoehe: number;
-  erlaubtResize: boolean;
+  vertrag: WidgetVertrag;
 }
 
 export type EditMode = "normal" | "edit";

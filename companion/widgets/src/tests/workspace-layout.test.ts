@@ -17,6 +17,7 @@ const mkItem = (overrides: Partial<LayoutItem>): LayoutItem => ({
   id: "x",
   panelTyp: "schnellnotiz",
   titel: "x",
+  stufe: "mittel",
   x: 0,
   y: 0,
   w: 12,

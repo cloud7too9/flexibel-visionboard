@@ -1,17 +1,19 @@
 import type { WorkspaceData, WorkspaceLayout } from "../model/workspace.types";
 import { RASTER_SPALTEN } from "./raster";
 import { clamp } from "./layout-utils";
+import { PANEL_REGISTRY } from "../model/panel-registry";
+import { stufeVon } from "../model/widget-vertrag";
 
 export const STORAGE_KEY = "mainhub.workspace.v1";
 /**
- * Version 4: Raster mit 32 Spalten und quadratischen Zellen. Layouts aus
- * Version 1–3 (grobes bzw. feines 96 × 48-Raster) werden verworfen, nicht
- * umgerechnet – es gibt noch keine echten Nutzerdaten (planung/PLAN.md, A1).
+ * Version 5: Raster mit 32 Spalten, Größe aus der Stufe des Widgets. Layouts
+ * älterer Versionen (96 × 48-Raster, freie Größen) werden verworfen, nicht
+ * umgerechnet – es gibt noch keine echten Nutzerdaten (planung/PLAN.md, A1/A2).
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 interface PersistedPayload {
-  version: 4;
+  version: 5;
   layers: WorkspaceLayout[];
   activeLayerId: string;
 }
@@ -23,21 +25,23 @@ function isValidLayout(value: unknown): value is WorkspaceLayout {
 }
 
 /**
- * Hält Items in den 32 Spalten. Die Reihen hängen von der Fläche ab und
- * werden hier nicht begrenzt.
+ * Unbekannte Widget-Typen fallen weg, die Größe folgt aus der Stufe (eine
+ * unbekannte Stufe wird zur Standardstufe), und alles bleibt in den 32
+ * Spalten. Die Reihen hängen von der Fläche ab und werden hier nicht begrenzt.
  */
 function normalizeLayout(layout: WorkspaceLayout): WorkspaceLayout {
   return {
     id: layout.id,
     name: layout.name,
-    items: layout.items.map((it) => {
-      const w = clamp(Math.round(it.w), 1, RASTER_SPALTEN);
+    items: layout.items.filter((it) => it && it.panelTyp in PANEL_REGISTRY).map((it) => {
+      const s = stufeVon(PANEL_REGISTRY[it.panelTyp].vertrag, it.stufe);
       return {
         ...it,
-        w,
-        x: clamp(Math.round(it.x), 0, RASTER_SPALTEN - w),
+        stufe: s.name,
+        w: s.breite,
+        h: s.hoehe,
+        x: clamp(Math.round(it.x), 0, RASTER_SPALTEN - s.breite),
         y: Math.max(0, Math.round(it.y)),
-        h: Math.max(1, Math.round(it.h)),
       };
     }),
   };
