@@ -2,6 +2,7 @@ import { Button } from "../../../shared/ui/Button";
 import { selectActiveLayer, useWorkspaceStore } from "../model/workspace.store";
 import { RASTER_SPALTEN } from "../lib/raster";
 import { LayerSwitcher } from "./LayerSwitcher";
+import { useBoardStore } from "../../karten/model/board.store";
 
 export function WorkspaceHeader() {
   const editMode = useWorkspaceStore((s) => s.editMode);
@@ -10,6 +11,7 @@ export function WorkspaceHeader() {
   const resetActiveLayer = useWorkspaceStore((s) => s.resetActiveLayer);
   const activeLayerName = useWorkspaceStore((s) => selectActiveLayer(s).name);
   const reihen = useWorkspaceStore((s) => s.reihen);
+  const modus = useBoardStore((s) => s.modus);
 
   // Jede Bildschirmgröße zeigt dasselbe Raster mit 32 Spalten – Bearbeiten
   // geht überall, per Knopf oder langem Drücken auf die Kopfzeile.
@@ -28,6 +30,15 @@ export function WorkspaceHeader() {
           >
             {RASTER_SPALTEN}×{reihen}
           </span>
+          {modus === "beispiel" && (
+            <span
+              className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-text-muted"
+              title="Kein Board erreichbar – die Widgets zeigen feste Beispielkarten"
+              data-testid="beispielkarten"
+            >
+              Beispielkarten
+            </span>
+          )}
         </div>
         {(editMode || showEditButton) && (
           <div className="flex flex-wrap items-center gap-2">

@@ -37,3 +37,15 @@ body {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+
+/* Karten in Widgets: Die Schrift wächst mit der Zelle des Rasters (--zelle setzt die Fläche). */
+.karte-schrift {
+  font-size: clamp(11px, calc(var(--zelle, 48px) * 0.28), 18px);
+}
+
+.karte-koord[data-dimension] {
+  border-left-width: 3px;
+}
+.karte-koord[data-dimension="oberwelt"] { border-left-color: rgb(var(--color-dim-oberwelt)); }
+.karte-koord[data-dimension="nether"] { border-left-color: rgb(var(--color-dim-nether)); }
+.karte-koord[data-dimension="ende"] { border-left-color: rgb(var(--color-dim-ende)); }

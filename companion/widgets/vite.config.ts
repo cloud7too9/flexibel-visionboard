@@ -13,5 +13,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Karten und Live-Änderungen vom Board-Server (npm start in koordinaten-board, Port 3000).
+    // Läuft keiner, zeigen die Widgets Beispielkarten.
+    proxy: {
+      "/api": "http://localhost:3000",
+      "/ws": { target: "ws://localhost:3000", ws: true },
+    },
   },
 });

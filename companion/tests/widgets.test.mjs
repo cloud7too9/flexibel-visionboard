@@ -70,6 +70,15 @@ try {
   await p.goto(ADRESSE);
   await p.evaluate(() => localStorage.clear());
   await p.reload();
+
+  // ---- Ohne Board: feste Beispielkarten ----
+  await p.waitForSelector('[data-panel-id="w-sammelstatus"] [data-testid="karte"]');
+  pruefe(await p.isVisible('[data-testid="beispielkarten"]'), "Ohne Board: Hinweis „Beispielkarten“ im Kopf");
+  const karteText = (id) => p.$eval(`[data-panel-id="${id}"] [data-testid="karte"]`, (k) => k.textContent);
+  pruefe((await karteText("w-sammelstatus")).includes("5 von 18") && (await karteText("w-portale")).includes("Hauptbasis"),
+    "Widgets rendern Karten (Titel und Zeilen)");
+  pruefe(await p.$$eval('[data-panel-id] [data-testid="karte"]', (l) => l.length) === 4, "alle 4 Start-Widgets mit Karte");
+  await p.screenshot({ path: `${DIR}/w5-beispielkarten.png` });
   await p.getByRole("button", { name: "Bearbeiten" }).click();
   const stufe = (id) => p.$eval(`[data-panel-id="${id}"] [data-testid="stufe"]`, (e) => e.textContent);
   const griff = (id) => p.locator(`[data-panel-id="${id}"] [aria-label="Größe ändern (nächste Stufe)"]`);
@@ -119,6 +128,12 @@ try {
   await p.fill('input[aria-label="Widgets suchen"]', "banner");
   await p.click('[data-widget-typ="banner.banner"]');
   pruefe(await p.locator('[data-typ="banner.banner"]').count() === 1, "Hinzugefügt an der ersten freien Stelle, Galerie zu");
+  // Bereich ohne Inhalt: leerer Zustand mit Hinweis
+  await p.getByRole("button", { name: "Widget hinzufügen" }).first().click();
+  await p.fill('input[aria-label="Widgets suchen"]', "handbuch-eintrag");
+  await p.click('[data-widget-typ="handbuch.eintrag"]');
+  pruefe(await p.$eval('[data-typ="handbuch.eintrag"] [data-testid="widget-leer"]', (e) => e.textContent).catch(() => "") === "Bereich geplant",
+    "Handbuch-Eintrag: „Bereich geplant“");
 
   // Vollbild nur bei Typen mit vollbild: true
   pruefe(await p.locator('[data-panel-id="w-sammelobjekte"] [aria-label="Vollbild"]').count() === 0, "Alle Sammelobjekte: kein Vollbild (optional je Typ)");
