@@ -27,6 +27,7 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 - Beitreten per PIN. Nach **5 falschen PINs** ist das Gerät **60 s gesperrt** (`server/src/sperre.js`). `/api/beitreten` und `/api/ich` bleiben per CORS offen, falls eine Companion von einem anderen Server beitritt.
 - **Aufs Board**: Jeder Inhalt der Companion (Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner, Rüstungs-Set) lässt sich groß auf die Anzeige werfen. Die Karte liegt über den Spalten, im Theme ihrer Dimension, mit Absender; eine neue ersetzt die alte, gespeichert wird sie nicht. Mit `typ` (Seed-Map-Typ) steht der Kennblock neben dem Titel, ein `bild`-Block (z. B. die Banner-Vorschau oder die Rüstungs-Figur) links neben den übrigen. Aufbau und Prüfung: `server/src/zeigen.js`.
 - **Welt-Import (Biome)**: Die Companion liest einen hochgeladenen Weltordner (`.zip`/`.mcworld`) selbst im Browser (Web Worker) und schickt die Biome als Kacheln ans Board (`PUT /api/welten/:id/biome`, geprüft mit `biomImportPruefen` aus `regeln.js`, bis 64 MB). Das Board speichert sie je Welt in `server/daten/biome/<weltId>.json` und meldet `geaendert` „biome“. Worker, Dekoder und Bibliothek liefert es unter `/biom-import.worker.js`, `/biom-welt.js`, `/biom-dekoder.js`, `/biom-ids.js` und `/vendor/` aus. Biom-Punkte aus Screenshots gibt es nicht mehr; alte entfernt der Server beim Start (Sicherung `daten.vor-welt-import.json`).
+- **Widgets fürs Dashboard** (`companion/widgets`): `GET /api/widgets/:typ?quelle=…` liefert die fertige Karte eines Widget-Typs (z. B. `portale.verbindungen`, `banner.banner?quelle=b_3`) aus den Daten der aktiven Welt – gebaut mit denselben Anzeigeschemas wie „Aufs Board“ (`companion/board-karten.js`, per `node:vm` geladen), geprüft mit `zeigen.js`. Ohne Inhalt kommt `{ karte:null, hinweis }` (Bereich geplant, keine Welt, Quelle gelöscht). `GET /api/widgets/:typ/quellen` nennt, was man beim Hinzufügen als Quelle wählen kann. Lesen darf die Anzeige (localhost oder Anzeige-Link) und jedes beigetretene Handy; nach Änderungen meldet `/ws` wie immer `geaendert`. Die Banner-Vorschau rendert der Server als PNG (`pngjs`), die Rüstungs-Figur gibt es nur in der Companion.
 - Aus der früheren Handy-Oberfläche des Boards noch nicht übernommen: Notiz, Kartenausschnitt als Bild, Export als JSON.
 
 ## Starten
@@ -83,7 +84,8 @@ Aufbau:
 server/src/server.js        Fastify: Beitritt, WebSocket, liefert Companion (/) und Anzeige (/anzeige) aus
 server/src/daten.js         gemeinsame Daten (daten.json): Welten, Orte, Sammelobjekte, Banner, Rüstungs-Sets, Portale, Einstellungen
 server/src/companion-api.js REST-API der Companion unter /api (Vertrag: companion-prototyp.html, Abschnitt 4)
-server/src/regeln.js        lädt ../companion/regeln.js per node:vm – dieselben Regeln wie am Handy
+server/src/regeln.js        lädt ../companion/regeln.js (und board-karten.js) per node:vm – dieselben Regeln wie am Handy
+server/src/widgets.js       Widget-Typ + Quelle → Karte fürs Dashboard (GET /api/widgets/:typ)
 server/src/sicht.js         Orte der aktiven Welt in der Form, die die Anzeige kennt
 server/src/erkennung.js     OCR (tesseract.js) + Auswertung des Seed-Map-Popups, fuerCompanion()
 server/src/banner-erkennung.js  Banner-Anleitung → Grundfarbe + Ebenen

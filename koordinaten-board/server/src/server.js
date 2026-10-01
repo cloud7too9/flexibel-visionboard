@@ -16,6 +16,7 @@ import { COMPANION_ORDNER } from './regeln.js';
 import { besteAdresse } from './netzwerk.js';
 import { fehlversuchSperre } from './sperre.js';
 import { kartePruefen } from './zeigen.js';
+import { widgetKarte, widgetQuellen } from './widgets.js';
 import { erkennungBeenden } from './erkennung.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
@@ -207,6 +208,22 @@ await app.register(companionApi, {
   },
   anzeigeLink,
 });
+
+// Widgets des Dashboards: fertige Karte je Widget-Typ (und Quelle) aus den Daten der aktiven Welt.
+// Lesen darf die Anzeige (localhost oder Anzeige-Link) und jedes angemeldete Handy.
+await app.register(async (widgets) => {
+  widgets.addHook('onRequest', async (req, reply) => {
+    if (!anzeigeZugang(req).erlaubt && !nutzerAusAnfrage(req)) {
+      return reply.code(403).send({ fehler: 'Widgets nur auf der Anzeige oder für angemeldete Handys' });
+    }
+  });
+  widgets.get('/:typ', async (req, reply) => {
+    const quelle = typeof req.query.quelle === 'string' ? req.query.quelle : '';
+    return (await widgetKarte(daten, req.params.typ, quelle)) ?? reply.code(404).send({ fehler: 'Unbekannter Widget-Typ' });
+  });
+  widgets.get('/:typ/quellen', async (req, reply) =>
+    widgetQuellen(daten, req.params.typ) ?? reply.code(404).send({ fehler: 'Unbekannter Widget-Typ' }));
+}, { prefix: '/api/widgets' });
 
 // ---------- Echtzeit-Sync ----------
 

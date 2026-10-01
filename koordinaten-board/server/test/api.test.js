@@ -166,6 +166,60 @@ test('Anzeige-Link: von außen nur mit gültigem Schlüssel, neuer Schlüssel ma
   assert.equal((await anfrage('GET', '/api/anzeigen')).status, 401, 'Anzeigen verwalten nur beigetretene Handys');
 });
 
+test('Widgets: Karte je Widget-Typ aus der aktiven Welt, Quellen, leerer Zustand, Zugang wie die Anzeige', async () => {
+  const max = await beitreten('Max');
+  const welt = (await anfrage('POST', '/api/orte/welten', max, { seed: '424242' })).daten.welt;
+  await anfrage('PUT', '/api/board/einstellungen', max, { aktiveWelt: welt.id });
+  const festung = (await anfrage('POST', '/api/orte/instanzen', max,
+    { dimensionId: `d_${welt.id}_nether`, kategorie: 'Nether Fortress', variante: null, x: -200, y: 70, z: 96, quelle: 'manuell' })).daten.instanz;
+  await anfrage('PUT', `/api/sammelobjekte/welten/${welt.id}/rib`, max, { gefunden: true });
+  await anfrage('POST', `/api/portale/welten/${welt.id}`, max, { name: 'Basis', oberwelt: { x: 800, y: 64, z: 80 }, nether: { x: 100, y: 64, z: 10 } });
+  const banner = (await anfrage('POST', '/api/banner', max, { name: 'Kreuz', basis: 'white', ebenen: [{ muster: 'cross', farbe: 'red' }] })).daten.banner;
+  // localhost ist die Anzeige des Board-Geräts – ohne Token
+  const widget = async (typ, quelle) => anfrage('GET', `/api/widgets/${typ}${quelle ? `?quelle=${quelle}` : ''}`);
+
+  let r = await widget('karte.einzelkoordinate', festung.id);
+  assert.equal(r.status, 200);
+  assert.equal(r.daten.karte.titel, 'Nether Fortress');
+  assert.deepEqual(r.daten.karte.bloecke.map((b) => [b.art, b.x, b.z]), [['koordinaten', -200, 96], ['koordinaten', -1600, 768]]);
+  assert.equal((await widget('sammelobjekte.status')).daten.karte.bloecke[0].zeilen[0].wert, '1 von 18');
+  assert.equal((await widget('sammelobjekte.einzelobjekt', 'rib')).daten.karte.bloecke[0].zeilen[1].wert.startsWith('gefunden von Max'), true);
+  assert.equal((await widget('sammelobjekte.gesamtauflistung')).daten.karte.titel, 'Sammelobjekte');
+  assert.match((await widget('portale.verbindungen')).daten.karte.bloecke[0].zeilen[0].wert, /800 \/ 80 ↔ N 100 \/ 10/);
+  assert.equal((await widget('karte.gesamtkarte')).daten.karte.bloecke[0].zeilen[1].wert, '1 Orte');
+  const bild = (await widget('banner.banner', banner.id)).daten.karte.bloecke[0];
+  assert.equal(bild.art, 'bild');
+  const png = Buffer.from(bild.daten.split(',')[1], 'base64');
+  assert.deepEqual([png.subarray(1, 4).toString(), png.readUInt32BE(16), png.readUInt32BE(20)], ['PNG', 20, 40], 'Banner als PNG 20×40');
+
+  // Ohne Inhalt: geplant, noch nicht festgelegt, Quelle fehlt oder gelöscht, unbekannter Typ
+  assert.deepEqual((await widget('handbuch.eintrag')).daten, { karte: null, hinweis: 'Bereich geplant' });
+  assert.equal((await widget('karte.koordinatensammlung')).daten.karte, null);
+  assert.equal((await widget('banner.banner')).daten.hinweis, 'Keine Quelle gewählt');
+  await anfrage('DELETE', `/api/orte/instanzen/${festung.id}`, max);
+  assert.deepEqual((await widget('karte.einzelkoordinate', festung.id)).daten, { karte: null, hinweis: 'Die Quelle gibt es nicht mehr' });
+  assert.equal((await widget('karte.gibtsnicht')).status, 404);
+
+  // Quellen zum Auswählen beim Hinzufügen
+  r = await anfrage('GET', '/api/widgets/banner.banner/quellen');
+  assert.equal(r.daten.quelle, 'banner');
+  assert.deepEqual(r.daten.quellen.find((q) => q.id === banner.id), { id: banner.id, name: 'Kreuz' });
+  r = await anfrage('GET', '/api/widgets/sammelobjekte.einzelobjekt/quellen');
+  assert.deepEqual(r.daten.quellen.find((q) => q.id === 'rib'), { id: 'rib', name: 'Rippenzier', unter: 'Netherfestung · gefunden' });
+  assert.deepEqual((await anfrage('GET', '/api/widgets/portale.verbindungen/quellen')).daten, { quelle: null, quellen: [] });
+
+  // Von außen nur mit Anzeige-Link oder als angemeldetes Handy
+  if (AUSSEN) {
+    const aussen = (query = '', token) => fetch(`http://${AUSSEN}:${PORT}/api/widgets/sammelobjekte.status${query}`,
+      { headers: token ? { authorization: `Bearer ${token}` } : {} });
+    assert.equal((await aussen()).status, 403);
+    assert.equal((await aussen('', max)).status, 200);
+    const link = new URL((await anfrage('GET', '/api/anzeigen', max)).daten.anzeigen[0].link);
+    assert.equal((await aussen(link.search)).status, 200);
+  }
+  await anfrage('PUT', '/api/board/einstellungen', max, { aktiveWelt: null });
+});
+
 test('Rüstungs-Baukasten wird ausgeliefert (Texturen, Module, Manifest)', async () => {
   const manifest = await (await fetch(`${BASIS}/ruestungs-baukasten/manifest.json`)).json();
   assert.equal(manifest.teile.length, 4);
