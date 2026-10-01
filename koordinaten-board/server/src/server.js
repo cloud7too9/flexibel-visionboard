@@ -23,6 +23,8 @@ const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
 const DATEN = path.resolve(process.env.DATEN_ORDNER ?? path.join(HIER, '..', 'daten'));
 const CLIENT_DIST = path.resolve(HIER, '..', '..', 'client', 'dist');
+// Widget-Dashboard (companion/widgets, `npm run build` → dist/), ausgeliefert unter /dashboard
+const DASHBOARD_DIST = path.join(COMPANION_ORDNER, 'widgets', 'dist');
 // Seite der Companion, die unter / ausgeliefert wird (später z. B. modul-a-live-karte.html)
 const COMPANION_DATEI = process.env.COMPANION_DATEI ?? 'companion-prototyp.html';
 // Anzeige darf vom Gerät selbst (localhost) oder mit Anzeige-Link (Anzeige + Schlüssel) geöffnet werden.
@@ -341,10 +343,27 @@ if (existsSync(CLIENT_DIST)) {
   // Baut nur noch die Anzeige; ihre Dateien liegen unter /assets/
   await app.register(fastifyStatic, { root: CLIENT_DIST, prefix: '/', index: false, wildcard: false, decorateReply: false });
 }
+function dashboardSeite(reply) {
+  if (!existsSync(path.join(DASHBOARD_DIST, 'index.html'))) {
+    return reply.code(404).type('text/plain; charset=utf-8')
+      .send('Dashboard nicht gebaut: npm --prefix companion/widgets install && npm --prefix companion/widgets run build');
+  }
+  return reply.headers(OHNE_CACHE).sendFile('index.html', DASHBOARD_DIST, { cacheControl: false });   // neuer Build → neue Assets
+}
+// Widget-Dashboard: Dateien mit Hash im Namen unter /dashboard/assets/, eigene Routen (z. B. /dashboard/vollbild/:id) → index.html
+await app.register(fastifyStatic, { root: DASHBOARD_DIST, prefix: '/dashboard/', index: false, maxAge: '7d', decorateReply: false });
+app.get('/dashboard', (req, reply) => {
+  const query = req.url.indexOf('?');
+  return reply.redirect(`/dashboard/${query === -1 ? '' : req.url.slice(query)}`);   // Anzeige-Link behält ?anzeige=…&schluessel=…
+});
+app.get('/dashboard/', (req, reply) => dashboardSeite(reply));
+
 app.setNotFoundHandler((req, reply) => {
-  if (req.method === 'GET' && /^\/anzeige(\/|$)/.test(req.url.split('?')[0]) && existsSync(CLIENT_DIST)) {
+  const pfad = req.url.split('?')[0];
+  if (req.method === 'GET' && /^\/anzeige(\/|$)/.test(pfad) && existsSync(CLIENT_DIST)) {
     return reply.sendFile('index.html', CLIENT_DIST);
   }
+  if (req.method === 'GET' && pfad.startsWith('/dashboard/') && !pfad.startsWith('/dashboard/assets/')) return dashboardSeite(reply);
   return reply.code(404).send({ fehler: 'Nicht gefunden' });
 });
 
@@ -360,6 +379,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 await app.listen({ port: PORT, host: '0.0.0.0' });
 console.log('\n  Koordinaten-Board läuft');
 console.log(`  Anzeige (dieses Gerät):  http://localhost:${PORT}/anzeige`);
+if (existsSync(DASHBOARD_DIST)) console.log(`  Widget-Dashboard:        http://localhost:${PORT}/dashboard`);
 console.log(`  Companion (Handys):      ${lanAdresse()}   PIN ${PIN}`);
 for (const a of daten.anzeigenListe()) {
   console.log(`  Anzeige auf anderem Gerät${daten.anzeigenListe().length > 1 ? ` („${a.name}“)` : ''}: ${anzeigeLink(a)}`);

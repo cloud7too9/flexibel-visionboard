@@ -2,7 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir, networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -218,6 +218,22 @@ test('Widgets: Karte je Widget-Typ aus der aktiven Welt, Quellen, leerer Zustand
     assert.equal((await aussen(link.search)).status, 200);
   }
   await anfrage('PUT', '/api/board/einstellungen', max, { aktiveWelt: null });
+});
+
+test('Widget-Dashboard unter /dashboard: Anzeige-Link bleibt beim Umleiten, eigene Routen → index.html', async () => {
+  const um = await fetch(`${BASIS}/dashboard?anzeige=a_1&schluessel=abc`, { redirect: 'manual' });
+  assert.equal(um.status, 302);
+  assert.equal(um.headers.get('location'), '/dashboard/?anzeige=a_1&schluessel=abc');
+  const gebaut = existsSync(fileURLToPath(new URL('../../../companion/widgets/dist/index.html', import.meta.url)));
+  for (const pfad of ['/dashboard/', '/dashboard/vollbild/w-portale']) {
+    const res = await fetch(BASIS + pfad);
+    assert.equal(res.status, gebaut ? 200 : 404, pfad);
+    if (gebaut) {
+      assert.equal(res.headers.get('cache-control'), 'no-cache');
+      assert.match(await res.text(), /<div id="root">/);
+    }
+  }
+  assert.equal((await fetch(`${BASIS}/dashboard/assets/gibt-es-nicht.js`)).status, 404);
 });
 
 test('Rüstungs-Baukasten wird ausgeliefert (Texturen, Module, Manifest)', async () => {
