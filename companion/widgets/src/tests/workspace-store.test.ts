@@ -227,6 +227,66 @@ describe("resetActiveLayer", () => {
   });
 });
 
+describe("Layout der Anzeige vom Board (A6)", () => {
+  const vomBoard = {
+    aktiverLayer: "l2",
+    layer: [
+      { id: "l1", name: "Start", instanzen: [{ id: "a", typ: "portale.verbindungen", stufe: "groß", x: 30, y: 0 }] },
+      { id: "l2", name: "Sammeln", instanzen: [{ id: "b", typ: "banner.banner", stufe: "standard", x: 0, y: 0, quelle: "b_1" }, { id: "c", typ: "gibt.es.nicht", stufe: "x", x: 0, y: 0 }] },
+    ],
+  };
+
+  it("übernimmt Layer und aktiven Layer, normalisiert wie beim Laden, speichert nichts im Browser", () => {
+    store().layoutUebernehmen(vomBoard);
+    expect(store().nurAnzeige).toBe(true);
+    expect(store().activeLayerId).toBe("l2");
+    expect(active().instanzen).toEqual([{ id: "b", typ: "banner.banner", stufe: "standard", x: 0, y: 0, quelle: "b_1" }]);
+    expect(store().layers[0].instanzen[0]).toMatchObject({ x: 20 });   // 12 breit → rückt in die 32 Spalten
+    expect(loadWorkspaceFromStorage()).toBeNull();
+  });
+
+  it("noch kein Layout am Board → Start-Layout", () => {
+    store().layoutUebernehmen(null);
+    expect(store().nurAnzeige).toBe(true);
+    expect(active().id).toBe(DEFAULT_LAYOUT.id);
+  });
+
+  it("an der Anzeige gibt es keinen Bearbeiten-Modus, der Browser-Speicher bleibt außen vor", () => {
+    store().addLayer("Lokal");
+    store().layoutUebernehmen(vomBoard);
+    store().setEditMode(true);
+    expect(store().editMode).toBe(false);
+    store().loadWorkspace();
+    expect(store().layers.map((l) => l.id)).toEqual(["l1", "l2"]);
+  });
+});
+
+describe("Anordnen am Handy (A6)", () => {
+  const vomBoard = { aktiverLayer: "l1", layer: [{ id: "l1", name: "Start", instanzen: [{ id: "a", typ: "portale.verbindungen", stufe: "standard", x: 0, y: 0 }] }] };
+
+  it("bearbeitet das Layout der Anzeige: Änderungen gehen an die Ablage, nicht in den Browser", () => {
+    const gesendet: string[] = [];
+    store().layoutBearbeiten(vomBoard, { ablage: (d) => gesendet.push(d.activeLayerId + ":" + d.layers[0].instanzen.map((i) => `${i.id}@${i.x}`).join()), vollbildAktion: () => {} });
+    expect(store().editMode).toBe(true);
+    expect(store().nurAnzeige).toBe(false);
+    expect(store().moveItem("a", 5, 0)).toBe(true);
+    expect(gesendet).toEqual(["l1:a@5"]);
+    expect(loadWorkspaceFromStorage()).toBeNull();
+    store().loadWorkspace();   // der Browser-Speicher bleibt außen vor
+    expect(active().instanzen[0].x).toBe(5);
+  });
+
+  it("neues Layout von einem anderen Handy: Auswahl bleibt, wenn das Widget noch da ist", () => {
+    const ziel = { ablage: () => {}, vollbildAktion: () => {} };
+    store().layoutBearbeiten(vomBoard, ziel);
+    store().selectPanel("a");
+    store().layoutBearbeiten({ ...vomBoard, layer: [{ ...vomBoard.layer[0], name: "Umbenannt" }] }, ziel);
+    expect(store().selectedPanelId).toBe("a");
+    store().layoutBearbeiten({ ...vomBoard, layer: [{ ...vomBoard.layer[0], instanzen: [] }] }, ziel);
+    expect(store().selectedPanelId).toBeNull();
+  });
+});
+
 describe("loadWorkspace", () => {
   it("restores layers and the active layer from storage", () => {
     const second = store().addLayer("Arbeit");

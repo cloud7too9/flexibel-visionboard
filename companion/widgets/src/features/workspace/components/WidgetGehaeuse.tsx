@@ -14,6 +14,11 @@ interface Props {
   themeZustand?: WidgetZustand;
   /** Der Inhalt. Ohne Inhalt ist es ein leeres Widget (Anordnen am Handy, A6). */
   children?: ReactNode;
+  /**
+   * Leeres Widget (Anordnen am Handy): nur Rahmen, Theme und der Name in der Mitte. Das ganze Widget
+   * ist Griff (kopfProps); Stufe und Werkzeuge zeigt die Seite für das gewählte Widget an.
+   */
+  leer?: boolean;
 }
 
 /** Handbuch: Der Inhalt steht auf den Seiten eines aufgeschlagenen Buchs */
@@ -29,7 +34,7 @@ const RAHMEN: Partial<Record<ThemeId, (p: { children: ReactNode }) => ReactNode>
  * seines Bereichs (`data-theme`, siehe widget-themes.ts). Es weiß nichts über
  * den Inhalt – den rendert `WidgetInhalt` aus der Karte vom Board.
  */
-export function WidgetGehaeuse({ typ, zustand = "normal", kopfZusatz, kopfProps, themeZustand, children }: Props) {
+export function WidgetGehaeuse({ typ, zustand = "normal", kopfZusatz, kopfProps, themeZustand, children, leer = false }: Props) {
   const { className: kopfKlasse, ...kopfRest } = kopfProps ?? {};
   const theme = themeFuer(typ?.bereich, themeZustand);
   const Rahmen = RAHMEN[theme];
@@ -43,18 +48,24 @@ export function WidgetGehaeuse({ typ, zustand = "normal", kopfZusatz, kopfProps,
         zustand === "ausgewaehlt" ? "border-accent shadow-lg shadow-accent/10" : zustand === "bearbeiten" ? "border-border-strong" : "border-border",
       ].join(" ")}
     >
-      <div
-        {...kopfRest}
-        className={[
-          "flex items-center justify-between gap-2 border-b border-border px-2.5 py-1.5 text-sm font-medium sm:px-3 sm:py-2",
-          zustand !== "normal" ? "bg-surface-raised" : "",
-          kopfKlasse ?? "",
-        ].join(" ")}
-      >
-        <span className="truncate">{typ?.name ?? "Unbekanntes Widget"}</span>
-        {kopfZusatz}
-      </div>
-      {children !== undefined && (
+      {leer ? (
+        <div {...kopfRest} className={["flex min-h-0 flex-1 items-center justify-center overflow-hidden p-1", kopfKlasse ?? ""].join(" ")}>
+          <p className="leer-titel text-center font-semibold leading-tight" data-testid="leer-titel">{typ?.name ?? "Unbekanntes Widget"}</p>
+        </div>
+      ) : (
+        <div
+          {...kopfRest}
+          className={[
+            "flex items-center justify-between gap-2 border-b border-border px-2.5 py-1.5 text-sm font-medium sm:px-3 sm:py-2",
+            zustand !== "normal" ? "bg-surface-raised" : "",
+            kopfKlasse ?? "",
+          ].join(" ")}
+        >
+          <span className="truncate">{typ?.name ?? "Unbekanntes Widget"}</span>
+          {kopfZusatz}
+        </div>
+      )}
+      {!leer && children !== undefined && (
         <div className="widget-koerper min-h-0 flex-1 overflow-hidden p-2.5 sm:p-3">
           {Rahmen ? <Rahmen>{children}</Rahmen> : children}
         </div>

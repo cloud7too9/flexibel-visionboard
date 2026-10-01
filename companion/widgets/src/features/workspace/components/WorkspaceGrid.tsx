@@ -73,7 +73,14 @@ function gridLinesStyle(cell: { w: number; h: number }): CSSProperties {
   };
 }
 
-export function WorkspaceGrid() {
+interface Props {
+  /** Reihen einer anderen Anzeige (Anordnen am Handy); ohne: aus der eigenen Fläche gemessen */
+  festeReihen?: number;
+  /** Leere Widgets: nur Gehäuse mit Titel und Theme, ohne Inhalt (Anordnen am Handy) */
+  leer?: boolean;
+}
+
+export function WorkspaceGrid({ festeReihen, leer = false }: Props = {}) {
   const layout = useWorkspaceStore(selectActiveLayer);
   const editMode = useWorkspaceStore((s) => s.editMode);
   const selectedPanelId = useWorkspaceStore((s) => s.selectedPanelId);
@@ -90,7 +97,7 @@ export function WorkspaceGrid() {
 
   // 32 Spalten auf jedem Gerät, quadratische Zellen: Die Breite bestimmt die
   // Zellgröße, die Höhe die Zahl der Reihen. Die Seite selbst scrollt nie.
-  const raster = useRaster(containerEl);
+  const raster = useRaster(containerEl, festeReihen);
   const reihen = raster.reihen;
   useEffect(() => {
     if (reihen > 0) setReihen(reihen);
@@ -246,8 +253,11 @@ export function WorkspaceGrid() {
       <div
         data-testid="raster-flaeche"
         data-grid={`${RASTER_SPALTEN}x${reihen}`}
-        className="absolute left-0 top-0 w-full"
-        style={{ height: reihen * raster.zellePx, "--zelle": `${raster.zellePx}px`, ...(editMode ? gridLinesStyle(cell) : {}) } as CSSProperties}
+        className={["absolute top-0", festeReihen ? "left-1/2 -translate-x-1/2" : "left-0 w-full"].join(" ")}
+        style={{
+          height: reihen * raster.zellePx, ...(festeReihen ? { width: RASTER_SPALTEN * raster.zellePx } : {}),
+          "--zelle": `${raster.zellePx}px`, ...(editMode ? gridLinesStyle(cell) : {}),
+        } as CSSProperties}
       >
       {layout.instanzen.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center p-4">
@@ -265,6 +275,7 @@ export function WorkspaceGrid() {
             editMode={editMode}
             arrangeable={canArrange}
             selected={selectedPanelId === instanz.id}
+            leer={leer}
             onHeaderPointerDown={onHeaderPointerDown}
             onResizePointerDown={onResizePointerDown}
           />

@@ -155,6 +155,48 @@ test('Anzeigen: „Board“ beim ersten Start, Schlüssel prüfen und neu erzeug
   rmSync(o, { recursive: true, force: true });
 });
 
+test('Widget-Layout je Anzeige: Form wird geprüft, Reihen meldet die Anzeige', () => {
+  const d = new Daten(ordner());
+  const a = d.anzeigeLokal();
+  assert.equal(a.name, 'Board');
+  assert.deepEqual(d.anzeigeLayout(a.id), { anzeige: { id: a.id, name: 'Board' }, reihen: null, layout: null, vollbild: null });
+
+  const layout = { aktiverLayer: 'l2', layer: [
+    { id: 'l1', name: ' Start ', instanzen: [{ id: 'w1', typ: 'portale.verbindungen', stufe: 'groß', x: 12, y: 0 }] },
+    { id: 'l2', name: 'Sammeln', instanzen: [{ id: 'w2', typ: 'banner.banner', stufe: 'standard', x: 0, y: 3, quelle: 'b_1', extra: 1 }] },
+  ] };
+  const r = d.anzeigeLayoutSetzen(a.id, layout);
+  assert.equal(r.layout.aktiverLayer, 'l2');
+  assert.equal(r.layout.layer[0].name, 'Start');
+  assert.deepEqual(r.layout.layer[1].instanzen[0], { id: 'w2', typ: 'banner.banner', stufe: 'standard', x: 0, y: 3, quelle: 'b_1' });
+  assert.equal(d.anzeigeLayoutSetzen(a.id, { ...layout, aktiverLayer: 'weg' }).layout.aktiverLayer, 'l1', 'unbekannter Layer → erster');
+
+  const mit = (instanz) => ({ layer: [{ id: 'l1', name: 'Start', instanzen: [instanz] }] });
+  const w = { id: 'w1', typ: 'portale.verbindungen', stufe: 'standard', x: 0, y: 0 };
+  wirft(() => d.anzeigeLayoutSetzen(a.id, {}), 422, 'Layer fehlen');
+  wirft(() => d.anzeigeLayoutSetzen(a.id, { layer: [] }), 422, '1 bis 12 Layer');
+  wirft(() => d.anzeigeLayoutSetzen(a.id, mit({ ...w, typ: 'portale' })), 422, 'Unbekannter Widget-Typ „portale“');
+  wirft(() => d.anzeigeLayoutSetzen(a.id, mit({ ...w, x: 32 })), 422, 'x muss eine ganze Zahl von 0 bis 31 sein');
+  wirft(() => d.anzeigeLayoutSetzen(a.id, mit({ ...w, y: 1.5 })), 422);
+  wirft(() => d.anzeigeLayoutSetzen(a.id, { layer: [{ id: 'l1', name: 'A', instanzen: [w, w] }] }), 422, 'Widget-IDs doppelt');
+  wirft(() => d.anzeigeLayoutSetzen('a_99', layout), 404);
+
+  // Vollbild: nur ein Widget im aktiven Layer, endet, wenn es dort nicht mehr liegt
+  d.anzeigeLayoutSetzen(a.id, layout);   // aktiv: l2 mit w2
+  assert.equal(d.anzeigeVollbildSetzen(a.id, 'w2').vollbild, 'w2');
+  wirft(() => d.anzeigeVollbildSetzen(a.id, 'w1'), 422, 'Dieses Widget liegt nicht im aktiven Layer der Anzeige');
+  assert.equal(d.anzeigeLayoutSetzen(a.id, { ...layout, aktiverLayer: 'l1' }).vollbild, null, 'Layer gewechselt → Vollbild endet');
+  assert.equal(d.anzeigeVollbildSetzen(a.id, 'w1').vollbild, 'w1');
+  assert.equal(d.anzeigeVollbildSetzen(a.id, null).vollbild, null);
+
+  assert.equal(d.anzeigeReihenSetzen(a.id, 18), true);
+  assert.equal(d.anzeigeReihenSetzen(a.id, 18), false, 'unverändert');
+  wirft(() => d.anzeigeReihenSetzen(a.id, 0), 400);
+  const liste = d.anzeigenListe();
+  assert.equal(liste[0].reihen, 18);
+  assert.equal('layout' in liste[0] || 'vollbild' in liste[0], false, 'Liste ohne Layout');
+});
+
 test('Anzeige zeigt die aktive Welt', () => {
   const d = new Daten(ordner());
   d.weltAnlegen({ seed: '1' });

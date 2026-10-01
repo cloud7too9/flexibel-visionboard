@@ -236,6 +236,46 @@ test('Widget-Dashboard unter /dashboard: Anzeige-Link bleibt beim Umleiten, eige
   assert.equal((await fetch(`${BASIS}/dashboard/assets/gibt-es-nicht.js`)).status, 404);
 });
 
+test('Widget-Layout: Handy speichert, Anzeige liest ihres und meldet ihre Reihen, live über /ws', async () => {
+  const max = await beitreten('Max');
+  const [board] = (await anfrage('GET', '/api/anzeigen', max)).daten.anzeigen;
+  // Anzeige auf dem Board-Gerät (localhost, ohne Link) ist „Board“
+  let r = await anfrage('GET', '/api/anzeige/layout');
+  assert.deepEqual([r.status, r.daten.anzeige.id], [200, board.id]);
+  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws?rolle=anzeige`);
+  const nachrichten = [];
+  ws.onmessage = (e) => nachrichten.push(JSON.parse(e.data));
+  await new Promise((ok) => { ws.onopen = ok; });
+
+  assert.deepEqual((await anfrage('PUT', '/api/anzeige/reihen', null, { reihen: 24 })).daten, { reihen: 24 });
+  assert.equal((await anfrage('PUT', '/api/anzeige/reihen', null, { reihen: 'x' })).status, 400);
+  assert.equal((await anfrage('GET', '/api/anzeigen', max)).daten.anzeigen.find((a) => a.id === board.id).reihen, 24);
+
+  const layout = { layer: [{ id: 'l1', name: 'Start', instanzen: [{ id: 'w1', typ: 'sammelobjekte.status', stufe: 'standard', x: 28, y: 0 }] }], aktiverLayer: 'l1' };
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/layout`, null, layout)).status, 401, 'nur beigetretene Handys');
+  r = await anfrage('PUT', `/api/anzeigen/${board.id}/layout`, max, layout);
+  assert.equal(r.status, 200);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/layout`, max, { layer: [] })).status, 422);
+  r = await anfrage('GET', '/api/anzeige/layout');
+  assert.deepEqual([r.daten.reihen, r.daten.layout.layer[0].instanzen[0].typ], [24, 'sammelobjekte.status']);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/vollbild`, max, { instanzId: 'w1' })).daten.vollbild, 'w1');
+  assert.equal((await anfrage('GET', '/api/anzeige/layout')).daten.vollbild, 'w1', 'die Anzeige sieht das Vollbild');
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/vollbild`, max, { instanzId: 'gibt-es-nicht' })).status, 422);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/vollbild`, max, { instanzId: null })).daten.vollbild, null);
+  await new Promise((ok) => setTimeout(ok, 150));
+  assert.ok(nachrichten.some((n) => n.art === 'geaendert' && n.bereich === 'layout'), 'Layout-Änderung kommt live an');
+  assert.ok(nachrichten.some((n) => n.art === 'geaendert' && n.bereich === 'anzeigen'), 'neue Reihen kommen live an');
+  ws.close();
+
+  // Von außen: ohne Link 403, mit Link das Layout genau dieser Anzeige
+  if (AUSSEN) {
+    const tablet = (await anfrage('POST', '/api/anzeigen', max, { name: 'Tablet' })).daten.anzeige;
+    assert.equal((await fetch(`http://${AUSSEN}:${PORT}/api/anzeige/layout`)).status, 403);
+    const res = await fetch(`http://${AUSSEN}:${PORT}/api/anzeige/layout${new URL(tablet.link).search}`);
+    assert.deepEqual((await res.json()).anzeige, { id: tablet.id, name: 'Tablet' });
+  }
+});
+
 test('Rüstungs-Baukasten wird ausgeliefert (Texturen, Module, Manifest)', async () => {
   const manifest = await (await fetch(`${BASIS}/ruestungs-baukasten/manifest.json`)).json();
   assert.equal(manifest.teile.length, 4);

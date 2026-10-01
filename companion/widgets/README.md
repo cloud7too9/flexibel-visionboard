@@ -5,13 +5,13 @@ iOS-Kontrollzentrums. Grundlage ist der MainHub-Workspace
 (`cloud7too9/mainhub-frontend`, per `git subtree` mit Verlauf übernommen):
 Grid, Layer, Bearbeitungsmodus und Galerie.
 
-**Stand:** Phasen A1–A5 aus [`planung/PLAN.md`](../../planung/PLAN.md):
+**Stand:** Phasen A1–A6 aus [`planung/PLAN.md`](../../planung/PLAN.md):
 Raster mit 32 Spalten, Größenstufen statt freier Größen, Vollbild als eigene
 Route, Widget-Struktur (Bereich → Widget-Typ → Instanz) mit Galerie, das
-Register mit allen 13 Typen, Inhalte als **Karten vom Board** und die
-**Bereichs-Themes**. Der Board-Server liefert das Dashboard unter `/dashboard`
-aus. Das Layout liegt noch im `localStorage`. Es folgen Layout pro Anzeige und
-Anordnen am Handy (A6).
+Register mit allen 13 Typen, Inhalte als **Karten vom Board**, die
+**Bereichs-Themes**, **ein Layout pro Anzeige** am Server und **Anordnen am
+Handy** (`/dashboard/anordnen`). Der Board-Server liefert das Dashboard unter
+`/dashboard` aus. Offen sind die echten Größenstufen (A7, Planung mit Max).
 
 ## Starten
 
@@ -169,9 +169,43 @@ Bauplan: `planung/bauplaene/Bauplan-Bereichs-Themes.md`.
   Oberwelt-Grün mit eigener Theme-ID je Bereich, austauschbar nur in
   `themes.css`.
 
+## Layout pro Anzeige (A6)
+
+- **Am Board** (`GET /api/server` meldet das Board) ist das Dashboard reine
+  Anzeige (`nurAnzeige` im Store): Es lädt das Layout seiner Anzeige
+  (`GET /api/anzeige/layout`; welche Anzeige, sagt der Anzeige-Link, localhost
+  ohne Link ist „Board“), zeigt den aktiven Layer ohne Bearbeiten-Modus und
+  Layer-Umschalter, im Kopf „Anzeige <Name>“. Gespeichert wird nichts im
+  Browser. Hat die Anzeige noch kein Layout, gilt das Start-Layout.
+- Ein neues Layout oder ein anderer aktiver Layer kommt **live** an
+  (`geaendert` „layout“ über `/ws`).
+- Die Anzeige **meldet ihre Reihen** (`PUT /api/anzeige/reihen`), sobald das
+  Raster die Fläche gemessen hat – damit das Handy die Fläche im richtigen
+  Seitenverhältnis zeigen kann.
+- **Anordnen am Handy** (`/dashboard/anordnen?anzeige=:id`, Weg 1 aus N2):
+  In der Companion unter Board → Anzeigen → „Anzeige anordnen“. Die Seite nutzt
+  die Anmeldung der Companion (`board.verbindung` im Browser-Speicher, gleiches
+  Board) und zeigt die Fläche der Anzeige im richtigen Seitenverhältnis
+  (32 × ihre gemeldeten Reihen, `WorkspaceGrid festeReihen`) mit **leeren
+  Widgets**: Rahmen, Theme und Name, ohne Inhalt. Das ganze Widget ist Griff:
+  antippen wählt aus, ziehen verschiebt, die Ecke unten rechts wechselt die
+  Stufe. Die Leiste unter dem Kopf zeigt Name, Stufe und Werkzeuge des gewählten
+  Widgets (Vollbild, Duplizieren, Entfernen). „+ Widget“ öffnet die Galerie mit
+  den Quellen vom Board, der Layer-Umschalter wechselt den Layer der Anzeige.
+  Im Hochformat erscheint „Querformat empfohlen“.
+- Jede Änderung geht kurz gesammelt an das Board (`PUT /api/anzeigen/:id/layout`,
+  `useAnordnen`) und kommt live an der Anzeige an. Ändert ein anderes Handy
+  gleichzeitig, lädt die Seite neu – außer während eigene Änderungen unterwegs
+  sind (dann gewinnt die letzte).
+- **Vollbild** startet das Handy (`PUT /api/anzeigen/:id/vollbild`); die Anzeige
+  folgt (`/dashboard/vollbild/:id`, ohne „Zurück“), „Vollbild beenden“ holt sie
+  zurück. Abgehakt wird nicht hier, sondern in der Companion (N1).
+- Ohne Board (`npm run dev`) bearbeitet man das lokale Layout im Browser wie bisher.
+
 ## Layer
 
 Der Workspace besteht aus einem oder mehreren Layern mit jeweils eigener
 Widget-Anordnung. Der Umschalter im Header wechselt jederzeit den Layer;
-Anlegen, Umbenennen und Entfernen gehen im Bearbeitungszustand. Gespeichert
-wird im `localStorage` (Schema-Version 6; ältere Stände werden verworfen).
+Anlegen, Umbenennen und Entfernen gehen im Bearbeitungszustand. Ohne Board
+wird im `localStorage` gespeichert (Schema-Version 6; ältere Stände werden
+verworfen), am Board kommt das Layout vom Server (siehe oben).
