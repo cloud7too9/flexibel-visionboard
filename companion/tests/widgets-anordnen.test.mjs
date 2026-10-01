@@ -39,7 +39,7 @@ const browser = await chromium.launch(CHROMIUM_OPTIONEN);
 const fehler = [];
 try {
   for (let i = 0; i < 60 && !(await fetch(`${BOARD}/api/server`).then((r) => r.ok, () => false)); i++) await schlafen(200);
-  ({ token } = await api("POST", "/api/beitreten", { pin: PIN, name: "Lena" }));
+  ({ token } = await api("POST", "/api/beitreten", { pin: PIN, name: "Lena", kontoPin: "1357" }));
   await api("POST", "/api/orte/welten", { seed: "6889192652397090698" });
   const banner = (await api("POST", "/api/banner", { name: "Kreuz", basis: "white", ebenen: [{ muster: "cross", farbe: "red" }] })).banner;
 
@@ -58,7 +58,7 @@ try {
   const max = await kontext.newPage();
   max.on("pageerror", (e) => fehler.push(`Handy: ${e.message}`));
   await max.goto(`${BOARD}/?pin=${PIN}`);
-  await max.waitForSelector("#boardName"); await max.fill("#boardName", "Max");
+  await max.waitForSelector("#boardName"); await max.fill("#boardName", "Max"); await max.fill("#boardKontoPin", "2468");
   await max.click('[data-aktion="board-beitreten"]');
   await max.waitForFunction(() => !DEMO.enabled && bd.verbindung?.name);
   await max.evaluate(() => alleSchliessen());

@@ -14,7 +14,7 @@ Zwei Projekte für eine gemeinsame Minecraft-Welt im Raum – seit dem 29.09.202
 
 ## Wie die Projekte zusammenhängen
 
-- Das **Board** liefert die Companion unter `/` aus und hält alle Daten (`koordinaten-board/server/daten/daten.json`). Handys scannen den QR-Code der Anzeige und treten mit Name + PIN bei; Änderungen kommen bei allen live an.
+- Das **Board** liefert die Companion unter `/` aus und hält alle Daten (`koordinaten-board/server/daten/daten.json`). Handys scannen den QR-Code der Anzeige und treten mit der Board-PIN und ihrem Account (Name + eigene PIN) bei; Änderungen kommen bei allen live an.
 - Handy und Server prüfen mit **derselben Datei** `companion/regeln.js` und bauen Karten mit derselben Datei `companion/board-karten.js`.
 - Die **Anzeige** (`/anzeige`) zeigt die Orte der aktiven Welt; jeder Inhalt der Companion lässt sich per „Aufs Board“ groß darauf werfen (Anzeigeschema in `BOARD_KARTEN`).
 - Das **Widget-Dashboard** (`/dashboard`, in Arbeit) zeigt je Anzeige ihr Layout aus Widgets; die Inhalte sind Karten, die das Board mit denselben Anzeigeschemas baut.

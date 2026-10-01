@@ -43,7 +43,7 @@ const browser = await chromium.launch(CHROMIUM_OPTIONEN);
 const fehler = [];
 try {
   for (let i = 0; i < 60 && !(await fetch(`${BOARD}/api/server`).then((r) => r.ok, () => false)); i++) await schlafen(200);
-  ({ token } = await api("POST", "/api/beitreten", { pin: PIN, name: "Max" }));
+  ({ token } = await api("POST", "/api/beitreten", { pin: PIN, name: "Max", kontoPin: "2468" }));
   const welt = (await api("POST", "/api/orte/welten", { seed: "6889192652397090698" })).welt;
   const basis = (await api("POST", "/api/orte/instanzen",
     { dimensionId: `d_${welt.id}_overworld`, kategorie: "Eigene Orte", variante: "Hauptbasis", x: 260, y: 80, z: -420, quelle: "manuell" })).instanz;

@@ -629,6 +629,8 @@ select.orte-eingabe { padding-right:34px;
 .sheet-fuss .btn-primary { flex:1; }
 .knopf-raster { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .anzeige-anordnen { width:100%; margin-bottom:8px; }
+.konto-liste { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.chip.konto { cursor:pointer; background:var(--surface-2); border-color:var(--border-soft); font-weight:600; }
 .knopf-raster button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; }
 .btn-primary, .btn-secondary, .btn-danger { min-height:44px; }
 
@@ -1645,6 +1647,8 @@ function mockApi(path, opts){
     // Alle Typen liefern (sie sind welt-übergreifend), damit Varianten wiederverwendbar sind
     return ok({ welt, dimensionen, typen:MOCK.typen.slice(), instanzen:instanzen.map((i) => ({ ...i })), _benutzt:typIds.size });
   }
+
+  if(path === "/ich") return ok({ id:"demo", name:MOCK.ich });
 
   if(method === "POST" && path === "/orte/instanzen"){
     const d = MOCK.dimensionen.find((x) => x.id === body?.dimensionId);
@@ -3538,6 +3542,8 @@ const bd = {
   einstellungen: null,                       // Live: { titel, qrZeigen, aktiveWelt, aktiv } der Anzeige
   anzeigen: null,                            // Live: Geräte mit Anzeige-Link [{ id, name, link }]
   anzeigeQr: null, anzeigeFrage: null, anzeigeUmbenennen: null,   // offener QR-Code, „Neuer Schlüssel?“, Umbenennen
+  ich: null,                                 // Live: { id, anzeigename, rolle } aus IDENTITAET.werBistDu()
+  konten: [],                                // Beitreten: Accounts zum Auswählen [{ id, name }]
   offen: new Map(), zaehler: 0,              // gesendete Nachrichten, die auf „ok“ warten
 };
 const adresseKurz = (a) => String(a || "").replace(/^https?:\/\//, "");
@@ -3659,8 +3665,11 @@ function boardTreffer(text){
   document.getElementById("boardAdresse").value = adresseKurz(qr.adresse);
   document.getElementById("boardPin").value = qr.pin;
   banner(document.getElementById("boardBanner"), "ok", `QR-Code erkannt · ${adresseKurz(qr.adresse)}`);
-  const $name = document.getElementById("boardName");
-  if($name.value.trim()) boardBeitretenKlick(); else $name.focus();
+  boardKontenLaden(qr.adresse, qr.pin);
+  // Name und eigene PIN schon da → gleich beitreten, sonst ins fehlende Feld
+  const $name = document.getElementById("boardName"), $kontoPin = document.getElementById("boardKontoPin");
+  if($name.value.trim() && /^\d{4,8}$/.test($kontoPin.value)) boardBeitretenKlick();
+  else ($name.value.trim() ? $kontoPin : $name).focus();
   return true;
 }
 async function boardFotoLesen(datei){
@@ -3675,21 +3684,66 @@ async function boardFotoLesen(datei){
   if(!boardTreffer(text)) banner($b, "bad", "Das ist kein QR-Code vom Koordinaten-Board.");
 }
 
+// --- Identität (Strang B) --------------------------------------------------------
+/* Wer bin ich? Gekapselt hinter werBistDu(), damit später ein richtiges Login dahinter
+   stehen kann, ohne die Daten anzufassen – alle Einträge hängen an der Benutzer-ID
+   (erstellerId). Heute: Account + eigene PIN beim Beitreten, das Token ist der
+   Geräteschlüssel. Der Server prüft mit derselben Schnittstelle (identitaet.js). */
+const IDENTITAET = Object.freeze({
+  /** → { id, anzeigename, rolle:"Besitzer" } oder null (nicht angemeldet, Account oder Gerät unbekannt) */
+  async werBistDu(){
+    const r = await api("/ich");
+    return r.ok ? { id:r.data.id, anzeigename:r.data.name, rolle:"Besitzer" } : null;
+  },
+});
+
 // --- Beitreten + Live-Verbindung -----------------------------------------------
 function boardNetzFehler(adresse){
   if(location.protocol === "https:" && adresse.startsWith("http:"))
     return "Der Browser blockiert die Verbindung: Die Companion läuft über https, das Board über http.";
   return "Board nicht erreichbar – gleiches WLAN? Läuft das Board noch?";
 }
-async function boardBeitreten(adresse, pin, name){
+/** Beitreten (Strang B): Board-PIN, dann Account wählen oder anlegen – Name + eigene PIN.
+    Gibt es den Namen schon, meldet die PIN dort an; sonst entsteht ein neuer Account. */
+async function boardBeitreten(adresse, pin, name, kontoPin){
   let res, data = null;
   try {
     res = await fetch(`${adresse}/api/beitreten`, { method:"POST",
-      headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ pin, name }) });
+      headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ pin, name, kontoPin }) });
     data = await res.json().catch(() => null);
   } catch { return { fehler:boardNetzFehler(adresse) }; }
   if(!res.ok) return { fehler:data?.fehler || `Fehler ${res.status}` };
-  return { verbindung:{ adresse, token:data.token, name:data.name } };
+  return { verbindung:{ adresse, token:data.token, name:data.name }, neu:data.neu };
+}
+/** Accounts des Boards zum Auswählen (nur mit der Board-PIN) → Knöpfe über dem Namen */
+async function boardKontenLaden(adresse, pin){
+  bd.konten = [];
+  try {
+    const res = await fetch(`${adresse}/api/beitreten/konten`, { method:"POST",
+      headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ pin }) });
+    if(res.ok) bd.konten = (await res.json()).konten || [];
+  } catch { /* Board nicht erreichbar – der Knopf „Beitreten“ meldet das */ }
+  const $l = document.getElementById("boardKonten");
+  if(!$l) return;
+  $l.innerHTML = bd.konten.map((k) => `<button class="chip konto" data-aktion="board-konto" data-name="${esc(k.name)}">${esc(k.name)}</button>`).join("");
+  $l.hidden = !bd.konten.length;
+  boardKontoHinweis();
+}
+/** Unter dem Namen: Anmelden bei einem bestehenden Account oder neuen anlegen? */
+function boardKontoHinweis(){
+  const $h = document.getElementById("boardKontoHinweis"), name = document.getElementById("boardName")?.value.trim() || "";
+  if(!$h) return;
+  const konto = (bd.konten || []).find((k) => k.name.toLocaleLowerCase("de") === name.toLocaleLowerCase("de"));
+  $h.textContent = !name ? "" : konto ? `Anmelden als ${konto.name} – mit deiner PIN` : `Neuer Account „${name}“ – wähl dir eine PIN`;
+}
+function boardKontoHtml(name){
+  return `<div class="field-group"><div class="field-group-label">Wer bist du?</div>
+      <div class="konto-liste" id="boardKonten" hidden></div>
+      <input class="orte-eingabe" id="boardName" maxlength="24" autocomplete="username" placeholder="Name, z. B. Max" value="${esc(name)}">
+      <div class="result-hint" id="boardKontoHinweis"></div></div>
+    <div class="field-group"><div class="field-group-label">Deine PIN</div>
+      <input class="orte-eingabe mono" id="boardKontoPin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="4 bis 8 Ziffern">
+      <div class="result-hint">Deine eigene PIN – damit meldest du dich auch auf einem neuen Handy an. Das Board speichert sie nicht im Klartext.</div></div>`;
 }
 async function boardBeitretenKlick(){
   const $b = document.getElementById("boardBanner"), $knopf = $sheet.querySelector('[data-aktion="board-beitreten"]');
@@ -3698,12 +3752,14 @@ async function boardBeitretenKlick(){
   const adresse = ausQr?.adresse || boardAdresseLesen(roh);
   const pin = document.getElementById("boardPin").value.trim() || ausQr?.pin || "";
   const name = document.getElementById("boardName").value.trim();
+  const kontoPin = document.getElementById("boardKontoPin").value.trim();
   if(!adresse) return banner($b, "bad", "Adresse fehlt – QR-Code scannen oder eintragen.");
   if(!/^\d{4}$/.test(pin)) return banner($b, "bad", "Die PIN hat 4 Ziffern und steht auf der Anzeige.");
   if(!name) return banner($b, "bad", "Wie heißt du? Der Name steht auf dem Board bei deinen Einträgen.");
+  if(!/^\d{4,8}$/.test(kontoPin)) return banner($b, "bad", "Deine eigene PIN hat 4 bis 8 Ziffern – damit meldest du dich auch auf neuen Geräten an.");
   lsSchreiben("board.name", name);
   $knopf.disabled = true; $knopf.textContent = "Verbinde …";
-  const r = await boardBeitreten(adresse, pin, name);
+  const r = await boardBeitreten(adresse, pin, name, kontoPin);
   const offen = st.sheet === "board" && $knopf.isConnected;   // Sheet evtl. schon zu
   if(r.fehler){
     if(!offen) return;
@@ -3717,7 +3773,7 @@ async function boardBeitretenKlick(){
     history.replaceState(null, "", location.pathname + (q.toString() ? `?${q}` : ""));
     alleSchliessen();
     boardVerbinden();
-    toast(`Willkommen, ${r.verbindung.name}`);
+    toast(r.neu ? `Account „${r.verbindung.name}“ angelegt – willkommen` : `Willkommen, ${r.verbindung.name}`);
     return datenStarten();
   }
   boardVerbinden();
@@ -3725,11 +3781,11 @@ async function boardBeitretenKlick(){
   toast("Mit dem Board verbunden");
 }
 
-/** Live: Token abgelehnt (Board neu eingerichtet, Geheimnis gelöscht) → neu beitreten */
+/** Live: Token abgelehnt (Board neu eingerichtet, Gerät gesperrt, Token von vor den Accounts) → neu beitreten */
 function anmeldungAbgelaufen(){
   if(DEMO.enabled || !bd.verbindung) return;
   boardTrennen();
-  toast("Bitte neu beitreten – das Board kennt dieses Gerät nicht mehr", true);
+  toast("Bitte neu anmelden – Name und deine PIN", true);
   boardSheetRendern();
 }
 
@@ -4018,11 +4074,12 @@ function boardSheetRendern(){
       <input type="hidden" id="boardAdresse" value="${esc(location.origin)}">
       <div class="field-group"><div class="field-group-label">PIN</div>
         <input class="orte-eingabe mono" id="boardPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="1234" value="${esc(pin)}"></div>
-      <div class="field-group"><div class="field-group-label">Dein Name</div>
-        <input class="orte-eingabe" id="boardName" maxlength="24" autocomplete="nickname" placeholder="z. B. Max" value="${esc(name)}"></div>
+      ${boardKontoHtml(name)}
       <div class="sheet-fuss"><button class="btn-primary" data-aktion="board-beitreten">Beitreten</button></div>
     </div>`);
     document.getElementById(pin ? "boardName" : "boardPin").focus();
+    if(/^\d{4}$/.test(pin)) boardKontenLaden(location.origin, pin);
+    boardKontoHinweis();
     return;
   }
   sheetOeffnen("board", kopfHtml("Mit Board verbinden", "QR-Code auf der Anzeige im Zimmer scannen") + `<div class="orte-inhalt">
@@ -4044,8 +4101,7 @@ function boardSheetRendern(){
         <label class="field"><span class="field-label">PIN</span>
           <input id="boardPin" type="text" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="1234"></label>
       </div></div>
-    <div class="field-group"><div class="field-group-label">Dein Name</div>
-      <input class="orte-eingabe" id="boardName" maxlength="24" autocomplete="nickname" placeholder="z. B. Max" value="${esc(name)}"></div>
+    ${boardKontoHtml(name)}
     <div class="sheet-fuss"><button class="btn-primary" data-aktion="board-beitreten">Beitreten</button></div>
   </div>`);
   boardScanStarten();
@@ -5077,6 +5133,13 @@ $sheet.addEventListener("click", async (e) => {
       try { await kopieren(anz.link); toast("Anzeige-Link kopiert"); } catch { toast("Kopieren nicht möglich", true); }
       break;
     }
+    case "board-konto": {
+      // Account gewählt → Name übernehmen, weiter mit der eigenen PIN
+      document.getElementById("boardName").value = a.dataset.name;
+      boardKontoHinweis();
+      document.getElementById("boardKontoPin").focus();
+      break;
+    }
     case "anzeige-anordnen":
       // Widget-Dashboard vom selben Board (A6): dort Widgets dieser Anzeige anordnen, „Fertig“ führt zurück
       location.href = `/dashboard/anordnen?anzeige=${encodeURIComponent(id)}`; break;
@@ -5119,7 +5182,15 @@ $sheet.addEventListener("input", (e) => {
     return;
   }
   if(t.id === "formNeu"){ form.neu = t.value; return; }
-  if(t.id === "boardPin"){ t.value = t.value.replace(/\D/g, "").slice(0, 4); return; }
+  if(t.id === "boardPin"){
+    t.value = t.value.replace(/\D/g, "").slice(0, 4);
+    // Mit vollständiger Board-PIN die Accounts zum Auswählen holen
+    const adresse = DEMO.enabled ? (boardQrLesen(document.getElementById("boardAdresse").value)?.adresse || boardAdresseLesen(document.getElementById("boardAdresse").value)) : location.origin;
+    if(t.value.length === 4 && adresse) boardKontenLaden(adresse, t.value);
+    return;
+  }
+  if(t.id === "boardKontoPin"){ t.value = t.value.replace(/\D/g, "").slice(0, 8); return; }
+  if(t.id === "boardName"){ boardKontoHinweis(); return; }
   if(t.id === "boardAdresse"){
     // Ganze Beitritts-Adresse eingefügt („…/?pin=1234“) → in Adresse und PIN aufteilen
     const qr = boardQrLesen(t.value);
@@ -5150,6 +5221,8 @@ function uhr(){ document.getElementById("uhr").textContent = new Date().toLocale
 
 /** Daten laden und in den gewünschten Bereich springen (?modul=…) */
 async function datenStarten(){
+  // Live: Gilt das Token noch? Tokens von vor den Accounts nicht – dann öffnet api() das Beitreten
+  if(!DEMO.enabled && !(bd.ich = await IDENTITAET.werBistDu())) return;
   if(!(await weltenLaden())) return;
   const start = new URLSearchParams(location.search).get("modul");
   if(start && start !== "karte") modulWechseln(start);

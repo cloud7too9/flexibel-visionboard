@@ -33,7 +33,7 @@ Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
 |---|---|---|
 | ~~N1~~ | **Entschieden:** Abgehakt wird im Bereich der Companion (wie heute). „Anzeige anordnen“ ordnet nur an. | – |
 | ~~N2~~ | **Entschieden: Weg 1** – React-Route `/dashboard/anordnen` aus `companion/widgets/`, geöffnet aus der Companion (Board → Anzeigen → „Anzeige anordnen“). Gebaut auf `bereich/widgets-anzeigen`. | – |
-| ~~N4~~ | **Entschieden („Ja“):** Die Board-PIN im QR-Code bleibt als Zugang zum Server, die Account-PIN kommt dazu. B2 kann starten. | **B2: Accounts mit PIN.** B1 ist gebaut (Branch `board/identitaet`): IDs vom Handy, `erstellerId` – bis zu den Accounts „unbekannt“ –, leere Sammlungen für Benutzer, Profile, Geräte. |
+| ~~N4~~ | **Entschieden („Ja“):** Die Board-PIN im QR-Code bleibt als Zugang zum Server, die Account-PIN kommt dazu. **B2 ist gebaut** (Branch `board/identitaet`): Accounts mit eigener PIN, Auswahl beim Beitreten, Geräteschlüssel, `werBistDu()`. Wer schon beigetreten war, meldet sich einmal neu an (Name + eigene PIN). | **B2: Accounts mit PIN.** B1 ist gebaut (Branch `board/identitaet`): IDs vom Handy, `erstellerId` – bis zu den Accounts „unbekannt“ –, leere Sammlungen für Benutzer, Profile, Geräte. |
 | N5 *(neu)* | **Offline braucht HTTPS.** Service Worker (B3) laufen nur in sicheren Kontexten (https oder localhost). Die Companion läuft am Handy über `http://192.168…:3000`, dort startet kein Service Worker. Möglichkeiten: HTTPS am Board mit eigenem Zertifikat (das iPhone muss ihm einmal vertrauen), ein Zertifikat für eine eigene Domain, oder Offline ohne Service Worker (dann lädt die Seite ohne Netz nicht). | **B3–B5** (Offline-Betrieb, Warteschlange, Zustandswechsel offline) |
 
 ---
