@@ -81,8 +81,10 @@ export const useBoardStore = create<BoardState>((set, get) => ({
           if (JSON.parse(String(e.data))?.art === "geaendert") geaendert();
         } catch { /* keine JSON-Nachricht */ }
       };
-      socket.onclose = () => {
+      socket.onclose = (e) => {
         if (aus) return;
+        // 4003: kein oder ein alter Anzeige-Link – neu verbinden hilft nicht, die Widgets zeigen den Hinweis
+        if (e.code === 4003) return geaendert();
         warten = setTimeout(() => verbinden(versuch + 1), Math.min(10_000, 1000 * 2 ** versuch));
       };
     };

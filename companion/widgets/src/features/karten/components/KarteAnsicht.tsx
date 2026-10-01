@@ -18,11 +18,12 @@ function KoordinatenBlock({ b }: { b: Extract<Block, { art: "koordinaten" }> }) 
 
 function ZeilenBlock({ b }: { b: Extract<Block, { art: "zeilen" }> }) {
   return (
-    <dl className="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-[0.8em] gap-y-[0.15em]">
+    <dl className="flex flex-col gap-y-[0.15em]">
       {b.zeilen.map((z, n) => (
-        <div key={n} className="contents">
-          <dt className="truncate text-text-muted">{z.label}</dt>
-          <dd className="truncate text-right">{z.wert}</dd>
+        // Beide Seiten kürzen sich anteilig, damit ein langer Name den Wert nicht verdrängt
+        <div key={n} className="flex items-baseline justify-between gap-x-[0.8em]">
+          <dt className="min-w-0 truncate text-text-muted">{z.label}</dt>
+          <dd className="min-w-0 truncate text-right">{z.wert}</dd>
         </div>
       ))}
     </dl>
@@ -64,11 +65,12 @@ export function KarteAnsicht({ karte, gross = false, ohneTitel = false }: {
       </header>
       <div className="flex min-h-0 flex-1 gap-[0.7em]">
         {bild && (
-          <figure className="flex max-w-[40%] shrink-0 flex-col items-center gap-[0.2em]">
+          // So hoch wie der Platz unter dem Titel, die Breite folgt dem Seitenverhältnis (Banner 1:2)
+          <figure className="h-full max-w-[40%] shrink-0">
             <img
               src={bild.daten}
               alt={bild.label ?? karte.titel}
-              className="min-h-0 flex-1 object-contain"
+              className="h-full w-auto max-w-full object-contain object-top"
               style={{ imageRendering: bild.pixelig ? "pixelated" : undefined }}
             />
           </figure>
