@@ -51,16 +51,17 @@ try {
   // ---- Alle Inhalte → Karten → Prüfung des Boards -----------------------------------
   const karten = await p.evaluate(async () => {
     const ids = { ort: st.instanzen.map((i) => i.id), sammel: SAMMELOBJEKTE.map((o) => o.id), sammelstand: [""],
-                  portal: pt.liste.map((v) => v.id), banner: bn.liste.map((b) => b.id), ruestung: rs.sets.map((x) => x.id) };
+                  portal: pt.liste.map((v) => v.id), banner: bn.liste.map((b) => b.id), ruestung: rs.sets.map((x) => x.id),
+                  sammelliste: [""], portalliste: [""], welt: [""] };
     const liste = [];   // karte() darf async sein – nacheinander bauen
     for (const [art, s] of Object.entries(BOARD_KARTEN)) {
       const k = [];
-      for (const id of ids[art]) k.push(await s.karte(id));
+      for (const id of ids[art]) k.push(await s.karte(boardKontext(), id));
       liste.push([art, { titel: s.titel, karten: k }]);
     }
     return Object.fromEntries(liste);
   });
-  pruefe(Object.keys(karten).join(",") === "ort,sammel,sammelstand,portal,banner,ruestung", `Anzeigeschemas: ${Object.values(karten).map((k) => k.titel).join(", ")}`);
+  pruefe(Object.keys(karten).join(",") === "ort,sammel,sammelstand,portal,banner,ruestung,sammelliste,portalliste,welt", `Anzeigeschemas: ${Object.values(karten).map((k) => k.titel).join(", ")}`);
   for (const [art, { karten: liste }] of Object.entries(karten)) {
     const fehlerhaft = liste.map((k) => [k, kartePruefen(k)]).filter(([k, r]) => !k || r.fehler);
     pruefe(liste.length > 0 && fehlerhaft.length === 0,

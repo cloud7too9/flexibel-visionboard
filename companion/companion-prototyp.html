@@ -1213,6 +1213,7 @@ button.switch { padding:0; }
 </div>
 
 <script src="regeln.js"></script>
+<script src="board-karten.js"></script>
 <script src="biom-ids.js"></script>
 <script>
 "use strict";
@@ -1323,26 +1324,8 @@ const SYMBOL = Object.freeze({
 });
 const symbol = (kat) => SYMBOL[kat] || "•";
 
-/* Fundort-Strukturen der Sammelobjekte: FeatureCategory der Karte → Struktur mit deutschem Namen
-   und Kennblock-Bild (icons/manifest.json, Bilder von minecraft.wiki). bild:false = noch keine Datei,
-   dann steht das Symbol aus SYMBOL da. */
+// Kennblock-Bilder der Fundort-Strukturen (STRUKTUREN steht in board-karten.js)
 const KENNBLOCK_PFAD = "icons/struktur_kennbloecke/";
-const STRUKTUREN = Object.freeze({
-  "Outpost":         { id:"pillager_outpost", name:"Plünderer-Außenposten" },
-  "Desert Temple":   { id:"desert_pyramid",   name:"Wüstentempel" },
-  "Jungle Temple":   { id:"jungle_pyramid",   name:"Dschungeltempel" },
-  "Shipwreck":       { id:"shipwreck",        name:"Schiffswrack" },
-  "Trail Ruins":     { id:"trail_ruins",      name:"Pfadruinen", bild:false },
-  "Mansion":         { id:"mansion",          name:"Waldanwesen" },
-  "Monument":        { id:"monument",         name:"Ozeanmonument" },
-  "Ancient City":    { id:"ancient_city",     name:"Antike Stätte" },
-  "Trial Chamber":   { id:"trial_chambers",   name:"Prüfungskammern" },
-  "Stronghold":      { id:"stronghold",       name:"Festung" },
-  "Nether Fortress": { id:"fortress",         name:"Netherfestung" },
-  "Bastion":         { id:"bastion_remnant",  name:"Bastionsruine" },
-  "End City":        { id:"end_city",         name:"Endsiedlung" },
-});
-const strukturName = (kat) => STRUKTUREN[kat]?.name || kat;
 const kennblockDatei = (kat) => { const s = STRUKTUREN[kat]; return s && s.bild !== false ? `${KENNBLOCK_PFAD}${s.id}.png` : null; };
 
 /** Kennblock einer Kategorie als <img> – ohne Bild (oder wenn es nicht lädt) das Symbol */
@@ -1391,31 +1374,8 @@ const kategorienManuell = (dim) => [EIGENE_ORTE, ...FEATURE_KATEGORIEN[dim].filt
 
 /* ============================================================================
    3 · KOORDINATEN  ·  Formatierung, Umrechnung, Entfernung, Einfügen
+   zahl, umrechnen, entfernung stehen in board-karten.js (auch der Server braucht sie)
    ========================================================================== */
-/** −1 884 – schmales Leerzeichen statt Punkt/Komma (sähe nach Kommazahl aus) */
-function zahl(n){
-  return `${n < 0 ? "−" : ""}${String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`;
-}
-/** Oberwelt ↔ Nether (÷ 8 / × 8). Für das End gibt es keine Umrechnung. */
-function umrechnen(x, z, dim){
-  if(dim === "overworld") return { x:Math.floor(x/8), z:Math.floor(z/8), dim:"nether" };
-  if(dim === "nether")    return { x:x*8, z:z*8, dim:"overworld" };
-  return null;
-}
-const RICHTUNGEN = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
-/** Entfernung + Himmelsrichtung (Norden = −Z). Oberwelt/Nether werden umgerechnet. */
-function entfernung(von, x, z, dim){
-  if(!von) return null;
-  let zx = x, zz = z;
-  if(von.dim !== dim){
-    const u = umrechnen(x, z, dim);
-    if(!u || u.dim !== von.dim) return null;
-    zx = u.x; zz = u.z;
-  }
-  const dx = zx - von.x, dz = zz - von.z;
-  const winkel = (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360;
-  return { meter:Math.round(Math.hypot(dx, dz)), richtung:RICHTUNGEN[Math.round(winkel/45) % 8], umgerechnet:von.dim !== dim };
-}
 const entfernungText = (m) => m >= 1000 ? `${(m/1000).toLocaleString("de-DE", { maximumFractionDigits:1 })} km` : `${m} m`;
 
 /** Bedrock: /execute in <dim> run tp @s x y z */
@@ -1847,7 +1807,6 @@ async function kopieren(text){
   const ok = document.execCommand("copy"); ta.remove();
   if(!ok) throw new Error("Kopieren nicht möglich");
 }
-const kurzSeed = (s) => s.length > 12 ? `${s.slice(0, 5)}…${s.slice(-4)}` : s;
 /* Biom-Kachel ↔ Base64 (2048 Byte, Uint16 Little Endian) – wie kachelZuBase64/kachelAusBase64 in
    biom-dekoder.js; die Seite ist ein klassisches Script und braucht sie auch als Datei (Mock). */
 function kachelAusText(text){
@@ -2826,7 +2785,6 @@ const $samListe = document.getElementById("samListe");
 const HAKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const themaStil = (dim) => Object.entries(THEMES[dim].ui).map(([k, v]) => `${k}:${v}`).join(";");
 const samGefundenAnzahl = () => SAM_ZAEHLT.filter((o) => sam.status[o.id]).length;
-const datumKurz = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-DE", { day:"numeric", month:"numeric" }); };
 
 
 /** Bekannte Instanzen einer Fundort-Kategorie in der aktuellen Welt – nächste zuerst */
@@ -2994,49 +2952,23 @@ $samListe.addEventListener("click", (e) => {
 
 /** Zeichnet ein Banner auf 20×40 Pixel → Data-URL (mit Cache) */
 const bannerCache = new Map();
+/** RGBA-Pixel → PNG als Data-URL (Canvas) – auch für die Board-Karten (ctx.pngDaten) */
+function pngDaten(breite, hoehe, rgba){
+  const c = document.createElement("canvas");
+  c.width = breite; c.height = hoehe;
+  const g = c.getContext("2d"), bild = g.createImageData(breite, hoehe);
+  bild.data.set(rgba);
+  g.putImageData(bild, 0, 0);
+  return c.toDataURL();
+}
 function bannerBild(b){
   const schluessel = JSON.stringify([b.basis, b.ebenen]);
   if(bannerCache.has(schluessel)) return bannerCache.get(schluessel);
-  const c = document.createElement("canvas");
-  c.width = 20; c.height = 40;
-  const g = c.getContext("2d");
-  const bild = g.createImageData(20, 40);
-  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  const pix = Array.from({ length:800 }, () => rgb(farbe(b.basis).hex));
-  for(const e of b.ebenen){
-    const m = muster(e.muster).m, f = rgb(farbe(e.farbe).hex);
-    for(let y = 0; y < 40; y++) for(let x = 0; x < 20; x++){
-      const a = Math.max(0, Math.min(1, Number(m(x, y))));
-      if(!a) continue;
-      const p = pix[y * 20 + x];
-      pix[y * 20 + x] = p.map((v, i) => Math.round(v * (1 - a) + f[i] * a));
-    }
-  }
-  pix.forEach((p, i) => { bild.data.set([...p, 255], i * 4); });
-  g.putImageData(bild, 0, 0);
-  const url = c.toDataURL();
+  const url = pngDaten(20, 40, bannerPixel(b));   // Pixel aus board-karten.js
   bannerCache.set(schluessel, url);
   return url;
 }
 const bannerImg = (b, klasse, alt) => `<img class="banner-bild ${klasse || ""}" src="${bannerBild(b)}" alt="${esc(alt || "")}">`;
-const vorlagenVon = (b) => [...new Set(b.ebenen.map((e) => e.muster).filter((m) => BANNERVORLAGEN[m]))];
-
-/** Material + Schritte für Werkbank und Webstuhl */
-function bannerAnleitung(b){
-  const farbstoffe = new Map();
-  for(const e of b.ebenen) farbstoffe.set(e.farbe, (farbstoffe.get(e.farbe) || 0) + 1);
-  const schritte = [
-    { titel:"Banner herstellen", info:`6 × ${farbe(b.basis).wolle} + 1 Stock · Werkbank`, bild:{ basis:b.basis, ebenen:[] } },
-    ...b.ebenen.map((e, n) => {
-      const v = BANNERVORLAGEN[e.muster];
-      return { titel:muster(e.muster).de, en:muster(e.muster).en,
-        info:`${farbe(e.farbe).farbstoff}${v ? ` + ${v.de}` : ""} · Webstuhl`,
-        bild:{ basis:b.basis, ebenen:b.ebenen.slice(0, n + 1) } };
-    }),
-  ];
-  return { farbstoffe, vorlagen:vorlagenVon(b), schritte };
-}
-
 const bn = { liste:[], suche:"", entwurf:null, offen:null };
 const $bannerListe = document.getElementById("bannerListe");
 
@@ -3253,11 +3185,8 @@ document.getElementById("bannerNeuBtn").addEventListener("click", () => bannerEd
      3. Das nächste gewinnt – 3D-Abstand, Y zählt mit. Keins gefunden → neues Portal.
    Quelle: minecraft.wiki/w/Nether_portal („Portal search“)
    Die Edition (Bedrock/Java) ist eine Einstellung auf dem Gerät, Standard Bedrock.
+   Prüfung und Empfehlung (verbindungPruefen, portalEmpfehlung) stehen in board-karten.js.
    ========================================================================== */
-const PORTAL_REGELN = Object.freeze({
-  bedrock: { label:"Bedrock", radius:{ overworld:128, nether:128 } },
-  java:    { label:"Java",    radius:{ overworld:128, nether:16 } },
-});
 const pt = {
   liste: [],
   edition: lsLesen("portale.edition") === "java" ? "java" : "bedrock",
@@ -3268,57 +3197,7 @@ const pt = {
 const $portalStage = document.getElementById("portalStage");
 const andereDim = (d) => d === "overworld" ? "nether" : "overworld";
 const dimFarbe = (d) => THEMES[d].ui["--accent"];
-const kurzKoord = (p) => `X ${zahl(p.x)}${p.y != null ? ` · Y ${zahl(p.y)}` : ""} · Z ${zahl(p.z)}`;
 const regelLabel = () => PORTAL_REGELN[pt.edition].label;
-
-/** Beide Portale jeder Verbindung als flache Liste */
-function portaleAlle(liste){
-  return liste.flatMap((v) => [
-    { vid:v.id, name:v.name, dim:"overworld", ...v.oberwelt },
-    { vid:v.id, name:v.name, dim:"nether", ...v.nether },
-  ]);
-}
-
-/** Was passiert, wenn man an Punkt p (Dimension „von“) durchs Portal geht? */
-function zielSuchen(von, p, portale){
-  const u = umrechnen(p.x, p.z, von);
-  const ziel = { x:u.x, y:p.y ?? null, z:u.z, dim:u.dim };
-  const radius = PORTAL_REGELN[pt.edition].radius[u.dim];
-  let treffer = null;
-  for(const q of portale){
-    if(q.dim !== u.dim || Math.abs(q.x - ziel.x) > radius || Math.abs(q.z - ziel.z) > radius) continue;
-    const dy = q.y != null && ziel.y != null ? q.y - ziel.y : 0;
-    const abstand = Math.hypot(q.x - ziel.x, dy, q.z - ziel.z);
-    if(!treffer || abstand < treffer.abstand) treffer = { portal:q, abstand };
-  }
-  return { ziel, radius, treffer };
-}
-
-/** Prüft beide Richtungen einer Verbindung gegen alle erfassten Portale der Welt */
-function verbindungPruefen(v, liste){
-  const portale = portaleAlle([...liste.filter((x) => x.id !== v.id), v]);
-  const hin = zielSuchen("overworld", v.oberwelt, portale);
-  const rueck = zielSuchen("nether", v.nether, portale);
-  const art = (s) => !s.treffer ? "neu" : s.treffer.portal.vid === v.id ? "ok" : "anders";
-  const artHin = art(hin), artRueck = art(rueck);
-  const ideal = { x:hin.ziel.x, y:v.oberwelt.y ?? v.nether.y ?? null, z:hin.ziel.z };
-  let gesamt = "ok", label = "Verbunden";
-  if(artHin === "neu" || artRueck === "neu"){ gesamt = "bad"; label = "Neues Portal"; }
-  else if(artHin === "anders" && artRueck === "anders"){ gesamt = "warn"; label = "Falsch verknüpft"; }
-  else if(artHin === "anders" || artRueck === "anders"){ gesamt = "warn"; label = "Einseitig"; }
-  return { hin, rueck, artHin, artRueck, gesamt, label, ideal,
-    abweichung:Math.round(Math.hypot(v.nether.x - ideal.x, v.nether.z - ideal.z)) };
-}
-
-/** Konkreter Vorschlag, wenn eine Verbindung nicht passt */
-function portalEmpfehlung(v, p, liste){
-  if(p.gesamt === "ok") return null;
-  const versetzt = { ...v, nether:{ ...p.ideal } };
-  const schonIdeal = p.abweichung === 0 && (v.nether.y ?? null) === p.ideal.y;
-  if(!schonIdeal && verbindungPruefen(versetzt, liste).gesamt === "ok")
-    return { art:"info", text:`Nether-Portal genau bei ${kurzKoord(p.ideal)} bauen – dann passt es in beide Richtungen. Das alte Nether-Portal danach ausschalten.` };
-  return { art:"warn", text:"Auch am Idealpunkt klappt es nicht: Ein anderes Portal liegt zu nah. Die Portale weiter auseinander bauen oder das störende entfernen." };
-}
 
 function richtungText(s, art){
   if(art === "ok") return `kommt am eigenen Portal an${s.treffer.abstand >= 1 ? ` (${Math.round(s.treffer.abstand)} Blöcke vom Zielpunkt)` : ""}`;
@@ -3372,7 +3251,7 @@ function rechnerWerte(){
 }
 function rechnerZiel(){
   const p = rechnerWerte(); if(!p) return null;
-  return { p, s:zielSuchen(pt.rechner.von, p, portaleAlle(pt.liste)) };
+  return { p, s:zielSuchen(pt.rechner.von, p, portaleAlle(pt.liste), pt.edition) };
 }
 function rechnerErgebnisHtml(){
   const e = rechnerZiel(), nach = andereDim(pt.rechner.von);
@@ -3417,7 +3296,7 @@ function rechnerHtml(){
 
 const seiteHtml = (dim, s) => `<span class="seite"><span class="seite-dim" style="color:${dimFarbe(dim)}">${dimLabel(dim)}</span>${coordHtml(s.x, s.y, s.z)}</span>`;
 function verbindungKarte(v){
-  const p = verbindungPruefen(v, pt.liste);
+  const p = verbindungPruefen(v, pt.liste, pt.edition);
   let meta = "";
   if(p.gesamt !== "ok"){
     const [von, s, art] = p.artHin !== "ok" ? ["overworld", p.hin, p.artHin] : ["nether", p.rueck, p.artRueck];
@@ -3434,7 +3313,7 @@ function renderPortale(){
   const $info = document.getElementById("portalInfoBtn");
   $info.classList.toggle("active", pt.info); $info.setAttribute("aria-pressed", String(pt.info));
   const liste = [...pt.liste].sort((a, b) => a.name.localeCompare(b.name, "de"));
-  const probleme = pt.liste.filter((v) => verbindungPruefen(v, pt.liste).gesamt !== "ok").length;
+  const probleme = pt.liste.filter((v) => verbindungPruefen(v, pt.liste, pt.edition).gesamt !== "ok").length;
   $portalStage.innerHTML = (pt.info ? infoKarteHtml() : "") + rechnerHtml() + `
     <div class="field-group">
       <div class="field-group-label">Verbindungen · ${pt.liste.length}${probleme ? ` · ${probleme} mit Problem` : ""}</div>
@@ -3446,7 +3325,7 @@ function renderPortale(){
 // --- Detail + Editor (Sheet) -------------------------------------------------
 function portalDetailOeffnen(id){
   const v = pt.liste.find((x) => x.id === id); if(!v) return;
-  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  const p = verbindungPruefen(v, pt.liste, pt.edition), e = portalEmpfehlung(v, p, pt.liste, pt.edition);
   const seite = (dim, s) => `<div class="result-card seite-karte">
       <div class="result-label" style="color:${dimFarbe(dim)}">${dimLabel(dim)}-Portal</div>
       ${coordHtml(s.x, s.y, s.z)}
@@ -3508,7 +3387,7 @@ function portalEditorPruefen(){
     return;
   }
   const v = { id:pt.entwurfId || "__neu", ...w, name:w.name || "diese Verbindung" };
-  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  const p = verbindungPruefen(v, pt.liste, pt.edition), e = portalEmpfehlung(v, p, pt.liste, pt.edition);
   $p.innerHTML = `<div class="result-card"><div class="result-label">Prüfung · <b>${regelLabel()}</b> · <span class="pill ${p.gesamt}">${p.label}</span></div>
     ${pruefZeilen(p)}${e ? `<div class="banner ${e.art}">${esc(e.text)}</div>` : ""}</div>`;
 }
@@ -3643,7 +3522,6 @@ const bd = {
   anzeigeQr: null, anzeigeFrage: null, anzeigeUmbenennen: null,   // offener QR-Code, „Neuer Schlüssel?“, Umbenennen
   offen: new Map(), zaehler: 0,              // gesendete Nachrichten, die auf „ok“ warten
 };
-const BOARD_DIM = Object.freeze({ overworld:"oberwelt", nether:"nether", end:"ende" });
 const adresseKurz = (a) => String(a || "").replace(/^https?:\/\//, "");
 
 /** Inhalt des Board-QR-Codes lesen: „http://192.168.8.184:3000/?pin=1234“ → { adresse, pin } */
@@ -3927,80 +3805,21 @@ function boardSenden(op){
 }
 
 // --- „Aufs Board“ -----------------------------------------------------------------
-// Anzeigeschema je Inhalt: quelle „<art>:<id>“ → Karte im allgemeinen Kartenformat des Boards
-const BOARD_KARTEN = {
-  ort:         { titel:"Ort",                karte:ortKarte },          // Karte: ein Ort der Sammlung
-  sammel:      { titel:"Sammelobjekt",       karte:sammelKarte },       // ein Rüstungsbesatz mit Fundort
-  sammelstand: { titel:"Sammel-Fortschritt", karte:sammelStandKarte },  // Stand der Welt (ohne id)
-  portal:      { titel:"Portal-Verbindung",  karte:portalKarte },       // beide Portale + Prüfung
-  banner:      { titel:"Banner-Bauplan",     karte:bannerKarte },       // Vorschau + Material
-  ruestung:    { titel:"Rüstungs-Set",       karte:ruestungKarte },     // Figur + Teile + Besätze der Welt (async)
-};
-const koordBlock = (label, p, dim) => ({ art:"koordinaten", label, x:p.x, y:p.y ?? null, z:p.z, dimension:BOARD_DIM[dim] });
-
-function sammelKarte(id){
-  const o = SAMMELOBJEKTE.find((x) => x.id === id); if(!o) return null;
-  const s = sam.status[id], naechster = bekannteFundorte(o.kategorie, o.dim)[0];
-  const bloecke = [{ art:"zeilen", zeilen:[
-    { label:"Fundort", wert:`${strukturName(o.kategorie)} · ${dimLabel(o.dim)}` },
-    { label:"Status", wert:s ? `gefunden von ${s.von}${datumKurz(s.am) ? ` am ${datumKurz(s.am)}` : ""}` : "noch offen" },
-  ] }];
-  if(naechster) bloecke.push(koordBlock("Nächster bekannter Fundort", naechster.i, o.dim));
-  bloecke.push({ art:"text", text:o.quelle });
-  return { titel:o.name, unter:`${o.en} · ${o.aufwertung ? "Schmiedevorlage" : "Rüstungsbesatz"}`, bereich:"Sammelobjekte",
-           quelle:`sammel:${id}`, typ:o.kategorie, dimension:BOARD_DIM[o.dim], bloecke };
-}
-function sammelStandKarte(){
-  if(!st.welt) return null;
-  const gefunden = samGefundenAnzahl(), gesamt = SAM_ZAEHLT.length;
-  const bekannt = FUNDORTE.filter((f) => bekannteFundorte(f.kategorie, f.dim).length).length;
-  const offen = SAM_ZAEHLT.filter((o) => !sam.status[o.id]).map((o) => o.name);
-  const bloecke = [{ art:"zeilen", zeilen:[
-    { label:"Gefunden", wert:`${gefunden} von ${gesamt}` },
-    { label:"Fortschritt", wert:`${Math.round(gefunden / gesamt * 100)} %` },
-    { label:"Fundorte auf der Karte", wert:`${bekannt} von ${FUNDORTE.length}` },
-  ] }];
-  bloecke.push({ art:"text", text:offen.length ? `Noch offen: ${offen.join(", ")}`.slice(0, 400) : "Alle Rüstungsbesätze gefunden!" });
-  return { titel:"Rüstungsbesätze", unter:`Sammelobjekte der Welt ${kurzSeed(st.welt.seed)}`, bereich:"Sammelobjekte",
-           quelle:"sammelstand", dimension:null, bloecke };
-}
-function portalKarte(id){
-  const v = pt.liste.find((x) => x.id === id); if(!v) return null;
-  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
-  const zeilen = [{ label:"Status", wert:p.label }];
-  if(p.abweichung) zeilen.push({ label:"Abstand zum Idealpunkt", wert:`${p.abweichung} ${p.abweichung === 1 ? "Block" : "Blöcke"}` });
-  const bloecke = [koordBlock("Oberwelt-Portal", v.oberwelt, "overworld"), koordBlock("Nether-Portal", v.nether, "nether"), { art:"zeilen", zeilen }];
-  if(e) bloecke.push({ art:"text", text:e.text });
-  return { titel:v.name, unter:`Portal-Verbindung · Regeln ${regelLabel()}`, bereich:"Portal-Verwaltung",
-           quelle:`portal:${id}`, dimension:"nether", bloecke };
-}
-function bannerKarte(id){
-  const b = bn.liste.find((x) => x.id === id); if(!b) return null;
-  const { farbstoffe, vorlagen } = bannerAnleitung(b);
-  const zeilen = [{ label:farbe(b.basis).wolle, wert:"6 ×" }, { label:"Stock", wert:"1 ×" },
-    ...[...farbstoffe].map(([f, n]) => ({ label:farbe(f).farbstoff, wert:`${n} ×` }))].slice(0, 8);
-  const bloecke = [{ art:"bild", daten:bannerBild(b), label:"Vorschau", pixelig:true }, { art:"zeilen", zeilen }];
-  if(vorlagen.length) bloecke.push({ art:"text", text:`Bannervorlagen (werden nicht verbraucht): ${vorlagen.map((v) => BANNERVORLAGEN[v].de).join(", ")}` });
-  return { titel:b.name, unter:`Banner-Bauplan · ${b.ebenen.length} Muster · Grundfarbe ${farbe(b.basis).de}`,
-           bereich:"Banner", quelle:`banner:${id}`, dimension:null, bloecke };
-}
-function ortKarte(id){
-  const i = st.instanzen.find((x) => x.id === id); if(!i) return null;
-  const t = typVon(i), dim = dimTypeVon(i.dimensionId);
-  const biom = bm.weltId === st.weltId ? biomAnStelle(dim, i.x, i.z) : null;   // aus dem Welt-Import
-  const bloecke = [{ art:"koordinaten", x:i.x, y:i.y ?? null, z:i.z }];
-  const u = umrechnen(i.x, i.z, dim);
-  if(u) bloecke.push({ art:"koordinaten", label:u.dim === "nether" ? "Im Nether" : "In der Oberwelt",
-                       x:u.x, y:null, z:u.z, dimension:BOARD_DIM[u.dim] });
-  const unter = [t.variante ? t.kategorie : null, biom?.name].filter(Boolean).join(" · ");
-  // typ = Feature-Typ der Seed Map → die Anzeige zeigt dazu den Kennblock (eigene Orte: keiner)
-  const typ = t.kategorie === EIGENE_ORTE ? undefined : t.kategorie;
-  return { titel:t.variante || t.kategorie, unter:unter || undefined, bereich:"Karte",
-           quelle:`ort:${i.id}`, typ, dimension:BOARD_DIM[dim], bloecke };
+// Anzeigeschemas (BOARD_KARTEN) stehen in board-karten.js – derselbe Code baut auf dem Board
+// die Karten der Widgets. Hier nur der Kontext aus dem, was dieses Handy gerade geladen hat.
+function boardKontext(){
+  return {
+    welt:st.welt, dimensionen:st.dimensionen, typen:st.typen, instanzen:st.instanzen,
+    sammelStatus:sam.weltId === st.weltId ? sam.status : {},
+    verbindungen:pt.liste, banner:bn.liste, ruestung:rs.sets,
+    edition:pt.edition, standort:st.standort,
+    pngDaten, ruestungFoto,
+    biomName:(dim, x, z) => (bm.weltId === st.weltId ? biomAnStelle(dim, x, z)?.name : null) || null,
+  };
 }
 async function boardZeigen(quelle){
   const [art, ...rest] = quelle.split(":");
-  const karte = await BOARD_KARTEN[art]?.karte(rest.join(":"));   // karte() darf async sein (Rüstung rendert die Figur)
+  const karte = await BOARD_KARTEN[art]?.karte(boardKontext(), rest.join(":"));   // karte() darf async sein (Rüstung rendert die Figur)
   if(!karte) return toast("Das lässt sich nicht aufs Board legen", true);
   try { await boardSenden({ art:"zeigen", karte }); toast("Liegt auf dem Board"); }
   catch(f){ toast(String(f), true); }
@@ -4239,9 +4058,7 @@ const BUEHNE_DIMS = Object.freeze([
   { id:"end",      name:"End",      hintergrund:"bloecke/obsidian.png" },
 ]);
 
-const teilName = (teilId) => RUESTUNGS_TEILE.find((t) => t.id === teilId)?.name || teilId;
 /** Name im Spiel, z. B. „Netherithelm“ */
-const itemName = (teilId, t) => ruestungsArt(t?.ruestung)?.teile[teilId] || teilName(teilId);
 const zutatDatei = (m) => `${BAUKASTEN}zutaten/${m.icon}.png`;
 /** Leerer Slot am Schmiedetisch: blasser Platzhalter wie im Spiel */
 const GEIST = { vorlage:`${BAUKASTEN}vorlagen/sentry_armor_trim_smithing_template.png`, material:`${BAUKASTEN}zutaten/iron_ingot.png` };
@@ -4266,15 +4083,7 @@ const vorlageMini = (id) => {
 };
 
 /** Welche Rüstungsbesätze braucht das Set, welche sind in dieser Welt schon gefunden? */
-function besatzStand(s){
-  const muster = RUESTUNGS_TEILE.map(({ id }) => s.teile[id]?.muster).filter(Boolean);
-  const verschieden = [...new Set(muster)];
-  return {
-    muster, verschieden,
-    gefunden: verschieden.filter((m) => sam.status[m]),
-    netherit: RUESTUNGS_TEILE.filter(({ id }) => s.teile[id]?.ruestung === "netherite").length,
-  };
-}
+const besatzStand = (s) => besatzStandVon(s, sam.status);   // board-karten.js
 const zaehlen = (liste) => [...liste.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map())];
 
 async function ruestungLaden(){
@@ -4734,27 +4543,6 @@ async function ruestungFoto(s){
   const c = await fig.bk.figur({ ausruestung:ausruestungVon(s.teile), ansicht:"vorn", massstab:6 });
   return { daten:c.toDataURL("image/png"), pixelig:true };
 }
-async function ruestungKarte(id){
-  const s = rs.sets.find((x) => x.id === id); if(!s) return null;
-  const b = besatzStand(s);
-  const bloecke = [];
-  const foto = await ruestungFoto(s).catch(() => null);
-  if(foto) bloecke.push({ art:"bild", daten:foto.daten, label:"Auf dem Rüstungsständer", pixelig:foto.pixelig });
-  bloecke.push({ art:"zeilen", zeilen:RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).map(({ id:t }) => {
-    const x = s.teile[t], o = besatzMuster(x.muster);
-    const teile = [o ? `${o.name} · ${besatzMaterial(x.material).name}` : "ohne Besatz",
-      ruestungsArt(x.ruestung).faerbbar && (x.farbe ? farbe(x.farbe).de : "ungefärbt"), x.verzaubert && "verzaubert"];
-    return { label:itemName(t, x), wert:teile.filter(Boolean).join(" · ").slice(0, 80) };
-  }) });
-  if(b.verschieden.length){
-    const fehlt = b.verschieden.filter((m) => !sam.status[m]).map((m) => { const o = besatzMuster(m); return `${o.name} (${strukturName(o.kategorie)})`; });
-    bloecke.push({ art:"text", text:(`Rüstungsbesätze in dieser Welt: ${b.gefunden.length} von ${b.verschieden.length} gefunden.`
-      + (fehlt.length ? ` Fehlt noch: ${fehlt.join(", ")}.` : "")).slice(0, 400) });
-  }
-  return { titel:s.name, unter:`Rüstungs-Set · ${RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).length} Teile`, bereich:"Rüstung",
-           quelle:`ruestung:${id}`, dimension:null, bloecke };
-}
-
 $ruestungListe.addEventListener("click", (e) => { const k = e.target.closest("[data-set]"); if(k){ rs.offen = null; ruestungDetailOeffnen(k.dataset.set); } });
 document.getElementById("ruestungNeuBtn").addEventListener("click", () => ruestungEditorOeffnen(null));
 
