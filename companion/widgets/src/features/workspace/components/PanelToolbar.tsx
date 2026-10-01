@@ -23,15 +23,17 @@ export function PanelToolbar({ panelId, typ }: Props) {
           </svg>
         </IconButton>
       )}
-      <IconButton
-        label="Duplizieren"
-        onClick={() => duplicateItem(panelId)}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="9" y="9" width="11" height="11" rx="2" />
-          <rect x="4" y="4" width="11" height="11" rx="2" />
-        </svg>
-      </IconButton>
+      {widgetTyp(typ)?.mehrfach && (
+        <IconButton
+          label="Duplizieren"
+          onClick={() => duplicateItem(panelId)}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="9" y="9" width="11" height="11" rx="2" />
+            <rect x="4" y="4" width="11" height="11" rx="2" />
+          </svg>
+        </IconButton>
+      )}
       <IconButton
         label="Entfernen"
         onClick={() => removeItem(panelId)}

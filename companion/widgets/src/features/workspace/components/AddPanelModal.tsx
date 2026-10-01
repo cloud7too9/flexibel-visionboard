@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Modal } from "../../../shared/ui/Modal";
-import { WIDGET_TYPEN } from "../model/widget-register";
+import { WIDGET_TYPEN, schonDa } from "../model/widget-register";
 import { BEREICHE, type WidgetTyp } from "../model/widget-struktur";
 import type { Groessenstufe } from "../model/widget-vertrag";
-import { useWorkspaceStore } from "../model/workspace.store";
+import { selectActiveLayer, useWorkspaceStore } from "../model/workspace.store";
 
 /** Kantenlänge einer Zelle in der Vorschau */
 const VORSCHAU_ZELLE = 9;
@@ -25,11 +25,13 @@ export function galerieGruppen(suche: string): { bereich: (typeof BEREICHE)[numb
  * Galerie „Widget hinzufügen“ nach dem Vorbild des iOS-Kontrollzentrums:
  * gruppiert nach Bereich, mit Suche, je Widget-Typ eine Vorschau in seiner
  * kleinsten Stufe. Hinzufügen legt eine Instanz an der ersten freien Stelle an.
+ * Typen, die nicht mehrfach sein dürfen, sind gesperrt, sobald sie auf dem Layer liegen.
  */
 export function AddPanelModal() {
   const open = useWorkspaceStore((s) => s.addPanelOpen);
   const closeAddPanel = useWorkspaceStore((s) => s.closeAddPanel);
   const addItem = useWorkspaceStore((s) => s.addItem);
+  const instanzen = useWorkspaceStore((s) => selectActiveLayer(s).instanzen);
   const [noSpace, setNoSpace] = useState(false);
   const [suche, setSuche] = useState("");
   const gruppen = useMemo(() => galerieGruppen(suche), [suche]);
@@ -62,13 +64,15 @@ export function AddPanelModal() {
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {typen.map((t) => {
                 const s = kleinsteStufe(t);
+                const da = schonDa(instanzen, t.id);
                 return (
                   <button
                     key={t.id}
                     type="button"
                     data-widget-typ={t.id}
+                    disabled={da}
                     onClick={() => setNoSpace(!addItem(t.id))}
-                    className="flex min-h-[44px] items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5 text-left text-sm transition-colors hover:border-accent hover:bg-surface-raised"
+                    className="flex min-h-[44px] items-center gap-3 rounded-md border border-border bg-surface px-3 py-2.5 text-left text-sm transition-colors hover:border-accent hover:bg-surface-raised disabled:cursor-default disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-surface"
                   >
                     {/* Vorschau in der kleinsten Stufe, maßstäblich in Zellen */}
                     <span
@@ -78,8 +82,13 @@ export function AddPanelModal() {
                       style={{ width: s.breite * VORSCHAU_ZELLE, height: s.hoehe * VORSCHAU_ZELLE }}
                     />
                     <span className="min-w-0">
-                      <span className="block font-medium">{t.name}</span>
-                      <span className="block text-xs text-text-muted">{s.breite}×{s.hoehe} · {s.informationsumfang}</span>
+                      <span className="block font-medium">
+                        {t.name}
+                        {t.optional && <span className="ml-1.5 text-[10px] font-normal uppercase tracking-wide text-text-muted">optional</span>}
+                      </span>
+                      <span className="block text-xs text-text-muted">
+                        {da ? "liegt schon auf diesem Layer" : `${s.breite}×${s.hoehe} · ${s.informationsumfang}`}
+                      </span>
                     </span>
                   </button>
                 );

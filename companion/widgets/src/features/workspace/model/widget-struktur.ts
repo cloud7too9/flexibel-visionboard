@@ -41,6 +41,12 @@ export interface WidgetTyp {
   vertrag: WidgetVertrag;
   /** nur auf größeren Stufen, keine eigenen Widgets (z. B. Tipps) */
   zusatzinhalte?: Zusatzinhalt[];
+  /** beliebig viele Instanzen, jede mit eigener Quelle – sonst höchstens eine je Layer */
+  mehrfach: boolean;
+  /** als optionales Extra-Widget markiert */
+  optional?: boolean;
+  /** Art der Quelle, die man beim Hinzufügen wählt (z. B. „Koordinate“, „Banner“); ohne: Inhalt der ganzen Welt */
+  quelle?: string;
 }
 
 /**
@@ -55,6 +61,8 @@ export interface WidgetInstanz {
   stufe: string;
   x: number;
   y: number;
+  /** ID der Quelle (Koordinate, Liste, Eintrag, Bauplan, Banner, Set) bei Typen mit `quelle` */
+  quelle?: string;
 }
 
 const flaeche = (s: Pick<Groessenstufe, "breite" | "hoehe">) => s.breite * s.hoehe;
