@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useLayoutEffect,
   useMemo,
   useState,
   type CSSProperties,
@@ -21,8 +20,7 @@ import type { Id } from "../../../shared/types/common.types";
 import type { LayoutItem } from "../model/workspace.types";
 import { WorkspacePanel } from "./WorkspacePanel";
 import { EmptyGridHint } from "./EmptyGridHint";
-import { useBreakpoint } from "../../../shared/hooks/useBreakpoint";
-import { adaptLayoutToBreakpoint } from "../lib/responsive-layout";
+import { RASTER_SPALTEN, abstandPx, useRaster } from "../lib/raster";
 import { useLongPress } from "../hooks/useLongPress";
 
 /** Alle so viele Zellen wird eine kräftigere Hilfslinie gezeichnet. */
@@ -78,31 +76,19 @@ export function WorkspaceGrid() {
   const moveItem = useWorkspaceStore((s) => s.moveItem);
   const resizeItem = useWorkspaceStore((s) => s.resizeItem);
 
+  const setReihen = useWorkspaceStore((s) => s.setReihen);
+
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
-  const [size, setSize] = useState({ width: 0, height: 0 });
   const [drag, setDrag] = useState<DragState>({ kind: "idle" });
 
-  // Die Fläche füllt den verfügbaren Platz; Breite und Höhe bestimmen die
-  // Zellgröße. Die Seite selbst scrollt nie.
-  useLayoutEffect(() => {
-    const el = containerEl;
-    if (!el) return;
-    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight });
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [containerEl]);
-
-  // Das gespeicherte Layout liegt im Desktop-Raster. Für Tablet/Mobil wird
-  // ein Layout mit weniger Spalten abgeleitet und in die Höhe eingepasst.
-  // Verschieben/Skalieren ist nur im kanonischen Raster erlaubt.
-  const breakpoint = useBreakpoint();
-  const displayLayout = useMemo(
-    () => adaptLayoutToBreakpoint(layout, breakpoint),
-    [layout, breakpoint],
-  );
-  const canArrange = editMode && breakpoint.erlaubtAnordnen;
+  // 32 Spalten auf jedem Gerät, quadratische Zellen: Die Breite bestimmt die
+  // Zellgröße, die Höhe die Zahl der Reihen. Die Seite selbst scrollt nie.
+  const raster = useRaster(containerEl);
+  const reihen = raster.reihen;
+  useEffect(() => {
+    if (reihen > 0) setReihen(reihen);
+  }, [reihen, setReihen]);
+  const canArrange = editMode;
 
   // Langes Drücken auf die Kopfzeile eines Widgets (ohne Verschieben) schaltet
   // die gesamte Oberfläche in den Bearbeitungszustand.
@@ -115,14 +101,8 @@ export function WorkspaceGrid() {
   });
 
   const config: GridConfig = useMemo(
-    () => ({
-      cols: displayLayout.spalten,
-      rows: displayLayout.zeilen,
-      gap: displayLayout.abstand,
-      containerWidth: size.width,
-      containerHeight: size.height,
-    }),
-    [displayLayout.spalten, displayLayout.zeilen, displayLayout.abstand, size],
+    () => ({ cols: RASTER_SPALTEN, rows: reihen, zellePx: raster.zellePx, gap: abstandPx(raster.zellePx) }),
+    [reihen, raster.zellePx],
   );
   const cell = cellSize(config);
 
@@ -189,8 +169,8 @@ export function WorkspaceGrid() {
             x: drag.startCell.x + Math.round(dx),
             y: drag.startCell.y + Math.round(dy),
           },
-          layout.spalten,
-          layout.zeilen,
+          RASTER_SPALTEN,
+          reihen,
         );
         setDrag({
           ...drag,
@@ -199,10 +179,10 @@ export function WorkspaceGrid() {
         });
       } else {
         const def = PANEL_REGISTRY[item.panelTyp];
-        const minW = Math.min(item.minW ?? def.minBreite, layout.spalten);
-        const minH = Math.min(item.minH ?? def.minHoehe, layout.zeilen);
-        const w = clamp(Math.round(drag.startSize.w + dx), minW, layout.spalten - item.x);
-        const h = clamp(Math.round(drag.startSize.h + dy), minH, layout.zeilen - item.y);
+        const minW = Math.min(item.minW ?? def.minBreite, RASTER_SPALTEN);
+        const minH = Math.min(item.minH ?? def.minHoehe, reihen);
+        const w = clamp(Math.round(drag.startSize.w + dx), minW, RASTER_SPALTEN - item.x);
+        const h = clamp(Math.round(drag.startSize.h + dy), minH, reihen - item.y);
         const candidate: LayoutItem = { ...item, w, h };
         setDrag({
           ...drag,
@@ -233,25 +213,26 @@ export function WorkspaceGrid() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
     };
-  }, [drag, cell.w, cell.h, layout, moveItem, resizeItem]);
+  }, [drag, cell.w, cell.h, layout, moveItem, resizeItem, reihen]);
 
-  const hasSize = size.width > 0 && size.height > 0;
+  const hasSize = raster.zellePx > 0 && reihen > 0;
 
   return (
-    <div
-      ref={setContainerEl}
-      data-breakpoint={breakpoint.name}
-      data-grid={`${displayLayout.spalten}x${displayLayout.zeilen}`}
-      className="relative h-full w-full overflow-hidden"
-      style={editMode ? gridLinesStyle(cell) : undefined}
-    >
-      {displayLayout.items.length === 0 ? (
+    <div ref={setContainerEl} className="relative h-full w-full overflow-hidden">
+      {/* Die Fläche ist genau 32 × reihen Zellen groß; was darunter übrig bleibt, bleibt leer. */}
+      <div
+        data-testid="raster-flaeche"
+        data-grid={`${RASTER_SPALTEN}x${reihen}`}
+        className="absolute left-0 top-0 w-full"
+        style={{ height: reihen * raster.zellePx, ...(editMode ? gridLinesStyle(cell) : {}) }}
+      >
+      {layout.items.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center p-4">
           <EmptyGridHint />
         </div>
       ) : (
         hasSize &&
-        displayLayout.items.map((item) => (
+        layout.items.map((item) => (
           <WorkspacePanel
             key={item.id}
             item={item}
@@ -265,8 +246,9 @@ export function WorkspaceGrid() {
         ))
       )}
       {drag.kind !== "idle" && (
-        <DragPreview drag={drag} config={config} layout={displayLayout.items} />
+        <DragPreview drag={drag} config={config} layout={layout.items} />
       )}
+      </div>
     </div>
   );
 }

@@ -5,12 +5,10 @@ iOS-Kontrollzentrums. Grundlage ist der MainHub-Workspace
 (`cloud7too9/mainhub-frontend`, per `git subtree` mit Verlauf übernommen):
 Grid, Layer, Bearbeitungsmodus und Galerie.
 
-**Stand:** Phase A0 aus [`planung/PLAN.md`](../../planung/PLAN.md). Der
-Ordner läuft unverändert wie MainHub (eigene Beispiel-Panels, Layout im
-`localStorage`). Der Umbau folgt den Phasen A1–A6 im Plan: 32 Spalten,
-Größenstufen, Companion-Register, Karten vom Server, Layout pro Anzeige,
-Anordnen am Handy. Was unten zu Raster und Bildschirmgrößen steht, gilt bis
-dahin.
+**Stand:** Phase A1 aus [`planung/PLAN.md`](../../planung/PLAN.md): Raster
+mit 32 Spalten. Noch mit den MainHub-Beispiel-Panels und dem Layout im
+`localStorage`. Es folgen Größenstufen, Companion-Register, Karten vom
+Server, Layout pro Anzeige und Anordnen am Handy (A2–A6).
 
 ## Starten
 
@@ -33,47 +31,34 @@ wie heute `/anzeige`. Ein eigenes Docker-Image gibt es deshalb nicht mehr.
 - `src/shared/` – Wiederverwendbare UI und Tokens
 - `src/tests/` – Unit-Tests
 
-Designregeln: feines Raster (96 × 48 Zellen auf Desktop), freie Größen mit
-Mindestmaßen, feste Fläche ohne Seiten-Scroll, getrennter Bearbeitungsmodus.
-Wie es weitergeht, steht in `planung/PLAN.md`. `docs/ROADMAP.md` ist die
-Roadmap aus MainHub und nur noch Hintergrund.
+Designregeln: Raster mit 32 Spalten und quadratischen Zellen, feste Fläche
+ohne Seiten-Scroll, getrennter Bearbeitungsmodus. Wie es weitergeht, steht in
+`planung/PLAN.md`. `docs/ROADMAP.md` ist die Roadmap aus MainHub und nur noch
+Hintergrund.
 
-## Raster und Fläche
+## Raster (`src/features/workspace/lib/raster.ts`)
 
-Die Seite scrollt nie. Die Widget-Fläche füllt den Bildschirm unter dem
-Header und ist in ein festes Raster geteilt; die Zellgröße ergibt sich aus
-der verfügbaren Breite und Höhe. Widgets bleiben immer vollständig in der
-Fläche. Ist kein Platz mehr frei, meldet „Widget hinzufügen“ das, statt die
-Seite zu verlängern. Im Bearbeitungszustand zeigt die Fläche feine
-Gitterlinien je Zelle und kräftigere alle 8 Zellen. Größen sind frei in
-Zellschritten wählbar; es gelten nur die Mindestmaße aus der Registry.
+Bauplan: `planung/bauplaene/Bauplan-Raster-32-Spalten.md`.
 
-## Bildschirmgrößen
-
-Das Layout wird immer im kanonischen Desktop-Raster (96 × 48) gespeichert.
-Für kleinere Bildschirme wird daraus zur Laufzeit ein Layout mit weniger
-Spalten abgeleitet (`src/features/workspace/lib/responsive-layout.ts`):
-Maße werden proportional skaliert, Widgets in Lesereihenfolge ohne
-Überlappung neu angeordnet und danach in die Höhe der Fläche eingepasst.
-
-| Breakpoint | Viewport-Breite | Raster  | Verschieben/Skalieren |
-|------------|-----------------|---------|------------------------|
-| Mobil      | < 640px         | 24 × 48 | nein (automatisch)     |
-| Tablet     | 640–1023px      | 48 × 64 | nein (automatisch)     |
-| Desktop    | ≥ 1024px        | 96 × 48 | ja                     |
-
-Die Grenzen entsprechen den Tailwind-Breakpoints `sm` und `lg`. Definiert sind
-sie in `src/features/workspace/model/breakpoints.ts`; der aktive Breakpoint
-kommt aus dem Hook `useBreakpoint()` (`src/shared/hooks/useBreakpoint.ts`) und
-wird im Header als Badge angezeigt. Hinzufügen, Duplizieren und Entfernen von
-Panels funktionieren in jeder Größe; Drag & Drop und Resize nur auf Desktop,
-damit Änderungen 1:1 im gespeicherten Raster landen.
+- **32 Spalten** auf jedem Gerät (`RASTER_SPALTEN`), die Zelle ist
+  quadratisch: `zellePx = Breite / 32`.
+- **Reihen variabel**: `reihen = floor(Höhe / zellePx)` – 16:9 → 18,
+  16:10 → 20, 16:11 → 22, 4:3 → 24. Was unter der letzten vollen Reihe übrig
+  bleibt, bleibt leer.
+- `useRaster()` rechnet bei jeder Größenänderung neu (ResizeObserver), der
+  Store kennt die aktuellen Reihen (`reihen`, `setReihen`) und prüft
+  Verschieben, Skalieren und Hinzufügen damit.
+- Der Abstand zwischen Widgets wächst mit der Zelle (2–10 px) und wird
+  innerhalb der Zelle abgezogen, damit sie quadratisch bleibt.
+- Kein abgeleitetes Handy-Layout mehr: Jedes Gerät zeigt dieselbe Fläche,
+  nur kleiner; bearbeiten geht überall. Liegt ein Widget unter den sichtbaren
+  Reihen, wird es abgeschnitten – das löst A6 (ein Layout pro Anzeige).
+- Gespeichert wird in Zellen (`localStorage`, Schema-Version 4). Layouts aus
+  dem alten 96 × 48-Raster werden verworfen.
 
 ## Layer
 
 Der Workspace besteht aus einem oder mehreren Layern mit jeweils eigener
 Widget-Anordnung. Der Umschalter im Header wechselt jederzeit den Layer;
 Anlegen, Umbenennen und Entfernen gehen im Bearbeitungszustand. Gespeichert
-wird im `localStorage` (Schema-Version 3). Daten aus Version 1 und 2
-(grobes 12-Spalten-Raster) werden beim Laden automatisch ins feine Raster
-umgerechnet.
+wird im `localStorage` (Schema-Version 4).

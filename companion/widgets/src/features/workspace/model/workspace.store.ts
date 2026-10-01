@@ -6,6 +6,7 @@ import { PANEL_REGISTRY } from "./panel-registry";
 import { clampItemToGrid, findFreePosition } from "../lib/layout-utils";
 import { hasCollision } from "../lib/collision-utils";
 import { loadWorkspaceFromStorage, saveWorkspaceToStorage } from "../lib/storage";
+import { RASTER_SPALTEN, STANDARD_REIHEN } from "../lib/raster";
 
 export const LAYER_NAME_MAX_LENGTH = 40;
 
@@ -15,7 +16,10 @@ interface WorkspaceState {
   editMode: boolean;
   selectedPanelId: Id | null;
   addPanelOpen: boolean;
+  /** Reihen der sichtbaren Fläche (aus dem Raster); Spalten sind immer RASTER_SPALTEN. */
+  reihen: number;
 
+  setReihen: (reihen: number) => void;
   setEditMode: (value: boolean) => void;
   toggleEditMode: () => void;
   selectPanel: (id: Id | null) => void;
@@ -73,13 +77,14 @@ function normalizeLayerName(name: string): string {
  */
 function findSlot(
   layout: WorkspaceLayout,
+  reihen: number,
   preferred: { w: number; h: number },
   minimum: { w: number; h: number },
 ): { x: number; y: number; w: number; h: number } | null {
   for (const size of [preferred, minimum]) {
-    const w = Math.min(size.w, layout.spalten);
-    const h = Math.min(size.h, layout.zeilen);
-    const pos = findFreePosition(layout.items, w, h, layout.spalten, layout.zeilen);
+    const w = Math.min(size.w, RASTER_SPALTEN);
+    const h = Math.min(size.h, reihen);
+    const pos = findFreePosition(layout.items, w, h, RASTER_SPALTEN, reihen);
     if (pos) return { ...pos, w, h };
   }
   return null;
@@ -110,7 +115,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     editMode: false,
     selectedPanelId: null,
     addPanelOpen: false,
+    reihen: STANDARD_REIHEN,
 
+    setReihen: (reihen) => {
+      if (reihen > 0 && reihen !== get().reihen) set({ reihen });
+    },
     setEditMode: (value) => {
       set({ editMode: value, selectedPanelId: value ? get().selectedPanelId : null });
     },
@@ -123,7 +132,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const layout = selectActiveLayer(get());
       const target = layout.items.find((i) => i.id === id);
       if (!target) return false;
-      const candidate = clampItemToGrid({ ...target, x, y }, layout.spalten, layout.zeilen);
+      const candidate = clampItemToGrid({ ...target, x, y }, RASTER_SPALTEN, get().reihen);
       if (candidate.x === target.x && candidate.y === target.y) return false;
       if (hasCollision(candidate, layout.items)) return false;
       commitActiveItems(layout.items.map((i) => (i.id === id ? candidate : i)));
@@ -136,17 +145,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       if (!target) return false;
       const def = PANEL_REGISTRY[target.panelTyp];
       if (!def.erlaubtResize) return false;
-      const minW = Math.min(target.minW ?? def.minBreite, layout.spalten);
-      const minH = Math.min(target.minH ?? def.minHoehe, layout.zeilen);
+      const reihen = get().reihen;
+      const minW = Math.min(target.minW ?? def.minBreite, RASTER_SPALTEN);
+      const minH = Math.min(target.minH ?? def.minHoehe, reihen);
       // Skalieren verschiebt das Widget nicht: Die obere linke Ecke bleibt,
       // die Größe endet am Rand der Fläche.
-      const clampedW = Math.max(minW, Math.min(Math.round(w), layout.spalten - target.x));
-      const clampedH = Math.max(minH, Math.min(Math.round(h), layout.zeilen - target.y));
-      const candidate = clampItemToGrid(
-        { ...target, w: clampedW, h: clampedH },
-        layout.spalten,
-        layout.zeilen,
-      );
+      const clampedW = Math.max(minW, Math.min(Math.round(w), RASTER_SPALTEN - target.x));
+      const clampedH = Math.max(minH, Math.min(Math.round(h), reihen - target.y));
+      const candidate = clampItemToGrid({ ...target, w: clampedW, h: clampedH }, RASTER_SPALTEN, reihen);
       if (candidate.w === target.w && candidate.h === target.h) return false;
       if (hasCollision(candidate, layout.items)) return false;
       commitActiveItems(layout.items.map((i) => (i.id === id ? candidate : i)));
@@ -158,6 +164,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const def = PANEL_REGISTRY[typ];
       const slot = findSlot(
         layout,
+        get().reihen,
         { w: def.standardBreite, h: def.standardHoehe },
         { w: def.minBreite, h: def.minHoehe },
       );
@@ -188,6 +195,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const def = PANEL_REGISTRY[target.panelTyp];
       const slot = findSlot(
         layout,
+        get().reihen,
         { w: target.w, h: target.h },
         { w: target.minW ?? def.minBreite, h: target.minH ?? def.minHoehe },
       );
@@ -209,9 +217,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const layer: WorkspaceLayout = {
         id: nextId("layer"),
         name: normalized || nextLayerName(layers),
-        spalten: DEFAULT_LAYOUT.spalten,
-        zeilen: DEFAULT_LAYOUT.zeilen,
-        abstand: DEFAULT_LAYOUT.abstand,
         items: [],
       };
       commit({ layers: [...layers, layer], activeLayerId: layer.id }, { selectedPanelId: null });

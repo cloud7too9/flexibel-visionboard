@@ -25,16 +25,12 @@ export interface LayoutItem {
 /**
  * Ein Layer ist eine eigenständige Widget-Anordnung. Der Workspace besteht
  * aus einem oder mehreren Layern, von denen genau einer aktiv angezeigt wird.
+ * Positionen und Größen der Items stehen in Zellen des Rasters (32 Spalten,
+ * Reihen je nach Fläche, siehe lib/raster.ts).
  */
 export interface WorkspaceLayout {
   id: Id;
   name: string;
-  /** Anzahl Rasterspalten der Fläche. */
-  spalten: number;
-  /** Anzahl Rasterzeilen der Fläche. Die Fläche scrollt nicht. */
-  zeilen: number;
-  /** Sichtbarer Abstand zwischen Widgets in Pixeln. */
-  abstand: number;
   items: LayoutItem[];
 }
 

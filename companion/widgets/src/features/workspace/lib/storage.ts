@@ -1,33 +1,17 @@
-import type { LayoutItem, WorkspaceData, WorkspaceLayout } from "../model/workspace.types";
-import { CANONICAL_SPALTEN, CANONICAL_ZEILEN, DEFAULT_LAYOUT } from "../model/default-layout";
-import { clampItemToGrid, fitItemsToRows } from "./layout-utils";
+import type { WorkspaceData, WorkspaceLayout } from "../model/workspace.types";
+import { RASTER_SPALTEN } from "./raster";
+import { clamp } from "./layout-utils";
 
 export const STORAGE_KEY = "mainhub.workspace.v1";
-export const SCHEMA_VERSION = 3;
-
 /**
- * Bis Version 2 war eine Zeile 80 px hoch plus 12 px Abstand. Im feinen
- * Raster ist eine Zeile auf Desktop etwa 17 px hoch; Faktor 5 erhält die
- * Optik ungefähr.
+ * Version 4: Raster mit 32 Spalten und quadratischen Zellen. Layouts aus
+ * Version 1–3 (grobes bzw. feines 96 × 48-Raster) werden verworfen, nicht
+ * umgerechnet – es gibt noch keine echten Nutzerdaten (planung/PLAN.md, A1).
  */
-const LEGACY_ROW_FACTOR = 5;
+export const SCHEMA_VERSION = 4;
 
-/** Version 1: ein einzelnes Layout ohne Layer. */
-interface PersistedPayloadV1 {
-  version: 1;
-  layout: WorkspaceLayout;
-}
-
-/** Version 2: mehrere Layer im groben 12-Spalten-Raster. */
-interface PersistedPayloadV2 {
-  version: 2;
-  layers: WorkspaceLayout[];
-  activeLayerId: string;
-}
-
-/** Version 3: mehrere Layer im feinen Raster mit fester Fläche. */
-interface PersistedPayloadV3 {
-  version: 3;
+interface PersistedPayload {
+  version: 4;
   layers: WorkspaceLayout[];
   activeLayerId: string;
 }
@@ -35,87 +19,45 @@ interface PersistedPayloadV3 {
 function isValidLayout(value: unknown): value is WorkspaceLayout {
   if (!value || typeof value !== "object") return false;
   const l = value as Partial<WorkspaceLayout>;
-  return typeof l.id === "string" && Array.isArray(l.items);
+  return typeof l.id === "string" && typeof l.name === "string" && Array.isArray(l.items);
 }
 
 /**
- * Rechnet ein Layout aus dem groben Raster (Version 1 und 2) ins feine
- * Raster um und passt es in die feste Fläche ein. Item-eigene Mindestmaße
- * stammen aus dem alten Raster und werden verworfen; es gelten die der
- * Registry.
+ * Hält Items in den 32 Spalten. Die Reihen hängen von der Fläche ab und
+ * werden hier nicht begrenzt.
  */
-export function migrateLegacyLayout(layout: WorkspaceLayout): WorkspaceLayout {
-  const legacyCols = layout.spalten > 0 ? layout.spalten : 12;
-  const fx = CANONICAL_SPALTEN / legacyCols;
-  const scaled: LayoutItem[] = layout.items.map(
-    ({ minW: _minW, minH: _minH, maxW: _maxW, maxH: _maxH, ...item }) => ({
-      ...item,
-      x: Math.round(item.x * fx),
-      w: Math.max(1, Math.round(item.w * fx)),
-      y: item.y * LEGACY_ROW_FACTOR,
-      h: Math.max(1, item.h * LEGACY_ROW_FACTOR),
-    }),
-  );
-  const items = fitItemsToRows(scaled, CANONICAL_ZEILEN).map((it) =>
-    clampItemToGrid(it, CANONICAL_SPALTEN, CANONICAL_ZEILEN),
-  );
+function normalizeLayout(layout: WorkspaceLayout): WorkspaceLayout {
   return {
     id: layout.id,
     name: layout.name,
-    spalten: CANONICAL_SPALTEN,
-    zeilen: CANONICAL_ZEILEN,
-    abstand: DEFAULT_LAYOUT.abstand,
-    items,
+    items: layout.items.map((it) => {
+      const w = clamp(Math.round(it.w), 1, RASTER_SPALTEN);
+      return {
+        ...it,
+        w,
+        x: clamp(Math.round(it.x), 0, RASTER_SPALTEN - w),
+        y: Math.max(0, Math.round(it.y)),
+        h: Math.max(1, Math.round(it.h)),
+      };
+    }),
   };
 }
 
-/** Stellt sicher, dass ein Layout im aktuellen Raster liegt. */
-function normalizeLayout(layout: WorkspaceLayout): WorkspaceLayout {
-  return {
-    ...layout,
-    spalten: CANONICAL_SPALTEN,
-    zeilen: CANONICAL_ZEILEN,
-    abstand: typeof layout.abstand === "number" ? layout.abstand : DEFAULT_LAYOUT.abstand,
-    items: layout.items.map((it) => clampItemToGrid(it, CANONICAL_SPALTEN, CANONICAL_ZEILEN)),
-  };
-}
-
-function withActive(layers: WorkspaceLayout[], activeLayerId: unknown): WorkspaceData {
-  const active = layers.some((l) => l.id === activeLayerId)
-    ? (activeLayerId as string)
-    : layers[0].id;
-  return { layers, activeLayerId: active };
-}
-
-/**
- * Prüft und normalisiert einen geladenen Payload. Ältere Versionen werden
- * migriert. Gibt `null` zurück, wenn die Daten unbrauchbar sind.
- */
+/** Prüft und normalisiert einen geladenen Payload; `null` bei alten Versionen und unbrauchbaren Daten. */
 export function parsePersistedWorkspace(raw: unknown): WorkspaceData | null {
   if (!raw || typeof raw !== "object") return null;
-  const payload = raw as { version?: unknown };
-
-  if (payload.version === 1) {
-    const { layout } = raw as PersistedPayloadV1;
-    if (!isValidLayout(layout)) return null;
-    const migrated = migrateLegacyLayout(layout);
-    return { layers: [migrated], activeLayerId: migrated.id };
-  }
-
-  if (payload.version === 2 || payload.version === 3) {
-    const { layers, activeLayerId } = raw as PersistedPayloadV2 | PersistedPayloadV3;
-    if (!Array.isArray(layers) || layers.length === 0) return null;
-    if (!layers.every(isValidLayout)) return null;
-    const convert = payload.version === 2 ? migrateLegacyLayout : normalizeLayout;
-    return withActive(layers.map(convert), activeLayerId);
-  }
-
-  return null;
+  const payload = raw as Partial<PersistedPayload> & { version?: unknown };
+  if (payload.version !== SCHEMA_VERSION) return null;
+  const { layers, activeLayerId } = payload;
+  if (!Array.isArray(layers) || layers.length === 0 || !layers.every(isValidLayout)) return null;
+  const normalized = layers.map(normalizeLayout);
+  const active = normalized.some((l) => l.id === activeLayerId) ? (activeLayerId as string) : normalized[0].id;
+  return { layers: normalized, activeLayerId: active };
 }
 
 export function saveWorkspaceToStorage(data: WorkspaceData): void {
   try {
-    const payload: PersistedPayloadV3 = {
+    const payload: PersistedPayload = {
       version: SCHEMA_VERSION,
       layers: data.layers,
       activeLayerId: data.activeLayerId,

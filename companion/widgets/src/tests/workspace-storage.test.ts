@@ -30,46 +30,22 @@ describe("workspace storage", () => {
     expect(loaded!.activeLayerId).toBe("layer-2");
   });
 
-  it("migrates a version 1 payload into a single layer", () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, layout: DEFAULT_LAYOUT }));
-    const loaded = loadWorkspaceFromStorage();
-    expect(loaded).not.toBeNull();
-    expect(loaded!.layers).toHaveLength(1);
-    expect(loaded!.layers[0].id).toBe(DEFAULT_LAYOUT.id);
-    expect(loaded!.layers[0].items.length).toBe(DEFAULT_LAYOUT.items.length);
-    expect(loaded!.activeLayerId).toBe(DEFAULT_LAYOUT.id);
+  it("discards layouts of the old 96 × 48 grid (versions 1–3)", () => {
+    for (const version of [1, 2, 3]) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ version, layout: DEFAULT_LAYOUT, layers: [DEFAULT_LAYOUT], activeLayerId: DEFAULT_LAYOUT.id }));
+      expect(loadWorkspaceFromStorage()).toBeNull();
+    }
   });
 
-  it("converts version 1 and 2 coordinates into the fine grid", () => {
-    const legacy = {
-      ...DEFAULT_LAYOUT,
-      spalten: 12,
-      items: [
-        { id: "a", panelTyp: "aufgaben", titel: "A", x: 3, y: 2, w: 3, h: 2, minW: 2, minH: 2 },
-      ],
-    };
-    const v2 = parsePersistedWorkspace({ version: 2, layers: [legacy], activeLayerId: legacy.id })!;
-    const item = v2.layers[0].items[0];
-    expect(v2.layers[0].spalten).toBe(96);
-    expect(v2.layers[0].zeilen).toBe(48);
-    expect(item).toMatchObject({ x: 24, w: 24, y: 10, h: 10 });
-    expect(item.minW).toBeUndefined();
-  });
-
-  it("fits legacy layouts that were taller than the area", () => {
-    const tall = {
-      ...DEFAULT_LAYOUT,
-      spalten: 12,
-      items: [{ id: "a", panelTyp: "aufgaben", titel: "A", x: 0, y: 20, w: 3, h: 2 }],
-    };
-    const parsed = parsePersistedWorkspace({ version: 1, layout: tall })!;
-    const it0 = parsed.layers[0].items[0];
-    expect(it0.y + it0.h).toBeLessThanOrEqual(48);
+  it("keeps items inside the 32 columns, rows depend on the screen", () => {
+    const breit = { ...DEFAULT_LAYOUT, items: [{ id: "a", panelTyp: "aufgaben", titel: "A", x: 30, y: 40, w: 8, h: 3 }] };
+    const parsed = parsePersistedWorkspace({ version: 4, layers: [breit], activeLayerId: breit.id })!;
+    expect(parsed.layers[0].items[0]).toMatchObject({ x: 24, w: 8, y: 40, h: 3 });
   });
 
   it("falls back to the first layer when the active id is unknown", () => {
     const parsed = parsePersistedWorkspace({
-      version: 2,
+      version: 4,
       layers: [DEFAULT_LAYOUT, second],
       activeLayerId: "gibt-es-nicht",
     });
@@ -91,15 +67,10 @@ describe("workspace storage", () => {
     expect(loadWorkspaceFromStorage()).toBeNull();
   });
 
-  it("returns null when a version 1 layout shape is broken", () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, layout: { id: "x" } }));
-    expect(loadWorkspaceFromStorage()).toBeNull();
-  });
-
-  it("returns null when version 2 has no layers or a broken layer", () => {
-    expect(parsePersistedWorkspace({ version: 2, layers: [], activeLayerId: "x" })).toBeNull();
+  it("returns null when there are no layers or a broken layer", () => {
+    expect(parsePersistedWorkspace({ version: 4, layers: [], activeLayerId: "x" })).toBeNull();
     expect(
-      parsePersistedWorkspace({ version: 2, layers: [DEFAULT_LAYOUT, { id: "y" }], activeLayerId: "y" }),
+      parsePersistedWorkspace({ version: 4, layers: [DEFAULT_LAYOUT, { id: "y" }], activeLayerId: "y" }),
     ).toBeNull();
   });
 
