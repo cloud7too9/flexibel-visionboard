@@ -17,6 +17,7 @@
    - Du sagst immer an, wann gepusht und wann gemergt wird.
    - Das Datenmodell bleibt minimal, und du baust nur Besprochenes.
 6. Was in Kapitel 8 als **offen** steht, baust du nicht vorweg.
+7. Was auf Max wartet (Haltepunkte, Nachfragen, nicht beschriebene Inhalte), steht in [`WARTELISTE.md`](WARTELISTE.md). Max hat entschieden: Daran wird nicht gewartet, alles andere geht weiter.
 
 ---
 
@@ -136,7 +137,7 @@ Grund: E4 und E5. Ein Bauplan dafür gibt es nicht.
   - Hier verschiebt man Widgets, wechselt die Stufe, entfernt sie, fügt über die Galerie hinzu, wechselt den Layer und startet das Vollbild.
   - Im Hochformat erscheint ein Hinweis „Querformat empfohlen“.
   - ⚖ Wie die React-Steuerung in die Vanilla-Companion kommt, klärt Nachfrage N2.
-- **Ausliefern:** Der Board-Server liefert den Build von `companion/widgets/` unter `/dashboard` aus, so wie `/anzeige`.
+- **Ausliefern:** Der Board-Server liefert den Build von `companion/widgets/` unter `/dashboard` aus, so wie `/anzeige`. *(Vorgezogen in A4, Commit „Dashboard unter /dashboard“, damit die Widgets am echten Board getestet werden.)*
 - **Anzeige-Link (Anzeige auf einem anderen Gerät als dem Server):**
   - Jede Anzeige bekommt am Server einen eigenen, zufälligen **Anzeige-Schlüssel**. Der Link lautet `http://<adresse>:3000/dashboard?anzeige=<id>&schluessel=<schluessel>`. Die Adresse ist dieselbe wie im QR-Code der Handys (`netzwerk.js`, `adresse.txt`, `OEFFENTLICHE_URL`).
   - Wer den Link öffnet, wird zu genau dieser Anzeige. Der Browser merkt sich den Schlüssel, damit ein Neustart des TVs ohne Link geht.
@@ -209,6 +210,8 @@ Nicht jetzt: Postfach, Bestätigungs-Oberfläche, Rechte, Protokoll. Das Modell 
 ## 5. Strang C · Welt-Import per ZIP → `Bauplan-Welt-Import`
 
 Betrifft die Karte in `companion-prototyp.html` und `biom-welt.js`. Branch: `bereich/karte-welt-upload`. Gehört zu Phase 5 von `companion/PLAN-welt-import-biome.md`.
+
+> **Umfang (Max, 01.10.2026):** der ganze Biom-Import, also die Phasen 2–5 des Biom-Plans zusammen mit diesem Strang. Gebaut; der Haltepunkt nach dem Import-Sheet und die Prüfungen an echten Welten stehen in der Warteliste. Die Test-ZIPs entstehen aus künstlichen Welten (`tests/welt-bauen.mjs`), bis `fixture-seed.mcworld` da ist.
 
 - **Upload-Feld** in der Karte: `accept=".zip,.mcworld"`, Verarbeitung im Worker wie im bestehenden Plan.
 - **Aufbauprüfung:**
