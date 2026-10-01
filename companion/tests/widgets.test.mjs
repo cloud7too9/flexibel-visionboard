@@ -143,6 +143,25 @@ try {
   pruefe(await p.$eval('[data-typ="handbuch.eintrag"] [data-testid="widget-leer"]', (e) => e.textContent).catch(() => "") === "Bereich geplant",
     "Handbuch-Eintrag: „Bereich geplant“");
 
+  // ---- Bereichs-Themes (A5) ----
+  await p.getByRole("button", { name: "Widget hinzufügen" }).first().click();
+  await p.fill('input[aria-label="Widgets suchen"]', "bauplan");
+  await p.click('[data-widget-typ="bauplaene.bauplan"]');
+  await p.waitForSelector('[data-typ="bauplaene.bauplan"]');
+  const themes = await p.$$eval('[data-panel-id] [data-testid="gehaeuse"]', (l) => Object.fromEntries(l.map((g) =>
+    [g.closest("[data-typ]").dataset.typ, { theme: g.dataset.theme, leiste: getComputedStyle(g).borderTopColor,
+      gitter: getComputedStyle(g.querySelector(".widget-koerper")).backgroundImage }])));
+  pruefe(["portale.verbindungen:portale", "handbuch.eintrag:handbuch", "bauplaene.bauplan:bauplaene", "banner.banner:banner",
+    "sammelobjekte.status:sammelobjekte", "karte.gesamtkarte:karte-oberwelt"].every((x) => { const [t, th] = x.split(":"); return themes[t]?.theme === th; }),
+    `Jedes Gehäuse trägt das Theme seines Bereichs (${Object.values(themes).map((t) => t.theme).join(", ")})`);
+  pruefe(themes["portale.verbindungen"].leiste === "rgb(160, 96, 255)", "Portale: lila Leiste");
+  pruefe((themes["bauplaene.bauplan"].gitter.match(/linear-gradient/g) ?? []).length === 2, "Baupläne: Gitter aus zwei linearen Verläufen");
+  pruefe(await p.locator('[data-typ="handbuch.eintrag"] [data-testid="buch"] [data-testid="widget-leer"]').count() === 1, "Handbuch: Inhalt auf den Buchseiten");
+  await p.getByRole("button", { name: "Bearbeitung beenden" }).click();
+  await p.waitForTimeout(300);
+  await p.screenshot({ path: `${DIR}/w8-themes.png` });
+  await p.getByRole("button", { name: "Bearbeiten" }).click();
+
   // Vollbild nur bei Typen mit vollbild: true
   pruefe(await p.locator('[data-panel-id="w-sammelobjekte"] [aria-label="Vollbild"]').count() === 0, "Alle Sammelobjekte: kein Vollbild (optional je Typ)");
   await p.locator('[data-panel-id="w-portale"] [aria-label="Vollbild"]').click();

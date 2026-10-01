@@ -1,18 +1,22 @@
 import { widgetTyp } from "../model/widget-register";
 import { zusatzinhalteFuer, type WidgetInstanz } from "../model/widget-struktur";
 import { stufeVon } from "../model/widget-vertrag";
-import { useKarte } from "../../karten/hooks/useKarte";
 import { KarteAnsicht } from "../../karten/components/KarteAnsicht";
+import type { WidgetAntwort } from "../../karten/karte.types";
 
 /**
- * Inhalt einer Instanz: die Karte vom Board (Typ + Quelle), ohne Karte der
+ * Inhalt einer Instanz: die Karte vom Board (Typ + Quelle, geladen mit
+ * `useKarte` vom Aufrufer, der sie auch fürs Theme braucht), ohne Karte der
  * Hinweis des Boards als leerer Zustand (Bereich geplant, Quelle gelöscht …).
  * Darunter die Zusatzinhalte, die ab dieser Stufe eingeblendet werden – im
- * Vollbild alle.
+ * Vollbild alle. `antwort` null: lädt noch.
  */
-export function WidgetInhalt({ instanz, vollbild = false }: { instanz: WidgetInstanz; vollbild?: boolean }) {
+export function WidgetInhalt({ instanz, antwort, vollbild = false }: {
+  instanz: WidgetInstanz;
+  antwort: WidgetAntwort | null;
+  vollbild?: boolean;
+}) {
   const typ = widgetTyp(instanz.typ);
-  const antwort = useKarte(instanz.typ, instanz.quelle);
   if (!typ) return <p className="text-sm text-text-muted">Unbekanntes Widget</p>;
   const stufe = stufeVon(typ.vertrag, instanz.stufe);
   const zusatz = vollbild ? typ.zusatzinhalte ?? [] : zusatzinhalteFuer(typ, stufe.name);

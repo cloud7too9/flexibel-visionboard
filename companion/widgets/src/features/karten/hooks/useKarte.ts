@@ -13,7 +13,7 @@ export function useKarte(typ: string, quelle?: string): WidgetAntwort | null {
   const [antwort, setAntwort] = useState<WidgetAntwort | null>(null);
 
   useEffect(() => {
-    if (modus === "pruefen") return;
+    if (modus === "pruefen" || !typ) return;
     let aktuell = true;
     // Beim Neuladen bleibt die alte Karte stehen, bis die neue da ist (kein Flackern)
     void karteLaden(typ, quelle).then((a) => { if (aktuell) setAntwort(a); });

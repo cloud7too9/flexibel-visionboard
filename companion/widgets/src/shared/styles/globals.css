@@ -1,4 +1,5 @@
 @import "./tokens.css";
+@import "./themes.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -49,3 +50,8 @@ body {
 .karte-koord[data-dimension="oberwelt"] { border-left-color: rgb(var(--color-dim-oberwelt)); }
 .karte-koord[data-dimension="nether"] { border-left-color: rgb(var(--color-dim-nether)); }
 .karte-koord[data-dimension="ende"] { border-left-color: rgb(var(--color-dim-ende)); }
+
+/* Gehäuse: Leiste in der Farbe des Bereichs-Themes */
+.widget-gehaeuse {
+  border-top: 3px solid rgb(var(--color-theme-akzent, var(--color-accent)));
+}
