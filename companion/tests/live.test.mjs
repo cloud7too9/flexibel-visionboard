@@ -101,6 +101,8 @@ try {
   for (const [a, v] of [["X", 212], ["Y", 71], ["Z", -388]]) await max.fill(`[data-koord="f${a}"]`, String(v));
   await max.click('[data-aktion="formular-speichern"]');
   pruefe(await warteAuf(max, () => st.instanzen.length === 1), "Ort „Hauptbasis“ gespeichert");
+  const ortId = await max.evaluate(() => st.instanzen[0].id);
+  pruefe(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(ortId), `Ort-ID vom Handy (UUID ${ortId.slice(0, 8)}…)`);
   await max.evaluate(() => ansichtWechseln("liste"));
 
   // Screenshot aus der Seed Map: echte Texterkennung des Boards

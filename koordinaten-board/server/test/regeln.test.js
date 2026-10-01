@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 import { regeln } from '../src/regeln.js';
 
 test('Regeln der Companion werden geladen', () => {
@@ -93,4 +94,18 @@ test('Rüstung: Namen und IDs passen zum Rüstungs-Baukasten', () => {
   const besaetze = j(regeln.SAMMELOBJEKTE).filter((o) => !o.aufwertung);
   assert.deepEqual(besaetze.map((o) => [o.id, o.name]).sort(), manifest.muster.map((m) => [m.id, m.name]).sort());
   assert.deepEqual(manifest.farbstoffe.map((f) => f.id).sort(), j(regeln.FARBEN).map((f) => f.id).sort());
+});
+
+test('IDs neuer Einträge: UUID v4 vom Handy, auch ohne sicheren Kontext', () => {
+  // Wie im Browser über http: crypto.getRandomValues gibt es, randomUUID wird nicht gebraucht
+  const code = readFileSync(new URL('../../../companion/regeln.js', import.meta.url), 'utf8');
+  const { neueEintragId, idGueltig } = vm.runInNewContext(`${code}\n;({ neueEintragId, idGueltig })`,
+    { crypto: { getRandomValues: (a) => globalThis.crypto.getRandomValues(a) } });
+  const ids = Array.from({ length: 200 }, neueEintragId);
+  assert.ok(ids.every(idGueltig));
+  assert.equal(new Set(ids).size, 200);
+  assert.ok(regeln.idGueltig(globalThis.crypto.randomUUID()), 'Node-UUIDs gelten auch');
+  for (const falsch of ['i_3', '', null, 42, 'F47AC10B-58CC-4372-A567-0E02B2C3D479', 'f47ac10b-58cc-1372-a567-0e02b2c3d479']) {
+    assert.equal(regeln.idGueltig(falsch), false, String(falsch));
+  }
 });

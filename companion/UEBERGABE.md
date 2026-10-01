@@ -176,7 +176,7 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
    - `…Laden()` und `render…()`
    - Detail und Editor über `sheetOeffnen("<art>", html, dim)`
    - eine **Regel-Funktion** `…Pruefen()` **in `regeln.js`** (mit den Stammdaten, die sie braucht) – der Board-Server lädt sie mit
-4. API-Vertrag im Kommentar von Abschnitt 4 ergänzen und die Mock-Routen in `mockApi()` anlegen. Die Mock-Routen nutzen dieselbe Regel-Funktion. Auf dem Board: Ablauf in `server/src/daten.js`, Route in `server/src/companion-api.js` mit `geaendert("<bereich>", weltId)`, Neuladen in `liveAktualisieren()`.
+4. API-Vertrag im Kommentar von Abschnitt 4 ergänzen und die Mock-Routen in `mockApi()` anlegen. Neue Einträge bekommen ihre ID vom Handy (`id:neueEintragId()` im POST-Body, Mock und Board prüfen sie mit `eintragId`). Die Mock-Routen nutzen dieselbe Regel-Funktion. Auf dem Board: Ablauf in `server/src/daten.js`, Route in `server/src/companion-api.js` mit `geaendert("<bereich>", weltId)`, Neuladen in `liveAktualisieren()`.
 5. `ICON` und `BEREICHE` bekommen einen Eintrag mit `mount`/`unmount`. Dazu je ein Zweig in `render()` und in `renderKopf()`.
 6. Sheet-Aktionen im `$sheet`-Klick-Switch ergänzen. Löschen immer mit zweitem Tippen („Wirklich löschen?“).
 7. Hängen die Daten an einer Welt, `…Laden()` in `weltLaden()` aufrufen.

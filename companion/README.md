@@ -218,7 +218,7 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | GET | `/orte/welten` | – | `{ welten:[{ id, seed, anzahl }] }` |
 | POST | `/orte/welten` | `{ seed }` | `{ welt }` – legt 3 Dimensionen an |
 | GET | `/orte/welten/:id` | – | `{ welt, dimensionen, typen, instanzen }` |
-| POST | `/orte/instanzen` | `{ dimensionId, kategorie, variante, x, y, z, quelle }` | `{ instanz, typ }` – Typ wird gefunden oder angelegt |
+| POST | `/orte/instanzen` | `{ id?, dimensionId, kategorie, variante, x, y, z, quelle }` | `{ instanz, typ }` – Typ wird gefunden oder angelegt |
 | PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` |
 | PUT | `/orte/instanzen/:id/angeheftet` | `{ angeheftet }` | `{ instanz }` – groß auf der Anzeige |
 | DELETE | `/orte/instanzen/:id` | – | `{ ok:true }` |
@@ -229,19 +229,21 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | GET | `/sammelobjekte/welten/:id` | – | `{ status:{ [objektId]:{ von, am } } }` |
 | PUT | `/sammelobjekte/welten/:id/:objektId` | `{ gefunden }` | `{ status }` |
 | GET | `/portale/welten/:id` | – | `{ verbindungen:[verbindung] }` |
-| POST | `/portale/welten/:id` | `{ name, oberwelt, nether }` | `{ verbindung }` – `von`/`am` setzt der Server |
+| POST | `/portale/welten/:id` | `{ id?, name, oberwelt, nether }` | `{ verbindung }` – `von`/`am` setzt der Server |
 | PUT | `/portale/:id` | `{ name, oberwelt, nether }` | `{ verbindung }` |
 | DELETE | `/portale/:id` | – | `{ ok:true }` |
 | GET | `/banner` | – | `{ liste:[banner] }` |
-| POST | `/banner` | `{ name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
+| POST | `/banner` | `{ id?, name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
 | PUT | `/banner/:id` | `{ name, basis, ebenen }` | `{ banner }` |
 | DELETE | `/banner/:id` | – | `{ ok:true }` |
 | GET | `/ruestung` | – | `{ sets:[set] }` |
-| POST | `/ruestung` | `{ name, teile }` | `{ set }` – `von`/`am` setzt der Server |
+| POST | `/ruestung` | `{ id?, name, teile }` | `{ set }` – `von`/`am` setzt der Server |
 | PUT | `/ruestung/:id` | `{ name, teile }` | `{ set }` |
 | DELETE | `/ruestung/:id` | – | `{ ok:true }` |
 | GET | `/board/einstellungen` | – | `{ titel, qrZeigen, aktiveWelt, aktiv }` – nur Board |
 | PUT | `/board/einstellungen` | `{ titel?, qrZeigen?, aktiveWelt? }` | wie GET |
+
+**IDs vom Handy (Strang B):** Beim Anlegen von Orten, Portal-Verbindungen, Bannern und Rüstungs-Sets schickt die Companion die ID mit (`id`, UUID v4 aus `neueEintragId()` in `regeln.js`, auch über http ohne sicheren Kontext), damit sie später offline anlegen kann. Der Server prüft das Format (`idGueltig()`, sonst 400) und lehnt doppelte IDs ab (409); ohne `id` vergibt er eine wie bisher. Jeder Eintrag trägt außerdem `erstellerId` (stabile Benutzer-ID; bis zu den Accounts in B2 „unbekannt“), `von` bleibt nur zur Anzeige.
 
 `verbindung = { id, name, oberwelt:{ x, y|null, z }, nether:{ x, y|null, z }, von, am }`
 

@@ -18,7 +18,7 @@ const NAMEN = [
   'WELTGRENZE', 'DIM_ORDER', 'dimLabel', 'EIGENE_ORTE', 'BIOMES', 'FEATURE_KATEGORIEN', 'BIOME', 'biomFinden',
   'SAMMELOBJEKTE', 'FARBEN', 'MUSTER', 'MAX_EBENEN', 'RUESTUNGS_TEILE', 'RUESTUNGEN', 'BESATZ_MATERIALIEN',
   'instanzPruefen', 'bannerPruefen', 'bannerSauber', 'verbindungRegelPruefen', 'verbindungSauber',
-  'ruestungPruefen', 'ruestungSauber', 'biomImportPruefen', 'biomImportSauber',
+  'ruestungPruefen', 'ruestungSauber', 'biomImportPruefen', 'biomImportSauber', 'idGueltig',
 ];
 
 const KARTEN_NAMEN = ['BOARD_KARTEN', 'strukturName', 'zahl'];

@@ -20,7 +20,7 @@ Bei jedem Haltepunkt stehen Branch und Screenshots. Die Screenshots erzeugen die
 Später, wenn es so weit ist: A6 (Layout am Handy anordnen), B3 (am echten iPhone im Flugmodus).
 
 **Pull Requests:** Es ist noch keiner offen. Gemergt wird nach Plan durch Max per PR nach `main`, nach jedem Strang bzw. Haltepunkt mit OK. Die Branches bauen aufeinander auf:
-`bereich/karte-welt-upload` → `board/anzeige-link` → `bereich/widgets-uebernahme` → `-raster` → `-groessen` → `-struktur` → `-register` → `-themes` → `-anzeigen` (Strang C und der Anzeige-Link sind in die Widgets-Kette gemergt).
+`bereich/karte-welt-upload` → `board/anzeige-link` → `bereich/widgets-uebernahme` → `-raster` → `-groessen` → `-struktur` → `-register` → `-themes` → `-anzeigen` → `board/identitaet` (Strang C und der Anzeige-Link sind in die Widgets-Kette gemergt).
 
 ---
 
@@ -30,7 +30,8 @@ Später, wenn es so weit ist: A6 (Layout am Handy anordnen), B3 (am echten iPhon
 |---|---|---|
 | N1 | Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet? | nichts Gebautes; betrifft A6 |
 | N2 | Wie kommt die Steuerung ans Handy? React-Route `/dashboard/anordnen` aus `companion/widgets/` (Vorschlag) oder in der Vanilla-Seite nachgebaut? | **A6: „Anordnen am Handy“.** Alles andere aus A6 ist gebaut (Branch `bereich/widgets-anzeigen`): Layout und Reihen je Anzeige am Server, das Dashboard zeigt am Board das Layout seiner Anzeige live und ohne Bearbeiten. **Bis N2 lässt sich das Layout am Board nur über die API ändern** (`PUT /api/anzeigen/:id/layout`); bearbeiten geht nur ohne Board (`npm run dev`). |
-| N4 | Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz? | **B2: Accounts mit PIN** |
+| N4 | Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz? | **B2: Accounts mit PIN.** B1 ist gebaut (Branch `board/identitaet`): IDs vom Handy, `erstellerId` – bis zu den Accounts „unbekannt“ –, leere Sammlungen für Benutzer, Profile, Geräte. |
+| N5 *(neu)* | **Offline braucht HTTPS.** Service Worker (B3) laufen nur in sicheren Kontexten (https oder localhost). Die Companion läuft am Handy über `http://192.168…:3000`, dort startet kein Service Worker. Möglichkeiten: HTTPS am Board mit eigenem Zertifikat (das iPhone muss ihm einmal vertrauen), ein Zertifikat für eine eigene Domain, oder Offline ohne Service Worker (dann lädt die Seite ohne Netz nicht). | **B3–B5** (Offline-Betrieb, Warteschlange, Zustandswechsel offline) |
 
 ---
 

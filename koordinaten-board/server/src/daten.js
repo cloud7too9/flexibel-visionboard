@@ -26,6 +26,10 @@ const fehler = (status, message) => { throw new DatenFehler(status, message); };
 const STANDARD_EINSTELLUNGEN = { titel: 'Unsere Welt', qrZeigen: true, aktiveWelt: null };
 const leer = () => ({
   zaehler: 0,
+  // Identität (Strang B): stabile Benutzer, Profile und Geräte. Gefüllt werden sie mit den Accounts (B2).
+  benutzer: [],      // { id, anzeigename, pinHash, rolle:"Besitzer" }
+  profile: [],       // { id, benutzerId, geteilt }
+  geraete: [],       // { id, freigeschaltet, typ:"persoenlich"|"geteilt", profilId }
   welten: [],        // { id, seed }
   typen: [],         // { id, kategorie, variante|null }   – welt-übergreifend
   instanzen: [],     // { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, von, am, geaendert? }
@@ -36,6 +40,12 @@ const leer = () => ({
   anzeigen: [],      // { id, name, schluessel, am, reihen?, layout? } – Geräte, die als Anzeige laufen dürfen (Anzeige-Link), mit ihrem Widget-Layout
   einstellungen: { ...STANDARD_EINSTELLUNGEN },
 });
+/** Urheber eines Eintrags als stabile Benutzer-ID; `von` (Name) bleibt nur zur Anzeige.
+    Accounts gibt es erst mit B2 – bis dahin und für alte Einträge „unbekannt“. */
+const ERSTELLER_UNBEKANNT = 'unbekannt';
+/** Sammlungen mit Einträgen, die einen Ersteller haben */
+const MIT_ERSTELLER = ['instanzen', 'banner', 'ruestung', 'portale'];
+
 /** Zufälliger Anzeige-Schlüssel für den Link (URL-tauglich) */
 const neuerSchluessel = () => randomBytes(18).toString('base64url');
 
@@ -71,7 +81,17 @@ export class Daten {
       text = null;
     }
     if (text) await this.biomPunkteEntfernen(text);
+    this.erstellerNachtragen();
     this.anzeigenSicherstellen();
+  }
+
+  /** Alte Einträge ohne erstellerId (vor Strang B) bekommen „unbekannt“ */
+  erstellerNachtragen() {
+    let geaendert = false;
+    const nachtragen = (e) => { if (e && !e.erstellerId) { e.erstellerId = ERSTELLER_UNBEKANNT; geaendert = true; } };
+    for (const name of MIT_ERSTELLER) this.inhalt[name].forEach(nachtragen);
+    for (const status of Object.values(this.inhalt.sammel)) Object.values(status).forEach(nachtragen);
+    if (geaendert) this.speichernVerzoegert();
   }
 
   /** Biome kommen nur noch aus dem Welt-Import (regeln.js): alte Biom-Punkte aus Screenshots
@@ -103,6 +123,14 @@ export class Daten {
   neueId(praefix) {
     this.inhalt.zaehler += 1;
     return `${praefix}_${this.inhalt.zaehler}`;
+  }
+
+  /** ID eines neuen Eintrags: vom Handy (UUID, regeln.js) – geprüft und nicht doppelt – oder ohne vom Server */
+  eintragId(body, praefix, liste) {
+    if (body?.id == null) return this.neueId(praefix);
+    if (!regeln.idGueltig(body.id)) fehler(400, 'Ungültige ID');
+    if (liste.some((x) => x.id === body.id)) fehler(409, 'Diesen Eintrag gibt es schon');
+    return body.id;
   }
 
   // ---------- Welten + Orte ----------
@@ -164,14 +192,15 @@ export class Daten {
     const vorhanden = this.typFinden(body.kategorie, variante);
     const problem = regeln.instanzPruefen({ ...body, variante, quelle }, d.type, Boolean(vorhanden));
     if (problem) fehler(422, problem);
+    const id = this.eintragId(body, 'i', this.inhalt.instanzen);
     let typ = vorhanden;
     if (!typ) {
       typ = { id: this.neueId('t'), kategorie: body.kategorie, variante };
       this.inhalt.typen.push(typ);
     }
     const instanz = {
-      id: this.neueId('i'), dimensionId: d.id, featureTypeId: typ.id,
-      x: body.x, y: body.y ?? null, z: body.z, quelle, angeheftet: false, von, am: new Date().toISOString(),
+      id, dimensionId: d.id, featureTypeId: typ.id,
+      x: body.x, y: body.y ?? null, z: body.z, quelle, angeheftet: false, von, erstellerId: ERSTELLER_UNBEKANNT, am: new Date().toISOString(),
     };
     this.inhalt.instanzen.push(instanz);
     this.speichernVerzoegert();
@@ -263,7 +292,7 @@ export class Daten {
     this.welt(weltId);
     if (!SAMMELOBJEKTE.some((o) => o.id === objektId)) fehler(404, 'Unbekanntes Sammelobjekt');
     const status = (this.inhalt.sammel[weltId] ??= {});
-    if (body?.gefunden) status[objektId] = { von, am: tag() };
+    if (body?.gefunden) status[objektId] = { von, erstellerId: ERSTELLER_UNBEKANNT, am: tag() };
     else delete status[objektId];
     this.speichernVerzoegert();
     return { status: kopie(status) };
@@ -284,7 +313,7 @@ export class Daten {
     this.welt(weltId);
     const problem = regeln.verbindungRegelPruefen(body);
     if (problem) fehler(422, problem);
-    const v = { id: this.neueId('p'), weltId, ...kopie(regeln.verbindungSauber(body)), von, am: tag() };
+    const v = { id: this.eintragId(body, 'p', this.inhalt.portale), weltId, ...kopie(regeln.verbindungSauber(body)), von, erstellerId: ERSTELLER_UNBEKANNT, am: tag() };
     this.inhalt.portale.push(v);
     this.speichernVerzoegert();
     const { weltId: _w, ...ohne } = v;
@@ -321,7 +350,7 @@ export class Daten {
   bannerAnlegen(body, von) {
     const problem = regeln.bannerPruefen(body);
     if (problem) fehler(422, problem);
-    const b = { id: this.neueId('b'), ...kopie(regeln.bannerSauber(body)), von, am: tag() };
+    const b = { id: this.eintragId(body, 'b', this.inhalt.banner), ...kopie(regeln.bannerSauber(body)), von, erstellerId: ERSTELLER_UNBEKANNT, am: tag() };
     this.inhalt.banner.unshift(b);
     this.speichernVerzoegert();
     return kopie(b);
@@ -355,7 +384,7 @@ export class Daten {
   ruestungAnlegen(body, von) {
     const problem = regeln.ruestungPruefen(body);
     if (problem) fehler(422, problem);
-    const s = { id: this.neueId('r'), ...kopie(regeln.ruestungSauber(body)), von, am: tag() };
+    const s = { id: this.eintragId(body, 'r', this.inhalt.ruestung), ...kopie(regeln.ruestungSauber(body)), von, erstellerId: ERSTELLER_UNBEKANNT, am: tag() };
     this.inhalt.ruestung.unshift(s);
     this.speichernVerzoegert();
     return kopie(s);
