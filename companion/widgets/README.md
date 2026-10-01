@@ -5,23 +5,26 @@ iOS-Kontrollzentrums. Grundlage ist der MainHub-Workspace
 (`cloud7too9/mainhub-frontend`, per `git subtree` mit Verlauf übernommen):
 Grid, Layer, Bearbeitungsmodus und Galerie.
 
-**Stand:** Phase A1 aus [`planung/PLAN.md`](../../planung/PLAN.md): Raster
-mit 32 Spalten. Noch mit den MainHub-Beispiel-Panels und dem Layout im
-`localStorage`. Es folgen Größenstufen, Companion-Register, Karten vom
-Server, Layout pro Anzeige und Anordnen am Handy (A2–A6).
+**Stand:** Phasen A1 und A2 aus [`planung/PLAN.md`](../../planung/PLAN.md):
+Raster mit 32 Spalten, Größenstufen statt freier Größen, Vollbild als eigene
+Route. Noch mit den MainHub-Beispiel-Panels (vorläufige Stufen) und dem Layout
+im `localStorage`. Es folgen Companion-Register, Karten vom Server, Themes,
+Layout pro Anzeige und Anordnen am Handy (A3–A6).
 
 ## Starten
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:5173/dashboard/
 npm run build        # Produktions-Build nach dist/
 npm test             # Unit-Tests (Vitest)
 npm run typecheck    # TS-Check
 ```
 
-Ausgeliefert wird später vom Board-Server unter `/dashboard` (Phase A6),
-wie heute `/anzeige`. Ein eigenes Docker-Image gibt es deshalb nicht mehr.
+Die App läuft unter `/dashboard/` (Vite `base`). Ausgeliefert wird sie später
+vom Board-Server (Phase A6), wie heute `/anzeige`. Ein eigenes Docker-Image
+gibt es deshalb nicht mehr. Playwright-Test mit Screenshots:
+`cd ../tests && node widgets.test.mjs` (vorher `npm run build`).
 
 ## Architektur
 
@@ -53,12 +56,39 @@ Bauplan: `planung/bauplaene/Bauplan-Raster-32-Spalten.md`.
 - Kein abgeleitetes Handy-Layout mehr: Jedes Gerät zeigt dieselbe Fläche,
   nur kleiner; bearbeiten geht überall. Liegt ein Widget unter den sichtbaren
   Reihen, wird es abgeschnitten – das löst A6 (ein Layout pro Anzeige).
-- Gespeichert wird in Zellen (`localStorage`, Schema-Version 4). Layouts aus
-  dem alten 96 × 48-Raster werden verworfen.
+- Gespeichert wird in Zellen (`localStorage`). Layouts aus dem alten
+  96 × 48-Raster werden verworfen.
+
+## Größenstufen (`src/features/workspace/model/widget-vertrag.ts`)
+
+Bauplan: `planung/bauplaene/Bauplan-Widget-Groessensystem.md`.
+
+- **Größen-Vertrag** je Widget-Typ (`WidgetVertrag`): Stufen mit Name, Breite,
+  Höhe und Informationsumfang, dazu Mindest- und Maximalgröße. Geprüft beim
+  Registrieren (`vertragRegistrieren`): ganze Zellen, höchstens 32 Spalten,
+  jede Stufe zwischen Mindest- und Maximalgröße, eindeutige Namen. Die erste
+  Stufe ist die Standardstufe.
+- **Kein freies Skalieren**: Jedes Widget liegt in einer Stufe
+  (`LayoutItem.stufe`), Breite und Höhe folgen daraus. Der Griff unten rechts
+  schaltet beim Antippen zur nächsten Stufe, die an der Stelle passt; Ziehen
+  wählt die Stufe, die der gezogenen Größe am nächsten kommt. Die obere linke
+  Ecke bleibt, am Rand rückt das Widget nach innen.
+- **Passt-Prüfung** (`lib/collision-utils.ts`): Belegungsmatrix 32 × reihen,
+  Stufe innerhalb von Mindest-/Maximalgröße, Rand mit den Reihen der jeweiligen
+  Anzeige, keine belegte Zelle. Hinzufügen nimmt die Standardstufe, sonst die
+  nächste, die noch passt.
+- `inZellen(px, zellePxEntwurf)` rundet Entwurfsmaße auf ganze Zellen.
+- **Vollbild** ist optional je Typ (`vollbild: true`, E7): eigene Route
+  `/dashboard/vollbild/:instanzId`, ein Widget allein über die ganze Fläche,
+  „Zurück“ zeigt das Raster mit unveränderter Position. Bis A6 startet es der
+  Vollbild-Knopf im Bearbeiten-Modus, danach das Handy.
+- **Offen** (E6, Planungsrunde A7): `SEITENLEISTEN_BREITE` hat noch keinen Wert,
+  deshalb gibt es die größte Rasterstufe (`32 − Seitenleiste`) noch nicht. Die
+  Stufen der Beispiel-Panels sind vorläufig.
 
 ## Layer
 
 Der Workspace besteht aus einem oder mehreren Layern mit jeweils eigener
 Widget-Anordnung. Der Umschalter im Header wechselt jederzeit den Layer;
 Anlegen, Umbenennen und Entfernen gehen im Bearbeitungszustand. Gespeichert
-wird im `localStorage` (Schema-Version 4).
+wird im `localStorage` (Schema-Version 5; ältere Stände werden verworfen).

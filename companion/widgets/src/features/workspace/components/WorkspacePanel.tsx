@@ -63,7 +63,7 @@ export function WorkspacePanel({
             {item.stufe} · {item.w}×{item.h}
           </span>
         )}
-        {editMode && <PanelToolbar panelId={item.id} />}
+        {editMode && <PanelToolbar panelId={item.id} typ={item.panelTyp} />}
       </div>
       <div className="flex-1 overflow-auto p-2.5 sm:p-3">
         <PanelContentRenderer typ={item.panelTyp} />
