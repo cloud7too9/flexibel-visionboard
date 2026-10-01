@@ -1,6 +1,6 @@
 # Plan: Widget-Dashboard, Offline-Sync und Welt-Import
 
-> Für Claude Code · Repo `flexibel-visionboard` · Stand 01.10.2026
+> Für Claude Code · Repo `flexibel-visionboard` · Stand 01.10.2026 · Entscheidungen von Max eingearbeitet
 > Grundlage: die Ideen in [`ideen/`](ideen/) und die Baupläne in [`bauplaene/`](bauplaene/) aus der Planungskommission
 
 ---
@@ -8,25 +8,31 @@
 ## 0. So arbeitest du diesen Plan ab
 
 1. Lies zuerst `UEBERGABE.md` im Hauptordner, dann `companion/UEBERGABE.md`, dann diesen Plan.
-2. Die Baupläne in `bauplaene/` sind bewusst projektneutral. Dieser Plan ordnet sie dem Projekt zu: welcher Ordner, welche Datei, welcher Branch. **Weichen Bauplan und dieser Plan voneinander ab, gilt dieser Plan.**
-3. Arbeite die Stränge (Kapitel 3–5) in der Reihenfolge aus Kapitel 6 ab. Jede Phase endet mit Tests, README-Notiz und Commit. Die Commit-Texte stehen in den Bauplänen.
+2. Die Baupläne in `bauplaene/` sind bewusst projektneutral. Dieser Plan ordnet sie dem Projekt zu: welcher Ordner, welche Datei, welcher Branch. **Weichen Bauplan und dieser Plan voneinander ab, gilt dieser Plan.** Die Abweichungen gehen auf die Entscheidungen in Kapitel 7 zurück.
+3. Arbeite die Stränge (Kapitel 3–5) in der Reihenfolge aus Kapitel 6 ab. Jede Phase endet mit Tests, README-Notiz und Commit. Die Commit-Texte stehen in den Bauplänen, neue Phasen nennen ihre eigenen.
 4. **Haltepunkte (⏸):** Hier stoppst du und zeigst Max das Ergebnis. Weiter geht es erst nach seinem OK.
 5. Es gelten die Konventionen aus `UEBERGABE.md`:
    - Deutsch in Code, UI-Texten und Commits.
    - Nach jedem Commit schreibst du `Commit erstellt: …`.
    - Du sagst immer an, wann gepusht und wann gemergt wird.
    - Das Datenmodell bleibt minimal, und du baust nur Besprochenes.
-6. Mit **⚖** markierte Punkte sind Entscheidungen, die Max treffen muss (Kapitel 7). Bis dahin gilt der jeweils genannte Vorschlag, und zwar nur dort, wo er nichts verbaut.
+6. Was in Kapitel 8 als **offen** steht, baust du nicht vorweg.
 
 ---
 
 ## 1. Ziel
 
-Die Companion bekommt eine **Widget-Ansicht** nach dem Vorbild von MainHub und dem iOS-Kontrollzentrum. Jeder Bereich (Karte, Sammelobjekte, Portale, Handbuch, Baupläne, Banner, Rüstung) liefert einzelne Inhalte als Widgets. Sie lassen sich auf einem 32-Spalten-Raster anordnen, und man erkennt sie am Theme ihres Bereichs.
+Die Companion bekommt eine **Widget-Ansicht** nach dem Vorbild von MainHub und dem iOS-Kontrollzentrum. Jeder Bereich (Karte, Sammelobjekte, Portale, Handbuch, Baupläne, Banner, Rüstung) liefert einzelne Inhalte als Widgets. Sie liegen auf einem 32-Spalten-Raster, und man erkennt sie am Theme ihres Bereichs.
+
+**Rollen (E1, E4):**
+
+- Die Widget-Ansicht läuft am Board unter **`/dashboard`**, neben der bisherigen `/anzeige`. Das Board zeigt nur an.
+- **Angeordnet wird am Handy.** Das Handy sieht die Fläche einer Anzeige mit leeren Widgets, also nur Rahmen, Titel und Theme. Dort verschiebt man Widgets, fügt neue hinzu und wechselt die Größe. Am besten geht das im Querformat.
+- **Jede Anzeige hat ihr eigenes Layout** am Server (E5).
 
 Daneben laufen zwei unabhängige Stränge:
 
-- **Offline-Sync und Identität**: Das Handy wird zum persönlichen Werkzeug, das auch ohne Server läuft. Das Board wird reine Anzeige.
+- **Offline-Sync und Identität**: Das Handy wird zum persönlichen Werkzeug mit Account und PIN und läuft auch ohne Server.
 - **Welt-Import per ZIP**: Das Upload-Feld mit Anleitung für den bereits fertigen Biom-Dekoder.
 
 ---
@@ -35,85 +41,107 @@ Daneben laufen zwei unabhängige Stränge:
 
 | Baustein | Ort | Stand | Bezug zum Plan |
 |---|---|---|---|
-| MainHub-Workspace | `companion/mainhub/` | übernommen per `git subtree` (Branch `bereich/mainhub-visionboard`), unverändert | Grundgerüst der Widget-Ansicht: Grid, Layer, Bearbeiten-Modus, Galerie (`AddPanelModal`), Persistenz |
-| Raster von MainHub | `mainhub/src/features/workspace/` | 96 × 48 feste Zellen, freie Größen mit Mindestmaßen, Handy-Layout abgeleitet | wird auf **32 Spalten, quadratische Zelle, variable Reihen** umgebaut |
-| Widget-Registry von MainHub | `model/panel-registry.ts` | 6 Beispiel-Panels (Notiz, Aufgaben …) | wird durch das Companion-Register ersetzt |
+| MainHub-Workspace | `companion/mainhub/` → wird **`companion/widgets/`** | übernommen per `git subtree`, unverändert | Grundgerüst: Grid, Layer, Bearbeiten-Modus, Galerie (`AddPanelModal`) |
+| Raster von MainHub | `src/features/workspace/` | 96 × 48 feste Zellen, freie Größen, Handy-Layout abgeleitet | wird zu **32 Spalten, quadratische Zelle, variable Reihen** |
+| Persistenz von MainHub | `lib/storage.ts` | `localStorage` je Browser | wird **Layout pro Anzeige am Server**, live über `/ws` |
+| Widget-Registry von MainHub | `model/panel-registry.ts` | 6 Beispiel-Panels | wird durch das Companion-Register ersetzt |
 | Modul-Vertrag `BEREICHE` | `companion/companion-prototyp.html` (Abschnitt 9b) | `ansichten` nur dokumentiert: 1×1/2×1/2×2 auf 4 Spalten | **wird abgelöst** durch Register und Größen-Vertrag. Den Kommentar dort nachziehen. |
-| Anzeigeschemas `BOARD_KARTEN` | `companion-prototyp.html`, geprüft in `koordinaten-board/server/src/zeigen.js` | Ort, Sammelobjekt, Portal, Banner und Rüstung als allgemeine Karten | Baustein für die Renderer der Einzeleintrag-Widgets |
-| Board-Anzeige | `koordinaten-board/client/` (React) unter `/anzeige` | zeigt die Orte der aktiven Welt und „Aufs Board“ | ⚖ Verhältnis zur neuen Widget-Ansicht (E1) |
-| Daten | `koordinaten-board/server/src/daten.js` | IDs vom Server (`neueId`), Urheber als Name im Feld `von` | Grundlage für stabile Benutzer-ID und Client-IDs |
-| Beitreten | Name + PIN über QR-Code, `sperre.js` | freier Name | wird zum gekapselten `IdentitaetsAnbieter` |
+| Anzeigeschemas `BOARD_KARTEN` | `companion-prototyp.html`, geprüft in `koordinaten-board/server/src/zeigen.js` | Ort, Sammelobjekt, Portal, Banner und Rüstung als allgemeine Karten | **wandern in den Server** (E3). Das Dashboard bekommt fertige Karten. |
+| Board-Anzeige | `koordinaten-board/client/` (React) unter `/anzeige` | Orte der aktiven Welt und „Aufs Board“ | bleibt vorerst. Geht später in `/dashboard` auf. |
+| Daten | `koordinaten-board/server/src/daten.js` | IDs vom Server (`neueId`), Urheber als Name im Feld `von` | stabile Benutzer-ID, Client-IDs |
+| Beitreten | QR-Code → `/?pin=…`, Name frei, `sperre.js` | Board-PIN + freier Name | wird **Account mit PIN**, die Anmeldung erreicht man über den QR-Code (E9) |
 | Offline | `localStorage` für Verbindung und Name | kein Service Worker, keine IndexedDB | neu |
-| Welt-Import | `biom-dekoder.js`, `biom-welt.js`, `vendor/` | Dekoder fertig (PR #6), **noch kein Upload-Feld** in der Seite | Strang C ergänzt Upload, Prüfung und Anleitung |
+| Welt-Import | `biom-dekoder.js`, `biom-welt.js`, `vendor/` | Dekoder fertig (PR #6), **noch kein Upload-Feld** | Strang C |
 
 ---
 
 ## 3. Strang A · Widget-Dashboard
 
-Branch je Phase: `bereich/widgets-<thema>`. Die Branches gehen von `bereich/mainhub-visionboard` ab, sobald dieser in `main` gemergt ist. Bis dahin gehen sie direkt von ihm ab.
-
-Ort: `companion/mainhub/`. Den Ordner benennst du in Phase A0 um (⚖ E2, Vorschlag `companion/dashboard/`).
+Branch je Phase: `bereich/widgets-<thema>`. Die Branches gehen von `bereich/mainhub-visionboard` ab, solange dieser nicht in `main` ist.
 
 ### Phase A0 · Übernahme lauffähig machen
 
-- `npm install`, `npm run typecheck`, `npm test` und `npm run build` laufen im neuen Ordner grün.
-- Ordner umbenennen, falls Max zustimmt (E2). README im Ordner und im Hauptordner nachziehen.
-- Docker-Dateien (`Dockerfile`, `compose.yaml`, `docker/`) bleiben vorerst liegen. Das Board liefert später aus (A7).
-- Commit: „Dashboard: MainHub in der Companion lauffähig“
+- Den Ordner per `git mv companion/mainhub companion/widgets` umbenennen (E2).
+- `npm install`, `npm run typecheck`, `npm test` und `npm run build` laufen grün.
+- README im Ordner und im Hauptordner nachziehen. In `UEBERGABE.md` den Ordner im Aufbau des Repos ergänzen.
+- Docker-Dateien (`Dockerfile`, `compose.yaml`, `docker/`) entfernen. Ausgeliefert wird übers Board (A6).
+- Commit: „Widgets: MainHub als companion/widgets lauffähig“
 
 ### Phase A1 · Raster mit 32 Spalten → `Bauplan-Raster-32-Spalten`
 
-- `RASTER_SPALTEN = 32` zentral in `model/breakpoints.ts` bzw. in einem neuen Modul `lib/raster.ts`.
+- `RASTER_SPALTEN = 32` zentral in `lib/raster.ts`. `model/breakpoints.ts` geht darin auf.
 - `zellePx = breite / 32` und `reihen = floor(hoehe / zellePx)`, neu berechnet per ResizeObserver.
-- Die feste Größe `zeilen` in `WorkspaceLayout` entfällt bzw. wird pro Gerät berechnet. Den Abstand (`abstand`) rechnest du aus der Zelle heraus, sonst bleibt die Zelle nicht quadratisch.
-- `responsive-layout.ts`: Die Ableitung aus 96 × 48 entfällt. Das Handy-Hochformat bleibt offen (⚖ E4). Bis dahin gilt dort das alte Verhalten.
+- Den Abstand zwischen Widgets ziehst du innerhalb der Zelle ab, damit die Zelle quadratisch bleibt.
+- `responsive-layout.ts` entfällt. Es gibt kein abgeleitetes Handy-Layout mehr: Das Handy zeigt dieselbe Fläche wie die Anzeige, verkleinert (E4, siehe A6).
+- Die alten 96×48-Layouts werden verworfen, nicht migriert. Es gibt noch keine echten Nutzerdaten.
 - Tests: 1920×1080 → 18, 1440×900 → 20, 1180×820 → 22, 1024×768 → 24 Reihen.
-- **Gespeicherte Layouts:** Die alten 96×48-Layouts in `localStorage` werden verworfen, nicht migriert. Es gibt noch keine echten Nutzerdaten. Dafür die Speicherversion in `lib/storage.ts` erhöhen.
-- **Widgets unterhalb der sichtbaren Reihen** (auf 4:3 angelegt, auf 16:9 angezeigt): ⚖ E5. Vorschlag: Die Position bleibt gespeichert, und ein Hinweis „N Widgets außerhalb“ erscheint im Bearbeiten-Modus.
 
 ### Phase A2 · Größen-Vertrag → `Bauplan-Widget-Groessensystem`
 
 - Typen `Groessenstufe` und `WidgetVertrag` mit Validierung beim Registrieren. Sie ersetzen `PanelDefinition`.
-- **Freies Skalieren entfällt.** Der Griff zum Vergrößern schaltet stattdessen zur nächsten angebotenen Stufe (wie im Kontrollzentrum).
+- **Freies Skalieren entfällt.** Der Griff zum Vergrößern schaltet zur nächsten angebotenen Stufe (wie im Kontrollzentrum).
 - `inZellen()` mit Tests.
-- Belegungsmatrix und Passt-Prüfung: `collision-utils.ts` ausbauen.
-- `seitenleistenBreite` als Konstante. Den Wert legt Max fest (⚖ E6), Vorschlag: 8 Spalten.
-- Vollbild als eigene Route (`/dashboard/vollbild/:instanzId`). Das liefert gleich das Routing aus der MainHub-Roadmap mit (Punkt 3). Ob Vollbild Pflicht ist: ⚖ E7.
-- ⏸ **Haltepunkt:** Max ein Raster mit Platzhalter-Widgets auf drei Geräten zeigen (Screenshots aus Playwright, 16:9, 4:3, Handy).
+- Belegungsmatrix und Passt-Prüfung: `collision-utils.ts` ausbauen. Die Prüfung rechnet mit den **Reihen der jeweiligen Anzeige**.
+- `seitenleistenBreite` bleibt eine Konstante **ohne festen Wert**, bis die Größenstufen festgelegt sind (E6, A7). Die größte Rasterstufe baust du erst dann.
+- **Vollbild ist optional je Widget-Typ** (`vollbild: true` im Vertrag, E7). Es läuft als eigene Route `/dashboard/vollbild/:instanzId` an der Anzeige. Ausgelöst wird es vom Handy aus.
+- ⏸ **Haltepunkt:** Max ein Raster mit Platzhalter-Widgets zeigen (Screenshots aus Playwright, 16:9 und 4:3).
 
 ### Phase A3 · Widget-Struktur → `Bauplan-Widget-Struktur`
 
-- Typen `Bereich`, `WidgetTyp` und `WidgetInstanz`. `LayoutItem.panelTyp` wird zu `WidgetInstanz.typ`, die Breite und Höhe ergeben sich aus `stufe`.
-- Die Bereichs-IDs übernimmst du aus `BEREICHE` der Companion: `karte`, `sammelobjekte`, `portale`, `handbuch`, `bauplaene`, `banner`, `ruestung`. Das ist eine Abweichung vom Bauplan, der `portale` als „Portal-Verwaltung“ nennt. Maßgeblich ist die bestehende ID.
+- Typen `Bereich`, `WidgetTyp` und `WidgetInstanz`. `LayoutItem.panelTyp` wird zu `WidgetInstanz.typ`, Breite und Höhe ergeben sich aus `stufe`.
+- Die Bereichs-IDs übernimmst du aus `BEREICHE` der Companion: `karte`, `sammelobjekte`, `portale`, `handbuch`, `bauplaene`, `banner`, `ruestung`.
 - Zusatzinhalte je Stufe einblenden.
-- Galerie: `AddPanelModal.tsx` gruppiert nach Bereich und bekommt eine Suche. Pro Typ zeigt sie eine Vorschau in der kleinsten Stufe.
-- Die MainHub-Beispielpanels entfernst du erst in A4, wenn das Register sie ersetzt.
+- Galerie: `AddPanelModal.tsx` gruppiert nach Bereich und bekommt eine Suche. Pro Typ zeigt sie eine Vorschau in der kleinsten Stufe. Die Galerie öffnet man am Handy (A6).
 
-### Phase A4 · Register → `Bauplan-Widget-Inhalte`
+### Phase A4 · Register und Karten vom Server → `Bauplan-Widget-Inhalte`
 
 - `model/widget-register.ts` mit den 13 Typen aus dem Bauplan. Jeder Typ hat **eine Platzhalter-Stufe** und stabile IDs, zum Beispiel `karte.einzelkoordinate`.
 - Felder `mehrfach`, `optional` und `quelle`. Die Quelle wählt man beim Hinzufügen. Ist die Quelle gelöscht, zeigt das Widget einen leeren Zustand.
-- **Trennung Gehäuse ↔ Inhalt** (aus `Bauplan-Vorgehen-Widgets`): `WidgetGehaeuse` (Rahmen, Theme, Toolbar) und `WidgetInhalt` (Datenquelle, Renderer) als getrennte Komponenten. Dafür ein eigener Commit: „Widget-Gehäuse vom Inhalt getrennt“.
-- **Datenquelle:** Die Widgets lesen über die bestehende Board-API (`/api/…`) und hören auf `/ws` (`geaendert`). Dafür eine Datenschicht `lib/companion-daten.ts`, die der MainHub-Roadmap-Punkt 1 schon vorsieht. Ohne Board liefert sie den DEMO-Mock wie die Companion.
-- Renderer für Banner, Rüstung, Ort, Sammelobjekt und Portal setzen auf den Anzeigeschemas `BOARD_KARTEN` auf, statt neu zu zeichnen. ⚖ E3, wie die Schemas ins React-Dashboard kommen.
-- Handbuch und Baupläne haben noch keinen Bereich in der Companion. Ihre Typen stehen im Register, liefern aber nur einen leeren Zustand „Bereich geplant“.
+- **Trennung Gehäuse ↔ Inhalt**: `WidgetGehaeuse` (Rahmen, Theme) und `WidgetInhalt` (Karte rendern) als getrennte Komponenten. Dafür ein eigener Commit: „Widget-Gehäuse vom Inhalt getrennt“.
+- **Karten kommen vom Server (E3):**
+  - Die Übersetzung `BOARD_KARTEN` (Daten → Karte aus Titel und Blöcken) zieht aus der Companion-Seite in die Datei `companion/board-karten.js`. Der Server lädt sie per `node:vm` wie `regeln.js`. „Aufs Board“ in der Companion nutzt dieselbe Datei weiter.
+  - Neuer Endpunkt `GET /api/widgets/:typ?quelle=…` liefert die fertige Karte, geprüft mit `zeigen.js`. Bei Änderungen kommt `geaendert` über `/ws`, und das Widget lädt neu.
+  - Das Dashboard rendert nur Karten (`koordinaten`, `zeilen`, `text`, `bild`). Fachwissen über Bereiche hat es nicht.
+  - Ohne Board liefert ein kleiner Mock feste Beispielkarten.
+- Handbuch und Baupläne haben noch keinen Bereich in der Companion. Ihre Typen stehen im Register, liefern aber nur „Bereich geplant“.
+- **Bedienung (E13):** Die Widgets am Board haben keine Bedienelemente. Abhaken passiert am Handy, siehe Nachfrage N1.
+- Commits: „Register: Mehrfach-Widgets und Quelle“, „Widget-Register: Sammelstand“, „Board-Karten im Server“, „Widget-Gehäuse vom Inhalt getrennt“
 - ⏸ **Haltepunkt:** Max die Galerie mit allen 13 Typen zeigen.
 
 ### Phase A5 · Bereichs-Themes → `Bauplan-Bereichs-Themes`
 
 - Die Themes sind CSS-Variablen in `shared/styles/tokens.css`. Ein Theme je Bereich, gesetzt im Gehäuse über `WidgetTyp.bereich`.
-- Die Karte wählt ihr Theme nach Dimension. Die Farben stammen aus den Dimensions-Themes von `modul-a-live-karte.html` bzw. `applyTheme()` in der Companion und werden nicht neu erfunden.
-- Handbuch bekommt einen Buchrahmen, Baupläne einen blauen Hintergrund mit Gitter aus CSS, Portale Schwarz-Lila (auch Status-Hinweise ohne Rot und Grün).
-- Sammelobjekte, Banner und Rüstung bekommen ein neutrales Standard-Theme (⚖ E8).
+- Die Farben stammen aus den Dimensions-Themes der Companion (`applyTheme()`) und werden nicht neu erfunden.
 
-### Phase A6 · Größenstufen je Widget ⏸
+| Bereich | Theme |
+|---|---|
+| Karte | dynamisch nach angezeigter Dimension: Oberwelt, Nether, End |
+| Handbuch | Buchrahmen, Inhalt auf der Seite |
+| Baupläne | blauer Hintergrund, weißes Gitter aus CSS |
+| Portale | Schwarz-Lila, auch Status-Hinweise ohne Rot und Grün |
+| Sammelobjekte, Banner, Rüstung | **noch nicht festgelegt** (E8). Bis dahin Oberwelt-Grün wie heute in der Companion, als **Platzhalter** mit eigenen Theme-IDs, damit jedes später ohne Widget-Code ersetzt werden kann |
 
-Erst nach Planungsschritt 3 (Vereinheitlichung) und 4 (Größen), siehe `ideen/Vorgehen-Widgets.md`. Das ist eine Planungsrunde mit Max, kein Code. Danach ersetzen echte Stufen die Platzhalter im Register.
+### Phase A6 · Layout pro Anzeige und Steuerung am Handy (neu)
 
-### Phase A7 · Ausliefern über das Board
+Grund: E4 und E5. Ein Bauplan dafür gibt es nicht.
 
-- Der Board-Server liefert den Build unter `/dashboard` aus, so wie `/anzeige`.
-- Das Verhältnis zu `/anzeige` und zu „Aufs Board“ klärt ⚖ E1.
+- **Server:** neue Sammlung `anzeigen: [{ id, name, reihen, layer: [{ id, name, instanzen: WidgetInstanz[] }] }]` in `daten.js`.
+  - Jede Anzeige meldet beim Start ihre `reihen` aus der eigenen Bildschirmgröße.
+  - Änderungen am Layout gehen per API an den Server und kommen live über `/ws` bei Anzeige und Handys an.
+  - Das Layout lässt sich **nur online** ändern. Es ist nicht Teil der Offline-Warteschlange (Strang B).
+- **Anzeige (`/dashboard`):** zeigt das Layout ihrer Anzeige mit Inhalten. Es gibt keinen Bearbeiten-Modus. MainHubs `EditMode` und die Toolbar entfallen dort.
+- **Handy (Steuerung):** In der Companion gibt es einen neuen Eintrag „Anzeige anordnen“ im Board-Sheet.
+  - Er zeigt die Fläche der gewählten Anzeige im richtigen Seitenverhältnis (32 × `reihen`), mit leeren Widgets: Rahmen, Titel und Theme, ohne Inhalt.
+  - Hier verschiebt man Widgets, wechselt die Stufe, entfernt sie, fügt über die Galerie hinzu, wechselt den Layer und startet das Vollbild.
+  - Im Hochformat erscheint ein Hinweis „Querformat empfohlen“.
+  - ⚖ Wie die React-Steuerung in die Vanilla-Companion kommt, klärt Nachfrage N2.
+- **Ausliefern:** Der Board-Server liefert den Build von `companion/widgets/` unter `/dashboard` aus, so wie `/anzeige`. Wie die Anzeige weiß, welche sie ist: Nachfrage N3.
+- Commits: „Anzeigen-Layout am Server“, „Dashboard unter /dashboard“, „Anordnen am Handy“
+- ⏸ **Haltepunkt:** Max am Handy im Querformat ein Layout am Board anordnen lassen.
+
+### Phase A7 · Größenstufen je Widget ⏸ (Planung)
+
+Planungsschritte 3 (Vereinheitlichung, Kandidat „Einzeleintrag“) und 4 (Größen) aus `ideen/Vorgehen-Widgets.md`. Das ist eine Planungsrunde mit Max, kein Code. Dabei wird auch `seitenleistenBreite` festgelegt. Danach ersetzen echte Stufen die Platzhalter im Register, und die größte Rasterstufe wird gebaut.
 
 ---
 
@@ -124,35 +152,43 @@ Betrifft `companion/companion-prototyp.html`, `companion/regeln.js` und `koordin
 ### Phase B1 · Datenmodell
 
 - Alle Einträge in `daten.js` bekommen `erstellerId`. Das Feld `von` (Name) bleibt nur zur Anzeige.
-- IDs erzeugt künftig der Client (UUID). Der Server akzeptiert sie, prüft das Format und lehnt doppelte IDs ab. `neueId` bleibt für Einträge, die der Server selbst anlegt.
+- IDs erzeugt künftig der Client (UUID). Der Server prüft das Format und lehnt doppelte IDs ab. `neueId` bleibt für Einträge, die der Server selbst anlegt.
 - Bestehende `daten.json` werden beim Laden migriert: `erstellerId = "unbekannt"`.
-- Benutzer, Profil und Gerät als neue Sammlungen, mit Rollenfeld, vorerst immer „Besitzer“.
+- Neue Sammlungen: `benutzer` (id, anzeigename, PIN-Hash, `rolle: "Besitzer"`), `profile` und `geraete`.
 - Regeln (Formatprüfung) in `regeln.js`, damit Handy und Server dasselbe prüfen.
 
-### Phase B2 · Identität gekapselt
+### Phase B2 · Accounts mit PIN (E9, E10)
 
-- `IdentitaetsAnbieter.werBistDu()` in der Companion. Die erste Umsetzung ist ein Gerätecode, der ⚖ E9 folgt.
-- Das heutige Beitreten (Name + PIN) wird zur ersten Freischaltung eines Geräts. Danach fragt die Seite nicht mehr nach dem Namen.
-- Persönliche oder geteilte Geräte (`typ`). Die Freischaltung am Board klärt ⚖ E10.
+- **Ablauf:**
+  - Der QR-Code an der Anzeige führt zur **Anmeldung**.
+  - Dort wählt man seinen Account oder legt einen neuen an: Name plus **eigene PIN**.
+  - Mit der richtigen PIN ist das Gerät freigeschaltet. Eine weitere Bestätigung gibt es nicht („PIN reicht“).
+  - Das Gerät merkt sich danach einen Geräteschlüssel und fragt nicht erneut.
+- Gekapselt hinter `IdentitaetsAnbieter.werBistDu()`, damit später ein richtiges Login dahinter stehen kann.
+- PINs speichert der Server nur gehasht (`node:crypto`, scrypt). Die bestehende Sperre gegen Durchprobieren (`sperre.js`) gilt auch für Account-PINs.
+- Was aus der heutigen Board-PIN im QR-Code wird, klärt Nachfrage N4.
+- Persönliche und geteilte Geräte (`typ`) gibt es im Modell. Ein geteiltes Gerät bekommt ein Profil mit `geteilt = true`.
+- Commits: „Datenmodell: stabile Benutzer-ID und Sync-Status“, „Accounts mit PIN“, „Identität gekapselt“
 
 ### Phase B3 · Service Worker und IndexedDB ⏸
 
-- `companion/sw.js`, ausgeliefert vom Board unter `/sw.js` (Scope `/`). Er cacht die App-Shell: Seite, `regeln.js`, `icons/`, `vendor/`.
-- **Cache-Falle:** Der Server liefert die Seite heute bewusst ohne Cache (`OHNE_CACHE`). Der Service Worker braucht deshalb eine Versionsnummer im Cache-Namen und „neue Version verfügbar → neu laden“.
-- IndexedDB ersetzt `localStorage` für die Daten. Verbindung und Name dürfen im `localStorage` bleiben.
+- `companion/sw.js`, ausgeliefert vom Board unter `/sw.js` (Scope `/`). Er cacht die App-Shell: Seite, `regeln.js`, `board-karten.js`, `icons/`, `vendor/`.
+- **Cache-Falle:** Die Seite kommt heute bewusst ohne Cache (`OHNE_CACHE`). Der Service Worker braucht deshalb eine Versionsnummer im Cache-Namen und „neue Version verfügbar → neu laden“.
+- IndexedDB ersetzt `localStorage` für die Daten. Der Geräteschlüssel bleibt im `localStorage`.
 - Playwright-Test mit `context.setOffline(true)`.
 - ⏸ **Haltepunkt:** Max am echten iPhone testen lassen (Home-Bildschirm-App, Flugmodus).
 
 ### Phase B4 · Offline-Regel und Warteschlange
 
 - `syncStatus` je Eintrag. Synchronisierte Einträge sind offline gesperrt, mit einem Hinweis in der Oberfläche.
-- Die Warteschlange je Identität liegt in IndexedDB. Die Klasse leitet sich aus `art` ab. Nur `automatisch` ist aktiv, `pruefpflichtig` gibt es lediglich im Modell.
+- Die Warteschlange je Account liegt in IndexedDB. Die Klasse leitet sich aus `art` ab. Nur `automatisch` ist aktiv, `pruefpflichtig` gibt es lediglich im Modell.
 - Senden beim Wiederverbinden, in der Reihenfolge des Anlegens.
 
 ### Phase B5 · Zustandswechsel
 
 - Wird als Zielzustand gesetzt (`{ eintragId, zustand }`), damit er idempotent ist.
-- Erster Anwender sind die Sammelobjekte (abhaken). Weitere Zustände klärt ⚖ E11.
+- Vorerst gibt es nur `offen` → `erledigt` (E11). Die Aufzählung bleibt erweiterbar, weitere Zustände kommen mit den Bereichen, die sie brauchen.
+- Erster Anwender sind die Sammelobjekte (abhaken).
 
 Nicht jetzt: Postfach, Bestätigungs-Oberfläche, Rechte, Protokoll. Das Modell sieht sie schon vor.
 
@@ -160,47 +196,70 @@ Nicht jetzt: Postfach, Bestätigungs-Oberfläche, Rechte, Protokoll. Das Modell 
 
 ## 5. Strang C · Welt-Import per ZIP → `Bauplan-Welt-Import`
 
-Betrifft die Karte in `companion-prototyp.html` und `biom-welt.js`. Branch: `bereich/karte-welt-upload`. Strang C gehört zu Phase 5 des bestehenden `companion/PLAN-welt-import-biome.md` und wird dort eingehängt.
+Betrifft die Karte in `companion-prototyp.html` und `biom-welt.js`. Branch: `bereich/karte-welt-upload`. Gehört zu Phase 5 von `companion/PLAN-welt-import-biome.md`.
 
 - **Upload-Feld** in der Karte: `accept=".zip,.mcworld"`, Verarbeitung im Worker wie im bestehenden Plan.
-- **Aufbauprüfung**, mit einer Abweichung vom Bauplan: Der Bauplan nennt einen zusätzlichen Unterordner einen Fehler. `PLAN-welt-import-biome.md` (3.1 ✔) und der fertige Dekoder suchen die Dateien jedoch nach Basisnamen und kommen mit dem Unterordner klar. **Vorschlag:** Die Datei wird angenommen, und es erscheint kein Fehler (⚖ E12). Die Meldungen „keine Weltdatei“ und „keine ZIP“ bleiben wie im Bauplan.
-- Vor dem Import zeigt die Seite den Weltnamen aus `levelname.txt` und den Seed aus `level.dat` zur Bestätigung. Die Seed-Prüfung kommt aus dem bestehenden Plan (Regel 6).
-- **Anleitung** „Weltordner aus der Dateien-App hochladen“ (drei Schritte, nur iPhone) steht direkt neben dem Upload. Die Struktur ist so angelegt, dass weitere Plattformen dazukommen können.
-- Tests: je eine Test-ZIP pro Fall. Sie wird aus `tests/daten/fixture-seed.mcworld` gebaut (einmal korrekt, einmal mit Unterordner, einmal ohne `db/`, einmal keine ZIP).
+- **Aufbauprüfung:**
+  - Eine ZIP mit zusätzlichem Unterordner wird **angenommen, ohne Fehler und ohne Hinweis** (E12). Das ist eine Abweichung vom Bauplan. Der Dekoder sucht die Dateien ohnehin nach Basisnamen.
+  - Fehlermeldungen gibt es nur für „sieht nicht nach einem Minecraft-Weltordner aus“ (keine `level.dat` oder kein `db/`) und „bitte die erzeugte Archiv.zip auswählen“ (keine ZIP).
+- Vor dem Import zeigt die Seite den Weltnamen aus `levelname.txt` und den Seed aus `level.dat` zur Bestätigung. Die Seed-Prüfung folgt Regel 6 des Biom-Plans.
+- **Anleitung** „Weltordner aus der Dateien-App hochladen“:
+  - drei Schritte, direkt neben dem Upload
+  - **nur iPhone** (E14), die Struktur lässt weitere Plattformen zu
+  - Die Karte zeigt Biome nur in besuchten Gebieten.
+- Tests: je eine Test-ZIP pro Fall, gebaut aus `tests/daten/fixture-seed.mcworld` (korrekt, mit Unterordner, ohne `db/`, keine ZIP).
 
 ---
 
 ## 6. Reihenfolge
 
 ```
-A0 ─ A1 ─ A2⏸ ─ A3 ─ A4⏸ ─ A5 ─ (Planung A6⏸) ─ A7
-C  (unabhängig, klein – kann jederzeit dazwischen)
-B1 ─ B2 ─ B3⏸ ─ B4 ─ B5   (nach A4: Widgets brauchen die Datenschicht, B ändert sie)
+A0 ─ C ─ A1 ─ A2⏸ ─ A3 ─ A4⏸ ─ A5 ─ A6⏸ ─ (Planung A7⏸)
+B1 ─ B2 ─ B3⏸ ─ B4 ─ B5      nach A6
 ```
 
-**Empfehlung:** A0, dann C (kleiner Strang, schließt den Biom-Import ab), dann A1 bis A5, danach B. Strang B ändert das Datenmodell des Servers. Er sollte erst kommen, wenn die Datenschicht der Widgets steht, damit beides nur einmal angepasst werden muss.
+- A0 zuerst, dann C: ein kleiner Strang, der den Biom-Import abschließt.
+- Danach A1 bis A6.
+- Strang B kommt nach A6. Er ändert das Datenmodell des Servers, und A4 bzw. A6 legen dort Karten und Anzeigen an. So wird jede Stelle nur einmal angepasst.
+- Ob „Anzeige anordnen“ (A6) einen Account braucht, ist erst nach B2 möglich. Bis dahin genügt der heutige Beitritt.
 
 Git: Nach jeder Phase pushen. Nach jedem Strang (bzw. nach jedem Haltepunkt mit OK) mergt Max per PR nach `main`.
 
 ---
 
-## 7. Offene Entscheidungen für Max
+## 7. Entscheidungen (Max, 01.10.2026)
 
-| Nr. | Frage | Vorschlag |
+| Nr. | Frage | Entscheidung |
 |---|---|---|
-| E1 | Wo läuft das Widget-Dashboard? Ersetzt es `/anzeige` am Board, läuft es daneben, oder ist es (auch) die Startansicht am Handy? Die neue Rollentrennung sagt „Board = nur Anzeige“, das Größensystem nennt aber auch Handy und iPad als Zielgeräte. | Eigene Route `/dashboard` neben `/anzeige`. `/anzeige` geht darin auf, sobald „Aufs Board“ als Widget läuft. |
-| E2 | Ordnername für die übernommene Widget-Ansicht | `companion/dashboard/` statt `companion/mainhub/` |
-| E3 | Wie kommen `BOARD_KARTEN` ins React-Dashboard? | In eine eigene Datei `companion/board-karten.js` auslagern (wie `regeln.js`), die Seite und Dashboard laden |
-| E4 | Raster am Handy im Hochformat (weniger Spalten? was wird aus der größten Stufe?) | offen, bis A2 sichtbar ist |
-| E5 | Widgets außerhalb der sichtbaren Reihen auf kleineren Seitenverhältnissen | Position behalten, Hinweis im Bearbeiten-Modus |
-| E6 | `seitenleistenBreite` | 8 Spalten (= ein Viertel) |
-| E7 | Vollbild Pflicht oder optional | optional, je Widget-Typ |
-| E8 | Themes für Sammelobjekte, Banner, Rüstung | neutral, bis Max entscheidet |
-| E9 | Konkretes Anmeldeverfahren (Gerätecode) | Code am Board anzeigen und am Handy einmal eingeben, aufbauend auf dem QR-Code-Beitritt |
-| E10 | Ablauf der Gerätefreischaltung am Board, ohne dass das Board entscheidet | Das erste freigeschaltete Gerät ist Besitzer. Weitere Geräte bestätigt ein freigeschaltetes Handy. |
-| E11 | Weitere Zustandswechsel neben offen → erledigt | sammeln, sobald Bereiche sie brauchen |
-| E12 | ZIP mit zusätzlichem Unterordner: annehmen oder Fehler? | annehmen (der Dekoder kann es schon) |
-| E13 | Kleine Widgets nur Anzeige oder auch Bedienung (abhaken)? | Abhaken erlauben, weil Zustandswechsel konfliktfrei sind (B5) |
-| E14 | Welt-Anleitung auch für Android und PC? Reicht eine Karte nur der besuchten Gebiete? | vorerst nur iPhone, besuchte Gebiete reichen (so schon im Biom-Plan) |
+| E1 | Wo läuft das Widget-Dashboard? | Eigene Route **`/dashboard`** am Board, neben `/anzeige` |
+| E2 | Ordnername | **`companion/widgets/`** |
+| E3 | Wie kommen die Anzeigeschemas ins Dashboard? | **Über den Server**: Er liefert fertige Karten, das Dashboard rendert nur |
+| E4 | Raster am Handy | Das Handy sieht die **Fläche der Anzeige mit leeren Widgets** und steuert damit die Anordnung. Querformat ideal. |
+| E5 | Widgets außerhalb der sichtbaren Reihen | **Pro Anzeige ein Layout**, das Problem tritt nicht auf |
+| E6 | `seitenleistenBreite` | **offen bis zur Planung der Größenstufen** (A7) |
+| E7 | Vollbild Pflicht? | **optional je Widget-Typ** |
+| E8 | Themes Sammelobjekte, Banner, Rüstung | **offen.** Bis zur Entscheidung Oberwelt-Grün als Platzhalter |
+| E9 | Anmeldeverfahren | **Accounts mit PIN**, die Anmeldung erreicht man über den QR-Code |
+| E10 | Freischaltung neuer Geräte | **PIN reicht** |
+| E11 | Weitere Zustandswechsel | **sammeln, wenn nötig** |
+| E12 | ZIP mit Unterordner | **annehmen** |
+| E13 | Kleine Widgets bedienbar? | **Abhaken am Handy erlaubt**, das Board bleibt reine Anzeige |
+| E14 | Anleitung und Abdeckung | **nur iPhone, besuchte Gebiete reichen** |
 
-Aus den Ideen übernommen und weiter offen: die Vereinheitlichung zum Typ „Einzeleintrag“ und die Größenstufen je Widget (A6).
+---
+
+## 8. Offen
+
+**Nachfragen, die aus den Entscheidungen folgen** (vor der jeweiligen Phase klären):
+
+| Nr. | Frage | Phase |
+|---|---|---|
+| N1 | Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet? | A4 |
+| N2 | Wie kommt die Steuerung ans Handy? Als Teil von `companion/widgets/` (React, eigene Route `/dashboard/anordnen`, aus der Companion verlinkt) oder in der Vanilla-Seite nachgebaut? Vorschlag: React-Route, weil sie dieselben Komponenten nutzt. | A6 |
+| N3 | Woher weiß eine Anzeige, welche sie ist (z. B. `/dashboard?anzeige=wohnzimmer`), und wer legt Anzeigen an? | A6 |
+| N4 | Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz? | B2 |
+
+**Weiter offen aus den Ideen:**
+- Design-Themes für Sammelobjekte, Banner und Rüstung (E8)
+- Vereinheitlichung zum Typ „Einzeleintrag“ und Größenstufen je Widget (A7)
+- Entscheidung über prüfpflichtige Anfragen bei geteilten Profilen (erst nötig, wenn gelöscht wird)
