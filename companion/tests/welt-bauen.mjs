@@ -222,10 +222,11 @@ function oberweltData3d(id, { mischung = null } = {}) {
  *   000008.ldb  laut MANIFEST gelöscht: (0,0) → Wüste (darf nicht ankommen)
  *   000014.log  am neuesten: (2,2) → Fluss, (3,3) gelöscht, Textschlüssel als Fehlalarme
  * optionen: ordner (Präfix im ZIP, z. B. „Meine Welt/“ wie von Hand gezippt am iPhone),
- *           altesManifest (zweites, veraltetes MANIFEST nach dem gültigen im ZIP)
+ *           altesManifest (zweites, veraltetes MANIFEST nach dem gültigen im ZIP),
+ *           levelname (Inhalt von levelname.txt), ohne (Pfade mit diesem Anfang weglassen, z. B. "db/")
  * → { zip, erwartet: Map<"dim:cx:cz", id> }
  */
-export function testweltBauen({ ordner = "", altesManifest = false, seed = SEED } = {}) {
+export function testweltBauen({ ordner = "", altesManifest = false, seed = SEED, levelname = "Testwelt", ohne = [] } = {}) {
   const erwartet = new Map();
   const alt = [];
   for (let cx = -40; cx < 40; cx++) for (let cz = -8; cz < 8; cz++) {
@@ -269,7 +270,7 @@ export function testweltBauen({ ordner = "", altesManifest = false, seed = SEED 
   const manifest = manifestBauen({ neu: [{ level: 1, nr: 13 }, { level: 0, nr: 11 }], geloescht: [{ level: 0, nr: 8 }], logNr: 14 });
   const dateien = [
     ["level.dat", levelDatBauen({ seed })],
-    ["levelname.txt", new TextEncoder().encode("Testwelt")],
+    ["levelname.txt", new TextEncoder().encode(levelname)],
     ["db/CURRENT", new TextEncoder().encode("MANIFEST-000015\n")],
     ["db/MANIFEST-000015", manifest],
     ["db/000008.ldb", ldb8],
@@ -279,5 +280,6 @@ export function testweltBauen({ ordner = "", altesManifest = false, seed = SEED 
   ];
   // Veraltetes MANIFEST dahinter: kennt 000008 noch als gültig und 000011 gar nicht
   if (altesManifest) dateien.push(["db/MANIFEST-000004", manifestBauen({ neu: [{ level: 0, nr: 8 }, { level: 0, nr: 13 }], logNr: 3 })]);
-  return { zip: zipBauen(dateien.map(([p, b]) => [ordner + p, b])), erwartet };
+  const bleiben = dateien.filter(([p]) => !ohne.some((anfang) => p.startsWith(anfang)));
+  return { zip: zipBauen(bleiben.map(([p, b]) => [ordner + p, b])), erwartet };
 }

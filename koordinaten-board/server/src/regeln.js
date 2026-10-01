@@ -16,7 +16,7 @@ const NAMEN = [
   'WELTGRENZE', 'DIM_ORDER', 'dimLabel', 'EIGENE_ORTE', 'BIOMES', 'FEATURE_KATEGORIEN', 'BIOME', 'biomFinden',
   'SAMMELOBJEKTE', 'FARBEN', 'MUSTER', 'MAX_EBENEN', 'RUESTUNGS_TEILE', 'RUESTUNGEN', 'BESATZ_MATERIALIEN',
   'instanzPruefen', 'bannerPruefen', 'bannerSauber', 'verbindungRegelPruefen', 'verbindungSauber',
-  'ruestungPruefen', 'ruestungSauber',
+  'ruestungPruefen', 'ruestungSauber', 'biomImportPruefen', 'biomImportSauber',
 ];
 
 export function regelnLaden(datei = path.join(COMPANION_ORDNER, 'regeln.js')) {

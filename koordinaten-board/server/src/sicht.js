@@ -1,6 +1,6 @@
 // Was die Anzeige im Zimmer zeigt: die Orte der aktiven Welt in der Form, die
 // Anzeige.tsx kennt (client/src/lib/typen.ts → Ort). So bleibt die Anzeige
-// unabhängig vom Datenmodell der Companion. Biome zeigt sie nicht.
+// unabhängig vom Datenmodell der Companion. Biome sind keine Orte (sie kommen aus dem Welt-Import).
 import { FEATURES } from './erkennung.js';
 import { regeln } from './regeln.js';
 
@@ -14,7 +14,7 @@ export function anzeigeSicht(daten) {
   const orte = [];
   for (const i of welt ? daten.instanzenVon(welt.id) : []) {
     const t = typen.get(i.featureTypeId);
-    if (!t || t.kategorie === regeln.BIOMES) continue;
+    if (!t) continue;
     const eigen = t.kategorie === regeln.EIGENE_ORTE;
     orte.push({
       id: i.id,

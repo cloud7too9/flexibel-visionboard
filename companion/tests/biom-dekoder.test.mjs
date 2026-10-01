@@ -6,7 +6,7 @@ import {
   chunkSchluesselLesen, data3dLesen, biomAn, oberflaechenBiom, chunkBiom, levelDatLesen, kachelIndex,
   kachelnBauen, kachelWert, kachelZuBase64, kachelAusBase64, chunksAuswerten, KACHEL_CHUNKS,
 } from "../biom-dekoder.js";
-import { weltLesen, WeltFehler, FEHLER } from "../biom-welt.js";
+import { weltLesen, weltPruefen, WeltFehler, FEHLER } from "../biom-welt.js";
 import "../biom-ids.js";
 import {
   chunkSchluessel, data3dBauen, levelDatBauen, testweltBauen, zipBauen, ID, SEED,
@@ -204,15 +204,38 @@ test("Mehrere MANIFEST: gilt das aus CURRENT, nicht das letzte im ZIP", async ()
   assert.notEqual(komplett.get("overworld:1:1"), ID.pilz);
 });
 
-test("Fehler: Java-Welt, keine Bedrock-Welt, level.dat fehlt, kein ZIP", async () => {
-  const fehler = async (bytes) => {
-    try { await weltLesen(blob(bytes)); } catch (f) { assert.ok(f instanceof WeltFehler, String(f)); return f.message; }
-    return "kein Fehler";
-  };
+test("Weltname aus levelname.txt (so heißt der Ordner in der Dateien-App), sonst aus level.dat", async () => {
+  const mit = await weltLesen(blob(testweltBauen({ levelname: "  Unsere Realm-Welt\n" }).zip));
+  assert.equal(mit.meta.weltname, "Unsere Realm-Welt");
+  const ohne = await weltLesen(blob(testweltBauen({ ohne: ["levelname.txt"] }).zip));
+  assert.equal(ohne.meta.weltname, "Testwelt", "LevelName aus level.dat");
+});
+
+test("Schnelle Prüfung: Name, Seed, Version ohne die Weltdaten – auch mit zusätzlichem Ordner", async () => {
+  const erwartet = { seed: SEED, weltname: "Archiv", spielversion: "1.26.50" };
+  assert.deepEqual(await weltPruefen(blob(testweltBauen({ levelname: "Archiv" }).zip)), erwartet);
+  assert.deepEqual(await weltPruefen(blob(testweltBauen({ levelname: "Archiv", ordner: "Archiv/" }).zip)), erwartet,
+    "Unterordner wird ohne Fehler angenommen");
+  // .ldb kaputt: die Prüfung merkt das nicht (liest db/ nicht), erst der Import
+  const kaputt = testweltBauen({ ohne: ["db/000013.ldb"] });
+  assert.equal((await weltPruefen(blob(kaputt.zip))).seed, SEED);
+});
+
+test("Fehler: keine ZIP, kein Weltordner (level.dat oder db/ fehlt), Java-Welt, kaputte level.dat", async () => {
   const text = (s) => new TextEncoder().encode(s);
-  assert.equal(await fehler(zipBauen([["Welt/level.dat", text("gzip")], ["Welt/region/r.0.0.mca", text("x")]])), FEHLER.JAVA);
-  assert.equal(await fehler(zipBauen([["bild.png", text("x")]])), FEHLER.KEINE_BEDROCK);
-  assert.equal(await fehler(zipBauen([["db/CURRENT", text("MANIFEST-000001\n")]])), FEHLER.LEVEL_DAT);
-  assert.equal(await fehler(zipBauen([["db/CURRENT", text("MANIFEST-000001\n")], ["level.dat", text("kaputt")]])), FEHLER.LESEN);
-  assert.equal(await fehler(text("das ist kein zip")), FEHLER.LESEN);
+  for (const lesen of [weltLesen, weltPruefen]) {
+    const fehler = async (bytes) => {
+      try { await lesen(blob(bytes)); } catch (f) { assert.ok(f instanceof WeltFehler, String(f)); return f.message; }
+      return "kein Fehler";
+    };
+    assert.equal(await fehler(text("das ist kein zip")), FEHLER.KEINE_ZIP, lesen.name);
+    assert.equal(await fehler(new Uint8Array(0)), FEHLER.KEINE_ZIP, lesen.name);
+    assert.equal(await fehler(zipBauen([["bild.png", text("x")]])), FEHLER.KEIN_WELTORDNER, lesen.name);
+    assert.equal(await fehler(testweltBauen({ ohne: ["db/"] }).zip), FEHLER.KEIN_WELTORDNER, `${lesen.name}: ohne db/`);
+    assert.equal(await fehler(testweltBauen({ ohne: ["level.dat"] }).zip), FEHLER.KEIN_WELTORDNER, `${lesen.name}: ohne level.dat`);
+    assert.equal(await fehler(zipBauen([["CURRENT", text("MANIFEST-000001\n")], ["level.dat", text("x")]])), FEHLER.KEIN_WELTORDNER,
+      `${lesen.name}: CURRENT nicht in db/`);
+    assert.equal(await fehler(zipBauen([["Welt/level.dat", text("gzip")], ["Welt/region/r.0.0.mca", text("x")]])), FEHLER.JAVA, lesen.name);
+    assert.equal(await fehler(zipBauen([["db/CURRENT", text("MANIFEST-000001\n")], ["level.dat", text("kaputt")]])), FEHLER.LESEN, lesen.name);
+  }
 });

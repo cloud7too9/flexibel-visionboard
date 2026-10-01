@@ -26,6 +26,7 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 - **Anzeige steuern** (Board-Sheet der Companion): Welt auf der Anzeige, Titel, QR-Code zeigen; Orte im Detail „Auf der Anzeige anheften“.
 - Beitreten per PIN. Nach **5 falschen PINs** ist das Gerät **60 s gesperrt** (`server/src/sperre.js`). `/api/beitreten` und `/api/ich` bleiben per CORS offen, falls eine Companion von einem anderen Server beitritt.
 - **Aufs Board**: Jeder Inhalt der Companion (Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner, Rüstungs-Set) lässt sich groß auf die Anzeige werfen. Die Karte liegt über den Spalten, im Theme ihrer Dimension, mit Absender; eine neue ersetzt die alte, gespeichert wird sie nicht. Mit `typ` (Seed-Map-Typ) steht der Kennblock neben dem Titel, ein `bild`-Block (z. B. die Banner-Vorschau oder die Rüstungs-Figur) links neben den übrigen. Aufbau und Prüfung: `server/src/zeigen.js`.
+- **Welt-Import (Biome)**: Die Companion liest einen hochgeladenen Weltordner (`.zip`/`.mcworld`) selbst im Browser (Web Worker) und schickt die Biome als Kacheln ans Board (`PUT /api/welten/:id/biome`, geprüft mit `biomImportPruefen` aus `regeln.js`, bis 64 MB). Das Board speichert sie je Welt in `server/daten/biome/<weltId>.json` und meldet `geaendert` „biome“. Worker, Dekoder und Bibliothek liefert es unter `/biom-import.worker.js`, `/biom-welt.js`, `/biom-dekoder.js`, `/biom-ids.js` und `/vendor/` aus. Biom-Punkte aus Screenshots gibt es nicht mehr; alte entfernt der Server beim Start (Sicherung `daten.vor-welt-import.json`).
 - Aus der früheren Handy-Oberfläche des Boards noch nicht übernommen: Notiz, Kartenausschnitt als Bild, Export als JSON.
 
 ## Starten
@@ -91,6 +92,8 @@ Neue Feature-Typen für die Texterkennung: Liste `FEATURES` in `server/src/erken
 
 Alles liegt in `server/daten/`:
 - `daten.json` – alle Welten, Orte, Sammelobjekte, Banner, Rüstungs-Sets, Portal-Verbindungen und die Einstellungen der Anzeige (zum Sichern einfach kopieren)
+- `biome/<weltId>.json` – Welt-Import je Welt (Angaben zur Welt + Biom-Kacheln); eigene Dateien, weil sie groß werden können
+- `daten.vor-welt-import.json` – Sicherung, falls beim Umstieg auf den Welt-Import alte Biom-Punkte entfernt wurden
 - `zustand.json`, `medien/` – Orte und Bilder der früheren Handy-Oberfläche; werden nicht mehr gelesen und bleiben als Sicherung liegen
 - `pin.txt` – Raum-PIN (löschen = neue PIN beim nächsten Start)
 - `geheim.txt` – Schlüssel für die Anmeldungen (löschen = alle Handys müssen neu beitreten)
@@ -104,5 +107,5 @@ Alles liegt in `server/daten/`:
 | `ANZEIGE_OFFEN` | aus | `1` = Anzeige darf auch von anderen Geräten geöffnet werden (z. B. Smart-TV-Browser) |
 | `OEFFENTLICHE_URL` | automatisch | Adresse im QR-Code, falls die automatische LAN-IP falsch ist |
 | `DATEN_ORDNER` | `server/daten` | Speicherort |
-| `COMPANION_ORDNER` | `../companion` | Ordner mit Companion-Seite, `regeln.js`, `icons/` und `ruestungs-baukasten/` |
+| `COMPANION_ORDNER` | `../companion` | Ordner mit Companion-Seite, `regeln.js`, `icons/`, `ruestungs-baukasten/` und den Dateien des Welt-Imports (`biom-*.js`, `vendor/`) |
 | `COMPANION_DATEI` | `companion-prototyp.html` | Seite, die unter `/` ausgeliefert wird (später z. B. `modul-a-live-karte.html`) |
