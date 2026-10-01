@@ -1,5 +1,5 @@
 /* ============================================================================
-   biom-welt.js  ·  .mcworld lesen → Biom je Chunk → Kacheln
+   biom-welt.js  ·  .mcworld/.zip lesen → Biom je Chunk → Kacheln
    ----------------------------------------------------------------------------
    Gemeinsamer Ablauf für den Web Worker (biom-import.worker.js) und Node
    (tools/welt-pruefen.mjs, Tests). ES-Modul, nutzt das Bundle aus vendor/.
@@ -24,9 +24,13 @@ import {
 // wie ZipReader/readMcworld, damit es dieselbe zip.js-Instanz trifft.
 configure({ useWebWorkers: false });
 
+/* Aufbauprüfung (planung/PLAN.md, Strang C): Eine ZIP mit zusätzlichem Ordner (am iPhone den
+   Weltordner selbst komprimiert) wird ohne Hinweis angenommen – gesucht wird nach Basisnamen.
+   Meldungen gibt es nur für „keine ZIP“ und „kein Weltordner“ (level.dat oder db/ fehlt),
+   dazu Java-Welten und kaputte Weltdaten. */
 export const FEHLER = Object.freeze({
-  KEINE_BEDROCK: "Keine Bedrock-Welt gefunden",
-  LEVEL_DAT: "level.dat fehlt",
+  KEINE_ZIP: "Bitte die erzeugte Archiv.zip auswählen.",
+  KEIN_WELTORDNER: "Das sieht nicht nach einem Minecraft-Weltordner aus.",
   JAVA: "Java-Welten werden nicht unterstützt",
   LESEN: "Die Datei konnte nicht gelesen werden",
 });
@@ -39,8 +43,52 @@ const istDbDatei = (name) => name.startsWith("MANIFEST") || name.endsWith(".ldb"
 const kuerzester = (a, b) => a.filename.length - b.filename.length;   // bei mehreren: der oberste Ordner
 const entpacken = (eintrag) => eintrag.getData(new Uint8ArrayWriter());
 
+/** ZIP öffnen → { zip, eintraege } (nur Dateien); keine ZIP → WeltFehler KEINE_ZIP */
+async function zipOeffnen(datei) {
+  const zip = new ZipReader(new BlobReader(datei));
+  try {
+    return { zip, eintraege: (await zip.getEntries()).filter((e) => !e.directory) };
+  } catch (f) {
+    await zip.close().catch(() => {});
+    throw new WeltFehler(FEHLER.KEINE_ZIP, { cause: f });
+  }
+}
+
+/** Aufbau prüfen und die Kopfdaten lesen: level.dat (Seed, Name, Version) und levelname.txt.
+    Dateien per Basisname, der oberste Treffer gewinnt. → { current, welt } */
+async function aufbauLesen(eintraege) {
+  if (eintraege.some((e) => /(^|\/)region\/[^/]+\.mca$/.test(e.filename))) throw new WeltFehler(FEHLER.JAVA);
+  const current = eintraege.filter((e) => basisname(e) === "CURRENT" && /(^|\/)db\/$/.test(ordner(e))).sort(kuerzester)[0];
+  const levelDat = eintraege.filter((e) => basisname(e) === "level.dat").sort(kuerzester)[0];
+  if (!current || !levelDat) throw new WeltFehler(FEHLER.KEIN_WELTORDNER);
+  const levelname = eintraege.filter((e) => basisname(e) === "levelname.txt").sort(kuerzester)[0];
+
+  let welt;
+  try {
+    welt = levelDatLesen(await entpacken(levelDat));
+  } catch (f) {
+    throw new WeltFehler(FEHLER.LESEN, { cause: f });
+  }
+  // Der Name aus levelname.txt ist der, den man in der Dateien-App sieht; sonst LevelName aus level.dat
+  const name = levelname ? new TextDecoder().decode(await entpacken(levelname)).trim() : "";
+  return { current, welt: { ...welt, weltname: name || welt.weltname } };
+}
+
 /**
- * .mcworld (Blob/File) → { meta: { weltname, seed, spielversion, chunks, unbekannt }, kacheln }
+ * Schnelle Prüfung vor dem Import: Aufbau, Weltname, Seed, Spielversion – ohne die Weltdaten zu lesen.
+ * → { weltname, seed, spielversion }. Wirft WeltFehler mit einem Text aus FEHLER.
+ */
+export async function weltPruefen(datei) {
+  const { zip, eintraege } = await zipOeffnen(datei);
+  try {
+    return (await aufbauLesen(eintraege)).welt;
+  } finally {
+    await zip.close();
+  }
+}
+
+/**
+ * .mcworld oder .zip (Blob/File) → { meta: { weltname, seed, spielversion, chunks, unbekannt }, kacheln }
  * optionen: weg "streaming" | "komplett", biomIds (bekannte IDs, für „unbekannt“),
  *           hoehen { netherBiomY, endBiomY }, fortschritt({ phase, aktuell, gesamt }),
  *           roh: Chunk-IDs ("dim:cx:cz"), deren Data3D-Wert zusätzlich zurückkommt (Prüfskript)
@@ -48,27 +96,9 @@ const entpacken = (eintrag) => eintrag.getData(new Uint8ArrayWriter());
  */
 export async function weltLesen(datei, { weg = "streaming", biomIds = null, hoehen = STANDARD_OPTIONEN, fortschritt = () => {}, roh = [] } = {}) {
   fortschritt({ phase: "oeffnen", aktuell: 0, gesamt: 1 });
-  let zip, eintraege;
+  const { zip, eintraege } = await zipOeffnen(datei);
   try {
-    zip = new ZipReader(new BlobReader(datei));
-    eintraege = (await zip.getEntries()).filter((e) => !e.directory);
-  } catch (f) {
-    throw new WeltFehler(FEHLER.LESEN, { cause: f });
-  }
-  try {
-    // Dateien per Basisname suchen: von Hand gezippte Welten (iOS) haben einen Ordner mehr
-    if (eintraege.some((e) => /(^|\/)region\/[^/]+\.mca$/.test(e.filename))) throw new WeltFehler(FEHLER.JAVA);
-    const current = eintraege.filter((e) => basisname(e) === "CURRENT").sort(kuerzester)[0];
-    if (!current) throw new WeltFehler(FEHLER.KEINE_BEDROCK);
-    const levelDat = eintraege.filter((e) => basisname(e) === "level.dat").sort(kuerzester)[0];
-    if (!levelDat) throw new WeltFehler(FEHLER.LEVEL_DAT);
-
-    let welt;
-    try {
-      welt = levelDatLesen(await entpacken(levelDat));
-    } catch (f) {
-      throw new WeltFehler(FEHLER.LESEN, { cause: f });
-    }
+    const { current, welt } = await aufbauLesen(eintraege);
 
     // Biom je Chunk; ein späterer Eintrag ersetzt einen früheren, gelöschte fallen raus
     const chunks = new Map();

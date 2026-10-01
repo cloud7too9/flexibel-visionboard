@@ -50,6 +50,18 @@ describe("workspace storage", () => {
     ]);
   });
 
+  it("keeps the source only for types with a source", () => {
+    const layer = { ...DEFAULT_LAYOUT, instanzen: [
+      { id: "a", typ: "banner.banner", stufe: "standard", x: 0, y: 0, quelle: "b_3" },
+      { id: "b", typ: "portale.verbindungen", stufe: "standard", x: 8, y: 0, quelle: "b_3" },
+      { id: "c", typ: "ruestung.set", stufe: "standard", x: 18, y: 0, quelle: 42 },
+    ] };
+    const [a, b, c] = parsePersistedWorkspace({ version: 6, layers: [layer], activeLayerId: layer.id })!.layers[0].instanzen;
+    expect(a.quelle).toBe("b_3");
+    expect(b).not.toHaveProperty("quelle");
+    expect(c).not.toHaveProperty("quelle");
+  });
+
   it("falls back to the first layer when the active id is unknown", () => {
     const parsed = parsePersistedWorkspace({
       version: 6,

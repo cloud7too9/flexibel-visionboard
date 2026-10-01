@@ -39,7 +39,7 @@ referenz/                 ← gemeinsame Referenz (Datenmodell, Seed-Map, Dashbo
 Was wohin gehört:
 
 - Code, Tests und Doku eines Projekts bleiben in dessen Ordner.
-- **Seit der Zusammenführung** gibt es genau zwei gewollte Verbindungen: Der Board-Server liefert `companion/` aus (Seite, `regeln.js`, `icons/`, `ruestungs-baukasten/`) und lädt `companion/regeln.js`, damit Handy und Server mit denselben Regeln prüfen. Pfad einstellbar über `COMPANION_ORDNER`. Sonst greift kein Projekt in den Ordner des anderen; die Playwright-Tests der Companion starten das Board als eigenen Prozess.
+- **Seit der Zusammenführung** gibt es genau zwei gewollte Verbindungen: Der Board-Server liefert `companion/` aus (Seite, `regeln.js`, `board-karten.js`, `icons/`, `ruestungs-baukasten/`, den Build von `widgets/` unter `/dashboard`) und lädt `companion/regeln.js` und `companion/board-karten.js`, damit Handy und Server mit denselben Regeln prüfen und dieselben Karten bauen. Pfad einstellbar über `COMPANION_ORDNER`. Sonst greift kein Projekt in den Ordner des anderen; die Playwright-Tests der Companion starten das Board als eigenen Prozess.
 - `referenz/` bekommt nur, was **beide** Projekte betrifft. Referenzbilder für einen einzelnen Companion-Bereich liegen in `companion/referenz/`.
 
 ---
@@ -80,17 +80,20 @@ Was wohin gehört:
 Handy ──http──▶ Board-Server :3000
                 ├─ /                 Companion (companion/companion-prototyp.html, live)
                 ├─ /regeln.js, /icons/…, /ruestungs-baukasten/…  aus companion/
+                ├─ /biom-*.js, /vendor/…  Welt-Import (Worker im Browser des Handys)
                 ├─ /api/…            Companion-API (daten.js) + Beitreten + OCR (/api/orte/auslesen)
                 ├─ /ws               Live: geaendert, zustand, gezeigt, teilnehmer
-                └─ /anzeige          React-Anzeige (nur lokal): Orte der aktiven Welt
+                └─ /anzeige          React-Anzeige (localhost oder mit Anzeige-Link): Orte der aktiven Welt
 Daten: koordinaten-board/server/daten/daten.json
 ```
 
 - **Beitreten**: Das Handy scannt den QR-Code der Anzeige mit der Kamera-App und landet auf `/?pin=…`. Die Companion erkennt den Live-Betrieb (`/api/server`), fragt nach dem Namen und lädt danach die Daten des Boards. Eine eigene Kamera in der Seite braucht es dafür nicht.
 - **Gemeinsame Regeln**: `companion/regeln.js` enthält Stammdaten und Regel-Funktionen. Die Seite bindet sie ein, der Server lädt sie per `node:vm` – nichts wird doppelt gepflegt.
 - **Live**: Jede Änderung meldet der Server als `{ art:"geaendert", bereich, weltId }`; die Handys laden den Bereich neu, die Anzeige bekommt die Orte der aktiven Welt (`sicht.js`).
-- **Texterkennung**: Die OCR des Boards bedient `/api/orte/auslesen` im Format der Companion (`fuerCompanion()`). Biome werden über die Biom-Liste zugeordnet – an einem echten Biom-Popup noch nicht geprüft. Ist kein Seed-Map-Popup drauf, sucht sie eine **Banner-Anleitung** („Black Base“, „Cyan Bordure“ …); die Companion speichert daraus einen Bauplan.
+- **Texterkennung**: Die OCR des Boards bedient `/api/orte/auslesen` im Format der Companion (`fuerCompanion()`). Ist kein Seed-Map-Popup drauf, sucht sie eine **Banner-Anleitung** („Black Base“, „Cyan Bordure“ …); die Companion speichert daraus einen Bauplan.
+- **Welt-Import**: Biome kommen nur noch aus dem Weltordner (`.zip` aus der Dateien-App oder `.mcworld`). Die Companion liest ihn am Handy im Web Worker und schickt die Biome als Kacheln ans Board (`/api/welten/:id/biome`), je Welt ein Import. Einzelheiten in `companion/README.md` → Welt-Import.
 - **Anzeige steuern** (Board-Sheet der Companion): Welt auf der Anzeige, Titel, QR-Code; Orte anheften.
+- **Anzeige-Link**: Die Anzeige kann auf jedem Gerät im WLAN laufen (TV-Browser, Tablet). Jede Anzeige hat einen Link mit eigenem Schlüssel; die Companion zeigt ihn unter Board → Anzeigen (kopieren, QR-Code, umbenennen, neuer Schlüssel), die Konsole beim Start.
 - **Aufs Board**: Die Companion wirft Inhalte groß auf die Anzeige (Variante B, wie Chromecast). **Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): `BOARD_KARTEN` übersetzt Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner und Rüstungs-Set in allgemeine Karten (Titel + Blöcke `koordinaten`/`zeilen`/`text`/`bild`, optional `typ` für den Kennblock), geprüft in `koordinaten-board/server/src/zeigen.js`. Das Board kennt keine Bereiche; neue Bereiche tragen ihr Schema ein.
 - **Kennblöcke**: liegen nur noch in `companion/icons/`; die Anzeige lädt sie über den Server unter `/icons/`.
 - **Dashboard**: Das Board ist das Raum-Dashboard. Jeder Companion-Bereich bekommt eigene Dashboard-Ansichten (Widgets), die dort laufen sollen.
@@ -121,7 +124,7 @@ Daten: koordinaten-board/server/daten/daten.json
 
 **Entschieden am 29.09.2026** (Zusammenführung): Datenhaltung → Board im Heimnetz; OCR-Anbindung → umgesetzt; https ↔ http → im Heimnetz gelöst, weil Companion und API vom selben Server kommen; Board-Steuerung → durch die Companion ersetzt.
 
-1. **Biom-Erkennung**: Es fehlt ein **Biom-Popup-Screenshot**, um die Erkennung daran zu prüfen (die Zuordnung über die Biom-Liste ist schon drin).
+1. **Welt-Import an echten Welten prüfen**: Biome kommen jetzt aus dem Weltordner (entschieden, Biom-Popups braucht es nicht mehr). Offen ist die Prüfung an echten Welten von Max: Höhenkarte, Stichproben gegen Chunkbase, neuere Biom-IDs, Laufzeit am iPhone (siehe `companion/PLAN-welt-import-biome.md`, Haltepunkt Phase 1).
 2. **Dashboard**:
    - Eine Seite pro Bereich (wie die Kontrollzentrum-Seiten)?
    - Wird am Handy oder an der Anzeige im Zimmer bearbeitet?

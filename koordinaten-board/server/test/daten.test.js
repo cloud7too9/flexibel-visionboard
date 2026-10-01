@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { Daten, DatenFehler } from '../src/daten.js';
@@ -31,12 +31,61 @@ test('Welten, Orte, Typen – wie der DEMO-Mock der Companion', () => {
   assert.deepEqual(d.weltenListe(), [{ id: 'w_1', seed: '6889192652397090698', anzahl: 2 }]);
 
   assert.equal(d.instanzAendern(instanz.id, { x: 1, y: 40, z: 2 }).instanz.y, 40);
-  const biom = d.instanzAnlegen({ dimensionId: 'd_w_1_nether', kategorie: 'Biomes', variante: 'Soul Sand Valley', x: 0, y: null, z: 0, quelle: 'screenshot' }, 'Max');
-  wirft(() => d.instanzAendern(biom.instanz.id, { x: 1, y: null, z: 1 }), 403);
+  wirft(() => d.instanzAnlegen({ dimensionId: 'd_w_1_nether', kategorie: 'Biomes', variante: 'Soul Sand Valley', x: 0, y: null, z: 0, quelle: 'screenshot' }, 'Max'),
+    422, 'Biome kommen nur aus dem Welt-Import');
   assert.equal(d.instanzAnheften(instanz.id, { angeheftet: true }).instanz.angeheftet, true);
-  wirft(() => d.instanzAnheften(biom.instanz.id, { angeheftet: true }), 403);
-  d.instanzLoeschen(biom.instanz.id);
-  wirft(() => d.instanzLoeschen(biom.instanz.id), 404);
+  d.instanzLoeschen(instanz.id);
+  wirft(() => d.instanzLoeschen(instanz.id), 404);
+});
+
+test('Welt-Import: je Welt eine Datei, ein neuer Import ersetzt den alten', async () => {
+  const o = ordner();
+  const d = new Daten(o);
+  d.weltAnlegen({ seed: '42' });
+  d.weltAnlegen({ seed: '7' });
+  const daten = Buffer.alloc(2048, 1).toString('base64');
+  const body = { import: { seed: '42', weltname: 'Realm', dateiname: 'Archiv.zip', chunks: { overworld: 2 } },
+    kacheln: [{ dim: 'overworld', kx: 0, kz: 0, daten }, { dim: 'end', kx: 3, kz: -4, daten }] };
+  assert.deepEqual(await d.biomeLesen('w_1'), { import: null, kacheln: [] });
+  const { import: imp } = await d.biomeSetzen('w_1', body, 'Max');
+  assert.deepEqual([imp.weltId, imp.von, imp.weltname, imp.chunks.end, typeof imp.importiertAm], ['w_1', 'Max', 'Realm', 0, 'string']);
+  assert.ok(existsSync(path.join(o, 'biome', 'w_1.json')));
+  assert.equal(JSON.parse(readFileSync(path.join(o, 'biome', 'w_1.json'), 'utf8')).kacheln.length, 2);
+  await assert.rejects(d.biomeSetzen('w_2', body, 'Max'), (f) => f.status === 422 && f.message === 'Diese Welt hat einen anderen Seed');
+  await assert.rejects(d.biomeSetzen('w_9', body, 'Max'), (f) => f.status === 404);
+  await assert.rejects(d.biomeLesen('w_9'), (f) => f.status === 404);
+
+  await d.biomeSetzen('w_1', { ...body, kacheln: body.kacheln.slice(1) }, 'Lena');
+  await d.speichern();
+  const nachNeustart = new Daten(o);
+  await nachNeustart.laden();
+  const neu = await nachNeustart.biomeLesen('w_1');
+  assert.deepEqual([neu.import.von, neu.kacheln.map((k) => k.dim)], ['Lena', ['end']]);
+  assert.equal((await d.biomeLesen('w_2')).import, null, 'andere Welt bleibt leer');
+  await d.biomeLoeschen('w_1');
+  assert.deepEqual(await d.biomeLesen('w_1'), { import: null, kacheln: [] });
+  await d.biomeLoeschen('w_1');   // zweimal ist kein Fehler
+  rmSync(o, { recursive: true, force: true });
+});
+
+test('Alte Biom-Punkte aus Screenshots werden beim Laden entfernt, vorher gesichert', async () => {
+  const o = ordner();
+  const alt = {
+    zaehler: 5, welten: [{ id: 'w_1', seed: '1' }],
+    typen: [{ id: 't_2', kategorie: 'Biomes', variante: 'Cherry Grove' }, { id: 't_3', kategorie: 'Village', variante: null }],
+    instanzen: [
+      { id: 'i_4', dimensionId: 'd_w_1_overworld', featureTypeId: 't_2', x: 0, y: null, z: 0 },
+      { id: 'i_5', dimensionId: 'd_w_1_overworld', featureTypeId: 't_3', x: 10, y: null, z: 10 },
+    ],
+  };
+  writeFileSync(path.join(o, 'daten.json'), JSON.stringify(alt));
+  const d = new Daten(o);
+  await d.laden();
+  assert.deepEqual(d.inhalt.instanzen.map((i) => i.id), ['i_5']);
+  assert.deepEqual(d.inhalt.typen.map((t) => t.id), ['t_3']);
+  assert.deepEqual(JSON.parse(readFileSync(path.join(o, 'daten.vor-welt-import.json'), 'utf8')), alt);
+  assert.deepEqual(JSON.parse(readFileSync(path.join(o, 'daten.json'), 'utf8')).instanzen.map((i) => i.id), ['i_5']);
+  rmSync(o, { recursive: true, force: true });
 });
 
 test('Sammelobjekte, Portale, Banner', () => {
@@ -76,17 +125,42 @@ test('Speichern und Laden', async () => {
   await neu.laden();
   assert.equal(neu.inhalt.welten[0].seed, '42');
   assert.equal(neu.einstellungenLesen().titel, 'Server-Welt');
-  assert.equal(neu.neueId('x'), 'x_2');   // Zähler läuft weiter
+  assert.equal(neu.anzeigenListe()[0].id, 'a_2');   // „Board“ beim ersten Laden
+  assert.equal(neu.neueId('x'), 'x_3');   // Zähler läuft weiter
   rmSync(o, { recursive: true, force: true });
 });
 
-test('Anzeige zeigt die aktive Welt ohne Biome', () => {
+test('Anzeigen: „Board“ beim ersten Start, Schlüssel prüfen und neu erzeugen', async () => {
+  const o = ordner();
+  const d = new Daten(o);
+  await d.laden();
+  const [board] = d.anzeigenListe();
+  assert.equal(board.name, 'Board');
+  assert.match(board.schluessel, /^[\w-]{24}$/);
+  assert.equal(d.anzeigeMitSchluessel(board.id, board.schluessel)?.id, board.id);
+  assert.equal(d.anzeigeMitSchluessel(board.id, 'falsch'), null);
+  assert.equal(d.anzeigeMitSchluessel('a_99', board.schluessel), null);
+  assert.equal(d.anzeigeMitSchluessel(board.id, undefined), null);
+  const neu = d.anzeigeSchluesselNeu(board.id);
+  assert.equal(d.anzeigeMitSchluessel(board.id, board.schluessel), null, 'alter Schlüssel gilt nicht mehr');
+  assert.equal(d.anzeigeMitSchluessel(board.id, neu.schluessel)?.id, board.id);
+  const tablet = d.anzeigeAnlegen({ name: 'Tablet' });
+  assert.notEqual(tablet.schluessel, neu.schluessel);
+  assert.equal(d.anzeigeUmbenennen(tablet.id, { name: '  TV ' }).name, 'TV');
+  wirft(() => d.anzeigeAnlegen({ name: '' }), 400);
+  await d.speichern();
+  const nachNeustart = new Daten(o);
+  await nachNeustart.laden();
+  assert.deepEqual(nachNeustart.anzeigenListe().map((a) => a.name), ['Board', 'TV'], 'kein zweites „Board“ nach dem Neustart');
+  rmSync(o, { recursive: true, force: true });
+});
+
+test('Anzeige zeigt die aktive Welt', () => {
   const d = new Daten(ordner());
   d.weltAnlegen({ seed: '1' });
   d.weltAnlegen({ seed: '2' });
   d.instanzAnlegen({ dimensionId: 'd_w_1_nether', kategorie: 'Nether Fortress', variante: null, x: 180, y: 70, z: -95, quelle: 'manuell' }, 'Tim');
   d.instanzAnlegen({ dimensionId: 'd_w_1_overworld', kategorie: 'Eigene Orte', variante: 'Hauptbasis', x: 212, y: 71, z: -388, quelle: 'manuell' }, 'Max');
-  d.instanzAnlegen({ dimensionId: 'd_w_1_overworld', kategorie: 'Biomes', variante: 'Cherry Grove', x: 0, y: null, z: 0, quelle: 'screenshot' }, 'Max');
   d.instanzAnlegen({ dimensionId: 'd_w_2_end', kategorie: 'End City', variante: null, x: 1300, y: 60, z: -820, quelle: 'manuell' }, 'Lena');
 
   let sicht = anzeigeSicht(d);

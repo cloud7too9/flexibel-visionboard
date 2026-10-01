@@ -26,7 +26,8 @@ function isValidLayout(value: unknown): value is WorkspaceLayout {
 
 /**
  * Instanzen unbekannter Widget-Typen fallen weg, eine unbekannte Stufe wird
- * zur Standardstufe, und alles bleibt in den 32 Spalten. Die Reihen hängen
+ * zur Standardstufe, und alles bleibt in den 32 Spalten. Die Quelle bleibt nur
+ * bei Typen mit Quelle. Die Reihen hängen
  * von der Fläche ab und werden hier nicht begrenzt.
  */
 function normalizeLayout(layout: WorkspaceLayout): WorkspaceLayout {
@@ -43,6 +44,7 @@ function normalizeLayout(layout: WorkspaceLayout): WorkspaceLayout {
         stufe: s.name,
         x: clamp(Math.round(i.x), 0, RASTER_SPALTEN - s.breite),
         y: Math.max(0, Math.round(i.y)),
+        ...(t.quelle && typeof i.quelle === "string" && i.quelle ? { quelle: i.quelle.slice(0, 80) } : {}),
       }];
     }),
   };

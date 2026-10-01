@@ -16,16 +16,19 @@ import { COMPANION_ORDNER } from './regeln.js';
 import { besteAdresse } from './netzwerk.js';
 import { fehlversuchSperre } from './sperre.js';
 import { kartePruefen } from './zeigen.js';
+import { widgetKarte, widgetQuellen } from './widgets.js';
 import { erkennungBeenden } from './erkennung.js';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT ?? 3000);
 const DATEN = path.resolve(process.env.DATEN_ORDNER ?? path.join(HIER, '..', 'daten'));
 const CLIENT_DIST = path.resolve(HIER, '..', '..', 'client', 'dist');
+// Widget-Dashboard (companion/widgets, `npm run build` → dist/), ausgeliefert unter /dashboard
+const DASHBOARD_DIST = path.join(COMPANION_ORDNER, 'widgets', 'dist');
 // Seite der Companion, die unter / ausgeliefert wird (später z. B. modul-a-live-karte.html)
 const COMPANION_DATEI = process.env.COMPANION_DATEI ?? 'companion-prototyp.html';
-// Anzeige darf standardmäßig nur vom Gerät selbst geöffnet werden (localhost).
-// Läuft die Anzeige auf einem anderen Gerät (z. B. Smart-TV-Browser): ANZEIGE_OFFEN=1
+// Anzeige darf vom Gerät selbst (localhost) oder mit Anzeige-Link (Anzeige + Schlüssel) geöffnet werden.
+// Notschalter für alles im Netz ohne Schutz: ANZEIGE_OFFEN=1
 const ANZEIGE_OFFEN = process.env.ANZEIGE_OFFEN === '1';
 const FARBEN = ['#00e5ff', '#7cff6b', '#ffd23f', '#b98cff', '#ff9f43', '#4dabff'];
 
@@ -67,6 +70,12 @@ function tokenPruefen(token) {
 }
 
 const istLokal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+/** Darf diese Anfrage Anzeige sein? localhost, Notschalter oder gültiger Anzeige-Link (?anzeige=…&schluessel=…) */
+const anzeigeZugang = (req) => {
+  const { anzeige, schluessel } = req.query ?? {};
+  const mitLink = anzeige ? daten.anzeigeMitSchluessel(String(anzeige), String(schluessel ?? '')) : null;
+  return { erlaubt: Boolean(mitLink) || istLokal(req) || ANZEIGE_OFFEN, anzeige: mitLink };
+};
 
 // Netzwerkadresse für QR-Code und Konsole – regelmäßig neu bestimmen (WLAN-Wechsel)
 let netz = await besteAdresse();
@@ -87,6 +96,9 @@ function lanAdresse(ip = qrIp()) {
   if (process.env.OEFFENTLICHE_URL) return process.env.OEFFENTLICHE_URL.replace(/\/$/, '');
   return `http://${ip}:${PORT}`;
 }
+
+/** Anzeige-Link für ein anderes Gerät im Netz – dieselbe Adresse wie im QR-Code der Handys */
+const anzeigeLink = (a) => `${lanAdresse()}/anzeige?anzeige=${encodeURIComponent(a.id)}&schluessel=${encodeURIComponent(a.schluessel)}`;
 
 /** Merkt sich die IP, die ein anderes Gerät in der Adresszeile benutzt hat. */
 function adresseLernen(req) {
@@ -172,8 +184,10 @@ app.get('/api/ich', async (req, reply) => {
 });
 
 app.get('/api/anzeige', async (req, reply) => {
-  if (!istLokal(req) && !ANZEIGE_OFFEN) return reply.code(403).send({ fehler: 'Nur auf dem Anzeigegerät' });
+  const zugang = anzeigeZugang(req);
+  if (!zugang.erlaubt) return reply.code(403).send({ fehler: 'Anzeige nur mit Anzeige-Link oder auf dem Board-Gerät' });
   return {
+    anzeige: zugang.anzeige && { id: zugang.anzeige.id, name: zugang.anzeige.name },
     beitrittsUrl: `${lanAdresse()}/?pin=${PIN}`,
     adresse: lanAdresse(),
     pin: PIN,
@@ -192,12 +206,38 @@ await app.register(companionApi, {
   geaendert: (bereich, weltId = null) => {
     anAlle({ art: 'geaendert', bereich, weltId });
     if (['welten', 'orte', 'einstellungen'].includes(bereich)) anAlle({ art: 'zustand', zustand: anzeigeSicht(daten) });
+    if (bereich === 'anzeigen') veralteteAnzeigenTrennen();
   },
+  anzeigeLink,
 });
+
+// Widgets des Dashboards: fertige Karte je Widget-Typ (und Quelle) aus den Daten der aktiven Welt.
+// Lesen darf die Anzeige (localhost oder Anzeige-Link) und jedes angemeldete Handy.
+await app.register(async (widgets) => {
+  widgets.addHook('onRequest', async (req, reply) => {
+    if (!anzeigeZugang(req).erlaubt && !nutzerAusAnfrage(req)) {
+      return reply.code(403).send({ fehler: 'Widgets nur auf der Anzeige oder für angemeldete Handys' });
+    }
+  });
+  widgets.get('/:typ', async (req, reply) => {
+    const quelle = typeof req.query.quelle === 'string' ? req.query.quelle : '';
+    return (await widgetKarte(daten, req.params.typ, quelle)) ?? reply.code(404).send({ fehler: 'Unbekannter Widget-Typ' });
+  });
+  widgets.get('/:typ/quellen', async (req, reply) =>
+    widgetQuellen(daten, req.params.typ) ?? reply.code(404).send({ fehler: 'Unbekannter Widget-Typ' }));
+}, { prefix: '/api/widgets' });
 
 // ---------- Echtzeit-Sync ----------
 
-const verbindungen = new Set(); // { socket, rolle, nutzer }
+const verbindungen = new Set(); // { socket, rolle, nutzer, zugang? }
+
+/** Nach „Neuer Schlüssel“: Anzeigen trennen, die nur über den alten Link verbunden waren */
+function veralteteAnzeigenTrennen() {
+  for (const v of verbindungen) {
+    if (v.rolle !== 'anzeige' || !v.zugang) continue;
+    if (!daten.anzeigeMitSchluessel(v.zugang.id, v.zugang.schluessel)) v.socket.close(4003, 'Anzeige-Link nicht mehr gültig');
+  }
+}
 
 function senden(socket, nachricht) {
   if (socket.readyState === 1) socket.send(JSON.stringify(nachricht));
@@ -241,8 +281,11 @@ app.get('/ws', { websocket: true }, (socket, req) => {
   const { token, rolle } = req.query ?? {};
   let verbindung;
   if (rolle === 'anzeige') {
-    if (!istLokal(req) && !ANZEIGE_OFFEN) return socket.close(4003, 'Nur auf dem Anzeigegerät');
-    verbindung = { socket, rolle: 'anzeige', nutzer: null };
+    const zugang = anzeigeZugang(req);
+    if (!zugang.erlaubt) return socket.close(4003, 'Anzeige nur mit Anzeige-Link oder auf dem Board-Gerät');
+    // Nur wer allein über den Link hereinkam, fliegt raus, wenn der Schlüssel neu erzeugt wird
+    const nurLink = zugang.anzeige && !istLokal(req) && !ANZEIGE_OFFEN;
+    verbindung = { socket, rolle: 'anzeige', nutzer: null, zugang: nurLink ? { id: zugang.anzeige.id, schluessel: zugang.anzeige.schluessel } : null };
   } else {
     const nutzer = tokenPruefen(token);
     if (!nutzer) return socket.close(4001, 'Nicht angemeldet');
@@ -282,8 +325,15 @@ setInterval(() => {
 
 const OHNE_CACHE = { 'cache-control': 'no-cache' };
 app.get('/', (req, reply) => reply.headers(OHNE_CACHE).sendFile(COMPANION_DATEI, COMPANION_ORDNER));
-app.get('/regeln.js', (req, reply) => reply.headers(OHNE_CACHE).sendFile('regeln.js', COMPANION_ORDNER));
+for (const datei of ['regeln.js', 'board-karten.js']) {
+  app.get(`/${datei}`, (req, reply) => reply.headers(OHNE_CACHE).sendFile(datei, COMPANION_ORDNER));
+}
 await app.register(fastifyStatic, { root: path.join(COMPANION_ORDNER, 'icons'), prefix: '/icons/', maxAge: '7d' });
+// Welt-Import: Worker und Dekoder (ES-Module) liest das Handy selbst; die Bibliothek liegt in vendor/
+for (const datei of ['biom-ids.js', 'biom-dekoder.js', 'biom-welt.js', 'biom-import.worker.js']) {
+  app.get(`/${datei}`, (req, reply) => reply.headers(OHNE_CACHE).sendFile(datei, COMPANION_ORDNER));
+}
+await app.register(fastifyStatic, { root: path.join(COMPANION_ORDNER, 'vendor'), prefix: '/vendor/', maxAge: '7d', decorateReply: false });
 // Rüstungs-Baukasten: Texturen, fertige Item-Icons, baukasten.js/figur3d.js (ES-Module) und manifest.json
 await app.register(fastifyStatic, {
   root: path.join(COMPANION_ORDNER, 'ruestungs-baukasten'), prefix: '/ruestungs-baukasten/', maxAge: '7d', decorateReply: false,
@@ -293,10 +343,27 @@ if (existsSync(CLIENT_DIST)) {
   // Baut nur noch die Anzeige; ihre Dateien liegen unter /assets/
   await app.register(fastifyStatic, { root: CLIENT_DIST, prefix: '/', index: false, wildcard: false, decorateReply: false });
 }
+function dashboardSeite(reply) {
+  if (!existsSync(path.join(DASHBOARD_DIST, 'index.html'))) {
+    return reply.code(404).type('text/plain; charset=utf-8')
+      .send('Dashboard nicht gebaut: npm --prefix companion/widgets install && npm --prefix companion/widgets run build');
+  }
+  return reply.headers(OHNE_CACHE).sendFile('index.html', DASHBOARD_DIST, { cacheControl: false });   // neuer Build → neue Assets
+}
+// Widget-Dashboard: Dateien mit Hash im Namen unter /dashboard/assets/, eigene Routen (z. B. /dashboard/vollbild/:id) → index.html
+await app.register(fastifyStatic, { root: DASHBOARD_DIST, prefix: '/dashboard/', index: false, maxAge: '7d', decorateReply: false });
+app.get('/dashboard', (req, reply) => {
+  const query = req.url.indexOf('?');
+  return reply.redirect(`/dashboard/${query === -1 ? '' : req.url.slice(query)}`);   // Anzeige-Link behält ?anzeige=…&schluessel=…
+});
+app.get('/dashboard/', (req, reply) => dashboardSeite(reply));
+
 app.setNotFoundHandler((req, reply) => {
-  if (req.method === 'GET' && /^\/anzeige(\/|$)/.test(req.url.split('?')[0]) && existsSync(CLIENT_DIST)) {
+  const pfad = req.url.split('?')[0];
+  if (req.method === 'GET' && /^\/anzeige(\/|$)/.test(pfad) && existsSync(CLIENT_DIST)) {
     return reply.sendFile('index.html', CLIENT_DIST);
   }
+  if (req.method === 'GET' && pfad.startsWith('/dashboard/') && !pfad.startsWith('/dashboard/assets/')) return dashboardSeite(reply);
   return reply.code(404).send({ fehler: 'Nicht gefunden' });
 });
 
@@ -312,7 +379,11 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 await app.listen({ port: PORT, host: '0.0.0.0' });
 console.log('\n  Koordinaten-Board läuft');
 console.log(`  Anzeige (dieses Gerät):  http://localhost:${PORT}/anzeige`);
+if (existsSync(DASHBOARD_DIST)) console.log(`  Widget-Dashboard:        http://localhost:${PORT}/dashboard`);
 console.log(`  Companion (Handys):      ${lanAdresse()}   PIN ${PIN}`);
+for (const a of daten.anzeigenListe()) {
+  console.log(`  Anzeige auf anderem Gerät${daten.anzeigenListe().length > 1 ? ` („${a.name}“)` : ''}: ${anzeigeLink(a)}`);
+}
 if (netz.kandidaten.length > 1) {
   console.log('\n  Weitere Adressen dieses Geräts (falls die obere vom Handy nicht erreichbar ist):');
   for (const k of netz.kandidaten) if (k.adresse !== qrIp()) console.log(`    ${lanAdresse(k.adresse).padEnd(28)} ${k.name}`);

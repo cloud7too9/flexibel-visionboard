@@ -247,7 +247,7 @@ export function WorkspaceGrid() {
         data-testid="raster-flaeche"
         data-grid={`${RASTER_SPALTEN}x${reihen}`}
         className="absolute left-0 top-0 w-full"
-        style={{ height: reihen * raster.zellePx, ...(editMode ? gridLinesStyle(cell) : {}) }}
+        style={{ height: reihen * raster.zellePx, "--zelle": `${raster.zellePx}px`, ...(editMode ? gridLinesStyle(cell) : {}) } as CSSProperties}
       >
       {layout.instanzen.length === 0 ? (
         <div className="absolute inset-0 flex items-center justify-center p-4">

@@ -107,17 +107,37 @@ describe("widgets act on the active layer only", () => {
   });
 
   it("only widget types go onto the dashboard, never a whole area", () => {
+    store().addLayer();
     expect(store().addItem("portale")).toBe(false);
     expect(store().addItem("gibt.es.nicht")).toBe(false);
-    expect(store().addItem("portale.verbindungen")).toBe(true);
-    expect(active().instanzen.at(-1)).toMatchObject({ typ: "portale.verbindungen", stufe: "standard" });
+    expect(store().addItem("portale.verbindungen", "egal")).toBe(true);
+    expect(active().instanzen.at(-1)).toEqual(expect.objectContaining({ typ: "portale.verbindungen", stufe: "standard" }));
+    expect(active().instanzen.at(-1)).not.toHaveProperty("quelle");   // Typ ohne Quelle
   });
 
-  it("removes and duplicates within the active layer", () => {
+  it("removes within the active layer", () => {
     store().removeItem("w-sammelstatus");
     expect(active().instanzen.some((i) => i.id === "w-sammelstatus")).toBe(false);
-    store().duplicateItem("w-portale");
-    expect(active().instanzen.filter((i) => i.typ === "portale.verbindungen")).toHaveLength(2);
+  });
+
+  it("a type without source exists once per layer (no add, no duplicate)", () => {
+    expect(store().addItem("portale.verbindungen")).toBe(false);
+    expect(store().duplicateItem("w-portale")).toBe(false);
+    expect(active().instanzen.filter((i) => i.typ === "portale.verbindungen")).toHaveLength(1);
+    store().addLayer();
+    expect(store().addItem("portale.verbindungen")).toBe(true);   // anderer Layer
+    store().removeItem(active().instanzen[0].id);
+    expect(store().addItem("portale.verbindungen")).toBe(true);   // wieder frei
+  });
+
+  it("types with a source are multiple: each instance with its own source, duplicates keep it", () => {
+    store().addLayer();
+    expect(store().addItem("banner.banner", "b_1")).toBe(true);
+    expect(store().addItem("banner.banner", "b_2")).toBe(true);
+    expect(active().instanzen.map((i) => i.quelle)).toEqual(["b_1", "b_2"]);
+    expect(store().duplicateItem(active().instanzen[0].id)).toBe(true);
+    expect(active().instanzen.at(-1)).toMatchObject({ typ: "banner.banner", quelle: "b_1" });
+    expect(active().instanzen.at(-1)!.id).not.toBe(active().instanzen[0].id);
   });
 
   it("moves a widget cell by cell and rejects collisions", () => {
@@ -172,10 +192,10 @@ describe("widgets act on the active layer only", () => {
 
   it("reports when a layer is full", () => {
     store().addLayer();
-    let added = 0;
-    while (store().addItem("karte.gesamtkarte")) added++;
-    expect(added).toBe(4);   // 12×8: zwei nebeneinander, zwei Reihen à 8 bei 18 Reihen
-    expect(store().duplicateItem(active().instanzen[0].id)).toBe(false);
+    store().setReihen(8);
+    // 12×8, 10×6 und 8×8 passen nebeneinander, für 4×3 ist dann kein Platz mehr
+    for (const t of ["karte.gesamtkarte", "portale.verbindungen", "sammelobjekte.gesamtauflistung"]) expect(store().addItem(t)).toBe(true);
+    expect(store().addItem("sammelobjekte.status")).toBe(false);
     for (const i of active().instanzen) {
       const r = instanzRect(i)!;
       expect(r.x + r.w).toBeLessThanOrEqual(RASTER_SPALTEN);

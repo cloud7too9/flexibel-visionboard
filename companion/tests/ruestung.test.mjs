@@ -173,7 +173,7 @@ try {
   pruefe(await p.evaluate(() => rs.sets.length === 3 && st.sheet === null), "Set gelöscht");
 
   // ---- Anzeigeschema: Karte mit Figur-Aufnahme ------------------------------------
-  const karte = await p.evaluate(() => BOARD_KARTEN.ruestung.karte("r_2"));
+  const karte = await p.evaluate(() => BOARD_KARTEN.ruestung.karte(boardKontext(), "r_2"));
   const geprueft = kartePruefen(karte);
   pruefe(!geprueft.fehler, `Board nimmt die Karte an${geprueft.fehler ? ": " + geprueft.fehler : ""}`);
   pruefe(karte.bloecke[0].art === "bild" && /^data:image\/(png|webp);base64,/.test(karte.bloecke[0].daten) && karte.bloecke[0].pixelig === false,
@@ -201,7 +201,7 @@ try {
   pruefe(await d.evaluate(() => fig.art) === "icons" && cdn === 0, "Als Datei: Icons statt Figur, three.js wird gar nicht geladen");
   pruefe((await d.textContent("#buehneHinweis")).includes("über das Board"), "Hinweis: 3D-Figur über das Board");
   pruefe(await d.$$eval(".buehne-icons img", (l) => l.length === 4 && l.every((i) => i.naturalWidth === 16)), "Bühne zeigt die vier Icons");
-  const dateiKarte = await d.evaluate(() => BOARD_KARTEN.ruestung.karte("r_1"));
+  const dateiKarte = await d.evaluate(() => BOARD_KARTEN.ruestung.karte(boardKontext(), "r_1"));
   pruefe(!kartePruefen(dateiKarte).fehler && dateiKarte.bloecke[0].art === "zeilen", "Als Datei: Board-Karte ohne Bild");
   await d.screenshot({ path: path.join(DIR, "ruestung-datei.png") });
   pruefe(dateiFehler.length === 0, `Als Datei keine Fehler${dateiFehler.length ? ": " + dateiFehler.join(" | ") : ""}`);

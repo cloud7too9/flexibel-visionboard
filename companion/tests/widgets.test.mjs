@@ -70,6 +70,15 @@ try {
   await p.goto(ADRESSE);
   await p.evaluate(() => localStorage.clear());
   await p.reload();
+
+  // ---- Ohne Board: feste Beispielkarten ----
+  await p.waitForSelector('[data-panel-id="w-sammelstatus"] [data-testid="karte"]');
+  pruefe(await p.isVisible('[data-testid="beispielkarten"]'), "Ohne Board: Hinweis „Beispielkarten“ im Kopf");
+  const karteText = (id) => p.$eval(`[data-panel-id="${id}"] [data-testid="karte"]`, (k) => k.textContent);
+  pruefe((await karteText("w-sammelstatus")).includes("5 von 18") && (await karteText("w-portale")).includes("Hauptbasis"),
+    "Widgets rendern Karten (Titel und Zeilen)");
+  pruefe(await p.$$eval('[data-panel-id] [data-testid="karte"]', (l) => l.length) === 4, "alle 4 Start-Widgets mit Karte");
+  await p.screenshot({ path: `${DIR}/w5-beispielkarten.png` });
   await p.getByRole("button", { name: "Bearbeiten" }).click();
   const stufe = (id) => p.$eval(`[data-panel-id="${id}"] [data-testid="stufe"]`, (e) => e.textContent);
   const griff = (id) => p.locator(`[data-panel-id="${id}"] [aria-label="Größe ändern (nächste Stufe)"]`);
@@ -107,14 +116,32 @@ try {
   await p.getByRole("button", { name: "Widget hinzufügen" }).first().click();
   await p.waitForSelector("[data-widget-typ]");
   const gruppen = await p.$$eval("section[data-bereich]", (l) => l.map((s) => [s.dataset.bereich, s.querySelectorAll("[data-widget-typ]").length]));
-  pruefe(JSON.stringify(gruppen) === JSON.stringify([["karte", 1], ["sammelobjekte", 2], ["portale", 1]]), `Galerie nach Bereich: ${JSON.stringify(gruppen)}`);
+  pruefe(JSON.stringify(gruppen) === JSON.stringify([["karte", 3], ["sammelobjekte", 4], ["portale", 1], ["handbuch", 2], ["bauplaene", 1], ["banner", 1], ["ruestung", 1]]),
+    `Galerie mit allen 13 Typen nach Bereich: ${JSON.stringify(gruppen)}`);
   const vorschau = await p.$eval('[data-widget-typ="portale.verbindungen"] [data-testid="vorschau"]', (e) => [e.offsetWidth, e.offsetHeight]);
   pruefe(vorschau[0] === 90 && vorschau[1] === 54, `Vorschau in der kleinsten Stufe (10×6 Zellen → ${vorschau.join("×")} px)`);
   await p.screenshot({ path: `${DIR}/w4-galerie.png` });
   await p.fill('input[aria-label="Widgets suchen"]', "fortschritt");
   pruefe(JSON.stringify(await p.$$eval("[data-widget-typ]", (l) => l.map((e) => e.dataset.widgetTyp))) === '["sammelobjekte.status"]', "Suche „fortschritt“");
-  await p.click('[data-widget-typ="sammelobjekte.status"]');
-  pruefe(await p.locator('[data-typ="sammelobjekte.status"]').count() === 2, "Hinzugefügt an der ersten freien Stelle, Galerie zu");
+  pruefe(await p.$eval('[data-widget-typ="sammelobjekte.status"]', (b) => b.disabled && b.textContent.includes("liegt schon auf diesem Layer")),
+    "Typ ohne Quelle liegt schon da → gesperrt");
+  await p.fill('input[aria-label="Widgets suchen"]', "banner");
+  await p.click('[data-widget-typ="banner.banner"]');
+  await p.waitForSelector("[data-quelle]");
+  pruefe(JSON.stringify(await p.$$eval("[data-quelle]", (l) => l.map((e) => e.dataset.quelle))) === '["b_1","b_2"]'
+    && (await p.textContent('[role="dialog"] h3')) === "Banner wählen", "Typ mit Quelle: Banner wählen");
+  await p.screenshot({ path: `${DIR}/w6-quelle-waehlen.png` });
+  await p.click('[data-quelle="b_1"]');
+  pruefe(await p.locator('[data-typ="banner.banner"]').count() === 1, "Hinzugefügt an der ersten freien Stelle, Galerie zu");
+  pruefe(await p.evaluate(() => JSON.parse(localStorage.getItem("mainhub.workspace.v1")).layers[0].instanzen.find((i) => i.typ === "banner.banner").quelle) === "b_1"
+    && await p.waitForFunction(() => document.querySelector('[data-typ="banner.banner"] [data-testid="karte"]')?.textContent.includes("Wappen")).then(() => true, () => false),
+    "Instanz merkt sich die Quelle und zeigt deren Karte");
+  // Bereich ohne Inhalt: leerer Zustand mit Hinweis
+  await p.getByRole("button", { name: "Widget hinzufügen" }).first().click();
+  await p.fill('input[aria-label="Widgets suchen"]', "handbuch-eintrag");
+  await p.click('[data-widget-typ="handbuch.eintrag"]');
+  pruefe(await p.$eval('[data-typ="handbuch.eintrag"] [data-testid="widget-leer"]', (e) => e.textContent).catch(() => "") === "Bereich geplant",
+    "Handbuch-Eintrag: „Bereich geplant“");
 
   // Vollbild nur bei Typen mit vollbild: true
   pruefe(await p.locator('[data-panel-id="w-sammelobjekte"] [aria-label="Vollbild"]').count() === 0, "Alle Sammelobjekte: kein Vollbild (optional je Typ)");

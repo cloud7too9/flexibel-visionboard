@@ -596,6 +596,21 @@ select.orte-eingabe { padding-right:34px;
 .karte-legende i { width:10px; height:10px; border-radius:3px; display:inline-block; }
 .karte-hinweis { position:absolute; left:14px; top:14px; right:14px; pointer-events:none; }
 .karte-hinweis .chip { font-size:12px; color:var(--text-dim); box-shadow:none; }
+.karte-legende .chip.tipp { flex-basis:100%; width:max-content; max-width:100%; color:var(--text); border-color:var(--accent); }
+.karte-knoepfe button[hidden] { display:none; }
+.karte-knoepfe button[aria-pressed="false"] { color:var(--text-faint); }
+.karte-knoepfe button[aria-pressed="true"] svg { color:var(--accent); }
+/* Welt-Import */
+.wi-anleitung ol { margin:6px 0 0; padding-left:20px; display:grid; gap:6px; font-size:14px; line-height:1.4; }
+.wi-anleitung .pfad { font-family:ui-monospace, monospace; font-size:12.5px; color:var(--text-dim); }
+.wi-balken { height:6px; border-radius:3px; background:var(--surface-3); overflow:hidden; }
+.wi-balken span { display:block; height:100%; background:var(--accent); transition:width .2s; }
+.wi-vorschau { display:block; width:100%; max-height:260px; object-fit:contain; image-rendering:pixelated;
+  background:var(--surface-2); border-radius:12px; border:1px solid var(--border-soft); }
+.wi-biome { display:grid; gap:5px; font-size:13px; }
+.wi-biome div { display:flex; align-items:center; gap:8px; }
+.wi-biome i { width:11px; height:11px; border-radius:3px; flex:0 0 auto; }
+.wi-biome b { margin-left:auto; font-weight:600; color:var(--text-dim); }
 
 /* ---- Sheets ---------------------------------------------------------------- */
 .orte-sheet { max-height:88%; padding-bottom:0; color:var(--text); }
@@ -941,6 +956,7 @@ button.switch { padding:0; }
 .info-liste b { color:var(--text); }
 
 /* ---- Board-Verbindung ---- */
+.anzeige-qr svg { display:block; width:100%; max-width:220px; margin:8px auto 2px; background:#fff; border-radius:10px; padding:6px; }
 .sb-fuss { margin-top:auto; padding:12px 12px max(14px, env(safe-area-inset-bottom)); border-top:1px solid var(--border-soft); }
 .board-knopf { width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px;
   background:var(--surface-2); border:1px solid var(--border-soft); color:var(--text); cursor:pointer; text-align:left; font:inherit; }
@@ -1041,13 +1057,16 @@ button.switch { padding:0; }
         <div class="orte-liste" id="orteListe"></div>
       </div>
 
-      <!-- Bühne: Karte – nur bekannte Biome werden als Fläche gezeichnet -->
+      <!-- Bühne: Karte – Biome aus dem Welt-Import als Fläche, unerkundet bleibt leer -->
       <div class="karte-stage" id="karteStage" hidden>
         <canvas id="ortKarte"></canvas>
         <div class="vignette"></div>
         <div class="karte-hinweis" id="karteHinweis"></div>
         <div class="karte-legende" id="karteLegende"></div>
         <div class="karte-knoepfe">
+          <button id="karteBiome" aria-label="Biome zeigen" aria-pressed="true">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3z"/><path d="M13 13h8v8h-8z" fill="currentColor"/></svg>
+          </button>
           <button id="karteZoomIn" aria-label="Hineinzoomen">+</button>
           <button id="karteZoomOut" aria-label="Herauszoomen">−</button>
           <button id="karteFit" aria-label="Alles zeigen">
@@ -1070,12 +1089,18 @@ button.switch { padding:0; }
           <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
           <span class="lab">Eintragen</span>
         </button>
+        <button class="bb-item" id="orteImportBtn">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></span>
+          <span class="lab">Welt-Import</span>
+        </button>
         <button class="bb-item" id="orteWeltBtn">
           <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
           <span class="lab">Welt</span>
         </button>
       </nav>
       <input type="file" id="orteDatei" accept="image/*" multiple hidden>
+      <!-- Welt-Import: .zip aus der Dateien-App, .mcworld geht auch -->
+      <input type="file" id="weltDatei" accept=".zip,.mcworld,application/zip" hidden>
     </section>
     <!-- === Modul: Sammelobjekte · Rüstungs-Modifikationen =================== -->
     <section class="module" data-module="sammelobjekte" id="moduleSammel">
@@ -1188,6 +1213,8 @@ button.switch { padding:0; }
 </div>
 
 <script src="regeln.js"></script>
+<script src="board-karten.js"></script>
+<script src="biom-ids.js"></script>
 <script>
 "use strict";
 /* ============================================================================
@@ -1205,13 +1232,12 @@ button.switch { padding:0; }
    · „Eigene Orte“ ist eine zusätzliche Kategorie – dort legt man Typen selbst an
      (z. B. „Hauptbasis“), in allen anderen Kategorien entstehen Typen nur aus
      Screenshots (Variante aus dem Popup, z. B. Stronghold → „Stairway“).
-   · Biome entstehen ausschließlich per Screenshot. Das Biom ist der Typ,
-     die Dimension ergibt sich aus der Biom-Liste.
-   · Die Karte zeigt Biome nur rund um bekannte Punkte – unbekannte Fläche bleibt leer.
+   · Biome kommen ausschließlich aus dem Welt-Import (.zip/.mcworld, 9h): je Chunk
+     ein Biom, als Kacheln zu 32 × 32 Chunks. Unerkundete Fläche bleibt leer.
 
    Abschnitte: 0 Konfig · 1 Themes · 2 Stammdaten · 3 Koordinaten · 4 API-Vertrag
                + DEMO-Mock · 5 State · 6 Theme · 7 Liste · 8 Karte · 9 Sheets
-               · 10 Init
+               · 9h Welt-Import · 10 Init
    ========================================================================== */
 
 /* ============================================================================
@@ -1219,7 +1245,9 @@ button.switch { padding:0; }
    ========================================================================== */
 const CONFIG = Object.freeze({
   duplikatRadius: 3,     // Blöcke – gleicher Typ so nah beieinander gilt als Duplikat
-  biomRadius: 48,        // Blöcke – Fläche, die um einen bekannten Biom-Punkt gezeichnet wird
+  kachelChunks: KACHEL_CHUNKS,   // Biom-Kachel: 32 × 32 Chunks = 512 × 512 Blöcke (regeln.js)
+  netherBiomY: 64,       // Nether und End haben keine Oberfläche – Biom auf dieser Höhe
+  endBiomY: 64,
   zoomMin: 0.02,         // Pixel pro Block
   zoomMax: 4,
   toastMs: 2600,
@@ -1271,6 +1299,20 @@ const BIOM_FARBE = Object.freeze({
 });
 const biomFarbe = (b) => BIOM_FARBE[b.name] || GRUPPEN_FARBE[b.gruppe] || "#777";
 
+/* Biom je Bedrock-ID (biom-ids.js, wie Bedrock sie in den Weltdaten speichert): Name wie in der
+   Biom-Liste (Chunkbase-Schreibweise), Farbe aus BIOM_FARBE, sonst die von minecraft-data –
+   ähnlich wie auf der Seed Map. Mehrere alte IDs teilen sich einen Namen und dann eine Farbe.
+   IDs, die hier fehlen, gelten als unbekannt und bleiben auf der Karte leer. */
+const BIOM_INFO = (() => {
+  const farbeNachName = new Map();
+  return new Map((globalThis.BIOM_IDS || []).map((b) => {
+    const biom = biomFinden(b.displayName);
+    if(!farbeNachName.has(b.displayName))
+      farbeNachName.set(b.displayName, BIOM_FARBE[b.displayName] || b.color || (biom ? biomFarbe(biom) : "#777"));
+    return [b.id, Object.freeze({ id:b.id, name:b.displayName, biom, farbe:farbeNachName.get(b.displayName) })];
+  }));
+})();
+
 // Symbol je Kategorie (Liste + Karten-Marker) – bewusst reduziert wie STRUCT_ICONS in Modul A
 const SYMBOL = Object.freeze({
   "Eigene Orte":"♜", "Biomes":"◍", "Slime Chunk":"▦", "Spawn Point":"✚", "Village":"■", "Ancient City":"◭",
@@ -1282,26 +1324,8 @@ const SYMBOL = Object.freeze({
 });
 const symbol = (kat) => SYMBOL[kat] || "•";
 
-/* Fundort-Strukturen der Sammelobjekte: FeatureCategory der Karte → Struktur mit deutschem Namen
-   und Kennblock-Bild (icons/manifest.json, Bilder von minecraft.wiki). bild:false = noch keine Datei,
-   dann steht das Symbol aus SYMBOL da. */
+// Kennblock-Bilder der Fundort-Strukturen (STRUKTUREN steht in board-karten.js)
 const KENNBLOCK_PFAD = "icons/struktur_kennbloecke/";
-const STRUKTUREN = Object.freeze({
-  "Outpost":         { id:"pillager_outpost", name:"Plünderer-Außenposten" },
-  "Desert Temple":   { id:"desert_pyramid",   name:"Wüstentempel" },
-  "Jungle Temple":   { id:"jungle_pyramid",   name:"Dschungeltempel" },
-  "Shipwreck":       { id:"shipwreck",        name:"Schiffswrack" },
-  "Trail Ruins":     { id:"trail_ruins",      name:"Pfadruinen", bild:false },
-  "Mansion":         { id:"mansion",          name:"Waldanwesen" },
-  "Monument":        { id:"monument",         name:"Ozeanmonument" },
-  "Ancient City":    { id:"ancient_city",     name:"Antike Stätte" },
-  "Trial Chamber":   { id:"trial_chambers",   name:"Prüfungskammern" },
-  "Stronghold":      { id:"stronghold",       name:"Festung" },
-  "Nether Fortress": { id:"fortress",         name:"Netherfestung" },
-  "Bastion":         { id:"bastion_remnant",  name:"Bastionsruine" },
-  "End City":        { id:"end_city",         name:"Endsiedlung" },
-});
-const strukturName = (kat) => STRUKTUREN[kat]?.name || kat;
 const kennblockDatei = (kat) => { const s = STRUKTUREN[kat]; return s && s.bild !== false ? `${KENNBLOCK_PFAD}${s.id}.png` : null; };
 
 /** Kennblock einer Kategorie als <img> – ohne Bild (oder wenn es nicht lädt) das Symbol */
@@ -1345,36 +1369,13 @@ const FUNDORTE = SAMMELOBJEKTE.reduce((liste, o) => {
   return liste;
 }, []);
 
-/** Kategorien, die man in dieser Dimension von Hand eintragen darf (Biome nur per Screenshot). */
+/** Kategorien, die man in dieser Dimension von Hand eintragen darf (Biome kommen aus dem Welt-Import). */
 const kategorienManuell = (dim) => [EIGENE_ORTE, ...FEATURE_KATEGORIEN[dim].filter((k) => k !== BIOMES)];
 
 /* ============================================================================
    3 · KOORDINATEN  ·  Formatierung, Umrechnung, Entfernung, Einfügen
+   zahl, umrechnen, entfernung stehen in board-karten.js (auch der Server braucht sie)
    ========================================================================== */
-/** −1 884 – schmales Leerzeichen statt Punkt/Komma (sähe nach Kommazahl aus) */
-function zahl(n){
-  return `${n < 0 ? "−" : ""}${String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`;
-}
-/** Oberwelt ↔ Nether (÷ 8 / × 8). Für das End gibt es keine Umrechnung. */
-function umrechnen(x, z, dim){
-  if(dim === "overworld") return { x:Math.floor(x/8), z:Math.floor(z/8), dim:"nether" };
-  if(dim === "nether")    return { x:x*8, z:z*8, dim:"overworld" };
-  return null;
-}
-const RICHTUNGEN = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
-/** Entfernung + Himmelsrichtung (Norden = −Z). Oberwelt/Nether werden umgerechnet. */
-function entfernung(von, x, z, dim){
-  if(!von) return null;
-  let zx = x, zz = z;
-  if(von.dim !== dim){
-    const u = umrechnen(x, z, dim);
-    if(!u || u.dim !== von.dim) return null;
-    zx = u.x; zz = u.z;
-  }
-  const dx = zx - von.x, dz = zz - von.z;
-  const winkel = (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360;
-  return { meter:Math.round(Math.hypot(dx, dz)), richtung:RICHTUNGEN[Math.round(winkel/45) % 8], umgerechnet:von.dim !== dim };
-}
 const entfernungText = (m) => m >= 1000 ? `${(m/1000).toLocaleString("de-DE", { maximumFractionDigits:1 })} km` : `${m} m`;
 
 /** Bedrock: /execute in <dim> run tp @s x y z */
@@ -1422,14 +1423,24 @@ function koordinatenErkennen(text){
    POST   /orte/instanzen             { dimensionId, kategorie, variante|null, x, y|null, z,
                                         quelle:"screenshot"|"manuell" }
                                       → { instanz, typ }   (Typ wird gefunden oder angelegt)
-   PATCH  /orte/instanzen/:id  { x, y, z }   → { instanz }  (Biome: 403)
-   PUT    /orte/instanzen/:id/angeheftet { angeheftet } → { instanz }  (groß auf der Anzeige; Biome: 403)
+   PATCH  /orte/instanzen/:id  { x, y, z }   → { instanz }
+   PUT    /orte/instanzen/:id/angeheftet { angeheftet } → { instanz }  (groß auf der Anzeige)
    DELETE /orte/instanzen/:id                → { ok:true }
    POST   /orte/auslesen  (multipart „datei“) → { erkannt:{ titel, kategorie, variante, dimension,
                                                   x, y|null, z } | null,
                                         banner:{ basis|null, ebenen:[{ muster, farbe }], unklar:[text] } | null }
                                       (erst Seed-Map-Popup, sonst Banner-Anleitung „Black Base“, „Cyan Bordure“ …)
    Typen:  typ = { id, kategorie, variante|null }   instanz = { id, dimensionId, featureTypeId, x, y, z }
+           Biome sind keine Instanzen mehr (instanzPruefen lehnt sie ab) – sie kommen aus dem Welt-Import.
+
+   Welt-Import: Biome je Welt, pro Welt genau ein Import (Regeln siehe biomImportPruefen()):
+   GET    /welten/:id/biome            → { import:WeltImport|null, kacheln:[{ dim, kx, kz, daten }] }
+   PUT    /welten/:id/biome   { import:{ dateiname, weltname, seed, spielversion, chunks, unbekannt }, kacheln }
+                                       → { import }   (ersetzt Import und alle Kacheln der Welt)
+   DELETE /welten/:id/biome            → { ok:true }
+   WeltImport = { id, weltId, dateiname, weltname, seed, spielversion, chunks:{ overworld, nether, end },
+                  unbekannt:[{ bedrockId, chunks, beispiel:{ dim, x, z } }], von, importiertAm }
+   Kachel: 32 × 32 Chunks, daten = Base64 von 1024 × Uint16 LE (Bedrock-ID + 1, 0 = unerkundet)
 
    Sammelobjekte (Fortschritt je Welt, für alle gemeinsam):
    GET    /sammelobjekte/welten/:id              → { status:{ [objektId]:{ von, am } } }
@@ -1497,19 +1508,20 @@ const MOCK = (() => {
     ["overworld", "Ancient City", null, -824, -51, 1560],
     ["overworld", "Ruined Portal", null, -312, null, -904],
     ["overworld", "Trial Chamber", null, 1488, -20, 96],
-    ["overworld", BIOMES, "Cherry Grove", -600, null, 780],
-    ["overworld", BIOMES, "Cherry Grove", -520, null, 860],
-    ["overworld", BIOMES, "Savanna", 420, null, -300],
-    ["overworld", BIOMES, "Plains", 180, null, -520],
-    ["overworld", BIOMES, "River", 330, null, -760],
     ["nether", EIGENE_ORTE, "Portal zur Basis", 26, 71, -49],
     ["nether", "Nether Fortress", null, -120, null, 248],
     ["nether", "Bastion", null, 344, null, -96],
-    ["nether", BIOMES, "Soul Sand Valley", 90, null, -300],
-    ["nether", BIOMES, "Crimson Forest", -60, null, 120],
     ["end", "End City", null, 1320, null, -760],
     ["end", "End Gateway", null, 96, 75, 0],
   ].forEach(([dim, kat, v, x, y, z]) => anlegen("w_1", dim, kat, v, x, y, z));
+
+  // Biome der Beispielwelt – erzeugt statt aus einer echten Welt: erkundet ist das Gebiet um den
+  // Spawn und um die Orte, darin Landschaft aus weichem Rauschen (IDs aus biom-ids.js)
+  const biome = { w_1:{ import:{ id:"bi_1", weltId:"w_1", dateiname:"Archiv.zip", weltname:"Unsere Welt",
+    seed:"6889192652397090698", spielversion:"1.26.50", chunks:{}, unbekannt:[], von:"Max", importiertAm:"2026-09-28T18:30:00.000Z" },
+    kacheln:demoBiome(instanzen.filter((i) => i.dimensionId.startsWith("d_w_1_"))) } };
+  biome.w_1.import.chunks = Object.fromEntries(DIM_ORDER.map((d) => [d, biome.w_1.kacheln.filter((k) => k.dim === d)
+    .reduce((n, k) => n + kachelAusText(k.daten).filter(Boolean).length, 0)]));
 
   // Simulierte Texterkennung: rotiert durch typische Fälle
   const auslesen = [
@@ -1557,8 +1569,38 @@ const MOCK = (() => {
       { id:"p_3", name:"Dorf", oberwelt:{ x:640, y:64, z:-1120 }, nether:{ x:100, y:70, z:-150 }, von:"Lena", am:"2026-09-24" },
     ],
   };
-  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, banner, ruestung, portale, ich:"Max" };
+  return { neueId, welten, dimensionen, typen, instanzen, typFinden, auslesen, ocr:0, sammel, banner, ruestung, portale, biome, ich:"Max" };
 })();
+
+/** Demo-Biome: Kacheln [{ dim, kx, kz, daten (Base64) }] für die Orte der Beispielwelt */
+function demoBiome(orte){
+  const rauschen = (x, z, s) => {   // weiches Rauschen 0…1 aus Sinuswellen, s = Startwert
+    const w = (a, b, c) => Math.sin(x * a + z * b + c);
+    return (w(0.11, 0.07, s) + w(-0.05, 0.13, s * 2) + w(0.031, -0.023, s * 3) * 1.5 + 3.5) / 7;
+  };
+  const LAND = [[0.30, 0], [0.33, 16], [0.42, 1], [0.50, 4], [0.56, 27], [0.62, 35], [0.70, 29], [0.78, 5], [1, 3]];
+  const NETHER = [[0.35, 8], [0.5, 178], [0.65, 179], [0.8, 180], [1, 181]];
+  const biomVon = (dim, cx, cz) => {
+    if(dim === "end") return 9;
+    const n = rauschen(cx, cz, dim === "nether" ? 7 : 1);
+    if(dim === "nether") return NETHER.find(([g]) => n <= g)[1];
+    if(Math.abs(Math.sin(cx * 0.09) * 9 - cz + 4) < 1.2) return 7;   // ein Fluss
+    return LAND.find(([g]) => n <= g)[1];
+  };
+  const kacheln = new Map();
+  for(const dim of DIM_ORDER){
+    const mitten = orte.filter((i) => i.dimensionId.endsWith(`_${dim}`)).map((i) => [i.x >> 4, i.z >> 4, 28]);
+    if(dim === "overworld") mitten.push([0, 0, 48]);
+    for(const [mx, mz, r] of mitten) for(let cx = mx - r; cx <= mx + r; cx++) for(let cz = mz - r; cz <= mz + r; cz++){
+      if(Math.hypot(cx - mx, cz - mz) > r * (0.8 + 0.25 * rauschen(cx, cz, 5))) continue;
+      const kx = Math.floor(cx / CONFIG.kachelChunks), kz = Math.floor(cz / CONFIG.kachelChunks);
+      const s = `${dim}:${kx}:${kz}`;
+      if(!kacheln.has(s)) kacheln.set(s, { dim, kx, kz, daten:new Uint16Array(CONFIG.kachelChunks ** 2) });
+      kacheln.get(s).daten[(cz - kz * CONFIG.kachelChunks) * CONFIG.kachelChunks + (cx - kx * CONFIG.kachelChunks)] = biomVon(dim, cx, cz) + 1;
+    }
+  }
+  return [...kacheln.values()].map((k) => ({ ...k, daten:kachelZuText(k.daten) }));
+}
 
 function mockApi(path, opts){
   opts = opts || {};
@@ -1611,7 +1653,6 @@ function mockApi(path, opts){
   if(method === "PUT" && (m = path.match(/^\/orte\/instanzen\/([\w-]+)\/angeheftet$/))){
     const i = MOCK.instanzen.find((x) => x.id === m[1]);
     if(!i) return fehler(404, "Ort nicht gefunden");
-    if(MOCK.typen.find((x) => x.id === i.featureTypeId)?.kategorie === BIOMES) return fehler(403, "Biome zeigt die Anzeige nicht");
     i.angeheftet = Boolean(body?.angeheftet);
     return ok({ instanz:{ ...i } });
   }
@@ -1623,12 +1664,24 @@ function mockApi(path, opts){
       return ok({ ok:true });
     }
     if(method === "PATCH"){
-      const t = MOCK.typen.find((x) => x.id === i.featureTypeId);
-      if(t.kategorie === BIOMES) return fehler(403, "Biome stammen aus Screenshots und sind fest");
       const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= CONFIG.weltGrenze;
       if(!ganz(body.x) || !ganz(body.z) || (body.y != null && !ganz(body.y))) return fehler(400, "Ungültige Koordinaten");
       Object.assign(i, { x:body.x, y:body.y ?? null, z:body.z });
       return ok({ instanz:{ ...i } });
+    }
+  }
+
+  if((m = path.match(/^\/welten\/([\w-]+)\/biome$/))){
+    const welt = MOCK.welten.find((w) => w.id === m[1]);
+    if(!welt) return fehler(404, "Welt nicht gefunden");
+    if(method === "GET") return ok(structuredClone(MOCK.biome[welt.id] || { import:null, kacheln:[] }));
+    if(method === "DELETE"){ delete MOCK.biome[welt.id]; return ok({ ok:true }); }
+    if(method === "PUT"){
+      const problem = biomImportPruefen(body, welt); if(problem) return fehler(422, problem);
+      const sauber = biomImportSauber(body);
+      const imp = { id:MOCK.neueId("bi"), weltId:welt.id, ...sauber.import, von:MOCK.ich, importiertAm:new Date().toISOString() };
+      MOCK.biome[welt.id] = { import:imp, kacheln:sauber.kacheln };
+      return ok({ import:structuredClone(imp) });
     }
   }
 
@@ -1754,7 +1807,18 @@ async function kopieren(text){
   const ok = document.execCommand("copy"); ta.remove();
   if(!ok) throw new Error("Kopieren nicht möglich");
 }
-const kurzSeed = (s) => s.length > 12 ? `${s.slice(0, 5)}…${s.slice(-4)}` : s;
+/* Biom-Kachel ↔ Base64 (2048 Byte, Uint16 Little Endian) – wie kachelZuBase64/kachelAusBase64 in
+   biom-dekoder.js; die Seite ist ein klassisches Script und braucht sie auch als Datei (Mock). */
+function kachelAusText(text){
+  const b = atob(text), daten = new Uint16Array(b.length >> 1);
+  for(let i = 0; i < daten.length; i++) daten[i] = b.charCodeAt(i * 2) | (b.charCodeAt(i * 2 + 1) << 8);
+  return daten;
+}
+function kachelZuText(daten){
+  let b = "";
+  for(const v of daten) b += String.fromCharCode(v & 255, v >> 8);
+  return btoa(b);
+}
 
 /* ============================================================================
    5 · STATE
@@ -1793,15 +1857,63 @@ function sichtbareInstanzen(){
       && (!q || `${t.kategorie} ${t.variante || ""} ${i.x} ${i.z}`.toLowerCase().includes(q)));
 }
 
-/** Gleicher Typ (bzw. gleiches Biom) auf fast gleicher Stelle? */
-function duplikat(dim, kategorie, variante, x, z, ohneId){
+/** Gleicher Typ auf fast gleicher Stelle? */
+function duplikat(dim, kategorie, x, z, ohneId){
   const dimId = dimIdVon(dim);
   return st.instanzen.find((i) => {
     if(i.id === ohneId || i.dimensionId !== dimId) return false;
     const t = typVon(i);
-    return t && t.kategorie === kategorie && (kategorie !== BIOMES || t.variante === variante)
+    return t && t.kategorie === kategorie
       && Math.abs(i.x - x) <= CONFIG.duplikatRadius && Math.abs(i.z - z) <= CONFIG.duplikatRadius;
   }) || null;
+}
+
+/* Biome der aktuellen Welt aus dem Welt-Import (9h). Je Kachel die Werte, dazu lazy ein
+   32 × 32-Bild (1 Pixel = 1 Chunk) und die Anzahl je Biom für die Legende. */
+const bm = {
+  weltId: null,
+  import: null,
+  kacheln: new Map(),   // "dim:kx:kz" → { dim, kx, kz, daten:Uint16Array, bild, zaehler }
+  an: lsLesen("orte.biome") ?? true,   // Ebene auf der Karte ein/aus – nur auf diesem Gerät
+};
+const kachelSchluessel = (dim, kx, kz) => `${dim}:${kx}:${kz}`;
+function biomeSetzen(weltId, imp, kacheln){
+  bm.weltId = weltId; bm.import = imp;
+  bm.kacheln = new Map(kacheln.map((k) => [kachelSchluessel(k.dim, k.kx, k.kz),
+    { dim:k.dim, kx:k.kx, kz:k.kz, daten:k.daten instanceof Uint16Array ? k.daten : kachelAusText(k.daten), bild:null, zaehler:null }]));
+}
+/** Biom an einer Blockposition → BIOM_INFO-Eintrag, { unbekannt:id } oder null (unerkundet) */
+function biomAnStelle(dim, x, z){
+  const cx = Math.floor(x / 16), cz = Math.floor(z / 16), n = CONFIG.kachelChunks;
+  const kx = Math.floor(cx / n), kz = Math.floor(cz / n);
+  const k = bm.kacheln.get(kachelSchluessel(dim, kx, kz)); if(!k) return null;
+  const wert = k.daten[(cz - kz * n) * n + (cx - kx * n)];
+  return wert ? BIOM_INFO.get(wert - 1) || { unbekannt:wert - 1 } : null;
+}
+/** Bild und Zähler einer Kachel (einmal gebaut, bis neue Biome kommen) */
+function kachelBild(k){
+  if(k.bild) return k.bild;
+  const n = CONFIG.kachelChunks, bild = document.createElement("canvas");
+  bild.width = bild.height = n;
+  const ctx = bild.getContext("2d"), pixel = ctx.createImageData(n, n);
+  k.zaehler = new Map();
+  k.daten.forEach((wert, i) => {
+    const info = wert && BIOM_INFO.get(wert - 1); if(!info) return;   // unerkundet oder unbekannt: durchsichtig
+    k.zaehler.set(info.name, (k.zaehler.get(info.name) || 0) + 1);
+    const f = parseInt(info.farbe.slice(1), 16);
+    pixel.data.set([f >> 16, (f >> 8) & 255, f & 255, 255], i * 4);
+  });
+  ctx.putImageData(pixel, 0, 0);
+  return (k.bild = bild);
+}
+/** Ausdehnung der Biome einer Dimension in Blöcken → [minX, maxX, minZ, maxZ] oder null */
+function biomGrenzen(dim){
+  const g = CONFIG.kachelChunks * 16; let r = null;
+  for(const k of bm.kacheln.values()) if(k.dim === dim){
+    const [x0, z0] = [k.kx * g, k.kz * g];
+    r = r ? [Math.min(r[0], x0), Math.max(r[1], x0 + g), Math.min(r[2], z0), Math.max(r[3], z0 + g)] : [x0, x0 + g, z0, z0 + g];
+  }
+  return r;
 }
 
 /* ============================================================================
@@ -1989,12 +2101,15 @@ const karte = (() => {
       const u = !s && umrechnen(st.standort.x, st.standort.z, st.standort.dim);
       if(s) punkte.push([s.x, s.z]); else if(u && u.dim === st.dim) punkte.push([u.x, u.z]);
     }
+    // ohne Orte: die importierten Biome der Dimension
+    const g = !punkte.length && bm.weltId === st.weltId ? biomGrenzen(st.dim) : null;
+    if(g) punkte.push([g[0], g[2]], [g[1], g[3]]);
     if(!punkte.length){ Object.assign(sicht, { cx:0, cz:0, zoom:0.25 }); return; }
     const xs = punkte.map((p) => p[0]), zs = punkte.map((p) => p[1]);
     const [minX, maxX, minZ, maxZ] = [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs)];
     const w = canvas.width / dpr, h = canvas.height / dpr;
     sicht.cx = (minX + maxX) / 2; sicht.cz = (minZ + maxZ) / 2;
-    const noetig = Math.min((w - 90) / Math.max(1, maxX - minX + CONFIG.biomRadius * 2), (h - 120) / Math.max(1, maxZ - minZ + CONFIG.biomRadius * 2));
+    const noetig = Math.min((w - 90) / Math.max(1, maxX - minX + 96), (h - 120) / Math.max(1, maxZ - minZ + 96));
     sicht.zoom = Math.max(CONFIG.zoomMin, Math.min(1, noetig));
   }
 
@@ -2010,10 +2125,27 @@ const karte = (() => {
     const w = canvas.width / dpr, h = canvas.height / dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = var_("--bg"); ctx.fillRect(0, 0, w, h);
+    const [x0, z0] = zuWelt(0, 0), [x1, z1] = zuWelt(w, h);
+
+    // 1) Biome aus dem Welt-Import: je Kachel ein 32 × 32-Bild, unerkundete Fläche bleibt leer
+    const legende = new Map();
+    if(bm.an && bm.weltId === st.weltId && bm.kacheln.size){
+      const g = CONFIG.kachelChunks * 16;
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = .82;
+      for(let kx = Math.floor(x0 / g); kx * g <= x1; kx++) for(let kz = Math.floor(z0 / g); kz * g <= z1; kz++){
+        const k = bm.kacheln.get(kachelSchluessel(st.dim, kx, kz)); if(!k) continue;
+        const [px, py] = zuBild(kx * g, kz * g);
+        // auf ganze Pixel runden, sonst bleiben Fugen zwischen den Kacheln
+        ctx.drawImage(kachelBild(k), Math.floor(px), Math.floor(py), Math.ceil(px + g * sicht.zoom) - Math.floor(px), Math.ceil(py + g * sicht.zoom) - Math.floor(py));
+        for(const [name, n] of k.zaehler) legende.set(name, (legende.get(name) || 0) + n);
+      }
+      ctx.globalAlpha = 1;
+      ctx.imageSmoothingEnabled = true;
+    }
 
     // Raster (unbekannte Fläche bleibt genau so: leer)
     const r = rasterweite();
-    const [x0, z0] = zuWelt(0, 0), [x1, z1] = zuWelt(w, h);
     ctx.lineWidth = 1;
     ctx.strokeStyle = "rgba(255,255,255,.05)";
     ctx.beginPath();
@@ -2036,29 +2168,9 @@ const karte = (() => {
       belegt.push({ x, y, w, h }); return true;
     };
 
-    // 1) Biome: Fläche nur um bekannte Punkte
-    const biome = eintraege.filter((e) => e.t.kategorie === BIOMES);
-    const legende = new Map();
-    for(const { i, t } of biome){
-      const b = biomFinden(t.variante); if(!b) continue;
-      const farbe = biomFarbe(b);
-      legende.set(b.name, farbe);
-      const [px, py] = zuBild(i.x, i.z);
-      const rad = Math.max(3, CONFIG.biomRadius * sicht.zoom);
-      ctx.beginPath(); ctx.arc(px, py, rad, 0, Math.PI * 2);
-      ctx.fillStyle = farbe + "8c"; ctx.fill();
-      ctx.strokeStyle = farbe; ctx.lineWidth = 1.5; ctx.stroke();
-      marker.push({ id:i.id, px, py, r:Math.max(rad, 14) });
-      if(rad > 26 && frei(px - 40, py - 8, 80, 16)){
-        ctx.fillStyle = "rgba(255,255,255,.9)";
-        ctx.font = "600 11px -apple-system, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(b.name, px, py);
-      }
-    }
-
     // 2) Features + eigene Orte als Marker (Stil wie drawStructure in Modul A)
     const akzent = var_("--accent");
-    const punkte = eintraege.filter((e) => e.t.kategorie !== BIOMES)
+    const punkte = eintraege.slice()
       .sort((a, b) => (a.t.kategorie === EIGENE_ORTE) - (b.t.kategorie === EIGENE_ORTE));
     for(const { i, t } of punkte){
       const [px, py] = zuBild(i.x, i.z);
@@ -2107,17 +2219,24 @@ const karte = (() => {
       }
     }
 
-    // Hinweis + Legende
-    const bekannt = biome.length;
-    $hinweis.innerHTML = `<span class="chip mono">${rasterweite()} Blöcke · ${bekannt ? `${bekannt} Biom-Punkte` : "keine Biome bekannt"}</span>`;
-    $legende.innerHTML = [...legende].slice(0, 6).map(([n, f]) => `<span class="chip"><i style="background:${f}"></i>${esc(n)}</span>`).join("");
+    // Hinweis + Legende (häufigste Biome im Ausschnitt), darüber ggf. das angetippte Biom
+    const imp = bm.weltId === st.weltId ? bm.import : null;
+    $hinweis.innerHTML = `<span class="chip mono">${rasterweite()} Blöcke · ${imp
+      ? `Biome ${datumKurz(imp.importiertAm)} · ${zahl(imp.chunks?.[st.dim] || 0)} Chunks${bm.an ? "" : " · aus"}` : "keine Biome – Welt-Import"}</span>`;
+    biomKnopfZeigen();
+    const farbe = (name) => [...BIOM_INFO.values()].find((b) => b.name === name)?.farbe;
+    $legende.innerHTML = (tipp ? `<span class="chip tipp mono">${esc(tipp)}</span>` : "")
+      + [...legende].sort((a, b) => b[1] - a[1]).slice(0, 4)
+        .map(([n]) => `<span class="chip"><i style="background:${farbe(n)}"></i>${esc(n)}</span>`).join("");
   }
+  let tipp = null;   // „X · Z · Biom“ der zuletzt angetippten Stelle, bis die Karte bewegt wird
 
   function zoomen(faktor, px, py){
     const w = canvas.width / dpr, h = canvas.height / dpr;
     px = px ?? w / 2; py = py ?? h / 2;
     const [wx, wz] = zuWelt(px, py);
     sicht.zoom = Math.max(CONFIG.zoomMin, Math.min(CONFIG.zoomMax, sicht.zoom * faktor));
+    tipp = null;
     // Punkt unter dem Finger bleibt stehen
     sicht.cx = wx - (px - w / 2) / sicht.zoom;
     sicht.cz = wz - (py - h / 2) / sicht.zoom;
@@ -2149,7 +2268,7 @@ const karte = (() => {
     }
     if(ziehen){
       const [px, py] = lokal(e);
-      if(Math.hypot(px - ziehen.px, py - ziehen.py) > 5) bewegt = true;
+      if(Math.hypot(px - ziehen.px, py - ziehen.py) > 5){ bewegt = true; tipp = null; }
       sicht.cx = ziehen.cx - (px - ziehen.px) / sicht.zoom;
       sicht.cz = ziehen.cz - (py - ziehen.py) / sicht.zoom;
       zeichnen();
@@ -2161,9 +2280,15 @@ const karte = (() => {
     if(zeiger.size < 2) pinch = null;
     if(zeiger.size === 0){
       if(!bewegt){
-        // Tap: nächsten Marker suchen (Features vor Biomen, weil später gezeichnet)
+        // Tap: zuerst ein Marker (zuletzt gezeichnet = oben), sonst das Biom an dieser Stelle
         const treffer = marker.slice().reverse().find((m) => Math.hypot(m.px - px, m.py - py) <= m.r);
         if(treffer) detailOeffnen(treffer.id);
+        else if(bm.an && bm.weltId === st.weltId && bm.import){
+          const [x, z] = zuWelt(px, py).map(Math.floor);
+          const b = biomAnStelle(st.dim, x, z);
+          tipp = `X ${zahl(x)} · Z ${zahl(z)} · ${b ? b.name || `Biom-ID ${b.unbekannt} (unbekannt)` : "unerkundet"}`;
+          zeichnen();
+        }
       }
       ziehen = null;
     }
@@ -2174,6 +2299,10 @@ const karte = (() => {
   document.getElementById("karteZoomIn").addEventListener("click", () => zoomen(1.6));
   document.getElementById("karteZoomOut").addEventListener("click", () => zoomen(1 / 1.6));
   document.getElementById("karteFit").addEventListener("click", () => { alles(); zeichnen(); });
+  document.getElementById("karteBiome").addEventListener("click", () => {
+    bm.an = !bm.an; lsSchreiben("orte.biome", bm.an); tipp = null;
+    biomKnopfZeigen(); zeichnen();
+  });
   window.addEventListener("resize", () => { if(st.ansicht === "karte"){ groesse(); zeichnen(); } });
 
   /** Auf einen Punkt springen (z. B. aus den Sammelobjekten) */
@@ -2239,9 +2368,9 @@ function detailOeffnen(id, loeschenFragen){
   const i = st.instanzen.find((x) => x.id === id); if(!i) return;
   const t = typVon(i), dim = dimTypeVon(i.dimensionId);
   const w = entfernung(st.standort, i.x, i.z, dim);
-  const biom = t.kategorie === BIOMES ? biomFinden(t.variante) : null;
+  const biom = bm.weltId === st.weltId ? biomAnStelle(dim, i.x, i.z) : null;   // aus dem Welt-Import
   const titel = esc(t.variante || t.kategorie);
-  const sub = `${t.variante ? `${esc(t.kategorie)} · ` : ""}${dimLabel(dim)}${biom ? ` · ${esc(biom.gruppe)}` : ""}`;
+  const sub = `${t.variante ? `${esc(t.kategorie)} · ` : ""}${dimLabel(dim)}${biom?.name ? ` · ${esc(biom.name)}` : ""}`;
   const html = kopfHtml(titel, sub, kennblockHtml(t.kategorie)) + `<div class="orte-inhalt">
     <div class="result-card">
       <div class="result-label">Koordinaten</div>
@@ -2253,9 +2382,8 @@ function detailOeffnen(id, loeschenFragen){
       ${umrechnen(i.x, i.z, dim) ? `<div class="result-row"><span class="rname">${portalHtml(i.x, i.z, dim, "mono")}</span></div>` : ""}
       ${w ? `<div class="result-row"><span class="rname">Von deinem Standort</span><span><b class="rval mono">${entfernungText(w.meter)}</b><span class="runit">${w.richtung}</span></span></div>` : ""}
     </div>
-    ${biom ? `<div class="banner info">Biome stammen aus Screenshots – die Koordinaten sind fest. Falsch erfasst? Löschen und neu auslesen.</div>` : ""}
     ${boardZeigenKnopf(`ort:${i.id}`)}
-    ${DEMO.enabled || biom ? "" : `<button class="btn-secondary anheften ${i.angeheftet ? "aktiv" : ""}" data-aktion="anheften" data-id="${i.id}">
+    ${DEMO.enabled ? "" : `<button class="btn-secondary anheften ${i.angeheftet ? "aktiv" : ""}" data-aktion="anheften" data-id="${i.id}">
       ${i.angeheftet ? "Groß auf der Anzeige · Lösen" : "Auf der Anzeige anheften"}</button>`}
     <div class="knopf-raster">
       <button class="btn-secondary" data-aktion="kopieren" data-text="${i.x} ${i.y ?? "~"} ${i.z}">Koordinaten</button>
@@ -2264,8 +2392,8 @@ function detailOeffnen(id, loeschenFragen){
     ${loeschenFragen
       ? `<div class="knopf-raster"><button class="btn-secondary" data-aktion="detail" data-id="${i.id}">Abbrechen</button><button class="btn-danger" data-aktion="loeschen" data-id="${i.id}">Wirklich löschen</button></div>`
       : `<div class="knopf-raster">
-          ${biom ? "" : `<button class="btn-primary" data-aktion="bearbeiten" data-id="${i.id}">Bearbeiten</button>`}
-          <button class="btn-danger" data-aktion="loeschen-fragen" data-id="${i.id}" ${biom ? 'style="grid-column:1/-1"' : ""}>Löschen</button>
+          <button class="btn-primary" data-aktion="bearbeiten" data-id="${i.id}">Bearbeiten</button>
+          <button class="btn-danger" data-aktion="loeschen-fragen" data-id="${i.id}">Löschen</button>
         </div>`}
   </div>`;
   sheetOeffnen("detail", html, dim);
@@ -2310,7 +2438,7 @@ function formularRendern(behalten){
       </select>
       <div class="result-hint">Neue Varianten (z. B. „Stairway“) entstehen nur aus Screenshots.</div>`;
 
-  const html = kopfHtml("Ort eintragen", "Von Hand – Biome nur per Screenshot") + `<div class="orte-inhalt">
+  const html = kopfHtml("Ort eintragen", "Von Hand – Biome kommen aus dem Welt-Import") + `<div class="orte-inhalt">
     <div class="field-group"><div class="field-group-label">Dimension</div>
       <div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${form.dim === d ? "active" : ""}" data-form-dim="${d}">${dimLabel(d)}</button>`).join("")}</div></div>
     <div class="field-group"><div class="field-group-label">Kategorie</div>
@@ -2335,7 +2463,7 @@ async function formularSpeichern(){
   const variante = eigen ? (form.variante === "__neu__" ? (document.getElementById("formNeu")?.value || "").trim() : form.variante) : (form.variante || null);
   if(!koordGueltig(k)) return banner($b, "bad", "Bitte X und Z als ganze Zahlen eintragen.");
   if(eigen && !variante) return banner($b, "bad", "Wie heißt der Ort?");
-  const d = duplikat(form.dim, form.kategorie, variante, k.x, k.z);
+  const d = duplikat(form.dim, form.kategorie, k.x, k.z);
   if(d && !$b.dataset.trotzdem){
     $b.dataset.trotzdem = "1";
     return banner($b, "warn", `Hier gibt es schon „${typLabel(typVon(d))}“. Nochmal tippen, um trotzdem zu speichern.`);
@@ -2372,18 +2500,16 @@ async function importAbarbeiten(){
     const k = r.data?.erkannt;
     if(!k && r.data?.banner){ await bannerImport(e, r.data.banner); importRendern(); continue; }
     if(!k){ e.status = "leer"; e.meldungen = [["warn", "Weder ein Seed-Map-Popup noch eine Banner-Anleitung gefunden – ist das Popup aufgeklappt?"]]; importRendern(); continue; }
-    Object.assign(e, { status:"fertig", erkannt:k, dim:k.dimension, x:String(k.x), y:k.y != null ? String(k.y) : "", z:String(k.z), an:true, meldungen:[] });
     if(k.kategorie === BIOMES){
-      const b = biomFinden(k.variante);
-      if(!b){ e.an = false; e.meldungen.push(["bad", `„${k.variante}“ steht nicht in der Biom-Liste`]); }
-      else if(b.dimension !== k.dimension){
-        e.dim = b.dimension;
-        e.meldungen.push(["warn", `Das Dropdown zeigte ${dimLabel(k.dimension)}, ${b.name} liegt aber ${inDim(b.dimension)} – dort übernommen.`]);
-      }
-    } else if(!FEATURE_KATEGORIEN[e.dim].includes(k.kategorie)){
+      // Biome kommen nur aus dem Welt-Import – die Karte bleibt ausgegraut stehen
+      Object.assign(e, { status:"biom", erkannt:k, dim:k.dimension, an:false, meldungen:[["info", "Biome kommen aus dem Welt-Import"]] });
+      importRendern(); continue;
+    }
+    Object.assign(e, { status:"fertig", erkannt:k, dim:k.dimension, x:String(k.x), y:k.y != null ? String(k.y) : "", z:String(k.z), an:true, meldungen:[] });
+    if(!FEATURE_KATEGORIEN[e.dim].includes(k.kategorie)){
       e.an = false; e.meldungen.push(["bad", `„${k.kategorie}“ gibt es ${inDim(e.dim)} nicht`]);
     }
-    const d = duplikat(e.dim, k.kategorie, k.variante, k.x, k.z);
+    const d = duplikat(e.dim, k.kategorie, k.x, k.z);
     const imStapel = st.importe.find((o) => o !== e && o.status === "fertig" && o.dim === e.dim && o.erkannt.kategorie === k.kategorie
       && Math.abs(Number(o.x) - k.x) <= CONFIG.duplikatRadius && Math.abs(Number(o.z) - k.z) <= CONFIG.duplikatRadius);
     if(d){ e.an = false; e.meldungen.push(["warn", `Schon erfasst als „${typLabel(typVon(d))}“`]); }
@@ -2434,7 +2560,7 @@ function importRendern(){
   const karten = st.importe.map((e) => {
     if(e.banner) return importBannerKarte(e);
     const k = e.erkannt;
-    const biom = k && k.kategorie === BIOMES;
+    const biom = e.status === "biom";
     const titel = e.status === "wartet" ? "Wartet …"
       : e.status === "lese" ? '<span class="dreher"></span>Lese Text …'
       : e.status === "gespeichert" ? `${esc(k.titel)} ✓`
@@ -2442,7 +2568,7 @@ function importRendern(){
       : "Nicht erkannt";
     const meta = k ? `<span class="pill">${dimLabel(e.dim)}</span>${biom ? '<span class="pill">Biom</span>' : ""}` : "";
     const bearbeitbar = e.status === "fertig";
-    return `<div class="card ${bearbeitbar && !e.an ? "aus" : ""}" style="${k ? "" : ""}" data-import="${e.id}">
+    return `<div class="card ${(bearbeitbar && !e.an) || biom ? "aus" : ""}" data-import="${e.id}">
       <div class="imp-kopf">
         <img src="${e.url}" alt="">
         <div class="text"><div class="card-title">${titel}</div><div class="card-meta">${meta}</div></div>
@@ -2450,7 +2576,7 @@ function importRendern(){
       </div>
       ${e.meldungen.map(([art, text]) => `<div class="banner ${art}">${esc(text)}</div>`).join("")}
       ${bearbeitbar && e.an ? `
-        ${biom ? "" : `<div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${e.dim === d ? "active" : ""}" data-import-dim="${d}" data-id="${e.id}">${dimLabel(d)}</button>`).join("")}</div>`}
+        <div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${e.dim === d ? "active" : ""}" data-import-dim="${d}" data-id="${e.id}">${dimLabel(d)}</button>`).join("")}</div>
         ${koordFelder(`i${e.id}`, e.x, e.y, e.z)}` : ""}
     </div>`;
   }).join("");
@@ -2588,10 +2714,10 @@ function toast(text, fehler){
    ----------------------------------------------------------------------------
    Jeder Bereich ist in sich geschlossen: eigener State, eigene API-Pfade,
    eigenes Rendering. Modul-Vertrag:
-     { key, titel, icon, mount(el), unmount(),
-       ansichten: [{ key, titel, groessen:["1x1","2x1","2x2"], render(el, groesse) }] }
-   „ansichten“ kommt später: Dashboard-Ansichten pro Bereich, nach dem Vorbild
-   des iOS-Kontrollzentrums (siehe README → Dashboard-Ansichten).
+     { key, titel, icon, mount(el), unmount() }
+   Die Dashboard-Widgets der Bereiche stehen nicht hier, sondern im Register von
+   companion/widgets (widget-register.ts, Bereichs-IDs wie diese keys); ihre
+   Inhalte baut der Board-Server aus BOARD_KARTEN (board-karten.js).
    Bereiche: Karte (Live-Karte + Koordinaten-Sammlung), Sammelobjekte,
    Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung.
    Umgesetzt sind Karte, Sammelobjekte, Portal-Verwaltung, Banner und Rüstung; ohne mount()
@@ -2659,7 +2785,6 @@ const $samListe = document.getElementById("samListe");
 const HAKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const themaStil = (dim) => Object.entries(THEMES[dim].ui).map(([k, v]) => `${k}:${v}`).join(";");
 const samGefundenAnzahl = () => SAM_ZAEHLT.filter((o) => sam.status[o.id]).length;
-const datumKurz = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-DE", { day:"numeric", month:"numeric" }); };
 
 
 /** Bekannte Instanzen einer Fundort-Kategorie in der aktuellen Welt – nächste zuerst */
@@ -2827,49 +2952,23 @@ $samListe.addEventListener("click", (e) => {
 
 /** Zeichnet ein Banner auf 20×40 Pixel → Data-URL (mit Cache) */
 const bannerCache = new Map();
+/** RGBA-Pixel → PNG als Data-URL (Canvas) – auch für die Board-Karten (ctx.pngDaten) */
+function pngDaten(breite, hoehe, rgba){
+  const c = document.createElement("canvas");
+  c.width = breite; c.height = hoehe;
+  const g = c.getContext("2d"), bild = g.createImageData(breite, hoehe);
+  bild.data.set(rgba);
+  g.putImageData(bild, 0, 0);
+  return c.toDataURL();
+}
 function bannerBild(b){
   const schluessel = JSON.stringify([b.basis, b.ebenen]);
   if(bannerCache.has(schluessel)) return bannerCache.get(schluessel);
-  const c = document.createElement("canvas");
-  c.width = 20; c.height = 40;
-  const g = c.getContext("2d");
-  const bild = g.createImageData(20, 40);
-  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  const pix = Array.from({ length:800 }, () => rgb(farbe(b.basis).hex));
-  for(const e of b.ebenen){
-    const m = muster(e.muster).m, f = rgb(farbe(e.farbe).hex);
-    for(let y = 0; y < 40; y++) for(let x = 0; x < 20; x++){
-      const a = Math.max(0, Math.min(1, Number(m(x, y))));
-      if(!a) continue;
-      const p = pix[y * 20 + x];
-      pix[y * 20 + x] = p.map((v, i) => Math.round(v * (1 - a) + f[i] * a));
-    }
-  }
-  pix.forEach((p, i) => { bild.data.set([...p, 255], i * 4); });
-  g.putImageData(bild, 0, 0);
-  const url = c.toDataURL();
+  const url = pngDaten(20, 40, bannerPixel(b));   // Pixel aus board-karten.js
   bannerCache.set(schluessel, url);
   return url;
 }
 const bannerImg = (b, klasse, alt) => `<img class="banner-bild ${klasse || ""}" src="${bannerBild(b)}" alt="${esc(alt || "")}">`;
-const vorlagenVon = (b) => [...new Set(b.ebenen.map((e) => e.muster).filter((m) => BANNERVORLAGEN[m]))];
-
-/** Material + Schritte für Werkbank und Webstuhl */
-function bannerAnleitung(b){
-  const farbstoffe = new Map();
-  for(const e of b.ebenen) farbstoffe.set(e.farbe, (farbstoffe.get(e.farbe) || 0) + 1);
-  const schritte = [
-    { titel:"Banner herstellen", info:`6 × ${farbe(b.basis).wolle} + 1 Stock · Werkbank`, bild:{ basis:b.basis, ebenen:[] } },
-    ...b.ebenen.map((e, n) => {
-      const v = BANNERVORLAGEN[e.muster];
-      return { titel:muster(e.muster).de, en:muster(e.muster).en,
-        info:`${farbe(e.farbe).farbstoff}${v ? ` + ${v.de}` : ""} · Webstuhl`,
-        bild:{ basis:b.basis, ebenen:b.ebenen.slice(0, n + 1) } };
-    }),
-  ];
-  return { farbstoffe, vorlagen:vorlagenVon(b), schritte };
-}
-
 const bn = { liste:[], suche:"", entwurf:null, offen:null };
 const $bannerListe = document.getElementById("bannerListe");
 
@@ -3086,11 +3185,8 @@ document.getElementById("bannerNeuBtn").addEventListener("click", () => bannerEd
      3. Das nächste gewinnt – 3D-Abstand, Y zählt mit. Keins gefunden → neues Portal.
    Quelle: minecraft.wiki/w/Nether_portal („Portal search“)
    Die Edition (Bedrock/Java) ist eine Einstellung auf dem Gerät, Standard Bedrock.
+   Prüfung und Empfehlung (verbindungPruefen, portalEmpfehlung) stehen in board-karten.js.
    ========================================================================== */
-const PORTAL_REGELN = Object.freeze({
-  bedrock: { label:"Bedrock", radius:{ overworld:128, nether:128 } },
-  java:    { label:"Java",    radius:{ overworld:128, nether:16 } },
-});
 const pt = {
   liste: [],
   edition: lsLesen("portale.edition") === "java" ? "java" : "bedrock",
@@ -3101,57 +3197,7 @@ const pt = {
 const $portalStage = document.getElementById("portalStage");
 const andereDim = (d) => d === "overworld" ? "nether" : "overworld";
 const dimFarbe = (d) => THEMES[d].ui["--accent"];
-const kurzKoord = (p) => `X ${zahl(p.x)}${p.y != null ? ` · Y ${zahl(p.y)}` : ""} · Z ${zahl(p.z)}`;
 const regelLabel = () => PORTAL_REGELN[pt.edition].label;
-
-/** Beide Portale jeder Verbindung als flache Liste */
-function portaleAlle(liste){
-  return liste.flatMap((v) => [
-    { vid:v.id, name:v.name, dim:"overworld", ...v.oberwelt },
-    { vid:v.id, name:v.name, dim:"nether", ...v.nether },
-  ]);
-}
-
-/** Was passiert, wenn man an Punkt p (Dimension „von“) durchs Portal geht? */
-function zielSuchen(von, p, portale){
-  const u = umrechnen(p.x, p.z, von);
-  const ziel = { x:u.x, y:p.y ?? null, z:u.z, dim:u.dim };
-  const radius = PORTAL_REGELN[pt.edition].radius[u.dim];
-  let treffer = null;
-  for(const q of portale){
-    if(q.dim !== u.dim || Math.abs(q.x - ziel.x) > radius || Math.abs(q.z - ziel.z) > radius) continue;
-    const dy = q.y != null && ziel.y != null ? q.y - ziel.y : 0;
-    const abstand = Math.hypot(q.x - ziel.x, dy, q.z - ziel.z);
-    if(!treffer || abstand < treffer.abstand) treffer = { portal:q, abstand };
-  }
-  return { ziel, radius, treffer };
-}
-
-/** Prüft beide Richtungen einer Verbindung gegen alle erfassten Portale der Welt */
-function verbindungPruefen(v, liste){
-  const portale = portaleAlle([...liste.filter((x) => x.id !== v.id), v]);
-  const hin = zielSuchen("overworld", v.oberwelt, portale);
-  const rueck = zielSuchen("nether", v.nether, portale);
-  const art = (s) => !s.treffer ? "neu" : s.treffer.portal.vid === v.id ? "ok" : "anders";
-  const artHin = art(hin), artRueck = art(rueck);
-  const ideal = { x:hin.ziel.x, y:v.oberwelt.y ?? v.nether.y ?? null, z:hin.ziel.z };
-  let gesamt = "ok", label = "Verbunden";
-  if(artHin === "neu" || artRueck === "neu"){ gesamt = "bad"; label = "Neues Portal"; }
-  else if(artHin === "anders" && artRueck === "anders"){ gesamt = "warn"; label = "Falsch verknüpft"; }
-  else if(artHin === "anders" || artRueck === "anders"){ gesamt = "warn"; label = "Einseitig"; }
-  return { hin, rueck, artHin, artRueck, gesamt, label, ideal,
-    abweichung:Math.round(Math.hypot(v.nether.x - ideal.x, v.nether.z - ideal.z)) };
-}
-
-/** Konkreter Vorschlag, wenn eine Verbindung nicht passt */
-function portalEmpfehlung(v, p, liste){
-  if(p.gesamt === "ok") return null;
-  const versetzt = { ...v, nether:{ ...p.ideal } };
-  const schonIdeal = p.abweichung === 0 && (v.nether.y ?? null) === p.ideal.y;
-  if(!schonIdeal && verbindungPruefen(versetzt, liste).gesamt === "ok")
-    return { art:"info", text:`Nether-Portal genau bei ${kurzKoord(p.ideal)} bauen – dann passt es in beide Richtungen. Das alte Nether-Portal danach ausschalten.` };
-  return { art:"warn", text:"Auch am Idealpunkt klappt es nicht: Ein anderes Portal liegt zu nah. Die Portale weiter auseinander bauen oder das störende entfernen." };
-}
 
 function richtungText(s, art){
   if(art === "ok") return `kommt am eigenen Portal an${s.treffer.abstand >= 1 ? ` (${Math.round(s.treffer.abstand)} Blöcke vom Zielpunkt)` : ""}`;
@@ -3205,7 +3251,7 @@ function rechnerWerte(){
 }
 function rechnerZiel(){
   const p = rechnerWerte(); if(!p) return null;
-  return { p, s:zielSuchen(pt.rechner.von, p, portaleAlle(pt.liste)) };
+  return { p, s:zielSuchen(pt.rechner.von, p, portaleAlle(pt.liste), pt.edition) };
 }
 function rechnerErgebnisHtml(){
   const e = rechnerZiel(), nach = andereDim(pt.rechner.von);
@@ -3250,7 +3296,7 @@ function rechnerHtml(){
 
 const seiteHtml = (dim, s) => `<span class="seite"><span class="seite-dim" style="color:${dimFarbe(dim)}">${dimLabel(dim)}</span>${coordHtml(s.x, s.y, s.z)}</span>`;
 function verbindungKarte(v){
-  const p = verbindungPruefen(v, pt.liste);
+  const p = verbindungPruefen(v, pt.liste, pt.edition);
   let meta = "";
   if(p.gesamt !== "ok"){
     const [von, s, art] = p.artHin !== "ok" ? ["overworld", p.hin, p.artHin] : ["nether", p.rueck, p.artRueck];
@@ -3267,7 +3313,7 @@ function renderPortale(){
   const $info = document.getElementById("portalInfoBtn");
   $info.classList.toggle("active", pt.info); $info.setAttribute("aria-pressed", String(pt.info));
   const liste = [...pt.liste].sort((a, b) => a.name.localeCompare(b.name, "de"));
-  const probleme = pt.liste.filter((v) => verbindungPruefen(v, pt.liste).gesamt !== "ok").length;
+  const probleme = pt.liste.filter((v) => verbindungPruefen(v, pt.liste, pt.edition).gesamt !== "ok").length;
   $portalStage.innerHTML = (pt.info ? infoKarteHtml() : "") + rechnerHtml() + `
     <div class="field-group">
       <div class="field-group-label">Verbindungen · ${pt.liste.length}${probleme ? ` · ${probleme} mit Problem` : ""}</div>
@@ -3279,7 +3325,7 @@ function renderPortale(){
 // --- Detail + Editor (Sheet) -------------------------------------------------
 function portalDetailOeffnen(id){
   const v = pt.liste.find((x) => x.id === id); if(!v) return;
-  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  const p = verbindungPruefen(v, pt.liste, pt.edition), e = portalEmpfehlung(v, p, pt.liste, pt.edition);
   const seite = (dim, s) => `<div class="result-card seite-karte">
       <div class="result-label" style="color:${dimFarbe(dim)}">${dimLabel(dim)}-Portal</div>
       ${coordHtml(s.x, s.y, s.z)}
@@ -3341,7 +3387,7 @@ function portalEditorPruefen(){
     return;
   }
   const v = { id:pt.entwurfId || "__neu", ...w, name:w.name || "diese Verbindung" };
-  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  const p = verbindungPruefen(v, pt.liste, pt.edition), e = portalEmpfehlung(v, p, pt.liste, pt.edition);
   $p.innerHTML = `<div class="result-card"><div class="result-label">Prüfung · <b>${regelLabel()}</b> · <span class="pill ${p.gesamt}">${p.label}</span></div>
     ${pruefZeilen(p)}${e ? `<div class="banner ${e.art}">${esc(e.text)}</div>` : ""}</div>`;
 }
@@ -3460,8 +3506,10 @@ document.getElementById("portalWeltBtn").addEventListener("click", () => weltOef
        optional typ (Seed-Map-Typ) → die Anzeige zeigt den Kennblock neben dem Titel.
    Das Board prüft die Karte (koordinaten-board/server/src/zeigen.js) und zeigt
    sie groß, bis die nächste kommt oder jemand sie wegnimmt.
-   ANZEIGESCHEMA: Jeder Inhalt, der aufs Board kann, hat in BOARD_KARTEN eine
-   Funktion id → Karte. Das Board selbst kennt keine Bereiche; ein neuer Bereich
+   ANZEIGESCHEMA: Jeder Inhalt, der aufs Board kann, hat in BOARD_KARTEN
+   (board-karten.js) eine Funktion (ctx, id) → Karte; ctx baut boardKontext() aus
+   dem Zustand der Seite. Der Board-Server baut mit denselben Funktionen die Karten
+   der Dashboard-Widgets. Das Board selbst kennt keine Bereiche; ein neuer Bereich
    trägt dort sein Schema ein und baut boardZeigenKnopf("<art>:<id>") in sein Detail.
    ========================================================================== */
 const bd = {
@@ -3472,9 +3520,10 @@ const bd = {
   scan: null,                                // { stream } solange die Kamera läuft
   gezeigt: null,                             // Karte, die gerade auf der Anzeige liegt
   einstellungen: null,                       // Live: { titel, qrZeigen, aktiveWelt, aktiv } der Anzeige
+  anzeigen: null,                            // Live: Geräte mit Anzeige-Link [{ id, name, link }]
+  anzeigeQr: null, anzeigeFrage: null, anzeigeUmbenennen: null,   // offener QR-Code, „Neuer Schlüssel?“, Umbenennen
   offen: new Map(), zaehler: 0,              // gesendete Nachrichten, die auf „ok“ warten
 };
-const BOARD_DIM = Object.freeze({ overworld:"oberwelt", nether:"nether", end:"ende" });
 const adresseKurz = (a) => String(a || "").replace(/^https?:\/\//, "");
 
 /** Inhalt des Board-QR-Codes lesen: „http://192.168.8.184:3000/?pin=1234“ → { adresse, pin } */
@@ -3674,11 +3723,13 @@ async function liveAktualisieren({ bereich, weltId }){
   if(bereich === "banner") return bannerLaden();
   if(bereich === "ruestung") return ruestungLaden();
   if(bereich === "einstellungen") return boardEinstellungenLaden();
+  if(bereich === "anzeigen") return boardAnzeigenLaden();
   if(bereich === "welten"){ await weltenAuffrischen(); return boardEinstellungenLaden(); }
   if(weltId && weltId !== st.weltId) return weltenAuffrischen();
   if(bereich === "orte") return orteAuffrischen();
   if(bereich === "sammelobjekte") return samLaden();
   if(bereich === "portale") return portaleLaden();
+  if(bereich === "biome") return biomeLaden();
 }
 async function weltenAuffrischen(){
   const r = await api("/orte/welten"); if(!r.ok) return;
@@ -3756,80 +3807,21 @@ function boardSenden(op){
 }
 
 // --- „Aufs Board“ -----------------------------------------------------------------
-// Anzeigeschema je Inhalt: quelle „<art>:<id>“ → Karte im allgemeinen Kartenformat des Boards
-const BOARD_KARTEN = {
-  ort:         { titel:"Ort",                karte:ortKarte },          // Karte: ein Ort der Sammlung
-  sammel:      { titel:"Sammelobjekt",       karte:sammelKarte },       // ein Rüstungsbesatz mit Fundort
-  sammelstand: { titel:"Sammel-Fortschritt", karte:sammelStandKarte },  // Stand der Welt (ohne id)
-  portal:      { titel:"Portal-Verbindung",  karte:portalKarte },       // beide Portale + Prüfung
-  banner:      { titel:"Banner-Bauplan",     karte:bannerKarte },       // Vorschau + Material
-  ruestung:    { titel:"Rüstungs-Set",       karte:ruestungKarte },     // Figur + Teile + Besätze der Welt (async)
-};
-const koordBlock = (label, p, dim) => ({ art:"koordinaten", label, x:p.x, y:p.y ?? null, z:p.z, dimension:BOARD_DIM[dim] });
-
-function sammelKarte(id){
-  const o = SAMMELOBJEKTE.find((x) => x.id === id); if(!o) return null;
-  const s = sam.status[id], naechster = bekannteFundorte(o.kategorie, o.dim)[0];
-  const bloecke = [{ art:"zeilen", zeilen:[
-    { label:"Fundort", wert:`${strukturName(o.kategorie)} · ${dimLabel(o.dim)}` },
-    { label:"Status", wert:s ? `gefunden von ${s.von}${datumKurz(s.am) ? ` am ${datumKurz(s.am)}` : ""}` : "noch offen" },
-  ] }];
-  if(naechster) bloecke.push(koordBlock("Nächster bekannter Fundort", naechster.i, o.dim));
-  bloecke.push({ art:"text", text:o.quelle });
-  return { titel:o.name, unter:`${o.en} · ${o.aufwertung ? "Schmiedevorlage" : "Rüstungsbesatz"}`, bereich:"Sammelobjekte",
-           quelle:`sammel:${id}`, typ:o.kategorie, dimension:BOARD_DIM[o.dim], bloecke };
-}
-function sammelStandKarte(){
-  if(!st.welt) return null;
-  const gefunden = samGefundenAnzahl(), gesamt = SAM_ZAEHLT.length;
-  const bekannt = FUNDORTE.filter((f) => bekannteFundorte(f.kategorie, f.dim).length).length;
-  const offen = SAM_ZAEHLT.filter((o) => !sam.status[o.id]).map((o) => o.name);
-  const bloecke = [{ art:"zeilen", zeilen:[
-    { label:"Gefunden", wert:`${gefunden} von ${gesamt}` },
-    { label:"Fortschritt", wert:`${Math.round(gefunden / gesamt * 100)} %` },
-    { label:"Fundorte auf der Karte", wert:`${bekannt} von ${FUNDORTE.length}` },
-  ] }];
-  bloecke.push({ art:"text", text:offen.length ? `Noch offen: ${offen.join(", ")}`.slice(0, 400) : "Alle Rüstungsbesätze gefunden!" });
-  return { titel:"Rüstungsbesätze", unter:`Sammelobjekte der Welt ${kurzSeed(st.welt.seed)}`, bereich:"Sammelobjekte",
-           quelle:"sammelstand", dimension:null, bloecke };
-}
-function portalKarte(id){
-  const v = pt.liste.find((x) => x.id === id); if(!v) return null;
-  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
-  const zeilen = [{ label:"Status", wert:p.label }];
-  if(p.abweichung) zeilen.push({ label:"Abstand zum Idealpunkt", wert:`${p.abweichung} ${p.abweichung === 1 ? "Block" : "Blöcke"}` });
-  const bloecke = [koordBlock("Oberwelt-Portal", v.oberwelt, "overworld"), koordBlock("Nether-Portal", v.nether, "nether"), { art:"zeilen", zeilen }];
-  if(e) bloecke.push({ art:"text", text:e.text });
-  return { titel:v.name, unter:`Portal-Verbindung · Regeln ${regelLabel()}`, bereich:"Portal-Verwaltung",
-           quelle:`portal:${id}`, dimension:"nether", bloecke };
-}
-function bannerKarte(id){
-  const b = bn.liste.find((x) => x.id === id); if(!b) return null;
-  const { farbstoffe, vorlagen } = bannerAnleitung(b);
-  const zeilen = [{ label:farbe(b.basis).wolle, wert:"6 ×" }, { label:"Stock", wert:"1 ×" },
-    ...[...farbstoffe].map(([f, n]) => ({ label:farbe(f).farbstoff, wert:`${n} ×` }))].slice(0, 8);
-  const bloecke = [{ art:"bild", daten:bannerBild(b), label:"Vorschau", pixelig:true }, { art:"zeilen", zeilen }];
-  if(vorlagen.length) bloecke.push({ art:"text", text:`Bannervorlagen (werden nicht verbraucht): ${vorlagen.map((v) => BANNERVORLAGEN[v].de).join(", ")}` });
-  return { titel:b.name, unter:`Banner-Bauplan · ${b.ebenen.length} Muster · Grundfarbe ${farbe(b.basis).de}`,
-           bereich:"Banner", quelle:`banner:${id}`, dimension:null, bloecke };
-}
-function ortKarte(id){
-  const i = st.instanzen.find((x) => x.id === id); if(!i) return null;
-  const t = typVon(i), dim = dimTypeVon(i.dimensionId);
-  const biom = t.kategorie === BIOMES ? biomFinden(t.variante) : null;
-  const bloecke = [{ art:"koordinaten", x:i.x, y:i.y ?? null, z:i.z }];
-  const u = umrechnen(i.x, i.z, dim);
-  if(u) bloecke.push({ art:"koordinaten", label:u.dim === "nether" ? "Im Nether" : "In der Oberwelt",
-                       x:u.x, y:null, z:u.z, dimension:BOARD_DIM[u.dim] });
-  const unter = [t.variante ? t.kategorie : null, biom?.gruppe].filter(Boolean).join(" · ");
-  // typ = Feature-Typ der Seed Map → die Anzeige zeigt dazu den Kennblock (eigene Orte, Biome: keiner)
-  const typ = t.kategorie === EIGENE_ORTE || t.kategorie === BIOMES ? undefined : t.kategorie;
-  return { titel:t.variante || t.kategorie, unter:unter || undefined, bereich:"Karte",
-           quelle:`ort:${i.id}`, typ, dimension:BOARD_DIM[dim], bloecke };
+// Anzeigeschemas (BOARD_KARTEN) stehen in board-karten.js – derselbe Code baut auf dem Board
+// die Karten der Widgets. Hier nur der Kontext aus dem, was dieses Handy gerade geladen hat.
+function boardKontext(){
+  return {
+    welt:st.welt, dimensionen:st.dimensionen, typen:st.typen, instanzen:st.instanzen,
+    sammelStatus:sam.weltId === st.weltId ? sam.status : {},
+    verbindungen:pt.liste, banner:bn.liste, ruestung:rs.sets,
+    edition:pt.edition, standort:st.standort,
+    pngDaten, ruestungFoto,
+    biomName:(dim, x, z) => (bm.weltId === st.weltId ? biomAnStelle(dim, x, z)?.name : null) || null,
+  };
 }
 async function boardZeigen(quelle){
   const [art, ...rest] = quelle.split(":");
-  const karte = await BOARD_KARTEN[art]?.karte(rest.join(":"));   // karte() darf async sein (Rüstung rendert die Figur)
+  const karte = await BOARD_KARTEN[art]?.karte(boardKontext(), rest.join(":"));   // karte() darf async sein (Rüstung rendert die Figur)
   if(!karte) return toast("Das lässt sich nicht aufs Board legen", true);
   try { await boardSenden({ art:"zeigen", karte }); toast("Liegt auf dem Board"); }
   catch(f){ toast(String(f), true); }
@@ -3884,12 +3876,13 @@ function boardAnzeigen(){
   boardZeigenKnoepfe();
   // Formular nicht neu zeichnen (Eingaben blieben sonst nicht stehen) – nur die Status-Ansicht,
   // und die auch nicht, solange jemand den Titel der Anzeige tippt
-  if(st.sheet === "board" && bd.verbindung && document.activeElement?.id !== "boardTitel") boardSheetRendern();
+  if(st.sheet === "board" && bd.verbindung && !["boardTitel", "anzeigeNeu", "anzeigeName"].includes(document.activeElement?.id)) boardSheetRendern();
 }
 function boardOeffnen(){
   alleSchliessen();
   boardSheetRendern();
   boardEinstellungenLaden();
+  boardAnzeigenLaden();
 }
 
 // --- Live: Einstellungen der Anzeige im Zimmer (aktive Welt, Titel, QR-Code) ------
@@ -3917,6 +3910,56 @@ function boardEinstellungenHtml(){
         <button class="switch ${e.qrZeigen ? "on" : ""}" data-aktion="board-qr" role="switch" aria-checked="${e.qrZeigen}" aria-label="QR-Code zeigen"></button></div>
     </div></div>`;
 }
+/* Anzeigen: Jedes Gerät mit Anzeige-Link darf Anzeige sein (TV-Browser, Tablet). Link und QR-Code
+   kommen vom Board – mit derselben Adresse wie der QR-Code der Handys. */
+async function boardAnzeigenLaden(){
+  if(DEMO.enabled || !bd.verbindung) return;
+  const r = await api("/anzeigen");
+  if(r.ok){ bd.anzeigen = r.data.anzeigen; boardAnzeigen(); }
+}
+function boardAnzeigenHtml(){
+  if(DEMO.enabled || !bd.anzeigen) return "";
+  const karten = bd.anzeigen.map((a) => {
+    const qr = bd.anzeigeQr?.id === a.id;
+    return `<div class="card anzeige-karte">
+      ${bd.anzeigeUmbenennen === a.id
+        ? `<div class="create-row"><div class="input-line"><input id="anzeigeName" maxlength="40" autocomplete="off" value="${esc(a.name)}">
+            <button class="btn-primary" data-aktion="anzeige-name-speichern" data-id="${a.id}">Speichern</button></div></div>`
+        : `<div class="card-title">${esc(a.name)}</div>`}
+      <div class="card-meta mono">${esc(adresseKurz(a.link.split("?")[0]))}</div>
+      ${qr ? `<div class="anzeige-qr">${bd.anzeigeQr.svg}</div>
+        <div class="result-hint">Mit der Kamera des Tablets oder TVs abscannen – das Gerät wird zur Anzeige „${esc(a.name)}“.</div>` : ""}
+      <div class="knopf-raster">
+        <button class="btn-secondary" data-aktion="anzeige-kopieren" data-id="${a.id}">Link kopieren</button>
+        <button class="btn-secondary" data-aktion="anzeige-qr" data-id="${a.id}">${qr ? "QR-Code zu" : "QR-Code"}</button>
+      </div>
+      <div class="knopf-raster">
+        <button class="btn-secondary" data-aktion="anzeige-umbenennen" data-id="${a.id}">Umbenennen</button>
+        <button class="btn-secondary" data-aktion="anzeige-schluessel" data-id="${a.id}">${bd.anzeigeFrage === a.id ? "Alte Links ungültig?" : "Neuer Schlüssel"}</button>
+      </div>
+    </div>`;
+  }).join("");
+  return `<div class="field-group"><div class="field-group-label">Anzeigen</div>
+    <div class="list-stack">${karten}</div>
+    <div class="create-row"><div class="input-line"><input id="anzeigeNeu" maxlength="40" autocomplete="off" placeholder="Neue Anzeige, z. B. Tablet">
+      <button class="btn-primary" data-aktion="anzeige-anlegen">Anlegen</button></div></div>
+    <div class="result-hint">Mit dem Anzeige-Link wird ein anderes Gerät im WLAN zur Anzeige (TV-Browser, Tablet, zweiter Laptop). Der Browser merkt sich den Link. „Neuer Schlüssel“ macht alte Links ungültig.</div>
+  </div>`;
+}
+/** Antwort mit { anzeige } in die Liste übernehmen; ein offener QR-Code zeigt dann den neuen Link */
+async function anzeigeUebernehmen(r, meldung){
+  if(!r.ok) return toast(meldungAus(r), true);
+  const a = r.data.anzeige, i = (bd.anzeigen ||= []).findIndex((x) => x.id === a.id);
+  if(i >= 0) bd.anzeigen[i] = a; else bd.anzeigen.push(a);
+  if(bd.anzeigeQr?.id === a.id) await anzeigeQrHolen(a.id);
+  boardSheetRendern();
+  if(meldung) toast(meldung);
+}
+async function anzeigeQrHolen(id){
+  const r = await api(`/anzeigen/${id}/qr`);
+  bd.anzeigeQr = r.ok ? { id, svg:r.data.svg } : null;
+  if(!r.ok) toast(meldungAus(r), true);
+}
 function boardSheetRendern(){
   const v = bd.verbindung;
   if(v){
@@ -3934,6 +3977,7 @@ function boardSheetRendern(){
         ${zeile("Orte auf dem Board", bd.orte ?? "—")}
       </div>
       ${boardEinstellungenHtml()}
+      ${boardAnzeigenHtml()}
       <div class="field-group"><div class="field-group-label">Auf der Anzeige</div>
         ${bd.gezeigt ? `<div class="card board-gezeigt" style="flex-direction:row">
             <span class="text"><span class="card-title">${esc(bd.gezeigt.titel)}</span>
@@ -4016,9 +4060,7 @@ const BUEHNE_DIMS = Object.freeze([
   { id:"end",      name:"End",      hintergrund:"bloecke/obsidian.png" },
 ]);
 
-const teilName = (teilId) => RUESTUNGS_TEILE.find((t) => t.id === teilId)?.name || teilId;
 /** Name im Spiel, z. B. „Netherithelm“ */
-const itemName = (teilId, t) => ruestungsArt(t?.ruestung)?.teile[teilId] || teilName(teilId);
 const zutatDatei = (m) => `${BAUKASTEN}zutaten/${m.icon}.png`;
 /** Leerer Slot am Schmiedetisch: blasser Platzhalter wie im Spiel */
 const GEIST = { vorlage:`${BAUKASTEN}vorlagen/sentry_armor_trim_smithing_template.png`, material:`${BAUKASTEN}zutaten/iron_ingot.png` };
@@ -4043,15 +4085,7 @@ const vorlageMini = (id) => {
 };
 
 /** Welche Rüstungsbesätze braucht das Set, welche sind in dieser Welt schon gefunden? */
-function besatzStand(s){
-  const muster = RUESTUNGS_TEILE.map(({ id }) => s.teile[id]?.muster).filter(Boolean);
-  const verschieden = [...new Set(muster)];
-  return {
-    muster, verschieden,
-    gefunden: verschieden.filter((m) => sam.status[m]),
-    netherit: RUESTUNGS_TEILE.filter(({ id }) => s.teile[id]?.ruestung === "netherite").length,
-  };
-}
+const besatzStand = (s) => besatzStandVon(s, sam.status);   // board-karten.js
 const zaehlen = (liste) => [...liste.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map())];
 
 async function ruestungLaden(){
@@ -4511,29 +4545,255 @@ async function ruestungFoto(s){
   const c = await fig.bk.figur({ ausruestung:ausruestungVon(s.teile), ansicht:"vorn", massstab:6 });
   return { daten:c.toDataURL("image/png"), pixelig:true };
 }
-async function ruestungKarte(id){
-  const s = rs.sets.find((x) => x.id === id); if(!s) return null;
-  const b = besatzStand(s);
-  const bloecke = [];
-  const foto = await ruestungFoto(s).catch(() => null);
-  if(foto) bloecke.push({ art:"bild", daten:foto.daten, label:"Auf dem Rüstungsständer", pixelig:foto.pixelig });
-  bloecke.push({ art:"zeilen", zeilen:RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).map(({ id:t }) => {
-    const x = s.teile[t], o = besatzMuster(x.muster);
-    const teile = [o ? `${o.name} · ${besatzMaterial(x.material).name}` : "ohne Besatz",
-      ruestungsArt(x.ruestung).faerbbar && (x.farbe ? farbe(x.farbe).de : "ungefärbt"), x.verzaubert && "verzaubert"];
-    return { label:itemName(t, x), wert:teile.filter(Boolean).join(" · ").slice(0, 80) };
-  }) });
-  if(b.verschieden.length){
-    const fehlt = b.verschieden.filter((m) => !sam.status[m]).map((m) => { const o = besatzMuster(m); return `${o.name} (${strukturName(o.kategorie)})`; });
-    bloecke.push({ art:"text", text:(`Rüstungsbesätze in dieser Welt: ${b.gefunden.length} von ${b.verschieden.length} gefunden.`
-      + (fehlt.length ? ` Fehlt noch: ${fehlt.join(", ")}.` : "")).slice(0, 400) });
-  }
-  return { titel:s.name, unter:`Rüstungs-Set · ${RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).length} Teile`, bereich:"Rüstung",
-           quelle:`ruestung:${id}`, dimension:null, bloecke };
-}
-
 $ruestungListe.addEventListener("click", (e) => { const k = e.target.closest("[data-set]"); if(k){ rs.offen = null; ruestungDetailOeffnen(k.dataset.set); } });
 document.getElementById("ruestungNeuBtn").addEventListener("click", () => ruestungEditorOeffnen(null));
+
+/* ============================================================================
+   9h · WELT-IMPORT  ·  Biome aus dem Weltordner (.zip aus der Dateien-App oder .mcworld)
+   ----------------------------------------------------------------------------
+   Sheet „weltimport“: Anleitung + Datei wählen → schnelle Prüfung im Worker (Weltname
+   aus levelname.txt, Seed, Version) → bestätigen → ganze Welt im Worker lesen
+   (Fortschritt, Abbrechen) → Prüfliste (Chunks, Vorschau, häufigste Biome, unbekannte
+   IDs) → Übernehmen ersetzt den Import der Welt. Der Seed muss passen (biomImportPruefen).
+   Der Worker (biom-import.worker.js, ES-Modul) braucht http – als Datei geht es nicht.
+   ========================================================================== */
+// Anleitung je Gerät – vorerst nur iPhone; weitere kommen als eigener Eintrag dazu
+const WELT_ANLEITUNGEN = Object.freeze([
+  { id:"iphone", titel:"iPhone", schritte:[
+    'In der Dateien-App öffnen: <span class="pfad">Auf meinem iPhone › Minecraft › games › com.mojang › minecraftWorlds</span>',
+    'Den richtigen Weltordner finden (sein Name steht in <span class="pfad">levelname.txt</span>), den Ordner <b>öffnen</b>, alles darin auswählen und „Komprimieren“ wählen',
+    'Die entstandene <b>Archiv.zip</b> hier hochladen',
+  ] },
+]);
+const WI_PHASEN = { oeffnen:"Öffne die Datei …", lesen:"Lese die Weltdaten", berechnen:"Berechne die Biome …" };
+const wi = { schritt:"start", datei:null, welt:null, fortschritt:null, ergebnis:null, fehler:null, worker:null, loeschen:false, dim:"overworld", sendet:false };
+const $weltDatei = document.getElementById("weltDatei");
+const datumLang = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-DE"); };
+const chunkSumme = (c) => DIM_ORDER.reduce((n, d) => n + (c?.[d] || 0), 0);
+
+function weltImportOeffnen(){
+  wi.loeschen = false;
+  weltImportRendern(true);
+}
+function weltImportZuruecksetzen(){
+  wi.worker?.terminate();
+  Object.assign(wi, { schritt:"start", datei:null, welt:null, fortschritt:null, ergebnis:null, fehler:null, worker:null, loeschen:false, sendet:false });
+}
+function wiWorker(){
+  wi.worker?.terminate();
+  const w = new Worker("biom-import.worker.js", { type:"module" });
+  w.onmessage = ({ data }) => weltImportNachricht(data);
+  w.onerror = (e) => { console.error("Welt-Import:", e.message); weltImportFehler("Der Welt-Import konnte nicht starten."); };
+  return (wi.worker = w);
+}
+function weltImportDatei(datei){
+  weltImportZuruecksetzen();
+  wi.datei = datei;
+  if(!location.protocol.startsWith("http"))
+    return weltImportFehler("Der Welt-Import geht nur, wenn die Companion vom Board kommt (http) – nicht als Datei geöffnet.");
+  wi.schritt = "pruefe";
+  weltImportRendern(true);
+  wiWorker().postMessage({ typ:"pruefen", datei });
+}
+function weltImportLesen(){
+  Object.assign(wi, { schritt:"lese", fortschritt:{ phase:"oeffnen", aktuell:0, gesamt:1 }, fehler:null });
+  weltImportRendern(true);
+  wiWorker().postMessage({ typ:"start", datei:wi.datei, biomIds:[...BIOM_INFO.keys()],
+    hoehen:{ netherBiomY:CONFIG.netherBiomY, endBiomY:CONFIG.endBiomY } });
+}
+function weltImportAbbrechen(){
+  wi.worker?.terminate();
+  Object.assign(wi, { worker:null, schritt:"bestaetigen", fortschritt:null });
+  weltImportRendern(true);
+}
+function weltImportFehler(text){
+  wi.worker?.terminate();
+  Object.assign(wi, { worker:null, schritt:"start", fehler:text, fortschritt:null });
+  weltImportRendern();
+}
+function weltImportNachricht(m){
+  if(m.typ === "fortschritt"){ wi.fortschritt = m; return weltImportFortschritt(); }
+  if(m.typ === "fehler") return weltImportFehler(m.text);
+  wi.worker?.terminate(); wi.worker = null;
+  if(m.typ === "geprueft") Object.assign(wi, { schritt:"bestaetigen", welt:m.welt });
+  if(m.typ === "fertig"){
+    Object.assign(wi, { schritt:"pruefliste", ergebnis:{ meta:m.meta, kacheln:m.kacheln, auswertung:null } });
+    wi.dim = DIM_ORDER.find((d) => m.meta.chunks[d]) || "overworld";
+  }
+  weltImportRendern();
+}
+
+/** Prüfliste je Dimension: Vorschaubild (1 Pixel = 1 Chunk), häufigste Biome, Anzahl – einmal berechnet */
+function wiAuswertung(){
+  const e = wi.ergebnis;
+  if(e.auswertung) return e.auswertung;
+  const n = CONFIG.kachelChunks, je = {};
+  for(const dim of DIM_ORDER){
+    // erkundete Chunks [cx, cz, wert] – das Bild zeigt genau ihre Ausdehnung
+    const chunks = [];
+    for(const k of e.kacheln) if(k.dim === dim) kachelAusText(k.daten).forEach((wert, i) => {
+      if(wert) chunks.push([k.kx * n + (i % n), k.kz * n + Math.floor(i / n), wert]);
+    });
+    if(!chunks.length) continue;
+    let cx0 = Infinity, cx1 = -Infinity, cz0 = Infinity, cz1 = -Infinity;
+    for(const [cx, cz] of chunks){ cx0 = Math.min(cx0, cx); cx1 = Math.max(cx1, cx); cz0 = Math.min(cz0, cz); cz1 = Math.max(cz1, cz); }
+    const breite = cx1 - cx0 + 1, hoehe = cz1 - cz0 + 1;
+    const bild = document.createElement("canvas");
+    bild.width = breite; bild.height = hoehe;
+    const ctx = bild.getContext("2d"), pixel = ctx.createImageData(breite, hoehe);
+    const zaehler = new Map();
+    for(const [cx, cz, wert] of chunks){
+      const info = BIOM_INFO.get(wert - 1), name = info?.name ?? "unbekannt";
+      zaehler.set(name, (zaehler.get(name) || 0) + 1);
+      const f = info ? parseInt(info.farbe.slice(1), 16) : 0xe0413c;   // unbekannt: rot wie im Prüfskript
+      pixel.data.set([f >> 16, (f >> 8) & 255, f & 255, 255], ((cz - cz0) * breite + (cx - cx0)) * 4);
+    }
+    ctx.putImageData(pixel, 0, 0);
+    je[dim] = { bild:bild.toDataURL(), breite, hoehe, zaehler:[...zaehler].sort((a, b) => b[1] - a[1]),
+      ausschnitt:`X ${zahl(cx0 * 16)} … ${zahl((cx1 + 1) * 16)} · Z ${zahl(cz0 * 16)} … ${zahl((cz1 + 1) * 16)}` };
+  }
+  return (e.auswertung = je);
+}
+
+/** Sheet zeichnen. oeffnen = auch dann, wenn gerade ein anderes Sheet offen ist (Knopf) */
+function weltImportRendern(oeffnen){
+  if(!oeffnen && st.sheet && st.sheet !== "weltimport") return;
+  const seedText = st.welt ? `Welt ${esc(kurzSeed(st.welt.seed))}` : "keine Welt gewählt";
+  const imp = bm.weltId === st.weltId ? bm.import : null;
+  const fehler = wi.fehler ? `<div class="banner bad">${esc(wi.fehler)}</div>` : "";
+  let html;
+
+  if(wi.schritt === "pruefe" || wi.schritt === "lese"){
+    const f = wi.fortschritt;
+    html = kopfHtml("Welt importieren", `Biome für ${seedText}`) + `<div class="orte-inhalt">
+      <div class="result-card">
+        <div class="result-label">${esc(wi.datei?.name || "")}</div>
+        <div class="card-title" id="wiPhase"><span class="dreher"></span>${wi.schritt === "pruefe" ? "Prüfe die Datei …" : wiPhaseText(f)}</div>
+        ${wi.schritt === "lese" ? `<div class="wi-balken"><span id="wiBalken" style="width:${wiProzent(f)}%"></span></div>` : ""}
+      </div>
+      <div class="result-hint">Große Welten brauchen am Handy eine Weile. Die Companion bleibt dabei bedienbar.</div>
+      <button class="btn-secondary" data-aktion="wi-abbrechen">Abbrechen</button>
+    </div>`;
+  } else if(wi.schritt === "bestaetigen"){
+    const w = wi.welt, passt = st.welt && w.seed === st.welt.seed;
+    const andere = !passt && st.welten.find((x) => x.seed === w.seed);
+    html = kopfHtml("Welt importieren", `Biome für ${seedText}`) + `<div class="orte-inhalt">
+      <div class="result-card">
+        <div class="result-label">Stimmt die Welt?</div>
+        <div class="card-title" style="font-size:19px">${esc(w.weltname || "Ohne Namen")}</div>
+        <div class="result-row"><span class="rname">Seed</span><span class="mono">${esc(w.seed)} ${passt ? "✔" : "✘"}</span></div>
+        ${w.spielversion ? `<div class="result-row"><span class="rname">Spielversion</span><span class="mono">${esc(w.spielversion)}</span></div>` : ""}
+        <div class="result-row"><span class="rname">Datei</span><span>${esc(wi.datei?.name || "")}</span></div>
+      </div>
+      ${passt ? "" : `<div class="banner bad">Diese Welt hat einen anderen Seed als ${st.welt ? `die gewählte (${esc(st.welt.seed)})` : "die gewählte"}.</div>
+        <button class="btn-secondary" data-aktion="${andere ? "wi-welt-wechseln" : "wi-welt-anlegen"}" ${andere ? `data-id="${andere.id}"` : ""}>
+          ${andere ? "Zur Welt mit diesem Seed wechseln" : "Neue Welt mit diesem Seed anlegen"}</button>`}
+      ${fehler}
+      <div class="sheet-fuss"><button class="btn-secondary" data-aktion="wi-datei">Andere Datei</button>
+        <button class="btn-primary" data-aktion="wi-lesen" ${passt ? "" : "disabled"}>Biome lesen</button></div>
+    </div>`;
+  } else if(wi.schritt === "pruefliste"){
+    const { meta } = wi.ergebnis, auswertung = wiAuswertung(), summe = chunkSumme(meta.chunks);
+    const passt = st.welt && meta.seed === st.welt.seed;
+    const a = auswertung[wi.dim], gesamt = meta.chunks[wi.dim] || 1;
+    html = kopfHtml("Biome prüfen", `${esc(meta.weltname || "Welt")} · ${zahl(summe)} Chunks`) + `<div class="orte-inhalt">
+      <div class="result-card">
+        <div class="result-row"><span class="rname">Seed</span><span class="mono">${esc(meta.seed)} ${passt ? "✔" : "✘"}</span></div>
+        ${meta.spielversion ? `<div class="result-row"><span class="rname">Spielversion</span><span class="mono">${esc(meta.spielversion)}</span></div>` : ""}
+        ${DIM_ORDER.map((d) => `<div class="result-row"><span class="rname">${dimLabel(d)}</span><span class="mono">${zahl(meta.chunks[d] || 0)} Chunks</span></div>`).join("")}
+      </div>
+      ${summe ? `<div class="tool-segment">${DIM_ORDER.filter((d) => meta.chunks[d]).map((d) =>
+          `<button class="seg-btn ${wi.dim === d ? "active" : ""}" data-wi-dim="${d}">${dimLabel(d)}</button>`).join("")}</div>
+        ${a ? `<img class="wi-vorschau" src="${a.bild}" alt="Vorschau ${dimLabel(wi.dim)}">
+        <div class="result-hint mono">${a.ausschnitt}</div>
+        <div class="wi-biome">${a.zaehler.slice(0, 5).map(([name, n]) => `<div><i style="background:${
+          [...BIOM_INFO.values()].find((b) => b.name === name)?.farbe || "#e0413c"}"></i>${esc(name)}<b>${Math.round(n / gesamt * 100) || "< 1"} %</b></div>`).join("")}</div>` : ""}`
+      : `<div class="banner warn">In dieser Welt ist noch nichts erkundet – es gibt keine Biome zu übernehmen.</div>`}
+      ${meta.unbekannt.length ? `<div class="banner warn">Unbekannte Biom-IDs (bleiben leer, bis die Biom-Liste sie kennt): ${meta.unbekannt.slice(0, 6).map((u) =>
+        `${u.bedrockId} · ${zahl(u.chunks)} Chunks, z. B. ${dimLabel(u.beispiel.dim)} X ${zahl(u.beispiel.x)} Z ${zahl(u.beispiel.z)}`).map(esc).join(" · ")}</div>` : ""}
+      ${imp ? `<div class="banner info">Ersetzt den Import vom ${datumLang(imp.importiertAm)}.</div>` : ""}
+      ${passt ? "" : `<div class="banner bad">Die gewählte Welt hat inzwischen einen anderen Seed – erst die passende Welt wählen.</div>`}
+      ${fehler}
+      <div class="sheet-fuss"><button class="btn-secondary" data-aktion="wi-verwerfen">Verwerfen</button>
+        <button class="btn-primary" data-aktion="wi-uebernehmen" ${summe && passt && !wi.sendet ? "" : "disabled"}>${wi.sendet ? "Speichere …" : "Übernehmen"}</button></div>
+    </div>`;
+  } else {
+    html = kopfHtml("Welt importieren", `Biome für ${seedText}`) + `<div class="orte-inhalt">
+      ${imp ? `<div class="result-card">
+        <div class="result-label">Biome dieser Welt</div>
+        <div class="result-row"><span class="rname">Stand</span><span>${datumLang(imp.importiertAm)}</span></div>
+        <div class="result-row"><span class="rname">Chunks</span><span class="mono">${zahl(chunkSumme(imp.chunks))}</span></div>
+        <div class="result-row"><span class="rname">Aus</span><span>${esc(imp.weltname || imp.dateiname || "–")}${imp.von ? ` · ${esc(imp.von)}` : ""}</span></div>
+      </div>` : ""}
+      ${fehler}
+      ${WELT_ANLEITUNGEN.map((a) => `<div class="card wi-anleitung">
+        <div class="card-title">Weltordner aus der Dateien-App hochladen</div>
+        <div class="card-meta"><span class="pill">${esc(a.titel)}</span></div>
+        <ol>${a.schritte.map((t) => `<li>${t}</li>`).join("")}</ol>
+      </div>`).join("")}
+      <div class="result-hint">Biome gibt es nur in Gebieten, die schon jemand besucht hat. ${imp ? "Ein neuer Import ersetzt den alten." : ""}</div>
+      <button class="btn-primary" data-aktion="wi-datei" ${st.welt ? "" : "disabled"}>Archiv.zip auswählen</button>
+      ${imp ? `<button class="btn-danger" data-aktion="wi-loeschen">${wi.loeschen ? "Wirklich löschen?" : "Import löschen"}</button>` : ""}
+    </div>`;
+  }
+  const scroll = st.sheet === "weltimport" ? $sheet.scrollTop : 0;
+  sheetOeffnen("weltimport", html);
+  $sheet.scrollTop = scroll;
+}
+function wiProzent(f){
+  if(!f) return 0;
+  const anteil = f.gesamt ? f.aktuell / f.gesamt : 0;
+  return Math.round(f.phase === "oeffnen" ? 3 : f.phase === "lesen" ? 5 + anteil * 85 : 90 + anteil * 10);
+}
+const wiPhaseText = (f) => f?.phase === "lesen" && f.gesamt > 1
+  ? `${WI_PHASEN.lesen} · Datei ${Math.min(f.aktuell + 1, f.gesamt)} von ${f.gesamt}` : WI_PHASEN[f?.phase] || WI_PHASEN.oeffnen;
+/** Nur Text und Balken auffrischen – das Sheet bleibt, wie es ist (oder zu, wenn geschlossen) */
+function weltImportFortschritt(){
+  if(st.sheet !== "weltimport") return;
+  const $p = document.getElementById("wiPhase"), $b = document.getElementById("wiBalken");
+  if($p) $p.innerHTML = `<span class="dreher"></span>${wiPhaseText(wi.fortschritt)}`;
+  if($b) $b.style.width = `${wiProzent(wi.fortschritt)}%`;
+}
+
+async function weltImportUebernehmen(){
+  if(wi.sendet || !wi.ergebnis) return;
+  const { meta, kacheln } = wi.ergebnis, weltId = st.weltId;
+  wi.sendet = true; wi.fehler = null; weltImportRendern();
+  const imp = { dateiname:wi.datei?.name || "", weltname:meta.weltname, seed:meta.seed, spielversion:meta.spielversion,
+                chunks:meta.chunks, unbekannt:meta.unbekannt };
+  const r = await api(`/welten/${weltId}/biome`, { method:"PUT", body:JSON.stringify({ import:imp, kacheln }) });
+  wi.sendet = false;
+  if(!r.ok){ wi.fehler = meldungAus(r); return weltImportRendern(); }
+  biomeSetzen(weltId, r.data.import, kacheln);
+  weltImportZuruecksetzen();
+  alleSchliessen();
+  if(aktivesModul === "karte"){ if(st.ansicht !== "karte") ansichtWechseln("karte"); karte.neuAnpassen(); render(); }
+  toast(`Biome übernommen · ${zahl(chunkSumme(meta.chunks))} Chunks`);
+}
+async function weltImportLoeschen(){
+  const r = await api(`/welten/${st.weltId}/biome`, { method:"DELETE" });
+  if(!r.ok) return toast(meldungAus(r), true);
+  biomeSetzen(st.weltId, null, []);
+  wi.loeschen = false;
+  render(); weltImportRendern(); toast("Import gelöscht");
+}
+/** Biome der aktuellen Welt holen (beim Welt-Wechsel und live) */
+async function biomeLaden(){
+  const weltId = st.weltId; if(!weltId) return;
+  const r = await api(`/welten/${weltId}/biome`);
+  if(!r.ok || weltId !== st.weltId) return;
+  const neueWelt = bm.weltId !== weltId;
+  biomeSetzen(weltId, r.data.import, r.data.kacheln);
+  if(neueWelt) karte.neuAnpassen();   // ohne Orte zeigt die Karte dann die Biome
+  if(aktivesModul === "karte") render();
+  if(st.sheet === "weltimport" && wi.schritt === "start") weltImportRendern();
+}
+function biomKnopfZeigen(){
+  const b = document.getElementById("karteBiome");
+  b.hidden = !(bm.import && bm.weltId === st.weltId);
+  b.setAttribute("aria-pressed", String(bm.an));
+  b.setAttribute("aria-label", bm.an ? "Biome ausblenden" : "Biome zeigen");
+}
 
 /* ============================================================================
    10 · DATEN, EVENTS, INIT
@@ -4564,6 +4824,7 @@ async function weltLaden(id){
   render();
   samLaden();
   portaleLaden();
+  biomeLaden();
 }
 function dimWechseln(dim){
   st.dim = dim; st.filter = null;
@@ -4608,6 +4869,8 @@ document.getElementById("orteScreenshotBtn").addEventListener("click", () => $da
 document.getElementById("bannerScreenshotBtn").addEventListener("click", () => $datei.click());
 $datei.addEventListener("change", () => { const d = [...$datei.files]; $datei.value = ""; if(d.length) importStarten(d); });
 document.getElementById("orteEintragenBtn").addEventListener("click", formularOeffnen);
+document.getElementById("orteImportBtn").addEventListener("click", weltImportOeffnen);
+$weltDatei.addEventListener("change", () => { const d = $weltDatei.files[0]; $weltDatei.value = ""; if(d) weltImportDatei(d); });
 document.getElementById("orteWeltBtn").addEventListener("click", () => weltOeffnen());
 document.getElementById("orteStatusBtn").addEventListener("click", () =>
   toast(DEMO.enabled ? "Demo-Modus – Daten nur in diesem Tab" : "Live – Daten liegen auf dem Board"));
@@ -4641,6 +4904,8 @@ $sheet.addEventListener("click", async (e) => {
     $sheet.querySelectorAll("[data-standort-dim]").forEach((b) => b.classList.toggle("active", b === sd));
     return themaSetzen($sheet, standortDim);
   }
+  const widim = e.target.closest("[data-wi-dim]");
+  if(widim){ wi.dim = widim.dataset.wiDim; return weltImportRendern(); }
   const idim = e.target.closest("[data-import-dim]");
   if(idim){
     importFelderLesen();
@@ -4685,6 +4950,24 @@ $sheet.addEventListener("click", async (e) => {
     }
     case "import-mehr": importFelderLesen(); $datei.click(); break;
     case "import-speichern": importSpeichern(); break;
+    // Welt-Import
+    case "wi-datei": $weltDatei.click(); break;
+    case "wi-lesen": weltImportLesen(); break;
+    case "wi-abbrechen": wi.schritt === "pruefe" ? (weltImportZuruecksetzen(), weltImportRendern()) : weltImportAbbrechen(); break;
+    case "wi-verwerfen": weltImportZuruecksetzen(); weltImportRendern(); break;
+    case "wi-uebernehmen": weltImportUebernehmen(); break;
+    case "wi-loeschen":
+      if(!wi.loeschen){ wi.loeschen = true; a.textContent = "Wirklich löschen?"; return; }
+      weltImportLoeschen(); break;
+    case "wi-welt-wechseln": await weltLaden(id); weltImportRendern(); break;
+    case "wi-welt-anlegen": {
+      const r = await api("/orte/welten", { method:"POST", body:JSON.stringify({ seed:wi.welt.seed }) });
+      if(!r.ok){ wi.fehler = meldungAus(r); return weltImportRendern(); }
+      if(!st.welten.some((w) => w.id === r.data.welt.id)) st.welten.push({ ...r.data.welt, anzahl:0 });
+      await weltLaden(r.data.welt.id);
+      toast("Welt angelegt"); weltImportRendern();
+      break;
+    }
     case "welt-waehlen":
       if(id !== st.weltId){ await weltLaden(id); toast("Welt gewechselt"); }
       alleSchliessen(); break;
@@ -4770,6 +5053,35 @@ $sheet.addEventListener("click", async (e) => {
       break;
     }
     case "board-wegnehmen": boardWegnehmen(); break;
+    // Anzeigen (Anzeige-Link für andere Geräte)
+    case "anzeige-kopieren": {
+      const anz = bd.anzeigen?.find((x) => x.id === id); if(!anz) break;
+      try { await kopieren(anz.link); toast("Anzeige-Link kopiert"); } catch { toast("Kopieren nicht möglich", true); }
+      break;
+    }
+    case "anzeige-qr":
+      if(bd.anzeigeQr?.id === id) bd.anzeigeQr = null; else await anzeigeQrHolen(id);
+      boardSheetRendern(); break;
+    case "anzeige-umbenennen":
+      bd.anzeigeUmbenennen = id; boardSheetRendern();
+      document.getElementById("anzeigeName")?.focus(); break;
+    case "anzeige-name-speichern": {
+      const name = document.getElementById("anzeigeName").value;
+      bd.anzeigeUmbenennen = null;
+      await anzeigeUebernehmen(await api(`/anzeigen/${id}`, { method:"PUT", body:JSON.stringify({ name }) }));
+      break;
+    }
+    case "anzeige-schluessel":
+      // Zweimal tippen – alte Links (TV, Tablet) gehen danach nicht mehr
+      if(bd.anzeigeFrage !== id){ bd.anzeigeFrage = id; a.textContent = "Alte Links ungültig?"; return; }
+      bd.anzeigeFrage = null;
+      await anzeigeUebernehmen(await api(`/anzeigen/${id}/schluessel`, { method:"POST" }), "Neuer Schlüssel – alte Links gelten nicht mehr");
+      break;
+    case "anzeige-anlegen": {
+      const $n = document.getElementById("anzeigeNeu");
+      await anzeigeUebernehmen(await api("/anzeigen", { method:"POST", body:JSON.stringify({ name:$n.value }) }), "Anzeige angelegt");
+      break;
+    }
     case "banner-loeschen":
       // Zweimal tippen – ein Bauplan ist schnell weg und für alle
       if(a.dataset.sicher !== "1"){ a.dataset.sicher = "1"; a.textContent = "Wirklich löschen?"; return; }

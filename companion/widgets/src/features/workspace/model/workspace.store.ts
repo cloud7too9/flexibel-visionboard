@@ -3,7 +3,7 @@ import type { Id } from "../../../shared/types/common.types";
 import type { WorkspaceData, WorkspaceLayout } from "./workspace.types";
 import type { WidgetInstanz } from "./widget-struktur";
 import { DEFAULT_LAYOUT } from "./default-layout";
-import { instanzRect, instanzRects, widgetTyp } from "./widget-register";
+import { instanzRect, instanzRects, schonDa, widgetTyp } from "./widget-register";
 import { clampItemToGrid } from "../lib/layout-utils";
 import { passt } from "../lib/collision-utils";
 import { loadWorkspaceFromStorage, saveWorkspaceToStorage } from "../lib/storage";
@@ -34,10 +34,13 @@ interface WorkspaceState {
   setStufe: (id: Id, stufe: string) => boolean;
   /** Griff zum Vergrößern: zur nächsten Stufe, die an dieser Stelle passt (reihum). */
   naechsteStufe: (id: Id) => boolean;
-  /** Neue Instanz eines Widget-Typs; false, wenn auf dem Layer kein Platz mehr frei ist. */
-  addItem: (typ: string) => boolean;
+  /**
+   * Neue Instanz eines Widget-Typs, bei Typen mit Quelle mit der gewählten Quelle.
+   * false, wenn kein Platz mehr frei ist oder der Typ nicht mehrfach sein darf und schon da ist.
+   */
+  addItem: (typ: string, quelle?: string) => boolean;
   removeItem: (id: Id) => void;
-  /** false, wenn auf dem Layer kein Platz mehr frei ist. */
+  /** Kopie mit derselben Quelle; false ohne Platz oder bei Typen, die nicht mehrfach sein dürfen. */
   duplicateItem: (id: Id) => boolean;
 
   // Layer
@@ -179,13 +182,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       return false;
     },
 
-    addItem: (typId) => {
+    addItem: (typId, quelle) => {
       const layout = selectActiveLayer(get());
       const t = widgetTyp(typId);
-      if (!t) return false;
+      if (!t || schonDa(layout.instanzen, typId)) return false;
       const slot = findSlot(layout, get().reihen, t.vertrag.stufen);
       if (!slot) return false;
-      const instanz: WidgetInstanz = { id: nextId("w"), typ: t.id, ...slot };
+      const instanz: WidgetInstanz = { id: nextId("w"), typ: t.id, ...slot, ...(t.quelle && quelle ? { quelle } : {}) };
       commitActiveItems([...layout.instanzen, instanz], { addPanelOpen: false });
       return true;
     },
@@ -203,7 +206,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const layout = selectActiveLayer(get());
       const target = layout.instanzen.find((i) => i.id === id);
       const t = target && widgetTyp(target.typ);
-      if (!target || !t) return false;
+      if (!target || !t || !t.mehrfach) return false;
       const slot = findSlot(layout, get().reihen, stufenAb(t.vertrag.stufen, stufeVon(t.vertrag, target.stufe).name));
       if (!slot) return false;
       commitActiveItems([...layout.instanzen, { ...target, id: nextId("w"), ...slot }]);
