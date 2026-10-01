@@ -21,7 +21,7 @@ Bei jedem Haltepunkt stehen Branch und Screenshots. Die Screenshots erzeugen die
 
 Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
 
-**Pull Requests:** Es ist noch keiner offen. Gemergt wird nach Plan durch Max per PR nach `main`, nach jedem Strang bzw. Haltepunkt mit OK. Die Branches bauen aufeinander auf (Übersicht und Merge-Vorschlag in [`UEBERGABE.md`](UEBERGABE.md), Kapitel 3):
+**Pull Requests:** Gestapelt offen sind **#7–#17**, einer je Branch, jeweils mit dem Vorgänger als Basis. Gemergt wird nach Plan durch Max nach `main`, nach jedem Strang bzw. Haltepunkt mit OK: von unten nach oben, mit „Create a merge commit“. Die Branches bauen aufeinander auf (Übersicht und Merge-Vorschlag in [`UEBERGABE.md`](UEBERGABE.md), Kapitel 3):
 `bereich/mainhub-visionboard` (noch nicht in `main`) bzw. `bereich/karte-welt-upload` → `board/anzeige-link` → `bereich/widgets-uebernahme` → `-raster` → `-groessen` → `-struktur` → `-register` → `-themes` → `-anzeigen` → `board/identitaet` (Strang C und der Anzeige-Link sind in die Widgets-Kette gemergt).
 
 ---

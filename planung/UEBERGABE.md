@@ -20,7 +20,7 @@
   - einige Inhalte, die noch nicht beschrieben sind (siehe Warteliste)
 - **Git:**
   - Alle Branches sind gepusht.
-  - In `main` ist noch nichts gemergt, Pull Requests gibt es noch keine. Gemergt wird nach Plan durch Max per PR.
+  - In `main` ist noch nichts gemergt. Für jeden Branch ist ein **gestapelter Pull Request** offen: **#7–#17**, siehe Kapitel 3. Gemergt wird nach Plan durch Max.
   - `board/identitaet` enthält alles.
 - **Tests:** alle grün auf `board/identitaet`, siehe Kapitel 6.
 - **Für Max wichtig:** Seit B2 gelten alte Anmeldungen nicht mehr. Jedes Handy meldet sich einmal neu an, mit Name und eigener PIN.
@@ -74,9 +74,26 @@ bereich/mainhub-visionboard ── widgets-uebernahme (A0) ── -raster (A1) �
 - Zwei Merge-Commits verbinden die Ketten:
   - `9f7dee9` holt Strang C und den Anzeige-Link in die Widgets-Kette.
   - `10f3c8c` holt A6 nach `board/identitaet`.
-- **Vorschlag zum Mergen** (Max entscheidet):
-  - **Schrittweise**: PRs in der Reihenfolge der Kette, also erst `bereich/karte-welt-upload`, dann `board/anzeige-link`, dann `bereich/mainhub-visionboard` und die Widgets-Kette Phase für Phase. Jeder PR zeigt dann nur seine Phase. Das passt zu „nach jedem Haltepunkt mit OK“.
-  - **Auf einmal**: ein PR `board/identitaet` → `main`.
+- **Offene Pull Requests (gestapelt):** Jeder zielt auf seinen Vorgänger, damit im Diff nur seine Phase steht.
+
+  | PR | Head → Basis | Inhalt |
+  |---|---|---|
+  | #7 | `bereich/karte-welt-upload` → `main` | Strang C: Welt-Import (H1, H2) |
+  | #8 | `board/anzeige-link` → `bereich/karte-welt-upload` | Anzeige-Link |
+  | #9 | `bereich/mainhub-visionboard` → `main` | MainHub-Übernahme und Plan (von vor dieser Runde) |
+  | #10 | `bereich/widgets-uebernahme` → `bereich/mainhub-visionboard` | A0 |
+  | #11 | `bereich/widgets-raster` → `bereich/widgets-uebernahme` | A1 |
+  | #12 | `bereich/widgets-groessen` → `bereich/widgets-raster` | A2 (H3) |
+  | #13 | `bereich/widgets-struktur` → `bereich/widgets-groessen` | A3 |
+  | #14 | `bereich/widgets-register` → `bereich/widgets-struktur` | A4 (H4), mit dem Merge von #7/#8 |
+  | #15 | `bereich/widgets-themes` → `bereich/widgets-register` | A5 (H5) |
+  | #16 | `bereich/widgets-anzeigen` → `bereich/widgets-themes` | A6 (H6) |
+  | #17 | `board/identitaet` → `bereich/widgets-anzeigen` | B1 + B2 |
+
+- **So mergen:**
+  - Von unten nach oben, mit **„Create a merge commit“**. Bei Squash oder Rebase passen die PRs darüber nicht mehr.
+  - Wird beim Mergen der Branch gelöscht, stellt GitHub den nächsten PR selbst auf `main` um. #14 zeigt die Änderungen aus #7/#8 so lange mit, bis die gemergt sind.
+  - #7/#8 und #9–#17 sind zwei Stränge und können in beliebiger Reihenfolge zueinander gemergt werden.
 - Nach dem Mergen die Branches löschen.
 
 Commits dieser Runde (ohne Merges), in Reihenfolge:
