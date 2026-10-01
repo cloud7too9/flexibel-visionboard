@@ -6,6 +6,8 @@ import { screenshotAuslesen, fuerCompanion } from './erkennung.js';
 import { bannerAuslesen } from './banner-erkennung.js';
 
 const BILDER = ['image/jpeg', 'image/png', 'image/webp'];
+// Ein Welt-Import schickt alle Kacheln auf einmal (je 2048 Byte als Base64, höchstens MAX_KACHELN aus regeln.js)
+const BIOME_GRENZE = 64 * 1024 * 1024;
 
 /**
  * @param {import('fastify').FastifyInstance} app
@@ -66,6 +68,19 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
     const { erkannt } = await screenshotAuslesen(bild);
     const banner = erkannt ? null : await bannerAuslesen(bild, teil.mimetype);
     return { erkannt: fuerCompanion(erkannt), banner };
+  });
+
+  // ---- Welt-Import: Biome je Welt (am Handy aus .mcworld/.zip gelesen, Regeln: biomImportPruefen) ----
+  app.get('/welten/:id/biome', async (req) => daten.biomeLesen(req.params.id));
+  app.put('/welten/:id/biome', { bodyLimit: BIOME_GRENZE }, async (req) => {
+    const antwort = await daten.biomeSetzen(req.params.id, req.body, req.nutzer.name);
+    geaendert('biome', req.params.id);
+    return antwort;
+  });
+  app.delete('/welten/:id/biome', async (req) => {
+    await daten.biomeLoeschen(req.params.id);
+    geaendert('biome', req.params.id);
+    return { ok: true };
   });
 
   // ---- Sammelobjekte ----

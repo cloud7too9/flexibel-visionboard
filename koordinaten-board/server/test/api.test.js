@@ -81,6 +81,44 @@ test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner, Rüstung'
   assert.equal((await anfrage('PUT', '/api/board/einstellungen', max, { aktiveWelt: 'w_99' })).status, 404);
 });
 
+test('Welt-Import: Biome hochladen (auch über 1 MB), lesen, ersetzen, löschen', async () => {
+  const max = await beitreten('Max');
+  const welt = (await anfrage('POST', '/api/orte/welten', max, { seed: '-4719278516927443210' })).daten.welt;
+  const daten = Buffer.alloc(2048, 7).toString('base64');
+  // 600 Kacheln ≈ 1,7 MB – mehr als die Standardgrenze von Fastify (1 MB)
+  const kacheln = Array.from({ length: 600 }, (_, n) => ({ dim: 'overworld', kx: (n % 30) - 15, kz: Math.floor(n / 30) - 10, daten }));
+  const body = { import: { seed: welt.seed, weltname: 'Realm', dateiname: 'Archiv.zip', spielversion: '1.26.50', chunks: { overworld: 9000 } }, kacheln };
+  const lena = await beitreten('Lena');
+  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws?token=${encodeURIComponent(lena)}`);
+  const meldungen = [];
+  ws.onmessage = (e) => meldungen.push(JSON.parse(e.data));
+  await new Promise((r) => { ws.onopen = r; });
+
+  let r = await anfrage('PUT', `/api/welten/${welt.id}/biome`, max, body);
+  assert.equal(r.status, 200, r.daten.message);
+  assert.deepEqual([r.daten.import.weltId, r.daten.import.von, r.daten.import.weltname], [welt.id, 'Max', 'Realm']);
+  r = await anfrage('GET', `/api/welten/${welt.id}/biome`, lena);
+  assert.deepEqual([r.daten.import.dateiname, r.daten.kacheln.length, r.daten.kacheln[0].daten], ['Archiv.zip', 600, daten]);
+  for (let i = 0; i < 20 && !meldungen.some((m) => m.bereich === 'biome'); i += 1) await new Promise((ok) => setTimeout(ok, 50));
+  assert.deepEqual(meldungen.find((m) => m.bereich === 'biome'), { art: 'geaendert', bereich: 'biome', weltId: welt.id });
+
+  r = await anfrage('PUT', `/api/welten/${welt.id}/biome`, max, { ...body, import: { ...body.import, seed: '1' } });
+  assert.deepEqual([r.status, r.daten.message], [422, 'Diese Welt hat einen anderen Seed']);
+  assert.equal((await anfrage('PUT', '/api/welten/w_99/biome', max, body)).status, 404);
+  assert.equal((await anfrage('GET', `/api/welten/${welt.id}/biome`)).status, 401);
+  assert.deepEqual((await anfrage('DELETE', `/api/welten/${welt.id}/biome`, max)).daten, { ok: true });
+  assert.deepEqual((await anfrage('GET', `/api/welten/${welt.id}/biome`, max)).daten, { import: null, kacheln: [] });
+  ws.close();
+});
+
+test('Welt-Import: Worker, Dekoder und Bibliothek werden als JavaScript ausgeliefert', async () => {
+  for (const pfad of ['/biom-import.worker.js', '/biom-welt.js', '/biom-dekoder.js', '/biom-ids.js', '/vendor/mcbe-leveldb.js']) {
+    const res = await fetch(BASIS + pfad);
+    assert.equal(res.status, 200, pfad);
+    assert.ok(res.headers.get('content-type').startsWith('application/javascript'), `${pfad}: ${res.headers.get('content-type')}`);
+  }
+});
+
 test('Rüstungs-Baukasten wird ausgeliefert (Texturen, Module, Manifest)', async () => {
   const manifest = await (await fetch(`${BASIS}/ruestungs-baukasten/manifest.json`)).json();
   assert.equal(manifest.teile.length, 4);
