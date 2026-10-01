@@ -269,7 +269,7 @@ Git: Nach jeder Phase pushen. Nach jedem Strang (bzw. nach jedem Haltepunkt mit 
 |---|---|---|
 | N1 | Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet? | A4 |
 | N2 | Wie kommt die Steuerung ans Handy? Als Teil von `companion/widgets/` (React, eigene Route `/dashboard/anordnen`, aus der Companion verlinkt) oder in der Vanilla-Seite nachgebaut? Vorschlag: React-Route, weil sie dieselben Komponenten nutzt. | A6 |
-| N3 | ~~Woher weiß eine Anzeige, welche sie ist?~~ Geklärt über den Anzeige-Link (A6). Noch offen: Ist der Schlüssel im Link als Schutz genug, oder soll eine neue Anzeige zusätzlich am Handy bestätigt werden? Vorschlag: Der Schlüssel reicht. | A6 |
+| N3 | ~~Woher weiß eine Anzeige, welche sie ist, und reicht der Schlüssel als Schutz?~~ **Entschieden:** über den Anzeige-Link (A6), der Schlüssel im Link reicht, keine zusätzliche Bestätigung am Handy. | A6 |
 | N4 | Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz? | B2 |
 
 **Weiter offen aus den Ideen:**
