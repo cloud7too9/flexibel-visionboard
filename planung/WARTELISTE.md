@@ -15,14 +15,14 @@ Bei jedem Haltepunkt stehen Branch und Screenshots. Die Screenshots erzeugen die
 | H1 | **Welt-Import (Phase 4 des Biom-Plans, Strang C):** Import-Sheet mit Anleitung, Prüfung, Fortschritt, Ergebnis | `bereich/karte-welt-upload` | `karte-mcworld.test.mjs` → Screenshots des Import-Sheets und der Biom-Ebene |
 | H2 | **Biom-Plan Phase 1:** Prüfungen an echten Welten (Reihenfolge der Höhenkarte, neuere Biom-IDs wie Cherry Grove, Pale Garden) | `bereich/karte-welt-upload` | **braucht Dateien von Max:** `tests/daten/fixture-seed.mcworld` und die Realm-Welt. Bis dahin laufen die Tests mit künstlichen Welten (`tests/welt-bauen.mjs`). |
 | H3 | **A2 · Raster** mit Platzhalter-Widgets auf 16:9 und 4:3 | `bereich/widgets-groessen` | `w1-raster-16x9.png`, `w1-raster-4x3.png`, `w2-stufen.png` |
-| H4 | **A4 · Galerie mit allen 13 Typen** und Karten vom Board | `bereich/widgets-register` | `w4-galerie.png`, `w6-quelle-waehlen.png`, `w7-board-karten.png` (echtes Board), `w5-beispielkarten.png` (ohne Board) |
-
+| H4 | **A4 · Galerie mit allen 13 Typen** und Karten vom Board | `bereich/widgets-register` | `w4-galerie.png`, `w6-quelle-waehlen.png`, `w5-beispielkarten.png` (ohne Board). Live ausprobieren: `npm run dev` in `companion/widgets` (ohne Board, Galerie im Bearbeiten-Modus) |
+| H5 | **A5 · Bereichs-Themes** (nicht als Haltepunkt im Plan, aber zum Anschauen) | `bereich/widgets-themes` | `w8-themes.png` (Handbuch als Buch, Baupläne blau, Portale lila), `w7-board-karten.png` (Karte: Oberwelt grün, Nether rot) |
 | H6 | **A6 · Anzeige am Handy anordnen** (Haltepunkt laut Plan): im Querformat ein Layout für die Anzeige im Zimmer anordnen | `bereich/widgets-anzeigen` | `w9-companion-anordnen-knopf.png`, `w9-anordnen-handy.png`, `w9-anordnen-auswahl.png`, `w10-anzeige-nach-anordnen.png`, `w11-anzeige-vollbild.png`. Live: Board starten, `npm run dashboard:installieren && npm run dashboard:build`, am Handy beitreten → Board → Anzeigen → „Anzeige anordnen“ |
 
 Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
 
-**Pull Requests:** Es ist noch keiner offen. Gemergt wird nach Plan durch Max per PR nach `main`, nach jedem Strang bzw. Haltepunkt mit OK. Die Branches bauen aufeinander auf:
-`bereich/karte-welt-upload` → `board/anzeige-link` → `bereich/widgets-uebernahme` → `-raster` → `-groessen` → `-struktur` → `-register` → `-themes` → `-anzeigen` (Strang C und der Anzeige-Link sind in die Widgets-Kette gemergt).
+**Pull Requests:** Gestapelt offen sind **#7–#17**, einer je Branch, jeweils mit dem Vorgänger als Basis. Gemergt wird nach Plan durch Max nach `main`, nach jedem Strang bzw. Haltepunkt mit OK: von unten nach oben, mit „Create a merge commit“. Die Branches bauen aufeinander auf (Übersicht und Merge-Vorschlag in [`UEBERGABE.md`](UEBERGABE.md), Kapitel 3):
+`bereich/mainhub-visionboard` (noch nicht in `main`) bzw. `bereich/karte-welt-upload` → `board/anzeige-link` → `bereich/widgets-uebernahme` → `-raster` → `-groessen` → `-struktur` → `-register` → `-themes` → `-anzeigen` → `board/identitaet` (Strang C und der Anzeige-Link sind in die Widgets-Kette gemergt).
 
 ---
 
@@ -30,9 +30,10 @@ Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
 
 | Nr. | Frage | blockiert |
 |---|---|---|
-| N1 | Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet? | nichts Gebautes; betrifft A6 |
+| ~~N1~~ | **Entschieden:** Abgehakt wird im Bereich der Companion (wie heute). „Anzeige anordnen“ ordnet nur an. | – |
 | ~~N2~~ | **Entschieden: Weg 1** – React-Route `/dashboard/anordnen` aus `companion/widgets/`, geöffnet aus der Companion (Board → Anzeigen → „Anzeige anordnen“). Gebaut auf `bereich/widgets-anzeigen`. | – |
-| N4 | Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz? | **B2: Accounts mit PIN** |
+| ~~N4~~ | **Entschieden („Ja“):** Die Board-PIN im QR-Code bleibt als Zugang zum Server, die Account-PIN kommt dazu. **B2 ist gebaut** (Branch `board/identitaet`): Accounts mit eigener PIN, Auswahl beim Beitreten, Geräteschlüssel, `werBistDu()`. Wer schon beigetreten war, meldet sich einmal neu an (Name + eigene PIN). | – |
+| N5 *(neu)* | **Offline braucht HTTPS.** Service Worker (B3) laufen nur in sicheren Kontexten (https oder localhost). Die Companion läuft am Handy über `http://192.168…:3000`, dort startet kein Service Worker. Möglichkeiten: HTTPS am Board mit eigenem Zertifikat (das iPhone muss ihm einmal vertrauen), ein Zertifikat für eine eigene Domain, oder Offline ohne Service Worker (dann lädt die Seite ohne Netz nicht). | **B3–B5** (Offline-Betrieb, Warteschlange, Zustandswechsel offline) |
 
 ---
 
@@ -42,6 +43,7 @@ Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
 |---|---|---|
 | E6 / A7 | **Größenstufen je Widget** und `seitenleistenBreite` (Planungsrunde) | Die neun neuen Typen haben je eine Platzhalter-Stufe. Die größte Rasterstufe (`32 − Seitenleiste`) gibt es noch nicht. Beobachtet: „Sammel-Fortschritt“ (4×3) ist für seine Karte zu klein, „Alle Sammelobjekte“ (8×8) zeigt nur die Oberwelt-Hälfte. |
 | E8 | **Themes für Sammelobjekte, Banner, Rüstung** | Oberwelt-Grün als Platzhalter mit eigener Theme-ID (A5) |
+| – | **Wann löst `/dashboard` die `/anzeige` ab?** Dem Dashboard fehlen noch, was die alte Anzeige kann: „Aufs Board“ (geworfene Karte groß zeigen), QR-Code zum Beitreten, Orte der aktiven Welt mit Kennblöcken. | Beide laufen nebeneinander; der Anzeige-Link zeigt weiter auf `/anzeige`, gilt aber auch für `/dashboard`. |
 | – | **Portal-Regeln am Board:** Die Edition (Bedrock/Java) wählt jedes Handy für sich. | Die Widgets am Board rechnen mit Bedrock (Hauptedition). Soll das Board eine eigene Einstellung bekommen? |
 
 ---

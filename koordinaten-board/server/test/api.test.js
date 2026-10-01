@@ -37,13 +37,33 @@ const anfrage = async (methode, pfad, token, body) => {
   });
   return { status: res.status, daten: await res.json() };
 };
-const beitreten = async (name) => (await anfrage('POST', '/api/beitreten', null, { pin: '4711', name })).daten.token;
+// Account anlegen oder – wenn es den Namen gibt – mit derselben PIN anmelden (B2)
+const beitreten = async (name) => (await anfrage('POST', '/api/beitreten', null, { pin: '4711', name, kontoPin: '2468' })).daten.token;
 
 test('ohne Anmeldung kein Zugriff', async () => {
   assert.deepEqual((await anfrage('GET', '/api/server')).daten, { name: 'koordinaten-board' });
   const r = await anfrage('GET', '/api/orte/welten');
   assert.equal(r.status, 401);
   assert.equal(r.daten.message, 'Nicht angemeldet');
+});
+
+test('Accounts mit PIN: Konten nur mit Board-PIN, anlegen, anmelden, Ersteller an Einträgen', async () => {
+  let r = await anfrage('POST', '/api/beitreten/konten', null, { pin: '0000' });
+  assert.equal(r.status, 401);
+  r = await anfrage('POST', '/api/beitreten', null, { pin: '4711', name: 'Tim', kontoPin: '9753' });
+  assert.deepEqual([r.status, r.daten.neu, r.daten.name], [200, true, 'Tim']);
+  const tim = r.daten;
+  assert.ok((await anfrage('POST', '/api/beitreten/konten', null, { pin: '4711' })).daten.konten.some((k) => k.id === tim.id && k.name === 'Tim'));
+  const ich = (await anfrage('GET', '/api/ich', tim.token)).daten;
+  assert.deepEqual([ich.id, ich.name], [tim.id, 'Tim']);
+  r = await anfrage('POST', '/api/beitreten', null, { pin: '4711', name: 'tim', kontoPin: '1111' });
+  assert.deepEqual([r.status, r.daten.fehler], [401, 'Falsche PIN für Tim']);
+  assert.equal((await anfrage('POST', '/api/beitreten', null, { pin: '4711', name: 'Tim', kontoPin: '9753' })).daten.neu, false);
+  assert.equal((await anfrage('POST', '/api/beitreten', null, { pin: '4711', name: 'Tim' })).status, 400, 'ohne eigene PIN');
+  // Einträge tragen die Benutzer-ID, der Name bleibt zur Anzeige
+  const b = (await anfrage('POST', '/api/banner', tim.token, { name: 'Tims Banner', basis: 'white', ebenen: [] })).daten.banner;
+  assert.deepEqual([b.von, b.erstellerId], ['Tim', tim.id]);
+  assert.equal((await anfrage('GET', '/api/orte/welten', 'alt.token')).status, 401, 'Token ohne Account gilt nicht');
 });
 
 test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner, Rüstung', async () => {

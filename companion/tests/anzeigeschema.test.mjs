@@ -34,7 +34,7 @@ const browser = await chromium.launch(CHROMIUM_OPTIONEN);
 try {
   for (let i = 0; i < 60 && !(await fetch(`${BOARD}/api/server`).then((r) => r.ok, () => false)); i++) await schlafen(200);
   const { token } = await (await fetch(`${BOARD}/api/beitreten`, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ pin: PIN, name: "Max" }) })).json();
+    body: JSON.stringify({ pin: PIN, name: "Max", kontoPin: "2468" }) })).json();
 
   // Companion im DEMO-Modus (über http), mit dem echten Board verbunden
   const p = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });

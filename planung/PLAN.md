@@ -270,10 +270,10 @@ Git: Nach jeder Phase pushen. Nach jedem Strang (bzw. nach jedem Haltepunkt mit 
 
 | Nr. | Frage | Phase |
 |---|---|---|
-| N1 | Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet? | A4 |
+| N1 | ~~Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet?~~ **Entschieden (Max, 01.10.2026):** im Bereich der Companion. „Anzeige anordnen“ ordnet nur an. | A4 |
 | N2 | ~~Wie kommt die Steuerung ans Handy? Als Teil von `companion/widgets/` (React, eigene Route `/dashboard/anordnen`, aus der Companion verlinkt) oder in der Vanilla-Seite nachgebaut?~~ **Entschieden (Max, 01.10.2026): Weg 1**, die React-Route `/dashboard/anordnen`, aus dem Board-Sheet der Companion verlinkt. | A6 |
 | N3 | ~~Woher weiß eine Anzeige, welche sie ist, und reicht der Schlüssel als Schutz?~~ **Entschieden:** über den Anzeige-Link (A6), der Schlüssel im Link reicht, keine zusätzliche Bestätigung am Handy. | A6 |
-| N4 | Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz? | B2 |
+| N4 | ~~Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz?~~ **Entschieden (Max, 01.10.2026, „Ja“):** Die Board-PIN im QR-Code bleibt als Zugang zum Server; die Account-PIN kommt dazu. | B2 |
 
 **Weiter offen aus den Ideen:**
 - Design-Themes für Sammelobjekte, Banner und Rüstung (E8)

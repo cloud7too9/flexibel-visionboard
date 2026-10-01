@@ -146,7 +146,7 @@ Rüstungs-Sets wie in den Vorlagen (`referenz/ruestung/`): je Teil **Vorlage + R
 Seit der Zusammenführung (Entscheidung von Max, 29.09.2026) ist das **Koordinaten-Board der Server der Companion**: Es liefert die Seite unter `/` aus, speichert alle Daten (`koordinaten-board/server/daten/daten.json`) und hält die Anzeige im Zimmer aktuell.
 
 - **Erkennung**: `init()` fragt `GET /api/server`. Antwortet das Board, läuft die Companion live, sonst (Datei, anderer Server, `?demo=1`) der DEMO-Mock.
-- **Anmeldung = Beitreten**: Das Handy scannt den QR-Code mit der Kamera-App und landet auf `/?pin=…`. Das Sheet „Beitreten“ hat die PIN schon, es fehlt nur der Name. Danach nimmt `api()` den Token aus `board.verbindung`; bei 401 oder abgelehntem Token geht es zurück zum Beitreten. Die PIN verschwindet aus der Adresszeile. „Abmelden“ im Board-Sheet.
+- **Anmeldung = Beitreten mit Account** (Strang B, B2): Das Handy scannt den QR-Code mit der Kamera-App und landet auf `/?pin=…`. Das Sheet „Beitreten“ hat die Board-PIN schon und zeigt die Accounts des Boards zum Antippen (`POST /api/beitreten/konten`). Man wählt seinen Account oder tippt einen neuen Namen, dazu die **eigene PIN** (4–8 Ziffern): Gibt es den Namen, meldet die PIN dort an (auch auf einem neuen Handy), sonst entsteht ein neuer Account. Das Token ist danach der Geräteschlüssel; `IDENTITAET.werBistDu()` (`GET /api/ich`) fragt beim Start, ob es noch gilt – Tokens von vor den Accounts gelten nicht mehr, dann heißt es einmal neu anmelden. Danach nimmt `api()` den Token aus `board.verbindung`; bei 401 oder abgelehntem Token geht es zurück zum Beitreten. Die PIN verschwindet aus der Adresszeile. „Abmelden“ im Board-Sheet.
 - **API**: dieselben Pfade wie im API-Vertrag, mit Präfix `/api` (Umsetzung `koordinaten-board/server/src/companion-api.js` + `daten.js`). Der Server prüft mit **derselben Datei `regeln.js`**, die die Seite lädt.
 - **Live-Updates**: Nach jeder Änderung meldet das Board `{ art:"geaendert", bereich, weltId }`. `liveAktualisieren()` lädt nur den betroffenen Bereich neu (Orte ohne Ansicht, Filter oder Kartenausschnitt zu verändern).
 - **Leeres Board**: Nach dem ersten Beitreten öffnet sich „Welt“, um die erste Welt mit Seed anzulegen.
@@ -159,7 +159,7 @@ Verbindet die Companion mit dem Koordinaten-Board im Zimmer. Das ist kein Bereic
 
 - **Scannen**: Das Sheet „Mit Board verbinden“ startet die Kamera und sucht den QR-Code der Anzeige (`http://<ip>:<port>/?pin=1234`). Erkennung per `BarcodeDetector`, wo es ihn gibt (Android-Chrome), sonst per **jsQR** (wird erst beim Scannen vom CDN geladen, `CONFIG.qrBibliothek`).
 - **Ausweichwege**: „Foto vom QR-Code“ und Adresse + PIN von Hand. Die ganze Beitritts-Adresse lässt sich auch einfügen, sie wird in Adresse und PIN aufgeteilt; ohne Port gilt `:3000`.
-- **Beitreten**: Ist der Name schon bekannt, tritt die Companion nach dem Erkennen sofort bei (`POST /api/beitreten`). Danach hält sie `/ws?token=…` offen, verbindet bei Abbruch neu und nach dem Standby sofort. Lehnt das Board das Token ab, vergisst sie die Verbindung.
+- **Beitreten**: Sind Name und eigene PIN schon eingetragen, tritt die Companion nach dem Erkennen sofort bei (`POST /api/beitreten`), sonst springt sie ins fehlende Feld. Danach hält sie `/ws?token=…` offen, verbindet bei Abbruch neu und nach dem Standby sofort. Lehnt das Board das Token ab, vergisst sie die Verbindung.
 - **Verbunden**: Das Sheet zeigt Adresse, „Angemeldet als“, wer im Raum ist und wie viele Orte das Board hat. Die Anzeige des Boards führt die Companion wie ein Handy unter „online“. „Trennen“ vergisst die Verbindung.
 - Gilt pro Gerät (`localStorage` `board.verbindung`, `board.name`) und ist auch im DEMO-Modus echt, weil das Board ein eigenes Gerät ist.
 
@@ -218,7 +218,7 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | GET | `/orte/welten` | – | `{ welten:[{ id, seed, anzahl }] }` |
 | POST | `/orte/welten` | `{ seed }` | `{ welt }` – legt 3 Dimensionen an |
 | GET | `/orte/welten/:id` | – | `{ welt, dimensionen, typen, instanzen }` |
-| POST | `/orte/instanzen` | `{ dimensionId, kategorie, variante, x, y, z, quelle }` | `{ instanz, typ }` – Typ wird gefunden oder angelegt |
+| POST | `/orte/instanzen` | `{ id?, dimensionId, kategorie, variante, x, y, z, quelle }` | `{ instanz, typ }` – Typ wird gefunden oder angelegt |
 | PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` |
 | PUT | `/orte/instanzen/:id/angeheftet` | `{ angeheftet }` | `{ instanz }` – groß auf der Anzeige |
 | DELETE | `/orte/instanzen/:id` | – | `{ ok:true }` |
@@ -229,19 +229,21 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | GET | `/sammelobjekte/welten/:id` | – | `{ status:{ [objektId]:{ von, am } } }` |
 | PUT | `/sammelobjekte/welten/:id/:objektId` | `{ gefunden }` | `{ status }` |
 | GET | `/portale/welten/:id` | – | `{ verbindungen:[verbindung] }` |
-| POST | `/portale/welten/:id` | `{ name, oberwelt, nether }` | `{ verbindung }` – `von`/`am` setzt der Server |
+| POST | `/portale/welten/:id` | `{ id?, name, oberwelt, nether }` | `{ verbindung }` – `von`/`am` setzt der Server |
 | PUT | `/portale/:id` | `{ name, oberwelt, nether }` | `{ verbindung }` |
 | DELETE | `/portale/:id` | – | `{ ok:true }` |
 | GET | `/banner` | – | `{ liste:[banner] }` |
-| POST | `/banner` | `{ name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
+| POST | `/banner` | `{ id?, name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
 | PUT | `/banner/:id` | `{ name, basis, ebenen }` | `{ banner }` |
 | DELETE | `/banner/:id` | – | `{ ok:true }` |
 | GET | `/ruestung` | – | `{ sets:[set] }` |
-| POST | `/ruestung` | `{ name, teile }` | `{ set }` – `von`/`am` setzt der Server |
+| POST | `/ruestung` | `{ id?, name, teile }` | `{ set }` – `von`/`am` setzt der Server |
 | PUT | `/ruestung/:id` | `{ name, teile }` | `{ set }` |
 | DELETE | `/ruestung/:id` | – | `{ ok:true }` |
 | GET | `/board/einstellungen` | – | `{ titel, qrZeigen, aktiveWelt, aktiv }` – nur Board |
 | PUT | `/board/einstellungen` | `{ titel?, qrZeigen?, aktiveWelt? }` | wie GET |
+
+**IDs vom Handy (Strang B):** Beim Anlegen von Orten, Portal-Verbindungen, Bannern und Rüstungs-Sets schickt die Companion die ID mit (`id`, UUID v4 aus `neueEintragId()` in `regeln.js`, auch über http ohne sicheren Kontext), damit sie später offline anlegen kann. Der Server prüft das Format (`idGueltig()`, sonst 400) und lehnt doppelte IDs ab (409); ohne `id` vergibt er eine wie bisher. Jeder Eintrag trägt außerdem `erstellerId` (stabile Benutzer-ID; bis zu den Accounts in B2 „unbekannt“), `von` bleibt nur zur Anzeige.
 
 `verbindung = { id, name, oberwelt:{ x, y|null, z }, nether:{ x, y|null, z }, von, am }`
 

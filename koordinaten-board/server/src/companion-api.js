@@ -38,7 +38,7 @@ export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink 
   });
   app.get('/orte/welten/:id', async (req) => daten.weltLesen(req.params.id));
   app.post('/orte/instanzen', async (req, reply) => {
-    const { instanz, typ, weltId } = daten.instanzAnlegen(req.body, req.nutzer.name);
+    const { instanz, typ, weltId } = daten.instanzAnlegen(req.body, req.nutzer);
     geaendert('orte', weltId);
     return reply.code(201).send({ instanz, typ });
   });
@@ -75,7 +75,7 @@ export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink 
   // ---- Welt-Import: Biome je Welt (am Handy aus .mcworld/.zip gelesen, Regeln: biomImportPruefen) ----
   app.get('/welten/:id/biome', async (req) => daten.biomeLesen(req.params.id));
   app.put('/welten/:id/biome', { bodyLimit: BIOME_GRENZE }, async (req) => {
-    const antwort = await daten.biomeSetzen(req.params.id, req.body, req.nutzer.name);
+    const antwort = await daten.biomeSetzen(req.params.id, req.body, req.nutzer);
     geaendert('biome', req.params.id);
     return antwort;
   });
@@ -88,7 +88,7 @@ export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink 
   // ---- Sammelobjekte ----
   app.get('/sammelobjekte/welten/:id', async (req) => daten.sammelLesen(req.params.id));
   app.put('/sammelobjekte/welten/:id/:objektId', async (req) => {
-    const antwort = daten.sammelSetzen(req.params.id, req.params.objektId, req.body, req.nutzer.name);
+    const antwort = daten.sammelSetzen(req.params.id, req.params.objektId, req.body, req.nutzer);
     geaendert('sammelobjekte', req.params.id);
     return antwort;
   });
@@ -96,7 +96,7 @@ export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink 
   // ---- Portal-Verbindungen ----
   app.get('/portale/welten/:id', async (req) => ({ verbindungen: daten.portaleListe(req.params.id) }));
   app.post('/portale/welten/:id', async (req, reply) => {
-    const verbindung = daten.portalAnlegen(req.params.id, req.body, req.nutzer.name);
+    const verbindung = daten.portalAnlegen(req.params.id, req.body, req.nutzer);
     geaendert('portale', req.params.id);
     return reply.code(201).send({ verbindung });
   });
@@ -114,7 +114,7 @@ export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink 
   // ---- Banner (für alle Welten) ----
   app.get('/banner', async () => ({ liste: daten.bannerListe() }));
   app.post('/banner', async (req, reply) => {
-    const banner = daten.bannerAnlegen(req.body, req.nutzer.name);
+    const banner = daten.bannerAnlegen(req.body, req.nutzer);
     geaendert('banner');
     return reply.code(201).send({ banner });
   });
@@ -132,7 +132,7 @@ export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink 
   // ---- Rüstungs-Sets (für alle Welten) ----
   app.get('/ruestung', async () => ({ sets: daten.ruestungListe() }));
   app.post('/ruestung', async (req, reply) => {
-    const set = daten.ruestungAnlegen(req.body, req.nutzer.name);
+    const set = daten.ruestungAnlegen(req.body, req.nutzer);
     geaendert('ruestung');
     return reply.code(201).send({ set });
   });

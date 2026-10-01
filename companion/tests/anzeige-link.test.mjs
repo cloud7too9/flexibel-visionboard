@@ -51,7 +51,7 @@ try {
   // ---- Max tritt bei, öffnet das Board-Sheet ----
   const max = await seite();
   await max.goto(`${BOARD}/?pin=${PIN}`);
-  await max.waitForSelector("#boardName"); await max.fill("#boardName", "Max");
+  await max.waitForSelector("#boardName"); await max.fill("#boardName", "Max"); await max.fill("#boardKontoPin", "2468");
   await max.click('[data-aktion="board-beitreten"]');
   await warteAuf(max, () => !DEMO.enabled && bd.verbindung?.name);
   await max.evaluate(() => alleSchliessen());   // „Noch keine Welt“ zu

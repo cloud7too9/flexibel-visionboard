@@ -1,6 +1,8 @@
 # Übergabe · Minecraft Companion & Koordinaten-Board
 
-Stand: 29.09.2026 · Einstieg für einen neuen Chat
+Stand: 01.10.2026 · Einstieg für einen neuen Chat
+
+> **Stand der Umsetzung von `planung/PLAN.md`** (Widget-Dashboard, Welt-Import, Accounts): [`planung/UEBERGABE.md`](planung/UEBERGABE.md) – was gebaut ist, Branches, Starten, Tests, nächste Schritte. Was auf Max wartet: [`planung/WARTELISTE.md`](planung/WARTELISTE.md).
 
 Diese Datei enthält, was **für beide Projekte** gilt: Arbeitsweise, Zusammenspiel, gemeinsame Referenz und projektübergreifende Entscheidungen. Alles Projektspezifische steht in der Übergabe des jeweiligen Projekts:
 
@@ -21,6 +23,10 @@ Diese Datei enthält, was **für beide Projekte** gilt: Arbeitsweise, Zusammensp
 > Lies `UEBERGABE.md`, danach `companion/UEBERGABE.md`. Wir machen mit der Companion-PWA weiter: Bereich **Handbuch**.
 
 Geht es ums Raum-Board, statt der Companion-Übergabe `koordinaten-board/UEBERGABE.md` lesen.
+
+Geht es mit dem Plan weiter (Widget-Dashboard, Offline, Accounts), zum Beispiel:
+
+> Lies `UEBERGABE.md`, danach `planung/UEBERGABE.md` und `planung/WARTELISTE.md`. N5 ist entschieden: … – mach mit B3 weiter.
 
 ---
 
@@ -87,7 +93,7 @@ Handy ──http──▶ Board-Server :3000
 Daten: koordinaten-board/server/daten/daten.json
 ```
 
-- **Beitreten**: Das Handy scannt den QR-Code der Anzeige mit der Kamera-App und landet auf `/?pin=…`. Die Companion erkennt den Live-Betrieb (`/api/server`), fragt nach dem Namen und lädt danach die Daten des Boards. Eine eigene Kamera in der Seite braucht es dafür nicht.
+- **Beitreten**: Das Handy scannt den QR-Code der Anzeige mit der Kamera-App und landet auf `/?pin=…`. Die Companion erkennt den Live-Betrieb (`/api/server`), fragt nach dem Account (Name + eigene PIN, Strang B) und lädt danach die Daten des Boards. Eine eigene Kamera in der Seite braucht es dafür nicht.
 - **Gemeinsame Regeln**: `companion/regeln.js` enthält Stammdaten und Regel-Funktionen. Die Seite bindet sie ein, der Server lädt sie per `node:vm` – nichts wird doppelt gepflegt.
 - **Live**: Jede Änderung meldet der Server als `{ art:"geaendert", bereich, weltId }`; die Handys laden den Bereich neu, die Anzeige bekommt die Orte der aktiven Welt (`sicht.js`).
 - **Texterkennung**: Die OCR des Boards bedient `/api/orte/auslesen` im Format der Companion (`fuerCompanion()`). Ist kein Seed-Map-Popup drauf, sucht sie eine **Banner-Anleitung** („Black Base“, „Cyan Bordure“ …); die Companion speichert daraus einen Bauplan.

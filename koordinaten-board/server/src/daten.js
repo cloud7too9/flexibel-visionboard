@@ -6,7 +6,7 @@
 // Der Welt-Import (Biome) liegt je Welt in biome/<weltId>.json: Die Kacheln sind groß und sollen
 // nicht bei jeder kleinen Änderung mit daten.json neu geschrieben werden.
 import { readFile, writeFile, rename, mkdir, rm } from 'node:fs/promises';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import { regeln } from './regeln.js';
 import { layoutPruefen, reihenGueltig } from './layout.js';
@@ -26,6 +26,10 @@ const fehler = (status, message) => { throw new DatenFehler(status, message); };
 const STANDARD_EINSTELLUNGEN = { titel: 'Unsere Welt', qrZeigen: true, aktiveWelt: null };
 const leer = () => ({
   zaehler: 0,
+  // Identität (Strang B): stabile Benutzer, Profile und Geräte. Gefüllt werden sie mit den Accounts (B2).
+  benutzer: [],      // { id, anzeigename, pinHash, rolle:"Besitzer" }
+  profile: [],       // { id, benutzerId, geteilt }
+  geraete: [],       // { id, freigeschaltet, typ:"persoenlich"|"geteilt", profilId }
   welten: [],        // { id, seed }
   typen: [],         // { id, kategorie, variante|null }   – welt-übergreifend
   instanzen: [],     // { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, von, am, geaendert? }
@@ -36,6 +40,16 @@ const leer = () => ({
   anzeigen: [],      // { id, name, schluessel, am, reihen?, layout? } – Geräte, die als Anzeige laufen dürfen (Anzeige-Link), mit ihrem Widget-Layout
   einstellungen: { ...STANDARD_EINSTELLUNGEN },
 });
+/** Urheber eines Eintrags als stabile Benutzer-ID; `von` (Name) bleibt nur zur Anzeige.
+    Einträge von vor den Accounts (B2) haben „unbekannt“. */
+const ERSTELLER_UNBEKANNT = 'unbekannt';
+/** Wer legt an: der angemeldete Nutzer ({ id, name } aus identitaet.js) oder – in Tests – nur ein Name */
+const urheber = (nutzer) => (typeof nutzer === 'string'
+  ? { von: nutzer, erstellerId: ERSTELLER_UNBEKANNT }
+  : { von: nutzer?.name ?? '', erstellerId: nutzer?.id ?? ERSTELLER_UNBEKANNT });
+/** Sammlungen mit Einträgen, die einen Ersteller haben */
+const MIT_ERSTELLER = ['instanzen', 'banner', 'ruestung', 'portale'];
+
 /** Zufälliger Anzeige-Schlüssel für den Link (URL-tauglich) */
 const neuerSchluessel = () => randomBytes(18).toString('base64url');
 
@@ -71,7 +85,17 @@ export class Daten {
       text = null;
     }
     if (text) await this.biomPunkteEntfernen(text);
+    this.erstellerNachtragen();
     this.anzeigenSicherstellen();
+  }
+
+  /** Alte Einträge ohne erstellerId (vor Strang B) bekommen „unbekannt“ */
+  erstellerNachtragen() {
+    let geaendert = false;
+    const nachtragen = (e) => { if (e && !e.erstellerId) { e.erstellerId = ERSTELLER_UNBEKANNT; geaendert = true; } };
+    for (const name of MIT_ERSTELLER) this.inhalt[name].forEach(nachtragen);
+    for (const status of Object.values(this.inhalt.sammel)) Object.values(status).forEach(nachtragen);
+    if (geaendert) this.speichernVerzoegert();
   }
 
   /** Biome kommen nur noch aus dem Welt-Import (regeln.js): alte Biom-Punkte aus Screenshots
@@ -103,6 +127,14 @@ export class Daten {
   neueId(praefix) {
     this.inhalt.zaehler += 1;
     return `${praefix}_${this.inhalt.zaehler}`;
+  }
+
+  /** ID eines neuen Eintrags: vom Handy (UUID, regeln.js) – geprüft und nicht doppelt – oder ohne vom Server */
+  eintragId(body, praefix, liste) {
+    if (body?.id == null) return this.neueId(praefix);
+    if (!regeln.idGueltig(body.id)) fehler(400, 'Ungültige ID');
+    if (liste.some((x) => x.id === body.id)) fehler(409, 'Diesen Eintrag gibt es schon');
+    return body.id;
   }
 
   // ---------- Welten + Orte ----------
@@ -164,14 +196,15 @@ export class Daten {
     const vorhanden = this.typFinden(body.kategorie, variante);
     const problem = regeln.instanzPruefen({ ...body, variante, quelle }, d.type, Boolean(vorhanden));
     if (problem) fehler(422, problem);
+    const id = this.eintragId(body, 'i', this.inhalt.instanzen);
     let typ = vorhanden;
     if (!typ) {
       typ = { id: this.neueId('t'), kategorie: body.kategorie, variante };
       this.inhalt.typen.push(typ);
     }
     const instanz = {
-      id: this.neueId('i'), dimensionId: d.id, featureTypeId: typ.id,
-      x: body.x, y: body.y ?? null, z: body.z, quelle, angeheftet: false, von, am: new Date().toISOString(),
+      id, dimensionId: d.id, featureTypeId: typ.id,
+      x: body.x, y: body.y ?? null, z: body.z, quelle, angeheftet: false, ...urheber(von), am: new Date().toISOString(),
     };
     this.inhalt.instanzen.push(instanz);
     this.speichernVerzoegert();
@@ -229,7 +262,7 @@ export class Daten {
     const problem = regeln.biomImportPruefen(body, this.welt(weltId));
     if (problem) fehler(422, problem);
     const sauber = regeln.biomImportSauber(body);
-    const imp = { id: this.neueId('bi'), weltId, ...kopie(sauber.import), von, importiertAm: new Date().toISOString() };
+    const imp = { id: this.neueId('bi'), weltId, ...kopie(sauber.import), von: urheber(von).von, importiertAm: new Date().toISOString() };
     this.speichernVerzoegert();   // Zähler der IDs
     await this.biomeSchreiben(datei, JSON.stringify({ import: imp, kacheln: sauber.kacheln }));
     return { import: imp };
@@ -263,7 +296,7 @@ export class Daten {
     this.welt(weltId);
     if (!SAMMELOBJEKTE.some((o) => o.id === objektId)) fehler(404, 'Unbekanntes Sammelobjekt');
     const status = (this.inhalt.sammel[weltId] ??= {});
-    if (body?.gefunden) status[objektId] = { von, am: tag() };
+    if (body?.gefunden) status[objektId] = { ...urheber(von), am: tag() };
     else delete status[objektId];
     this.speichernVerzoegert();
     return { status: kopie(status) };
@@ -284,7 +317,7 @@ export class Daten {
     this.welt(weltId);
     const problem = regeln.verbindungRegelPruefen(body);
     if (problem) fehler(422, problem);
-    const v = { id: this.neueId('p'), weltId, ...kopie(regeln.verbindungSauber(body)), von, am: tag() };
+    const v = { id: this.eintragId(body, 'p', this.inhalt.portale), weltId, ...kopie(regeln.verbindungSauber(body)), ...urheber(von), am: tag() };
     this.inhalt.portale.push(v);
     this.speichernVerzoegert();
     const { weltId: _w, ...ohne } = v;
@@ -321,7 +354,7 @@ export class Daten {
   bannerAnlegen(body, von) {
     const problem = regeln.bannerPruefen(body);
     if (problem) fehler(422, problem);
-    const b = { id: this.neueId('b'), ...kopie(regeln.bannerSauber(body)), von, am: tag() };
+    const b = { id: this.eintragId(body, 'b', this.inhalt.banner), ...kopie(regeln.bannerSauber(body)), ...urheber(von), am: tag() };
     this.inhalt.banner.unshift(b);
     this.speichernVerzoegert();
     return kopie(b);
@@ -355,7 +388,7 @@ export class Daten {
   ruestungAnlegen(body, von) {
     const problem = regeln.ruestungPruefen(body);
     if (problem) fehler(422, problem);
-    const s = { id: this.neueId('r'), ...kopie(regeln.ruestungSauber(body)), von, am: tag() };
+    const s = { id: this.eintragId(body, 'r', this.inhalt.ruestung), ...kopie(regeln.ruestungSauber(body)), ...urheber(von), am: tag() };
     this.inhalt.ruestung.unshift(s);
     this.speichernVerzoegert();
     return kopie(s);
@@ -472,6 +505,52 @@ export class Daten {
     if (!a || typeof schluessel !== 'string') return null;
     const soll = Buffer.from(a.schluessel), ist = Buffer.from(schluessel);
     return soll.length === ist.length && timingSafeEqual(soll, ist) ? kopie(a) : null;
+  }
+
+  // ---------- Identität: Benutzer, Profile, Geräte (B2, Abläufe in identitaet.js) ----------
+
+  /** Accounts zum Auswählen beim Beitreten – ohne PIN-Hash */
+  benutzerListe() {
+    return this.inhalt.benutzer.map((b) => ({ id: b.id, name: b.anzeigename }));
+  }
+
+  benutzer(id) {
+    return this.inhalt.benutzer.find((b) => b.id === id) ?? null;
+  }
+
+  /** Account zu einem Namen, ohne Groß-/Kleinschreibung (der Name ist nur Anzeige, aber eindeutig) */
+  benutzerMitName(name) {
+    const gesucht = String(name).trim().toLocaleLowerCase('de');
+    return this.inhalt.benutzer.find((b) => b.anzeigename.toLocaleLowerCase('de') === gesucht) ?? null;
+  }
+
+  benutzerAnlegen({ anzeigename, pinHash }) {
+    if (this.benutzerMitName(anzeigename)) fehler(409, `Den Namen „${anzeigename}“ gibt es schon`);
+    const b = { id: randomUUID(), anzeigename, pinHash, rolle: 'Besitzer', am: new Date().toISOString() };
+    this.inhalt.benutzer.push(b);
+    this.speichernVerzoegert();
+    return kopie(b);
+  }
+
+  /** Neues freigeschaltetes Gerät für einen Account; ein persönliches Profil entsteht beim ersten Gerät */
+  geraetAnlegen(benutzerId, typ = 'persoenlich') {
+    let profil = this.inhalt.profile.find((p) => p.benutzerId === benutzerId && !p.geteilt);
+    if (!profil) {
+      profil = { id: randomUUID(), benutzerId, geteilt: false };
+      this.inhalt.profile.push(profil);
+    }
+    const g = { id: randomUUID(), freigeschaltet: true, typ, profilId: profil.id, am: new Date().toISOString() };
+    this.inhalt.geraete.push(g);
+    this.speichernVerzoegert();
+    return kopie(g);
+  }
+
+  /** Account hinter einem freigeschalteten Gerät, sonst null */
+  benutzerVonGeraet(geraetId) {
+    const g = this.inhalt.geraete.find((x) => x.id === geraetId);
+    if (!g?.freigeschaltet) return null;
+    const profil = this.inhalt.profile.find((p) => p.id === g.profilId);
+    return profil ? this.benutzer(profil.benutzerId) : null;
   }
 
   // ---------- Einstellungen der Anzeige ----------

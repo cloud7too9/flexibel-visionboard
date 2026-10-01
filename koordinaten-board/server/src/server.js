@@ -4,17 +4,17 @@ import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyMultipart from '@fastify/multipart';
 import fastifyWebsocket from '@fastify/websocket';
-import { createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Daten } from './daten.js';
+import { Daten, DatenFehler } from './daten.js';
+import { identitaet, AnmeldeFehler } from './identitaet.js';
 import { companionApi } from './companion-api.js';
 import { anzeigeSicht } from './sicht.js';
 import { COMPANION_ORDNER } from './regeln.js';
 import { besteAdresse } from './netzwerk.js';
-import { fehlversuchSperre } from './sperre.js';
 import { kartePruefen } from './zeigen.js';
 import { widgetKarte, widgetQuellen } from './widgets.js';
 import { erkennungBeenden } from './erkennung.js';
@@ -30,7 +30,6 @@ const COMPANION_DATEI = process.env.COMPANION_DATEI ?? 'companion-prototyp.html'
 // Anzeige darf vom Gerät selbst (localhost) oder mit Anzeige-Link (Anzeige + Schlüssel) geöffnet werden.
 // Notschalter für alles im Netz ohne Schutz: ANZEIGE_OFFEN=1
 const ANZEIGE_OFFEN = process.env.ANZEIGE_OFFEN === '1';
-const FARBEN = ['#00e5ff', '#7cff6b', '#ffd23f', '#b98cff', '#ff9f43', '#4dabff'];
 
 // ---------- PIN + Sitzungs-Signatur (bleiben über Neustarts erhalten) ----------
 
@@ -48,26 +47,6 @@ async function dauerwertLaden(datei, erzeugen) {
 await mkdir(DATEN, { recursive: true });
 const PIN = process.env.RAUM_PIN ?? (await dauerwertLaden('pin.txt', () => String(randomInt(1000, 10000))));
 const GEHEIM = await dauerwertLaden('geheim.txt', () => randomBytes(32).toString('hex'));
-
-const signieren = (daten) => createHmac('sha256', GEHEIM).update(daten).digest('base64url');
-
-function tokenErstellen(name) {
-  const inhalt = Buffer.from(JSON.stringify({ name, farbe: FARBEN[randomInt(FARBEN.length)] })).toString('base64url');
-  return `${inhalt}.${signieren(inhalt)}`;
-}
-
-function tokenPruefen(token) {
-  if (typeof token !== 'string' || !token.includes('.')) return null;
-  const [inhalt, signatur] = token.split('.');
-  const erwartet = Buffer.from(signieren(inhalt));
-  const erhalten = Buffer.from(signatur ?? '');
-  if (erwartet.length !== erhalten.length || !timingSafeEqual(erwartet, erhalten)) return null;
-  try {
-    return JSON.parse(Buffer.from(inhalt, 'base64url').toString('utf8'));
-  } catch {
-    return null;
-  }
-}
 
 const istLokal = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
 /** Darf diese Anfrage Anzeige sein? localhost, Notschalter oder gültiger Anzeige-Link (?anzeige=…&schluessel=…) */
@@ -115,6 +94,8 @@ function adresseLernen(req) {
 // Die alte zustand.json (Orte der früheren Board-Steuerung) bleibt als Sicherung liegen.
 const daten = new Daten(DATEN);
 await daten.laden();
+// Accounts mit eigener PIN, Geräteschlüssel, „Wer bist du?“ (Strang B, identitaet.js)
+const ident = identitaet({ daten, geheim: GEHEIM, boardPin: PIN });
 
 // ---------- Server ----------
 
@@ -124,7 +105,7 @@ app.addHook('onRequest', async (req) => adresseLernen(req));
 // Die Companion-PWA läuft auf einem anderen Ursprung und tritt von dort bei.
 // Freigegeben sind nur die Pfade, die sie braucht – /api/anzeige (PIN!) bleibt zu.
 // Anmeldung per Bearer-Token, nicht per Cookie, deshalb reicht „*“.
-const FUER_COMPANION = ['/api/beitreten', '/api/ich'];
+const FUER_COMPANION = ['/api/beitreten', '/api/beitreten/konten', '/api/ich'];
 app.addHook('onRequest', async (req, reply) => {
   if (!FUER_COMPANION.includes(req.url.split('?')[0])) return;
   reply.header('Access-Control-Allow-Origin', '*');
@@ -155,32 +136,34 @@ app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, rumpf,
   }
 });
 
-function nutzerAusAnfrage(req) {
-  const kopf = req.headers.authorization ?? '';
-  return tokenPruefen(kopf.startsWith('Bearer ') ? kopf.slice(7) : null);
+/** Antwort bei abgelehnter Anmeldung (falsche PIN, Sperre, Name doppelt …) */
+function anmeldeFehler(reply, f) {
+  if (f instanceof AnmeldeFehler || f instanceof DatenFehler) return reply.code(f.status).send({ fehler: f.message });
+  throw f;
 }
 
-const pinSperre = fehlversuchSperre();
+// Beitreten (B2): Board-PIN aus dem QR-Code, dann Account wählen oder anlegen – Name + eigene PIN
+app.post('/api/beitreten/konten', async (req, reply) => {
+  try {
+    return { konten: ident.konten(req.body?.pin, req.socket.remoteAddress) };
+  } catch (f) {
+    return anmeldeFehler(reply, f);
+  }
+});
 
 app.post('/api/beitreten', async (req, reply) => {
-  const { pin, name } = req.body ?? {};
-  const sauberName = typeof name === 'string' ? name.trim().slice(0, 24) : '';
-  const ip = req.socket.remoteAddress;
-  const sperre = pinSperre.gesperrt(ip);
-  if (sperre) return reply.code(429).send({ fehler: `Zu viele falsche PINs – bitte ${sperre} s warten` });
-  if (String(pin ?? '') !== PIN) {
-    pinSperre.fehlschlag(ip);
-    return reply.code(401).send({ fehler: 'Falsche PIN' });
+  const { pin, name, kontoPin } = req.body ?? {};
+  try {
+    return await ident.anmelden({ pin, name, kontoPin, ip: req.socket.remoteAddress });
+  } catch (f) {
+    return anmeldeFehler(reply, f);
   }
-  pinSperre.erfolg(ip);
-  if (!sauberName) return reply.code(400).send({ fehler: 'Name fehlt' });
-  return { token: tokenErstellen(sauberName), name: sauberName };
 });
 
 app.get('/api/ich', async (req, reply) => {
-  const nutzer = nutzerAusAnfrage(req);
+  const nutzer = ident.werBistDu(req);
   if (!nutzer) return reply.code(401).send({ fehler: 'Nicht angemeldet' });
-  return nutzer;
+  return { id: nutzer.id, name: nutzer.name, farbe: nutzer.farbe };
 });
 
 app.get('/api/anzeige', async (req, reply) => {
@@ -225,7 +208,7 @@ app.get('/api/server', async () => ({ name: 'koordinaten-board' }));
 await app.register(companionApi, {
   prefix: '/api',
   daten,
-  nutzer: nutzerAusAnfrage,
+  nutzer: (req) => ident.werBistDu(req),
   geaendert: (bereich, weltId = null) => {
     anAlle({ art: 'geaendert', bereich, weltId });
     if (['welten', 'orte', 'einstellungen'].includes(bereich)) anAlle({ art: 'zustand', zustand: anzeigeSicht(daten) });
@@ -238,7 +221,7 @@ await app.register(companionApi, {
 // Lesen darf die Anzeige (localhost oder Anzeige-Link) und jedes angemeldete Handy.
 await app.register(async (widgets) => {
   widgets.addHook('onRequest', async (req, reply) => {
-    if (!anzeigeZugang(req).erlaubt && !nutzerAusAnfrage(req)) {
+    if (!anzeigeZugang(req).erlaubt && !ident.werBistDu(req)) {
       return reply.code(403).send({ fehler: 'Widgets nur auf der Anzeige oder für angemeldete Handys' });
     }
   });
@@ -310,7 +293,7 @@ app.get('/ws', { websocket: true }, (socket, req) => {
     const nurLink = zugang.anzeige && !istLokal(req) && !ANZEIGE_OFFEN;
     verbindung = { socket, rolle: 'anzeige', nutzer: null, zugang: nurLink ? { id: zugang.anzeige.id, schluessel: zugang.anzeige.schluessel } : null };
   } else {
-    const nutzer = tokenPruefen(token);
+    const nutzer = ident.ausToken(token);
     if (!nutzer) return socket.close(4001, 'Nicht angemeldet');
     verbindung = { socket, rolle: 'steuerung', nutzer };
   }

@@ -115,6 +115,36 @@ test('Sammelobjekte, Portale, Banner', () => {
   wirft(() => d.ruestungLoeschen(r.id), 404);
 });
 
+test('Strang B: IDs vom Handy, erstellerId, Benutzer-Sammlungen', async () => {
+  const o = ordner();
+  const d = new Daten(o);
+  d.weltAnlegen({ seed: '7' });
+  const id = '0b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d';
+  const ort = { id, dimensionId: 'd_w_1_overworld', kategorie: 'Village', variante: null, x: 1, y: null, z: 2, quelle: 'manuell' };
+  const { instanz } = d.instanzAnlegen(ort, 'Max');
+  assert.deepEqual([instanz.id, instanz.von, instanz.erstellerId], [id, 'Max', 'unbekannt']);
+  wirft(() => d.instanzAnlegen(ort, 'Lena'), 409, 'Diesen Eintrag gibt es schon');
+  wirft(() => d.instanzAnlegen({ ...ort, id: 'i_99' }, 'Lena'), 400, 'Ungültige ID');
+  assert.match(d.instanzAnlegen({ ...ort, id: undefined, x: 5 }, 'Lena').instanz.id, /^i_\d+$/, 'ohne ID vergibt der Server eine');
+  const b = d.bannerAnlegen({ id: '1b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d', name: 'Wappen', basis: 'white', ebenen: [] }, 'Max');
+  assert.deepEqual([b.id, b.erstellerId], ['1b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d', 'unbekannt']);
+  wirft(() => d.bannerAnlegen({ id: b.id, name: 'Nochmal', basis: 'white', ebenen: [] }, 'Max'), 409);
+  assert.equal(d.portalAnlegen('w_1', { id: '2b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d', name: 'Basis', oberwelt: { x: 8, z: 8 }, nether: { x: 1, z: 1 } }, 'Max').id,
+    '2b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d');
+  assert.equal(d.sammelSetzen('w_1', 'rib', { gefunden: true }, 'Max').status.rib.erstellerId, 'unbekannt');
+  assert.deepEqual([d.inhalt.benutzer, d.inhalt.profile, d.inhalt.geraete], [[], [], []]);
+
+  // Alte daten.json ohne erstellerId: beim Laden „unbekannt“
+  writeFileSync(path.join(o, 'daten.json'), JSON.stringify({ zaehler: 3, welten: [{ id: 'w_1', seed: '7' }], typen: [],
+    banner: [{ id: 'b_1', name: 'Alt', basis: 'white', ebenen: [], von: 'Max', am: '2026-09-01' }], sammel: { w_1: { rib: { von: 'Lena', am: '2026-09-02' } } } }));
+  const alt = new Daten(o);
+  await alt.laden();
+  assert.equal(alt.inhalt.banner[0].erstellerId, 'unbekannt');
+  assert.equal(alt.inhalt.sammel.w_1.rib.erstellerId, 'unbekannt');
+  assert.deepEqual(alt.inhalt.benutzer, []);
+  rmSync(o, { recursive: true, force: true });
+});
+
 test('Speichern und Laden', async () => {
   const o = ordner();
   const d = new Daten(o);
