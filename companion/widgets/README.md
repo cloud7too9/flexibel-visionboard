@@ -5,13 +5,13 @@ iOS-Kontrollzentrums. Grundlage ist der MainHub-Workspace
 (`cloud7too9/mainhub-frontend`, per `git subtree` mit Verlauf übernommen):
 Grid, Layer, Bearbeitungsmodus und Galerie.
 
-**Stand:** Phasen A1–A4 aus [`planung/PLAN.md`](../../planung/PLAN.md):
+**Stand:** Phasen A1–A5 aus [`planung/PLAN.md`](../../planung/PLAN.md):
 Raster mit 32 Spalten, Größenstufen statt freier Größen, Vollbild als eigene
 Route, Widget-Struktur (Bereich → Widget-Typ → Instanz) mit Galerie, das
-Register mit allen 13 Typen und Inhalte als **Karten vom Board**. Der
-Board-Server liefert das Dashboard unter `/dashboard` aus. Das Layout liegt
-noch im `localStorage`. Es folgen Themes, Layout pro Anzeige und Anordnen am
-Handy (A5–A6).
+Register mit allen 13 Typen, Inhalte als **Karten vom Board** und die
+**Bereichs-Themes**. Der Board-Server liefert das Dashboard unter `/dashboard`
+aus. Das Layout liegt noch im `localStorage`. Es folgen Layout pro Anzeige und
+Anordnen am Handy (A6).
 
 ## Starten
 
@@ -146,6 +146,28 @@ Bauplan: `planung/bauplaene/Bauplan-Widget-Inhalte.md`, Entscheidung E3.
   `lib/mock-karten.ts`, im Kopf steht „Beispielkarten“.
 - Die Schrift der Karten wächst mit der Zelle (`--zelle`); was nicht passt, wird
   abgeschnitten, bis A7 die Größen festlegt.
+
+## Bereichs-Themes (`src/features/workspace/model/widget-themes.ts`)
+
+Bauplan: `planung/bauplaene/Bauplan-Bereichs-Themes.md`.
+
+- Am Gehäuse erkennt man den Bereich: Es setzt `data-theme` nach
+  `WidgetTyp.bereich` (`BEREICH_THEMES`, fest oder dynamisch), dazu eine Leiste
+  oben in der Farbe des Bereichs.
+- Ein Theme überschreibt die Farb-Tokens aus `tokens.css` innerhalb des
+  Gehäuses (`shared/styles/themes.css`). Inhalte nutzen nur diese Tokens, nie
+  feste Farben – so bekommen auch die Karten das Theme.
+- **Karte:** dynamisch, die Dimension der angezeigten Karte wählt
+  `karte-oberwelt`, `karte-nether` oder `karte-end` (Farben wie `THEMES` der
+  Companion).
+- **Handbuch:** Leder-Einband, der Inhalt steht auf zwei Buchseiten
+  (Rahmen-Komponente `BuchRahmen`).
+- **Baupläne:** Bauplan-Blau mit weißem Gitter aus zwei linearen Verläufen.
+- **Portal-Verwaltung:** Schwarz-Lila, ohne Rot und Grün – auch Dimensionen in
+  Koordinaten-Blöcken und das Entfernen im Kopf.
+- **Sammelobjekte, Banner, Rüstung:** noch nicht festgelegt (E8). Bis dahin
+  Oberwelt-Grün mit eigener Theme-ID je Bereich, austauschbar nur in
+  `themes.css`.
 
 ## Layer
 
