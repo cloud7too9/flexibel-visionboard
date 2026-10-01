@@ -1,0 +1,27 @@
+services:
+  # Produktions-Build, ausgeliefert über nginx.
+  #   docker compose up --build        → http://localhost:8080
+  web:
+    build: .
+    image: mainhub-frontend:latest
+    ports:
+      - "${MAINHUB_PORT:-8080}:80"
+    restart: unless-stopped
+
+  # Entwicklung mit Vite und Hot Reload, Quellcode wird eingebunden.
+  #   docker compose --profile dev up dev → http://localhost:5173
+  dev:
+    profiles: ["dev"]
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "${MAINHUB_DEV_PORT:-5173}:5173"
+    environment:
+      # Datei-Events kommen über Bind-Mounts (Docker Desktop, WSL) nicht
+      # zuverlässig an; Polling macht Hot Reload dort stabil.
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      # node_modules im Container behalten, nicht vom Host überschreiben.
+      - /app/node_modules
