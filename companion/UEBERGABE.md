@@ -14,11 +14,11 @@ Arbeitsweise, Zusammenspiel mit dem Koordinaten-Board und projektübergreifende 
   - `?modul=<key>` startet direkt in einem Bereich.
 - **Demo-Daten**:
   - 2 Welten; `w_1` hat den Seed `6889192652397090698` aus dem Screenshot.
-  - Beispielorte und Biome, 5 abgehakte Sammelobjekte, 4 Banner, 3 Rüstungs-Sets (Amethyst-Netherit, Umbreon, Taucher).
+  - Beispielorte, erzeugte Biome (`demoBiome()`), 5 abgehakte Sammelobjekte, 4 Banner, 3 Rüstungs-Sets (Amethyst-Netherit, Umbreon, Taucher).
   - 3 Portal-Verbindungen: **Hauptbasis** passt, **Eisenfarm** ist einseitig, beim **Dorf** entsteht ein neues Portal.
   - Angemeldet ist `MOCK.ich = "Max"`.
 - **`localStorage`** speichert nur Bequemlichkeiten pro Gerät:
-  - `orte.welt`, `orte.dim`, `orte.ansicht`, `orte.standort`
+  - `orte.welt`, `orte.dim`, `orte.ansicht`, `orte.standort`, `orte.biome` (Biom-Ebene ein/aus)
   - `banner.schritte.<id>`, `ruestung.schritte.<set>.<teil>` (Amboss-Schritte), `ruestung.buehne` (Dimension + Träger der Figur)
   - `portale.edition`, `portale.info`, `portale.rechner`
   - `board.verbindung` (live zugleich die Anmeldung), `board.name`
@@ -56,16 +56,19 @@ Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmode
 - Eigener Standort (nur lokal) mit Entfernung und Richtung
 - Umrechnung Nether ↔ Oberwelt und `/execute in … run tp`-Befehl
 - Kennblöcke (PNG) statt Symbol bei Strukturen mit Bild: Listen-Gruppe, Canvas-Marker, Detail-Kopf, Screenshot-Prüfliste. Siehe Sammelobjekte → Kennblöcke.
+- **Welt-Import** (Biom-Plan `PLAN-welt-import-biome.md` Phasen 1–6 und Strang C in `../planung/PLAN.md`, Branch `bereich/karte-welt-upload`): Weltordner als `.zip` aus der Dateien-App (oder `.mcworld`) hochladen, Anleitung nur fürs iPhone, Aufbauprüfung, Bestätigung mit Weltname und Seed, Lesen im Web Worker, Prüfliste, Übernehmen; Biome als Kacheln auf der Karte. Einzelheiten in `README.md` → Welt-Import.
+  - **Entscheidungen von Max (01.10.2026)**: ZIP mit zusätzlichem Ordner wird ohne Hinweis angenommen (E12). Anleitung nur iPhone, besuchte Gebiete reichen (E14). Strang C umfasst den ganzen Biom-Import, nicht nur das Upload-Feld.
+  - **Offen (Haltepunkt Phase 1 des Biom-Plans)**: Prüfung an echten Welten von Max – Höhenkarte an einer bekannten Stelle, Stichproben gegen Chunkbase, neuere Biom-IDs (Cherry Grove, Pale Garden, Dappled Forest …), Laufzeit und Speicher am iPhone. Es fehlen `tests/daten/fixture-seed.mcworld` und eine Realm-Welt (bleibt lokal in `tests/daten/privat/`).
 
-**In Arbeit: Biome aus `.mcworld`** (Bauplan `PLAN-welt-import-biome.md`, Branch `bereich/karte-mcworld`). Phase 1 (Dekoder in Node) ist gebaut und getestet; es fehlen die Prüfungen an echten Welten von Max (Haltepunkt). Danach ändern sich die Biom-Regeln unten (nur noch per Welt-Import, Chunk-Raster statt Kreise). Stand und Befehle in `README.md` → Welt-Import.
-
-**Regeln von Max** (prüft `instanzPruefen()`, der Server muss sie genauso prüfen):
+**Regeln von Max** (prüfen `instanzPruefen()` und `biomImportPruefen()`, der Server prüft mit derselben Datei):
 
 1. „Eigene Orte“ ist eine zusätzliche Kategorie. Dort legt man die Typen (Ortsnamen) selbst an.
 2. In allen anderen Kategorien entstehen neue Typen **nur aus Screenshots**. Die **Variante aus dem Popup ist der FeatureType**, z. B. Stronghold → „Stairway“.
-3. **Biome nur per Screenshot.** Das Biom ist der Typ und muss in der Biom-Liste stehen; daraus ergibt sich auch die Dimension.
-4. Biom-Orte sind fest: löschen ja, bearbeiten nein.
-5. **Fläche ohne bekanntes Biom bleibt auf der Karte leer.** Biome werden nur als Kreis um bekannte Punkte gezeichnet (`CONFIG.biomRadius` = 48).
+3. **Biome nur per Welt-Import** (`.zip`/`.mcworld`). Als Ort gibt es die Kategorie „Biomes“ nicht mehr; ein Biom-Popup im Screenshot bleibt ausgegraut. Alte Biom-Punkte entfernt das Board beim Start (Sicherung `daten.vor-welt-import.json`).
+4. Nur der ganze Import lässt sich löschen; einzelne Chunks sind nicht bearbeitbar. Ein neuer Import ersetzt den alten (pro Welt genau einer).
+5. **Unerkundete Chunks bleiben leer.** Darstellung als Chunk-Raster (ein Biom je Chunk: das häufigste Oberflächenbiom der 256 Spalten, Nether und End auf Y 64).
+6. Der Seed aus `level.dat` muss zum Seed der Welt passen.
+7. Unbekannte Biom-IDs werden gespeichert, aber leer dargestellt und in der Prüfliste gemeldet. Kennt `biom-ids.js` sie später, erscheinen sie ohne neuen Import.
 
 ### Sammelobjekte ✅
 
@@ -147,18 +150,20 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 |---|---|
 | CSS oben | Basis 1:1 aus Modul A, danach ein eigener Block je Bereich: Karte, Sammelobjekte, Banner, Rüstung, Portal-Verwaltung |
 | HTML | Header, `main.module-stack` mit je einer `<section class="module" data-module="…">` pro Bereich, Sidebar, ein gemeinsames Sheet `#orteSheet`, Toast |
-| JS 0 · KONFIG | `CONFIG` (Weltgrenze, Biom-Radius, Zoom …) |
+| JS 0 · KONFIG | `CONFIG` (Weltgrenze, Kachelgröße, Biom-Höhe in Nether/End, Zoom …) |
 | JS 1 · THEMES | UI-Tokens der drei Dimensionen |
-| `regeln.js` (eigene Datei) | Dimensionen, Kategorien, Biome, `SAMMELOBJEKTE`, Banner-Farben/-Muster, `RUESTUNGS_TEILE`/`RUESTUNGEN`/`BESATZ_MATERIALIEN`, `instanzPruefen`, `bannerPruefen`, `ruestungPruefen`, `verbindungRegelPruefen` – lädt auch der Board-Server |
-| JS 2 · STAMMDATEN | Kartenfarben, Symbole, `STRUKTUREN` + `kennblockHtml`/`kennblockBild` (Kategorie → Kennblock), `BAUKASTEN`, `vorlageDatei`, `itemBild` |
+| `regeln.js` (eigene Datei) | Dimensionen, Kategorien, Biome, `SAMMELOBJEKTE`, Banner-Farben/-Muster, `RUESTUNGS_TEILE`/`RUESTUNGEN`/`BESATZ_MATERIALIEN`, `instanzPruefen`, `bannerPruefen`, `ruestungPruefen`, `verbindungRegelPruefen`, `biomImportPruefen`/`biomImportSauber` – lädt auch der Board-Server |
+| `biom-ids.js` (eigene Datei) | Biom je Bedrock-ID (`BIOM_IDS`), erzeugt aus minecraft-data |
+| JS 2 · STAMMDATEN | Kartenfarben, `BIOM_INFO` (Bedrock-ID → Name, Biom der Liste, Farbe), Symbole, `STRUKTUREN` + `kennblockHtml`/`kennblockBild` (Kategorie → Kennblock), `BAUKASTEN`, `vorlageDatei`, `itemBild` |
 | JS 3 · KOORDINATEN | `zahl`, `umrechnen`, `entfernung`, `tpBefehl`, `koordinatenErkennen` |
-| JS 4 · API + MOCK | API-Vertrag als Kommentar, `betriebErkennen` (live oder DEMO), `MOCK`, `mockApi`, `api()` |
-| JS 5–8 | State, Theme (`applyTheme`), Liste, Canvas-Karte |
+| JS 4 · API + MOCK | API-Vertrag als Kommentar, `betriebErkennen` (live oder DEMO), `MOCK` (mit `demoBiome()`), `mockApi`, `api()`, `kachelAusText`/`kachelZuText` |
+| JS 5–8 | State (`st`, Biome `bm` mit `biomeSetzen`, `biomAnStelle`, `kachelBild`), Theme (`applyTheme`), Liste, Canvas-Karte (Biom-Kacheln, Legende, Tippen → Biom) |
 | JS 9 · SHEETS | `sheetOeffnen(art, html, dim)`, `kopfHtml`, `koordFelder`/`koordLesen`, Karte-Sheets |
 | JS 9b · BEREICHE | `ICON`, `BEREICHE`, `modulWechseln`, `sidebarBauen` |
 | JS 9c–9e | Sammelobjekte, Banner, Portal-Verwaltung |
 | JS 9f · BOARD-VERBINDUNG | `bd`, `boardQrLesen`, `qrLeser`, `boardScanStarten`, `boardBeitreten`, `boardVerbinden`, `boardSheetRendern`; live: `anmeldungAbgelaufen`, `liveAktualisieren`, `boardEinstellungen…`; Aufs Board: `boardSenden`, `BOARD_KARTEN` (Anzeigeschemas `ortKarte`, `sammelKarte`, `sammelStandKarte`, `portalKarte`, `bannerKarte`, `ruestungKarte`), `boardZeigen`, `boardWegnehmen`, `boardZeigenKnopf` |
 | JS 9g · RÜSTUNG | `rs`, `teilIcon`/`teilIconDatei`, `besatzStand`, `ruestungLaden`, `renderRuestung`, `ruestungDetailOeffnen` (`rezeptHtml`, `bedarfHtml`, `verzauberungHtml`), Editor `ruestungEditorOeffnen`/`…Rendern`/`…Klick`, `ruestungSpeichern`; Figur `fig`, `figurModus` (3d/2d/icons), `buehneZeigen`, `glanzStarten`, `drehenEinrichten`; Board `ruestungFoto`, `ruestungKarte` |
+| JS 9h · WELT-IMPORT | `WELT_ANLEITUNGEN`, `wi` (Schritt, Datei, Worker, Ergebnis), `weltImportDatei`/`…Lesen`/`…Nachricht`, `wiAuswertung` (Vorschau, häufigste Biome), `weltImportRendern`, `weltImportUebernehmen`/`…Loeschen`, `biomeLaden`, `biomKnopfZeigen` |
 | JS 10 | Weltdaten laden, Events, `$sheet`-Klick-Switch (`data-aktion`), `datenStarten()`, `init()` |
 
 ### Checkliste: neuen Bereich einbauen
@@ -193,12 +198,14 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 | Rüstung | `{ id, name, teile:{ helmet…boots: { ruestung, muster, material, farbe, verzaubert } \| null }, von, am }` für alle Welten | `GET/POST /ruestung`, `PUT/DELETE /ruestung/:id` |
 | Portale | `{ id, name, oberwelt:{x,y,z}, nether:{x,y,z}, von, am }` je Welt | `GET/POST /portale/welten/:id`, `PUT/DELETE /portale/:id` |
 | Karte (Board) | Instanz zusätzlich `quelle`, `von`, `am`, `angeheftet` | `PUT /orte/instanzen/:id/angeheftet` |
+| Karte · Welt-Import | `WeltImport { id, weltId, dateiname, weltname, seed, spielversion, chunks, unbekannt, von, importiertAm }` + Kacheln `{ dim, kx, kz, daten }` je Welt | `GET/PUT/DELETE /welten/:id/biome` |
 | Anzeige (Board) | Einstellungen `{ titel, qrZeigen, aktiveWelt }` | `GET/PUT /board/einstellungen` |
 
 Die vollständigen Tabellen stehen in `README.md`.
 
 **Regel-Funktionen** stehen in `regeln.js`; der Board-Server lädt genau diese Datei (`koordinaten-board/server/src/regeln.js`):
 - `instanzPruefen()` für die Karte
+- `biomImportPruefen()` für den Welt-Import
 - `bannerPruefen()` für Banner
 - `ruestungPruefen()` für Rüstungs-Sets
 - `verbindungRegelPruefen()` für Portale
@@ -237,7 +244,7 @@ Der Bereich Rüstung liegt auf `bereich/ruestung` (zweigt von `bereich/banner-sc
 cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist (three.js für die 3D-Tests kommt mit npm install)
-npm test                          # banner (23) + portale (29) + sammelobjekte (64) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (52) = 332 Prüfungen
+npm test                          # biom-dekoder (18, node --test) + banner (23) + portale (29) + sammelobjekte (64) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (52) + karte-mcworld (52) = 384 Prüfungen + 18 Tests
 ```
 
 - `board.test.mjs`, `live.test.mjs` und `anzeigeschema.test.mjs` starten je ein **echtes Koordinaten-Board** (Ports 3198, 3195, 3194, eigener Datenordner); Anzeigeschema und Rüstung liefern die Companion zusätzlich selbst über http aus (3193, 3192). Board-Test: Companion über einen eigenen `http://localhost`-Server (DEMO) mit Kamera, Foto, Hand-Eingabe und „Aufs Board“. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).
@@ -252,6 +259,8 @@ npm test                          # banner (23) + portale (29) + sammelobjekte (
 - **3D im Test**: `hilfen.mjs` liefert den Ordner über http aus, beantwortet die CDN-Adresse von three.js mit `node_modules/three` (das CDN ist im Claude-Container gesperrt) und startet Chromium mit Software-WebGL (`--use-angle=swiftshader --enable-unsafe-swiftshader`).
 - `kennbloecke.test.mjs` prüft die Kennblöcke der Karte: Canvas-Marker je Dimension (zählt `drawImage`), Listen-Köpfe, Detail-Kopf, Screenshot-Prüfliste (DEMO-Texterkennung) und dass Kategorien ohne Bild ihr Symbol behalten.
 - `sammelobjekte.test.mjs` prüft `STRUKTUREN` und `SAMMELOBJEKTE` gegen `icons/manifest.json` (Namen, Besätze, vorhandene Bilder), die Kennblöcke in Liste und Detail, Abhaken, den Sprung zur Karte und den Ersatz durch Symbole, wenn `icons/` fehlt.
+- `biom-dekoder.test.mjs` (`node --test`): Dekoder mit handgebauten Bytes, ganze synthetische Welten aus `welt-bauen.mjs` (Level, gelöschte Datei, Log mit Löschmarke, iOS-Ordner), Weltname aus `levelname.txt`, schnelle Prüfung, Aufbaufehler (keine ZIP, kein Weltordner, Java, kaputte `level.dat`).
+- `karte-mcworld.test.mjs`: Welt-Import mit je einer Test-ZIP pro Fall (korrekt, mit Unterordner, ohne `db/`, keine ZIP, `.mcworld`, anderer Seed, leere Welt). DEMO über http (Port 3191): Demo-Biome, Tippen, Ein-/Ausblenden, Nether, Anleitung, Fehler, Bestätigung, Prüfliste, Übernehmen, Seed passt nicht (Welt wechseln, neue Welt anlegen), Verwerfen, Löschen, Biom-Screenshot ausgegraut. Als Datei: Hinweis auf http. Live gegen ein echtes Board (Port 3190): Worker vom Board, Import kommt bei Lena an, Löschen bei Max.
 
 - Mit `CHROMIUM=/pfad/zu/chromium` lässt sich ein vorhandenes Chromium nutzen. Im Claude-Container ist das `/opt/pw-browsers/chromium`.
 - Screenshots landen in `tests/bilder/`. **Immer ansehen**, nicht nur auf Grün verlassen.

@@ -14,8 +14,9 @@ Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-
 
 - **Dimensions-Reiter** Oberwelt / Nether / End – färben die ganze Oberfläche (THEMES aus Modul A)
 - **Liste** als Akkordion: Kategorie → Variante (FeatureType) → Instanzen, mit Suche und Kategorie-Filter
-- **Karte**: Features und eigene Orte als Marker; Biome als Fläche **nur um bekannte Punkte** (`CONFIG.biomRadius`), unbekannte Fläche bleibt leer
-- **Screenshot** (Bottom-Bar): mehrere Seed-Map-Screenshots → Prüfliste → speichern; Duplikat-Hinweis, Biom-/Dimensionsprüfung
+- **Karte**: Features und eigene Orte als Marker; **Biome aus dem Welt-Import** als Fläche (ein Wert je Chunk), unerkundete Fläche bleibt leer. Antippen zeigt „X · Z · Biom“, ein Knopf blendet die Biome aus
+- **Screenshot** (Bottom-Bar): mehrere Seed-Map-Screenshots → Prüfliste → speichern; Duplikat-Hinweis, Dimensionsprüfung. Ein Biom-Popup bleibt ausgegraut stehen („Biome kommen aus dem Welt-Import“)
+- **Welt-Import** (Bottom-Bar): Weltordner als `.zip` aus der Dateien-App (oder `.mcworld`) hochladen → Biome der Welt, siehe unten
 - **Eintragen** von Hand: alle Kategorien außer Biome; neue Typen nur bei „Eigene Orte“
 - **Welt**: Welten per Seed anlegen und wechseln
 - **Standort** (nur lokal): Entfernung + Himmelsrichtung, Nether/Oberwelt umgerechnet
@@ -52,21 +53,39 @@ Jeder Bereich bekommt eigene Ansichten fürs Dashboard. Vorbild ist das iOS-Kont
 
 Im Code vorbereitet: `ansichten` im Modul-Vertrag der Registry `BEREICHE`. Welche Ansichten ein Bereich bekommt, klären wir, wenn wir den Bereich durchgehen.
 
-## Welt-Import: Biome aus `.mcworld` (in Arbeit, Branch `bereich/karte-mcworld`)
+## Welt-Import: Biome aus dem Weltordner (`.zip` oder `.mcworld`)
 
-Bauplan: `PLAN-welt-import-biome.md` (von Max). Biome kommen künftig nur noch aus einer hochgeladenen Bedrock-Welt; die App liest sie im Browser (Web Worker) und zeigt sie flächig auf der Karte. Stand: **Phase 1 (Dekoder in Node)** – die Oberfläche ist noch unverändert.
+Bauplan: `PLAN-welt-import-biome.md` (von Max) und Strang C in `../planung/PLAN.md`. Biome kommen nur noch aus einer hochgeladenen Bedrock-Welt; die Companion liest sie im Browser (Web Worker) und zeigt sie flächig auf der Karte.
+
+**Anleitung für Max (iPhone):** In der Karte unten **Welt-Import** → die drei Schritte stehen direkt über dem Knopf:
+1. Dateien-App: Auf meinem iPhone › Minecraft › games › com.mojang › minecraftWorlds
+2. Den richtigen Weltordner finden (Name in `levelname.txt`), den Ordner **öffnen**, alles darin auswählen, „Komprimieren“
+3. Die entstandene `Archiv.zip` in der Companion auswählen
+
+Danach: Weltname und Seed bestätigen → **Biome lesen** (Fortschritt, Abbrechen) → Prüfliste → **Übernehmen**. Umbenennen in `.mcworld` ist nicht nötig; eine echte `.mcworld` geht genauso. Für eine Realm-Welt: Realm herunterladen, dann wie oben.
+
+**Ablauf** (Abschnitt 9h, Sheet `weltimport`):
+- **Aufbauprüfung** (`biom-welt.js`, schnell, ohne die Weltdaten): Dateien werden per Basisname gesucht – eine ZIP mit zusätzlichem Ordner (Weltordner selbst komprimiert) geht **ohne Hinweis** durch. Meldungen gibt es nur für „Bitte die erzeugte Archiv.zip auswählen.“ (keine ZIP) und „Das sieht nicht nach einem Minecraft-Weltordner aus.“ (`level.dat` oder `db/` fehlt), dazu Java-Welten und kaputte Weltdaten.
+- **Bestätigung**: Weltname aus `levelname.txt` (sonst `LevelName`), Seed ✔/✘ gegen die gewählte Welt, Spielversion. Passt der Seed nicht, ist „Biome lesen“ gesperrt; angeboten wird „Zur Welt mit diesem Seed wechseln“ bzw. „Neue Welt mit diesem Seed anlegen“.
+- **Prüfliste**: Chunks je Dimension, Vorschau (1 Pixel = 1 erkundeter Chunk, unbekannte IDs rot), häufigste Biome mit Anteil, unbekannte Biom-IDs mit Beispielkoordinate, „Ersetzt den Import vom …“. Übernehmen schickt alles in einem `PUT` ans Board; die anderen Handys bekommen es live (`geaendert` „biome“).
+- **Import löschen** im selben Sheet, mit zweitem Tippen.
+- **Karte**: je Kachel (32 × 32 Chunks) ein Bild, unscharf vergrößert wird nichts (`imageSmoothingEnabled = false`). Farben: `BIOM_FARBE` (Nether, End), sonst die von minecraft-data wie auf der Seed Map. Legende = die vier häufigsten Biome im Ausschnitt. Ohne Orte passt „Alles zeigen“ auf die Biome. Ein-/Ausblenden merkt sich das Gerät (`orte.biome`).
+- **Datei geöffnet** (`file://`): Die Demo-Biome erscheinen, der Import selbst braucht http (Module-Worker) und sagt das.
 
 | Datei | Inhalt |
 |---|---|
+| `biom-import.worker.js` | Web Worker (`type: "module"`): `pruefen` → Name, Seed, Version; `start` → Fortschritt, dann `{ meta, kacheln }` mit Base64-Kacheln |
 | `biom-dekoder.js` | reine Funktionen: Chunk-Schlüssel, Data3D (Höhenkarte + Biom-Sektionen), Oberflächenbiom, `level.dat` (NBT), Kacheln 32 × 32 Chunks, Base64 |
-| `biom-welt.js` | `weltLesen(datei)`: ZIP → `level.dat` → LevelDB-Dateien **einzeln** entpacken und mit Besucher parsen (Streaming) oder `readMcworld()` (Vergleich); gemeinsam für Worker und Node |
-| `biom-ids.js` | erzeugte ID-Tabelle (minecraft-data `bedrock/1.20.0`, IDs 0–191), setzt `globalThis.BIOM_IDS` |
+| `biom-welt.js` | `weltPruefen(datei)` (Aufbau, Name, Seed) und `weltLesen(datei)`: ZIP → `level.dat` → LevelDB-Dateien **einzeln** entpacken und mit Besucher parsen (Streaming) oder `readMcworld()` (Vergleich); gemeinsam für Worker und Node |
+| `biom-ids.js` | erzeugte ID-Tabelle (minecraft-data `bedrock/1.20.0`, IDs 0–191), setzt `globalThis.BIOM_IDS`; die Seite bindet sie per `<script>` ein (`BIOM_INFO`) |
 | `vendor/mcbe-leveldb.js` | Bundle aus `mcbe-leveldb-reader` 5.0.1 + zip.js (211 KB, gzip 86 KB), Lizenzen in `vendor/LIZENZEN.txt` |
 | `tools/` | `npm ci`, dann `npm run vendor` / `npm run biom-ids` (neu erzeugen), `npm test` (Gegenprobe mit prismarine-chunk), `node welt-pruefen.mjs <welt.mcworld> [--weg beide] [--massstab 4] [--punkt x,z]` |
 
+- **Daten**: pro Welt genau ein Import (`WeltImport` + Kacheln, siehe API). Kachel = 32 × 32 Chunks, Wert = Bedrock-ID + 1, 0 = unerkundet, Uint16 → 2048 Byte, im Transport Base64. Regel `biomImportPruefen()` in `regeln.js`: Seed = Seed der Welt, Dimension, genau 2048 Byte, Kachel innerhalb der Weltgrenze, keine doppelte Kachel, höchstens 20 000 Kacheln.
+- **Mock**: Die Demo-Welt `w_1` bekommt erzeugte Biome (`demoBiome()`: Rauschen, ein Fluss, erkundet rund um Spawn und Orte) – eine echte Fixture-Welt fehlt noch.
 - **Prüfskript** `tools/welt-pruefen.mjs`: Weltname, Seed, Version, Chunks je Dimension, Ausdehnung, häufigste Biome, unbekannte IDs mit Beispielkoordinate, Laufzeit und Spitzenspeicher je Weg, PNG je Dimension nach `tests/bilder/` (1 Pixel = 1 Chunk, unbekannt rot). `--punkt x,z` zeigt die Höhenkarte in beiden Lesarten – zum Abgleich mit der Y-Anzeige im Spiel.
-- **Tests**: `cd tests && node --test biom-dekoder.test.mjs` – handgebaute Bytes und ganze **synthetische Welten** aus `tests/welt-bauen.mjs` (echte LevelDB-Dateien mit Leveln, gelöschter Datei, Log mit Löschmarke, iOS-Ordner, Java-Welt …).
-- **Welten von Max**: `tests/daten/fixture-seed.mcworld` (darf ins Repo), die Realm-Welt nur nach `tests/daten/privat/` (steht in `.gitignore`).
+- **Tests**: `node --test biom-dekoder.test.mjs` (Dekoder, Aufbauprüfung, synthetische Welten aus `tests/welt-bauen.mjs`) und `node karte-mcworld.test.mjs` (Playwright: DEMO über http, als Datei, live am echten Board).
+- **Noch offen** (Haltepunkt Phase 1 des Bauplans): die Prüfungen an echten Welten von Max – Höhenkarte an einer bekannten Stelle, Stichproben gegen Chunkbase, neuere Biom-IDs (Cherry Grove, Pale Garden …), Laufzeit und Speicher am iPhone. Dafür `tests/daten/fixture-seed.mcworld` (darf ins Repo) und die Realm-Welt nur nach `tests/daten/privat/` (steht in `.gitignore`).
 
 ## Sammelobjekte
 
@@ -181,8 +200,8 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 
 1. „Eigene Orte“ ist eine zusätzliche Kategorie; dort legt man Typen (Ortsnamen) selbst an.
 2. In allen anderen Kategorien entstehen neue Typen nur aus Screenshots (Variante aus dem Popup, z. B. Stronghold → „Stairway“).
-3. Biome nur per Screenshot. Das Biom ist der Typ, es muss in der Biom-Liste stehen, die Dimension ergibt sich aus der Liste.
-4. Biom-Instanzen sind fest (nur löschen, nicht bearbeiten).
+3. Biome kommen nur aus dem Welt-Import (`biomImportPruefen()`): Der Seed der hochgeladenen Welt muss zum Seed der gewählten Welt passen; pro Welt genau ein Import, ein neuer ersetzt den alten. Als Ort lehnt `instanzPruefen()` die Kategorie „Biomes“ ab.
+4. Unerkundete Chunks bleiben leer. Unbekannte Biom-IDs werden gespeichert, aber leer gezeigt und in der Prüfliste gemeldet; kennt `biom-ids.js` sie später, erscheinen sie ohne neuen Import.
 5. Portal-Verbindungen (`verbindungRegelPruefen()`): Name 1–60 Zeichen, X/Z ganze Zahlen innerhalb der Welt (Nether: Weltgrenze ÷ 8), Y leer oder Oberwelt −64…320 / Nether 0…256.
 6. Banner (`bannerPruefen()`): Name 1–60 Zeichen, Grundfarbe und Farben aus den 16 Farbstoffen, Muster aus der Musterliste, höchstens 6 Ebenen.
 7. Rüstungs-Sets (`ruestungPruefen()`): Name 1–60 Zeichen, mindestens ein Teil. Die Rüstung muss es als dieses Teil geben (Schildkröte nur als Helm). Ein Besatz ist einer der 18 Rüstungsbesätze und braucht ein Material. Farbe nur bei Leder, aus den 16 Farbstoffen. `ruestungSauber()` lässt Material ohne Besatz und Farbe bei anderer Rüstung weg.
@@ -195,10 +214,13 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | POST | `/orte/welten` | `{ seed }` | `{ welt }` – legt 3 Dimensionen an |
 | GET | `/orte/welten/:id` | – | `{ welt, dimensionen, typen, instanzen }` |
 | POST | `/orte/instanzen` | `{ dimensionId, kategorie, variante, x, y, z, quelle }` | `{ instanz, typ }` – Typ wird gefunden oder angelegt |
-| PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` – 403 bei Biomen |
-| PUT | `/orte/instanzen/:id/angeheftet` | `{ angeheftet }` | `{ instanz }` – groß auf der Anzeige, 403 bei Biomen |
+| PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` |
+| PUT | `/orte/instanzen/:id/angeheftet` | `{ angeheftet }` | `{ instanz }` – groß auf der Anzeige |
 | DELETE | `/orte/instanzen/:id` | – | `{ ok:true }` |
 | POST | `/orte/auslesen` | multipart `datei` | `{ erkannt:{ titel, kategorie, variante, dimension, x, y, z } \| null, banner:{ basis, ebenen, unklar } \| null }` – erst Seed-Map-Popup, sonst Banner-Anleitung |
+| GET | `/welten/:id/biome` | – | `{ import:WeltImport \| null, kacheln:[{ dim, kx, kz, daten }] }` |
+| PUT | `/welten/:id/biome` | `{ import:{ dateiname, weltname, seed, spielversion, chunks, unbekannt }, kacheln }` | `{ import }` – ersetzt Import und alle Kacheln; `id`, `weltId`, `von`, `importiertAm` setzt der Server |
+| DELETE | `/welten/:id/biome` | – | `{ ok:true }` |
 | GET | `/sammelobjekte/welten/:id` | – | `{ status:{ [objektId]:{ von, am } } }` |
 | PUT | `/sammelobjekte/welten/:id/:objektId` | `{ gefunden }` | `{ status }` |
 | GET | `/portale/welten/:id` | – | `{ verbindungen:[verbindung] }` |
@@ -224,14 +246,17 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 
 `typ = { id, kategorie, variante|null }` · `instanz = { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, von, am }` · `quelle = "screenshot" | "manuell"`
 
-Live gelten alle Pfade mit Präfix `/api` und Bearer-Token. Die Texterkennung (`/orte/auslesen`) läuft im Board (`../koordinaten-board/server/src/erkennung.js`, `fuerCompanion()`); Biome ordnet sie über die Biom-Liste zu, an einem echten Biom-Popup ist das noch nicht geprüft.
+`WeltImport = { id, weltId, dateiname, weltname, seed, spielversion, chunks:{ overworld, nether, end }, unbekannt:[{ bedrockId, chunks, beispiel:{ dim, x, z } }], von, importiertAm }` · Kachel `daten` = Base64 von 1024 × Uint16 LE (Bedrock-ID + 1, 0 = unerkundet)
+
+Live gelten alle Pfade mit Präfix `/api` und Bearer-Token. Die Texterkennung (`/orte/auslesen`) läuft im Board (`../koordinaten-board/server/src/erkennung.js`, `fuerCompanion()`); ein Biom-Popup erkennt sie weiter als Biom – die Companion zeigt es dann ausgegraut, weil Biome nur aus dem Welt-Import kommen.
 
 ## Einbau ins Modul Karte (modul-a-live-karte.html)
 
 - CSS-Abschnitt „KARTE · KOORDINATEN-SAMMLUNG“ übernehmen (Basis ist identisch)
 - Die Liste wird ein zweiter Bereich neben dem Karten-Canvas (Umschalter Karte | Liste)
-- Marker und Biom-Flächen werden in den bestehenden Renderer der Live-Karte gezeichnet,
-  statt im eigenen Canvas – Spieler-Positionen und Sammlung auf einer Karte
+- Marker und Biom-Kacheln werden in den bestehenden Renderer der Live-Karte gezeichnet,
+  statt im eigenen Canvas – Spieler-Positionen und Sammlung auf einer Karte. Biome: je sichtbarer Kachel `kachelBild(k)` (32 × 32-Canvas) mit `imageSmoothingEnabled = false` unter Raster und Markern
+- **Welt-Import**: `biom-ids.js` vor dem Haupt-Script einbinden; `biom-import.worker.js`, `biom-welt.js`, `biom-dekoder.js` und `vendor/` neben die Hauptdatei legen (der Worker lädt sie als ES-Module, nur über http). Der Service Worker der PWA muss sie im Precache haben. Abschnitt 9h und `<input id="weltDatei">` übernehmen, auf dem Board liefern sie die Routen in `server.js` aus
 - JS-Abschnitte 2–9 übernehmen; `api()`, `esc()`, `THEMES` gibt es dort schon
 - Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung)
 - `regeln.js` neben die Hauptdatei legen und vor dem Haupt-Script einbinden (`<script src="regeln.js">`); das Board liefert dann statt der Prototyp-Datei die Hauptdatei aus (`COMPANION_DATEI`)
@@ -241,7 +266,7 @@ Live gelten alle Pfade mit Präfix `/api` und Bearer-Token. Die Texterkennung (`
 
 ## Tests
 
-`tests/` enthält Playwright-Tests für Banner, Portal-Verwaltung, Sammelobjekte, Kennblöcke in der Karte, Board-Verbindung, den Live-Betrieb am echten Board, die Anzeigeschemas und die Rüstung (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`. Rüstung, Anzeigeschema und Live laufen über http (`hilfen.mjs`: kleiner Server für den Ordner, three.js aus `node_modules` statt vom CDN, Chromium mit Software-WebGL).
+`tests/` enthält Node-Tests für den Biom-Dekoder und Playwright-Tests für Banner, Portal-Verwaltung, Sammelobjekte, Kennblöcke in der Karte, Board-Verbindung, den Live-Betrieb am echten Board, die Anzeigeschemas, die Rüstung und den Welt-Import (`cd tests && npm install && npm test`, Details in `UEBERGABE.md`). Screenshots landen in `tests/bilder/`. Rüstung, Anzeigeschema, Welt-Import und Live laufen über http (`hilfen.mjs`: kleiner Server für den Ordner, three.js aus `node_modules` statt vom CDN, Chromium mit Software-WebGL).
 
 ## Referenz
 
@@ -250,7 +275,7 @@ Was auch das Koordinaten-Board betrifft, liegt in `../referenz/`: Datenmodell, S
 
 ## Offen
 
-- Beispiel-Screenshot vom Biom-Popup, um die Erkennung darauf abzustimmen
+- Welt-Import an echten Welten von Max prüfen (siehe Welt-Import → Noch offen)
 - Aus der früheren Board-Steuerung noch nicht übernommen: Notiz, Kartenausschnitt als Bild, Export als JSON
 - Dashboard-Ansichten pro Bereich (siehe oben): Seiten pro Bereich? Wo bearbeitet man – Handy oder Anzeige?
 - Inhalte der geplanten Bereiche (werden einzeln durchgegangen)
