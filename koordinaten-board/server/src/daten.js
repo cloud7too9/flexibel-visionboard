@@ -6,6 +6,7 @@
 // Der Welt-Import (Biome) liegt je Welt in biome/<weltId>.json: Die Kacheln sind groß und sollen
 // nicht bei jeder kleinen Änderung mit daten.json neu geschrieben werden.
 import { readFile, writeFile, rename, mkdir, rm } from 'node:fs/promises';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import path from 'node:path';
 import { regeln } from './regeln.js';
 
@@ -30,10 +31,18 @@ const leer = () => ({
   banner: [],        // { id, name, basis, ebenen, von, am }
   ruestung: [],      // { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster, material, farbe, verzaubert }|null }, von, am }
   portale: [],       // { id, weltId, name, oberwelt, nether, von, am }
+  anzeigen: [],      // { id, name, schluessel, am } – Geräte, die als Anzeige laufen dürfen (Anzeige-Link)
   einstellungen: { ...STANDARD_EINSTELLUNGEN },
 });
+/** Zufälliger Anzeige-Schlüssel für den Link (URL-tauglich) */
+const neuerSchluessel = () => randomBytes(18).toString('base64url');
 
 const tag = () => new Date().toISOString().slice(0, 10);
+function anzeigeName(body) {
+  const name = String(body?.name ?? '').trim().slice(0, 40);
+  if (!name) fehler(400, 'Bitte einen Namen für die Anzeige eingeben');
+  return name;
+}
 const kopie = (x) => structuredClone(x);
 const dimensionenVon = (welt) => DIM_ORDER.map((type) => ({ id: `d_${welt.id}_${type}`, worldId: welt.id, type }));
 const ganz = (v) => Number.isInteger(v) && Math.abs(v) <= WELTGRENZE;
@@ -57,9 +66,10 @@ export class Daten {
       this.inhalt = { ...leer(), ...roh, einstellungen: { ...STANDARD_EINSTELLUNGEN, ...roh.einstellungen } };
     } catch (f) {
       if (f.code !== 'ENOENT') console.warn('daten.json unlesbar, starte leer:', f.message);
-      return;
+      text = null;
     }
-    await this.biomPunkteEntfernen(text);
+    if (text) await this.biomPunkteEntfernen(text);
+    this.anzeigenSicherstellen();
   }
 
   /** Biome kommen nur noch aus dem Welt-Import (regeln.js): alte Biom-Punkte aus Screenshots
@@ -362,6 +372,53 @@ export class Daten {
     const s = this.ruestungSet(id);
     this.inhalt.ruestung.splice(this.inhalt.ruestung.indexOf(s), 1);
     this.speichernVerzoegert();
+  }
+
+  // ---------- Anzeigen: Geräte mit Anzeige-Link ----------
+
+  /** Beim ersten Start gibt es eine Anzeige „Board“ (läuft meist auf dem Server selbst, localhost) */
+  anzeigenSicherstellen() {
+    if (this.inhalt.anzeigen.length) return;
+    this.inhalt.anzeigen.push({ id: this.neueId('a'), name: 'Board', schluessel: neuerSchluessel(), am: new Date().toISOString() });
+    this.speichernVerzoegert();
+  }
+
+  anzeigenListe() {
+    return kopie(this.inhalt.anzeigen);
+  }
+
+  anzeige(id) {
+    return this.inhalt.anzeigen.find((a) => a.id === id) ?? fehler(404, 'Anzeige nicht gefunden');
+  }
+
+  anzeigeAnlegen(body) {
+    const a = { id: this.neueId('a'), name: anzeigeName(body), schluessel: neuerSchluessel(), am: new Date().toISOString() };
+    this.inhalt.anzeigen.push(a);
+    this.speichernVerzoegert();
+    return kopie(a);
+  }
+
+  anzeigeUmbenennen(id, body) {
+    const a = this.anzeige(id);
+    a.name = anzeigeName(body);
+    this.speichernVerzoegert();
+    return kopie(a);
+  }
+
+  /** Neuer Schlüssel – alte Links gelten danach nicht mehr */
+  anzeigeSchluesselNeu(id) {
+    const a = this.anzeige(id);
+    a.schluessel = neuerSchluessel();
+    this.speichernVerzoegert();
+    return kopie(a);
+  }
+
+  /** Anzeige zu id + Schlüssel aus dem Link, sonst null (Vergleich in konstanter Zeit) */
+  anzeigeMitSchluessel(id, schluessel) {
+    const a = this.inhalt.anzeigen.find((x) => x.id === id);
+    if (!a || typeof schluessel !== 'string') return null;
+    const soll = Buffer.from(a.schluessel), ist = Buffer.from(schluessel);
+    return soll.length === ist.length && timingSafeEqual(soll, ist) ? kopie(a) : null;
   }
 
   // ---------- Einstellungen der Anzeige ----------

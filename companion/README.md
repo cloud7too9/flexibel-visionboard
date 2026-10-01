@@ -194,6 +194,8 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 // bild: PNG, JPEG oder WebP als Data-URL, höchstens 200 KB, kein SVG; pixelig = Pixelkunst scharf vergrößern
 ```
 
+**Anzeigen** (Board-Sheet, live): Jede Anzeige des Boards hat einen Anzeige-Link mit eigenem Schlüssel, damit ein anderes Gerät im WLAN (TV-Browser, Tablet) Anzeige sein darf. Je Anzeige: Link kopieren, QR-Code (SVG vom Board), Umbenennen, Neuer Schlüssel (zweimal tippen, alte Links gehen danach nicht mehr). Darunter „Neue Anzeige“. Live über `geaendert` „anzeigen“.
+
 **https ↔ http:** Im Live-Betrieb stellt sich die Frage nicht mehr: Companion und Board kommen vom selben Server (http im Heimnetz), das Handy braucht keine Kamera in der Seite. Sie gilt nur noch, wenn die Companion woanders über **https** läuft (z. B. später Hetzner) und sich mit dem Board im Heimnetz verbinden soll. Browser blockieren Anfragen von einer https-Seite an eine http-Adresse (Mixed Content), Safari auf dem iPhone ausnahmslos. Die Kamera wiederum gibt es nur in einem sicheren Kontext (https oder localhost). Heute funktioniert die Verbindung deshalb, wenn die Companion über http oder als Datei geöffnet wird; die Kamera dann nur am Rechner, am Handy bleiben Foto und Eingabe von Hand. Die Companion meldet den Fall ausdrücklich („Der Browser blockiert die Verbindung …“).
 
 ## Regeln (`regeln.js` – Handy und Board-Server prüfen mit derselben Datei)

@@ -3,7 +3,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -117,6 +117,53 @@ test('Welt-Import: Worker, Dekoder und Bibliothek werden als JavaScript ausgelie
     assert.equal(res.status, 200, pfad);
     assert.ok(res.headers.get('content-type').startsWith('application/javascript'), `${pfad}: ${res.headers.get('content-type')}`);
   }
+});
+
+// „Von außen“: über eine Netzwerkadresse dieses Rechners statt localhost – dann gilt die Anfrage nicht als lokal
+const AUSSEN = Object.values(networkInterfaces()).flat().find((n) => n && n.family === 'IPv4' && !n.internal)?.address;
+
+test('Anzeige-Link: von außen nur mit gültigem Schlüssel, neuer Schlüssel macht den alten ungültig', { skip: !AUSSEN && 'keine Netzwerkadresse' }, async () => {
+  const max = await beitreten('Max');
+  let r = await anfrage('GET', '/api/anzeigen', max);
+  assert.equal(r.daten.anzeigen.length, 1, 'beim ersten Start gibt es die Anzeige „Board“');
+  const board = r.daten.anzeigen[0];
+  assert.equal(board.name, 'Board');
+  assert.equal('schluessel' in board, false, 'Schlüssel nur im Link');
+  const link = new URL(board.link);
+  assert.equal(link.pathname, '/anzeige');
+  const aussen = (pfad, query = '') => fetch(`http://${AUSSEN}:${PORT}${pfad}${query}`);
+
+  // localhost darf immer, von außen nur mit Link
+  assert.equal((await fetch(`${BASIS}/api/anzeige`)).status, 200);
+  assert.equal((await aussen('/api/anzeige')).status, 403);
+  const mitLink = await aussen('/api/anzeige', link.search);
+  assert.equal(mitLink.status, 200);
+  assert.deepEqual((await mitLink.json()).anzeige, { id: board.id, name: 'Board' });
+  assert.equal((await aussen('/api/anzeige', `?anzeige=${board.id}&schluessel=falsch`)).status, 403);
+
+  // WebSocket der Anzeige mit Link: offen, nach „Neuer Schlüssel“ getrennt
+  const ws = new WebSocket(`ws://${AUSSEN}:${PORT}/ws${link.search}&rolle=anzeige`);
+  const zu = new Promise((ok) => { ws.onclose = (e) => ok(e.code); });
+  await new Promise((ok, nein) => { ws.onopen = ok; ws.onerror = nein; });
+  const ohne = new WebSocket(`ws://${AUSSEN}:${PORT}/ws?rolle=anzeige`);
+  assert.equal(await new Promise((ok) => { ohne.onclose = (e) => ok(e.code); }), 4003);
+
+  r = await anfrage('POST', `/api/anzeigen/${board.id}/schluessel`, max);
+  assert.notEqual(r.daten.anzeige.link, board.link);
+  assert.equal(await zu, 4003, 'verbundene Anzeige mit altem Schlüssel wird getrennt');
+  assert.equal((await aussen('/api/anzeige', link.search)).status, 403, 'alter Schlüssel → 403');
+  assert.equal((await aussen('/api/anzeige', new URL(r.daten.anzeige.link).search)).status, 200, 'neuer Schlüssel → erlaubt');
+
+  // Anlegen, umbenennen, QR-Code
+  r = await anfrage('POST', '/api/anzeigen', max, { name: ' Tablet ' });
+  assert.deepEqual([r.status, r.daten.anzeige.name], [201, 'Tablet']);
+  const tablet = r.daten.anzeige;
+  assert.equal((await anfrage('POST', '/api/anzeigen', max, { name: ' ' })).status, 400);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${tablet.id}`, max, { name: 'Wohnzimmer-TV' })).daten.anzeige.name, 'Wohnzimmer-TV');
+  assert.equal((await anfrage('PUT', '/api/anzeigen/a_99', max, { name: 'x' })).status, 404);
+  assert.match((await anfrage('GET', `/api/anzeigen/${tablet.id}/qr`, max)).daten.svg, /^<svg[\s\S]*<\/svg>\s*$/);
+  assert.equal((await aussen('/api/anzeige', new URL(tablet.link).search)).status, 200);
+  assert.equal((await anfrage('GET', '/api/anzeigen')).status, 401, 'Anzeigen verwalten nur beigetretene Handys');
 });
 
 test('Rüstungs-Baukasten wird ausgeliefert (Texturen, Module, Manifest)', async () => {

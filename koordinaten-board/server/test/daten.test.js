@@ -125,7 +125,33 @@ test('Speichern und Laden', async () => {
   await neu.laden();
   assert.equal(neu.inhalt.welten[0].seed, '42');
   assert.equal(neu.einstellungenLesen().titel, 'Server-Welt');
-  assert.equal(neu.neueId('x'), 'x_2');   // Zähler läuft weiter
+  assert.equal(neu.anzeigenListe()[0].id, 'a_2');   // „Board“ beim ersten Laden
+  assert.equal(neu.neueId('x'), 'x_3');   // Zähler läuft weiter
+  rmSync(o, { recursive: true, force: true });
+});
+
+test('Anzeigen: „Board“ beim ersten Start, Schlüssel prüfen und neu erzeugen', async () => {
+  const o = ordner();
+  const d = new Daten(o);
+  await d.laden();
+  const [board] = d.anzeigenListe();
+  assert.equal(board.name, 'Board');
+  assert.match(board.schluessel, /^[\w-]{24}$/);
+  assert.equal(d.anzeigeMitSchluessel(board.id, board.schluessel)?.id, board.id);
+  assert.equal(d.anzeigeMitSchluessel(board.id, 'falsch'), null);
+  assert.equal(d.anzeigeMitSchluessel('a_99', board.schluessel), null);
+  assert.equal(d.anzeigeMitSchluessel(board.id, undefined), null);
+  const neu = d.anzeigeSchluesselNeu(board.id);
+  assert.equal(d.anzeigeMitSchluessel(board.id, board.schluessel), null, 'alter Schlüssel gilt nicht mehr');
+  assert.equal(d.anzeigeMitSchluessel(board.id, neu.schluessel)?.id, board.id);
+  const tablet = d.anzeigeAnlegen({ name: 'Tablet' });
+  assert.notEqual(tablet.schluessel, neu.schluessel);
+  assert.equal(d.anzeigeUmbenennen(tablet.id, { name: '  TV ' }).name, 'TV');
+  wirft(() => d.anzeigeAnlegen({ name: '' }), 400);
+  await d.speichern();
+  const nachNeustart = new Daten(o);
+  await nachNeustart.laden();
+  assert.deepEqual(nachNeustart.anzeigenListe().map((a) => a.name), ['Board', 'TV'], 'kein zweites „Board“ nach dem Neustart');
   rmSync(o, { recursive: true, force: true });
 });
 

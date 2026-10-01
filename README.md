@@ -25,6 +25,7 @@ Zwei Projekte für eine gemeinsame Minecraft-Welt im Raum – seit dem 29.09.202
 # Alles zusammen: Board starten, dann am Handy den QR-Code der Anzeige scannen
 cd koordinaten-board && npm run installieren && npm run build && npm start   # Windows: start.bat, Linux: ./start.sh
 #   Companion: http://<ip>:3000/?pin=<PIN>   Anzeige: http://localhost:3000/anzeige
+#   Anzeige auf einem anderen Gerät (TV, Tablet): Anzeige-Link aus der Konsole oder Companion → Board → Anzeigen
 
 # Companion ohne Board (DEMO-Mock mit Beispielwelt)
 open companion/companion-prototyp.html
