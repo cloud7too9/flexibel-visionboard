@@ -12,17 +12,33 @@ export function WorkspaceHeader() {
   const activeLayerName = useWorkspaceStore((s) => selectActiveLayer(s).name);
   const reihen = useWorkspaceStore((s) => s.reihen);
   const modus = useBoardStore((s) => s.modus);
+  const anzeige = useBoardStore((s) => s.anzeige);
+  const nurAnzeige = useWorkspaceStore((s) => s.nurAnzeige);
 
   // Jede Bildschirmgröße zeigt dasselbe Raster mit 32 Spalten – Bearbeiten
-  // geht überall, per Knopf oder langem Drücken auf die Kopfzeile.
-  const showEditButton = !editMode;
+  // geht überall, per Knopf oder langem Drücken auf die Kopfzeile. Am Board
+  // (nurAnzeige) nicht: Dort wird am Handy angeordnet.
+  const showEditButton = !editMode && !nurAnzeige;
 
   return (
     <header className="border-b border-border bg-surface-muted">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <h1 className="text-base font-semibold sm:text-lg">Dashboard</h1>
-          <LayerSwitcher />
+          {nurAnzeige ? (
+            <span className="truncate text-sm text-text-muted" data-testid="layer-name">{activeLayerName}</span>
+          ) : (
+            <LayerSwitcher />
+          )}
+          {nurAnzeige && anzeige && (
+            <span
+              className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-text-muted"
+              title="Diese Anzeige – ihr Layout ordnet man am Handy an"
+              data-testid="anzeige-name"
+            >
+              Anzeige {anzeige.name}
+            </span>
+          )}
           <span
             className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-text-muted"
             title={`Raster: ${RASTER_SPALTEN} Spalten × ${reihen} Reihen, quadratische Zellen`}

@@ -227,6 +227,40 @@ describe("resetActiveLayer", () => {
   });
 });
 
+describe("Layout der Anzeige vom Board (A6)", () => {
+  const vomBoard = {
+    aktiverLayer: "l2",
+    layer: [
+      { id: "l1", name: "Start", instanzen: [{ id: "a", typ: "portale.verbindungen", stufe: "groß", x: 30, y: 0 }] },
+      { id: "l2", name: "Sammeln", instanzen: [{ id: "b", typ: "banner.banner", stufe: "standard", x: 0, y: 0, quelle: "b_1" }, { id: "c", typ: "gibt.es.nicht", stufe: "x", x: 0, y: 0 }] },
+    ],
+  };
+
+  it("übernimmt Layer und aktiven Layer, normalisiert wie beim Laden, speichert nichts im Browser", () => {
+    store().layoutUebernehmen(vomBoard);
+    expect(store().nurAnzeige).toBe(true);
+    expect(store().activeLayerId).toBe("l2");
+    expect(active().instanzen).toEqual([{ id: "b", typ: "banner.banner", stufe: "standard", x: 0, y: 0, quelle: "b_1" }]);
+    expect(store().layers[0].instanzen[0]).toMatchObject({ x: 20 });   // 12 breit → rückt in die 32 Spalten
+    expect(loadWorkspaceFromStorage()).toBeNull();
+  });
+
+  it("noch kein Layout am Board → Start-Layout", () => {
+    store().layoutUebernehmen(null);
+    expect(store().nurAnzeige).toBe(true);
+    expect(active().id).toBe(DEFAULT_LAYOUT.id);
+  });
+
+  it("an der Anzeige gibt es keinen Bearbeiten-Modus, der Browser-Speicher bleibt außen vor", () => {
+    store().addLayer("Lokal");
+    store().layoutUebernehmen(vomBoard);
+    store().setEditMode(true);
+    expect(store().editMode).toBe(false);
+    store().loadWorkspace();
+    expect(store().layers.map((l) => l.id)).toEqual(["l1", "l2"]);
+  });
+});
+
 describe("loadWorkspace", () => {
   it("restores layers and the active layer from storage", () => {
     const second = store().addLayer("Arbeit");

@@ -10,12 +10,24 @@ import { zugangHolen, zugangParameter, type Zugang } from "../lib/zugang";
  */
 export type BoardModus = "pruefen" | "board" | "beispiel";
 
+/** Layout der Anzeige, wie es der Server speichert (koordinaten-board/server/src/layout.js) */
+export interface AnzeigeLayout {
+  layer: { id: string; name: string; instanzen: unknown[] }[];
+  aktiverLayer: string;
+}
+
 interface BoardState {
   modus: BoardModus;
   /** steigt bei jeder Änderung am Board – Widgets laden dann ihre Karte neu */
   version: number;
   zugang: Zugang | null;
+  /** Welche Anzeige dieses Gerät ist (Anzeige-Link, localhost: „Board“); null ohne Zugang */
+  anzeige: { id: string; name: string } | null;
+  /** Layout der Anzeige vom Board: undefined noch nicht geladen, null noch keins gespeichert */
+  layout: AnzeigeLayout | null | undefined;
   starten: () => () => void;
+  /** Reihen der eigenen Fläche ans Board melden (nur am Board) */
+  reihenMelden: (reihen: number) => void;
   karteLaden: (typ: string, quelle?: string) => Promise<WidgetAntwort>;
   quellenLaden: (typ: string) => Promise<QuellenAntwort>;
 }
@@ -52,6 +64,8 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   modus: "pruefen",
   version: 0,
   zugang: null,
+  anzeige: null,
+  layout: undefined,
 
   starten: () => {
     let aus = false;
@@ -67,18 +81,29 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       neuLaden = setTimeout(() => set({ version: get().version + 1 }), 150);
     };
 
+    const layoutLaden = async () => {
+      const antwort = await jsonLaden<{ anzeige: BoardState["anzeige"]; layout: AnzeigeLayout | null } | null>(
+        adresse("/api/anzeige/layout", zugangParameter(zugang)), () => null);
+      if (aus) return;
+      set({ anzeige: antwort?.anzeige ?? null, layout: antwort?.layout ?? null });
+    };
+
     const verbinden = (versuch = 0) => {
       if (aus) return;
       const protokoll = location.protocol === "https:" ? "wss:" : "ws:";
       socket = new WebSocket(adresse(`${protokoll}//${location.host}/ws`, { rolle: "anzeige", ...zugangParameter(zugang) }));
       socket.onopen = () => {
         // Was während der Trennung passiert ist, kam nicht an → neu laden
-        if (versuch > 0) geaendert();
+        if (versuch > 0) { geaendert(); void layoutLaden(); }
         versuch = 0;
       };
       socket.onmessage = (e) => {
         try {
-          if (JSON.parse(String(e.data))?.art === "geaendert") geaendert();
+          const n = JSON.parse(String(e.data));
+          if (n?.art !== "geaendert") return;
+          // Layout und Anzeigen betreffen keine Karte
+          if (n.bereich === "layout" || n.bereich === "anzeigen") void layoutLaden();
+          else geaendert();
         } catch { /* keine JSON-Nachricht */ }
       };
       socket.onclose = (e) => {
@@ -89,8 +114,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       };
     };
 
-    void boardDa().then((da) => {
+    void boardDa().then(async (da) => {
       if (aus) return;
+      if (da) await layoutLaden();   // erst das Layout, dann den Modus – kein Aufblitzen des lokalen Layouts
       set({ modus: da ? "board" : "beispiel" });
       if (da) verbinden();
     });
@@ -102,6 +128,22 @@ export const useBoardStore = create<BoardState>((set, get) => ({
       socket?.close();
     };
   },
+
+  reihenMelden: (() => {
+    let warten: ReturnType<typeof setTimeout> | undefined;
+    let gemeldet = 0;
+    return (reihen: number) => {
+      if (get().modus !== "board" || reihen === gemeldet) return;
+      clearTimeout(warten);
+      // Beim Größerziehen des Fensters nicht jede Zwischengröße melden
+      warten = setTimeout(() => {
+        gemeldet = reihen;
+        void fetch(adresse("/api/anzeige/reihen", zugangParameter(get().zugang)), {
+          method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ reihen }),
+        }).catch(() => { gemeldet = 0; });
+      }, 400);
+    };
+  })(),
 
   karteLaden: async (typ, quelle) => {
     if (get().modus !== "board") return mockKarte(typ, quelle);

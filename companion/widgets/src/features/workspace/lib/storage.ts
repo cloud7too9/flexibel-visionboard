@@ -50,7 +50,10 @@ function normalizeLayout(layout: WorkspaceLayout): WorkspaceLayout {
   };
 }
 
-/** Prüft und normalisiert einen geladenen Payload; `null` bei alten Versionen und unbrauchbaren Daten. */
+/**
+ * Prüft und normalisiert einen geladenen Payload; `null` bei alten Versionen und unbrauchbaren Daten.
+ * Dient auch für das Layout einer Anzeige vom Board (`layoutUebernehmen` im Store).
+ */
 export function parsePersistedWorkspace(raw: unknown): WorkspaceData | null {
   if (!raw || typeof raw !== "object") return null;
   const payload = raw as Partial<PersistedPayload> & { version?: unknown };

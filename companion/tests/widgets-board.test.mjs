@@ -1,7 +1,8 @@
 // Widget-Dashboard am echten Board: Das Board liefert /dashboard aus, die Widgets zeigen die Karten
-// aus den Daten der aktiven Welt (GET /api/widgets/:typ), laden nach Änderungen live neu, die Quelle
-// kommt beim Hinzufügen vom Board, eine gelöschte Quelle zeigt den leeren Zustand. Von außen nur
-// mit Anzeige-Link. Vorher: npm --prefix ../widgets run build
+// aus den Daten der aktiven Welt (GET /api/widgets/:typ) und laden nach Änderungen live neu. Jede
+// Anzeige zeigt ihr Layout vom Server (A6) ohne Bearbeiten und meldet ihre Reihen; ein neues Layout
+// kommt live an. Eine gelöschte Quelle zeigt den leeren Zustand. Von außen nur mit Anzeige-Link.
+// Vorher: npm --prefix ../widgets run build
 import { chromium } from "playwright";
 import { fileURLToPath } from "node:url";
 import { mkdirSync, mkdtempSync, rmSync, existsSync } from "node:fs";
@@ -67,57 +68,71 @@ try {
   pruefe(await p.waitForFunction(() => document.querySelector('[data-panel-id="w-sammelstatus"] [data-testid="karte"]')?.textContent.includes("2 von 18"),
     null, { timeout: 8000 }).then(() => true, () => false), "Live: Sammelobjekt abgehakt → 2 von 18 ohne Neuladen");
 
-  // ---- Quelle beim Hinzufügen vom Board ----
-  await p.getByRole("button", { name: "Bearbeiten" }).click();
-  const hinzufuegen = async (typ, quelle) => {
-    await p.getByRole("button", { name: "Widget hinzufügen" }).first().click();
-    await p.click(`[data-widget-typ="${typ}"]`);
-    if (quelle) { await p.waitForSelector(`[data-quelle="${quelle}"]`); await p.click(`[data-quelle="${quelle}"]`); }
-    await p.waitForSelector(`[data-typ="${typ}"]`);
-  };
-  await p.getByRole("button", { name: "Widget hinzufügen" }).first().click();
-  await p.click('[data-widget-typ="karte.einzelkoordinate"]');
-  await p.waitForSelector("[data-quelle]");
-  const quellen = await p.$$eval("[data-quelle]", (l) => l.map((e) => e.textContent));
-  pruefe(quellen.length === 1 && quellen[0].startsWith("Hauptbasis") && quellen[0].includes("Oberwelt"), `Koordinate wählen: Orte der Welt vom Board (${quellen.join(" | ")})`);
-  await p.click(`[data-quelle="${basis.id}"]`);
-  await p.waitForSelector('[data-typ="karte.einzelkoordinate"] [data-testid="karte"]');
-  pruefe((await karteText('[data-typ="karte.einzelkoordinate"]')).includes("X 260 · Y 80 · Z −420"), "Einzelkoordinate zeigt die gewählte Koordinate");
-  // Theme der Karte nach angezeigter Dimension (A5)
+  // ---- Anzeige (A6): kein Bearbeiten, meldet ihre Reihen ----
+  const warteBis = async (fn, ms = 8000) => { for (const ende = Date.now() + ms; Date.now() < ende; await schlafen(150)) if (await fn()) return true; return false; };
+  pruefe(await p.textContent('[data-testid="anzeige-name"]') === "Anzeige Board" && await p.getByRole("button", { name: "Bearbeiten" }).count() === 0,
+    "Am Board: Anzeige „Board“, kein Bearbeiten (angeordnet wird am Handy)");
+  const reihen = await p.$eval('[data-testid="raster-flaeche"]', (f) => Number(f.dataset.grid.split("x")[1]));
+  const [board1] = (await api("GET", "/api/anzeigen")).anzeigen;
+  pruefe(await warteBis(async () => (await api("GET", "/api/anzeigen")).anzeigen[0].reihen === reihen), `Anzeige meldet ihre Reihen (${reihen})`);
+
+  // ---- Layout am Server (wie es später das Handy speichert) → kommt live an ----
+  const quellen = (await api("GET", "/api/widgets/karte.einzelkoordinate/quellen")).quellen;
+  pruefe(quellen.length === 1 && quellen[0].name === "Hauptbasis", "Quellen für die Einzelkoordinate vom Board");
   const festung = (await api("POST", "/api/orte/instanzen",
     { dimensionId: `d_${welt.id}_nether`, kategorie: "Nether Fortress", variante: null, x: -200, y: 70, z: 96, quelle: "manuell" })).instanz;
-  await hinzufuegen("karte.einzelkoordinate", festung.id);
-  const kartenThemes = () => p.$$eval('[data-typ="karte.einzelkoordinate"] [data-testid="gehaeuse"]', (l) => l.map((g) => g.dataset.theme).sort().join());
-  pruefe(await p.waitForFunction(() => [...document.querySelectorAll('[data-typ="karte.einzelkoordinate"] [data-testid="gehaeuse"]')]
-    .map((g) => g.dataset.theme).sort().join() === "karte-nether,karte-oberwelt", null, { timeout: 8000 }).then(() => true, () => false),
-    `Karte: Theme nach Dimension (${await kartenThemes()})`);
-  await hinzufuegen("banner.banner", banner.id);
+  const layout = { aktiverLayer: "l1", layer: [{ id: "l1", name: "Start", instanzen: [
+    { id: "w-gesamtkarte", typ: "karte.gesamtkarte", stufe: "standard", x: 0, y: 0 },
+    { id: "w-portale", typ: "portale.verbindungen", stufe: "standard", x: 12, y: 0 },
+    { id: "w-sammelstatus", typ: "sammelobjekte.status", stufe: "standard", x: 22, y: 0 },
+    { id: "w-basis", typ: "karte.einzelkoordinate", stufe: "standard", x: 26, y: 0, quelle: basis.id },
+    { id: "w-festung", typ: "karte.einzelkoordinate", stufe: "standard", x: 26, y: 4, quelle: festung.id },
+    { id: "w-banner", typ: "banner.banner", stufe: "standard", x: 12, y: 6, quelle: banner.id },
+    { id: "w-bauplan", typ: "bauplaene.bauplan", stufe: "standard", x: 20, y: 8 },
+    { id: "w-sammelobjekte", typ: "sammelobjekte.gesamtauflistung", stufe: "standard", x: 0, y: 8 },
+  ] }, { id: "l2", name: "Leer", instanzen: [] }] };
+  await api("PUT", `/api/anzeigen/${board1.id}/layout`, layout);
+  pruefe(await p.waitForSelector('[data-panel-id="w-bauplan"]', { timeout: 8000 }).then(() => true, () => false)
+    && await p.$$eval("[data-panel-id]", (l) => l.length) === 8, "Layout vom Handy kommt live an (8 Widgets)");
+  pruefe(await warteBis(async () => (await karteText('[data-panel-id="w-basis"]')).includes("X 260 · Y 80 · Z −420")), "Einzelkoordinate zeigt ihre Quelle");
+  pruefe(await warteBis(async () => (await p.$$eval('[data-typ="karte.einzelkoordinate"] [data-testid="gehaeuse"]', (l) => l.map((g) => g.dataset.theme).join())) === "karte-oberwelt,karte-nether"),
+    "Karte: Theme nach Dimension (Oberwelt, Nether)");
   pruefe(await p.waitForFunction(() => {
-    const img = document.querySelector('[data-typ="banner.banner"] [data-testid="karte"] img');
+    const img = document.querySelector('[data-panel-id="w-banner"] [data-testid="karte"] img');
     return img && img.complete && img.naturalWidth === 20 && img.naturalHeight === 40 && img.style.imageRendering === "pixelated";
   }, null, { timeout: 8000 }).then(() => true, () => false), "Banner: Vorschau 20×40 vom Server, pixelgenau");
-  await hinzufuegen("bauplaene.bauplan");
-  pruefe(await p.textContent('[data-typ="bauplaene.bauplan"] [data-testid="widget-leer"]') === "Bereich geplant", "Bauplan ohne Quelle: „Bereich geplant“");
-  await p.getByRole("button", { name: "Bearbeitung beenden" }).click();
-  await p.waitForTimeout(400);
+  pruefe(await p.textContent('[data-panel-id="w-bauplan"] [data-testid="widget-leer"]') === "Bereich geplant", "Bauplan ohne Quelle: „Bereich geplant“");
+  await p.waitForTimeout(300);
   await p.screenshot({ path: `${DIR}/w7-board-karten.png` });
+
+  // Anderer Layer aktiv → die Anzeige wechselt
+  await api("PUT", `/api/anzeigen/${board1.id}/layout`, { ...layout, aktiverLayer: "l2" });
+  pruefe(await warteBis(async () => (await p.textContent('[data-testid="layer-name"]')) === "Leer" && (await p.$$eval("[data-panel-id]", (l) => l.length)) === 0),
+    "Aktiver Layer „Leer“ → Anzeige zeigt ihn, mit Hinweis");
+  await api("PUT", `/api/anzeigen/${board1.id}/layout`, layout);
+  await p.waitForSelector('[data-panel-id="w-basis"]');
 
   // ---- Quelle gelöscht → leerer Zustand (live) ----
   await api("DELETE", `/api/orte/instanzen/${basis.id}`);
-  pruefe(await p.waitForFunction(() => document.querySelector('[data-typ="karte.einzelkoordinate"] [data-testid="widget-leer"]')?.textContent === "Die Quelle gibt es nicht mehr",
+  pruefe(await p.waitForFunction(() => document.querySelector('[data-panel-id="w-basis"] [data-testid="widget-leer"]')?.textContent === "Die Quelle gibt es nicht mehr",
     null, { timeout: 8000 }).then(() => true, () => false), "Quelle gelöscht → Widget zeigt „Die Quelle gibt es nicht mehr“");
 
-  // ---- Von außen: ohne Link kein Inhalt, mit Anzeige-Link Karten ----
+  // ---- Von außen: ohne Link kein Inhalt, mit Anzeige-Link das Layout genau dieser Anzeige ----
   if (AUSSEN) {
+    const tablet = (await api("POST", "/api/anzeigen", { name: "Tablet" })).anzeige;
     const tv = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     tv.on("pageerror", (e) => fehler.push(e.message));
     await tv.goto(`http://${AUSSEN}:${PORT}/dashboard/`);
     pruefe(await tv.waitForFunction(() => document.querySelector('[data-panel-id="w-sammelstatus"] [data-testid="widget-leer"]')?.textContent
       === "Diese Anzeige braucht ihren Anzeige-Link", null, { timeout: 8000 }).then(() => true, () => false), "Anderes Gerät ohne Link: Hinweis auf den Anzeige-Link");
-    const link = new URL((await api("GET", "/api/anzeigen")).anzeigen[0].link);
+    const link = new URL(tablet.link);
     await tv.goto(`http://${AUSSEN}:${PORT}/dashboard${link.search}`);
-    pruefe(await tv.waitForFunction(() => document.querySelector('[data-panel-id="w-sammelstatus"] [data-testid="karte"]')?.textContent.includes("2 von 18"),
-      null, { timeout: 8000 }).then(() => true, () => false), "Mit Anzeige-Link: Karten vom Board");
+    pruefe(await tv.waitForFunction(() => document.querySelector('[data-panel-id="w-sammelstatus"] [data-testid="karte"]')?.textContent.includes("2 von 18")
+      && document.querySelector('[data-testid="anzeige-name"]')?.textContent === "Anzeige Tablet" && document.querySelectorAll("[data-panel-id]").length === 4,
+      null, { timeout: 8000 }).then(() => true, () => false), "Mit Anzeige-Link: „Tablet“ mit eigenem Layout (noch das Start-Layout) und Karten vom Board");
+    const tvReihen = await tv.$eval('[data-testid="raster-flaeche"]', (f) => Number(f.dataset.grid.split("x")[1]));
+    pruefe(await warteBis(async () => (await api("GET", "/api/anzeigen")).anzeigen.find((a) => a.id === tablet.id).reihen === tvReihen)
+      && (await api("GET", "/api/anzeigen")).anzeigen[0].reihen === reihen, `Jede Anzeige meldet ihre eigenen Reihen (Board ${reihen}, Tablet ${tvReihen})`);
     await tv.goto(`http://${AUSSEN}:${PORT}/dashboard/`);
     pruefe(await tv.waitForFunction(() => document.querySelector('[data-panel-id="w-sammelstatus"] [data-testid="karte"]'),
       null, { timeout: 8000 }).then(() => true, () => false), "Neustart ohne Link: Schlüssel aus dem Browser");
