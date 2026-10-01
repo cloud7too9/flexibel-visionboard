@@ -19,7 +19,7 @@ export function WorkspaceHeader() {
     <header className="border-b border-border bg-surface-muted">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4 sm:py-3">
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <h1 className="text-base font-semibold sm:text-lg">MainHub</h1>
+          <h1 className="text-base font-semibold sm:text-lg">Dashboard</h1>
           <LayerSwitcher />
           <span
             className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-text-muted"

@@ -134,18 +134,45 @@ describe("widgets act on the active layer only", () => {
     expect(store().reihen).toBe(24);
   });
 
-  it("resizes in cell steps and respects minimum size, edges and collisions", () => {
-    // Dateien liegt bei (0,6) mit 10×6, darunter ist frei.
-    expect(store().resizeItem("panel-dateien", 9, 9)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ w: 9, h: 9 });
-    // Größer als die Fläche wird am unteren Rand begrenzt, ohne zu verschieben.
-    store().resizeItem("panel-dateien", 9, 500);
-    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ y: 6, h: 12 });
-    // Aufgaben hat minHoehe 3: kleiner wird auf 3 begrenzt.
-    store().resizeItem("panel-aufgaben", 8, 1);
-    expect(active().items.find((i) => i.id === "panel-aufgaben")!.h).toBe(3);
-    // Breiter würde in Projektstatus hineinragen.
-    expect(store().resizeItem("panel-aufgaben", 10, 3)).toBe(false);
+  it("switches to an offered stage, keeps the top left corner and rejects collisions", () => {
+    // Aufgaben liegt bei (8,0) in „mittel“ 8×6.
+    expect(store().setStufe("panel-aufgaben", "klein")).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-aufgaben")).toMatchObject({ stufe: "klein", x: 8, y: 0, w: 6, h: 4 });
+    // „groß“ (10×9) würde in Projektstatus hineinragen.
+    expect(store().setStufe("panel-aufgaben", "groß")).toBe(false);
+    // Unbekannte Stufe, gleiche Stufe: nichts passiert.
+    expect(store().setStufe("panel-aufgaben", "riesig")).toBe(false);
+    expect(store().setStufe("panel-aufgaben", "klein")).toBe(false);
+  });
+
+  it("moves inward when the new stage would cross the edge", () => {
+    expect(store().moveItem("panel-letzteInhalte", 22, 12)).toBe(true);
+    expect(store().setStufe("panel-letzteInhalte", "groß")).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-letzteInhalte")).toMatchObject({ stufe: "groß", x: 20, y: 9, w: 12, h: 9 });
+  });
+
+  it("the handle cycles through the stages that fit (no free scaling)", () => {
+    // Tool-Start: „mittel“ 6×6 → „klein“ 6×4 → wieder „mittel“
+    expect(store().naechsteStufe("panel-toolstart")).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ stufe: "klein", w: 6, h: 4 });
+    expect(store().naechsteStufe("panel-toolstart")).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ stufe: "mittel", w: 6, h: 6 });
+    // Aufgaben: „klein“ passt, „groß“ nicht → mittel → klein → mittel
+    store().naechsteStufe("panel-aufgaben");
+    expect(active().items.find((i) => i.id === "panel-aufgaben")!.stufe).toBe("klein");
+    store().naechsteStufe("panel-aufgaben");
+    expect(active().items.find((i) => i.id === "panel-aufgaben")!.stufe).toBe("mittel");
+  });
+
+  it("adds in the standard stage, falls back to a smaller stage when space runs out", () => {
+    store().addLayer();
+    expect(store().addItem("schnellnotiz")).toBe(true);
+    expect(active().items[0]).toMatchObject({ stufe: "mittel", w: 8, h: 6, x: 0, y: 0 });
+    store().setReihen(4);   // nur noch 4 Reihen: „mittel“ (6 hoch) passt nicht, „klein“ (6×4) schon
+    expect(store().addItem("schnellnotiz")).toBe(true);
+    expect(active().items[1]).toMatchObject({ stufe: "klein", w: 6, h: 4, x: 8, y: 0 });
+    store().setReihen(3);   // 3 Reihen: keine Stufe passt mehr
+    expect(store().addItem("schnellnotiz")).toBe(false);
   });
 
   it("reports when a layer is full", () => {

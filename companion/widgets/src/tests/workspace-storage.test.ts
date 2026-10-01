@@ -30,22 +30,29 @@ describe("workspace storage", () => {
     expect(loaded!.activeLayerId).toBe("layer-2");
   });
 
-  it("discards layouts of the old 96 × 48 grid (versions 1–3)", () => {
-    for (const version of [1, 2, 3]) {
+  it("discards layouts of older versions (96 × 48 grid, free sizes)", () => {
+    for (const version of [1, 2, 3, 4]) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ version, layout: DEFAULT_LAYOUT, layers: [DEFAULT_LAYOUT], activeLayerId: DEFAULT_LAYOUT.id }));
       expect(loadWorkspaceFromStorage()).toBeNull();
     }
   });
 
-  it("keeps items inside the 32 columns, rows depend on the screen", () => {
-    const breit = { ...DEFAULT_LAYOUT, items: [{ id: "a", panelTyp: "aufgaben", titel: "A", x: 30, y: 40, w: 8, h: 3 }] };
-    const parsed = parsePersistedWorkspace({ version: 4, layers: [breit], activeLayerId: breit.id })!;
-    expect(parsed.layers[0].items[0]).toMatchObject({ x: 24, w: 8, y: 40, h: 3 });
+  it("size follows the stage, items stay inside the 32 columns, rows depend on the screen", () => {
+    const breit = { ...DEFAULT_LAYOUT, items: [
+      { id: "a", panelTyp: "aufgaben", titel: "A", stufe: "mittel", x: 30, y: 40, w: 3, h: 3 },
+      { id: "b", panelTyp: "aufgaben", titel: "B", stufe: "riesig", x: 0, y: 0, w: 1, h: 1 },
+      { id: "c", panelTyp: "gibt-es-nicht", titel: "C", stufe: "mittel", x: 0, y: 0, w: 1, h: 1 },
+    ] };
+    const parsed = parsePersistedWorkspace({ version: 5, layers: [breit], activeLayerId: breit.id })!;
+    expect(parsed.layers[0].items).toMatchObject([
+      { id: "a", stufe: "mittel", x: 24, w: 8, y: 40, h: 6 },
+      { id: "b", stufe: "mittel", w: 8, h: 6 },
+    ]);
   });
 
   it("falls back to the first layer when the active id is unknown", () => {
     const parsed = parsePersistedWorkspace({
-      version: 4,
+      version: 5,
       layers: [DEFAULT_LAYOUT, second],
       activeLayerId: "gibt-es-nicht",
     });
@@ -68,9 +75,9 @@ describe("workspace storage", () => {
   });
 
   it("returns null when there are no layers or a broken layer", () => {
-    expect(parsePersistedWorkspace({ version: 4, layers: [], activeLayerId: "x" })).toBeNull();
+    expect(parsePersistedWorkspace({ version: 5, layers: [], activeLayerId: "x" })).toBeNull();
     expect(
-      parsePersistedWorkspace({ version: 4, layers: [DEFAULT_LAYOUT, { id: "y" }], activeLayerId: "y" }),
+      parsePersistedWorkspace({ version: 5, layers: [DEFAULT_LAYOUT, { id: "y" }], activeLayerId: "y" }),
     ).toBeNull();
   });
 

@@ -54,15 +54,25 @@ export function WorkspacePanel({
         onContextMenu={(e) => e.preventDefault()}
       >
         <span className="truncate">{item.titel}</span>
-        {editMode && <PanelToolbar panelId={item.id} />}
+        {editMode && (
+          <span
+            className="ml-auto shrink-0 rounded-full border border-border px-1.5 text-[10px] leading-4 text-text-muted"
+            data-testid="stufe"
+            title="Größenstufe · Breite × Höhe in Zellen"
+          >
+            {item.stufe} · {item.w}×{item.h}
+          </span>
+        )}
+        {editMode && <PanelToolbar panelId={item.id} typ={item.panelTyp} />}
       </div>
       <div className="flex-1 overflow-auto p-2.5 sm:p-3">
         <PanelContentRenderer typ={item.panelTyp} />
       </div>
       {arrangeable && (
         <div
-          role="presentation"
-          aria-label="Größe ändern"
+          role="button"
+          aria-label="Größe ändern (nächste Stufe)"
+          title="Tippen: nächste Größenstufe · Ziehen: Stufe wählen"
           onPointerDown={(e) => onResizePointerDown(e, item.id)}
           className="absolute bottom-1 right-1 h-4 w-4 cursor-nwse-resize touch-none rounded-sm border border-border-strong bg-surface-raised"
         />

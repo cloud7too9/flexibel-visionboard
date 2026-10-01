@@ -9,12 +9,12 @@ import { selectActiveLayer, useWorkspaceStore } from "../model/workspace.store";
 import {
   cellSize,
   cellToPixel,
-  clamp,
   clampItemToGrid,
   type GridConfig,
   type PixelRect,
+  type Rect,
 } from "../lib/layout-utils";
-import { hasCollision } from "../lib/collision-utils";
+import { passt } from "../lib/collision-utils";
 import { PANEL_REGISTRY } from "../model/panel-registry";
 import type { Id } from "../../../shared/types/common.types";
 import type { LayoutItem } from "../model/workspace.types";
@@ -38,14 +38,21 @@ type DragState =
       valid: boolean;
     }
   | {
+      // Griff zum Vergrößern: Ziehen wählt die Stufe, die der gezogenen Größe am
+      // nächsten kommt und an der Stelle passt; Tippen schaltet zur nächsten Stufe.
       kind: "resize";
       id: Id;
       pointerId: number;
       startPointer: { x: number; y: number };
       startSize: { w: number; h: number };
-      previewSize: { w: number; h: number };
+      previewStufe: string;
+      previewRect: Rect;
+      bewegt: boolean;
       valid: boolean;
     };
+
+/** Bewegung in Pixeln, ab der aus Tippen ein Ziehen wird */
+const ZIEH_SCHWELLE = 6;
 
 /** Gitterlinien als Hintergrund: feine Linien je Zelle, kräftige alle 8 Zellen. */
 function gridLinesStyle(cell: { w: number; h: number }): CSSProperties {
@@ -74,7 +81,8 @@ export function WorkspaceGrid() {
   const selectPanel = useWorkspaceStore((s) => s.selectPanel);
   const setEditMode = useWorkspaceStore((s) => s.setEditMode);
   const moveItem = useWorkspaceStore((s) => s.moveItem);
-  const resizeItem = useWorkspaceStore((s) => s.resizeItem);
+  const setStufe = useWorkspaceStore((s) => s.setStufe);
+  const naechsteStufe = useWorkspaceStore((s) => s.naechsteStufe);
 
   const setReihen = useWorkspaceStore((s) => s.setReihen);
 
@@ -142,7 +150,9 @@ export function WorkspaceGrid() {
       pointerId: e.pointerId,
       startPointer: { x: e.clientX, y: e.clientY },
       startSize: { w: item.w, h: item.h },
-      previewSize: { w: item.w, h: item.h },
+      previewStufe: item.stufe,
+      previewRect: { x: item.x, y: item.y, w: item.w, h: item.h },
+      bewegt: false,
       valid: true,
     });
   };
@@ -175,19 +185,27 @@ export function WorkspaceGrid() {
         setDrag({
           ...drag,
           previewCell: { x: target.x, y: target.y },
-          valid: !hasCollision(target, layout.items),
+          valid: passt(target, layout.items, reihen).passt,
         });
       } else {
-        const def = PANEL_REGISTRY[item.panelTyp];
-        const minW = Math.min(item.minW ?? def.minBreite, RASTER_SPALTEN);
-        const minH = Math.min(item.minH ?? def.minHoehe, reihen);
-        const w = clamp(Math.round(drag.startSize.w + dx), minW, RASTER_SPALTEN - item.x);
-        const h = clamp(Math.round(drag.startSize.h + dy), minH, reihen - item.y);
-        const candidate: LayoutItem = { ...item, w, h };
+        const bewegt = drag.bewegt || Math.hypot(e.clientX - drag.startPointer.x, e.clientY - drag.startPointer.y) > ZIEH_SCHWELLE;
+        if (!bewegt) return;
+        // Gewünschte Größe in Zellen → nächstgelegene Stufe, die hier passt
+        const wunsch = { w: drag.startSize.w + dx, h: drag.startSize.h + dy };
+        const { vertrag } = PANEL_REGISTRY[item.panelTyp];
+        let beste: { stufe: string; rect: Rect; abstand: number } | null = null;
+        for (const s of vertrag.stufen) {
+          const rect = clampItemToGrid({ ...item, w: s.breite, h: s.hoehe }, RASTER_SPALTEN, reihen);
+          if (rect.w !== s.breite || rect.h !== s.hoehe || !passt(rect, layout.items, reihen, vertrag).passt) continue;
+          const abstand = Math.abs(s.breite - wunsch.w) + Math.abs(s.hoehe - wunsch.h);
+          if (!beste || abstand < beste.abstand) beste = { stufe: s.name, rect: { x: rect.x, y: rect.y, w: rect.w, h: rect.h }, abstand };
+        }
         setDrag({
           ...drag,
-          previewSize: { w, h },
-          valid: !hasCollision(candidate, layout.items),
+          bewegt,
+          previewStufe: beste?.stufe ?? item.stufe,
+          previewRect: beste?.rect ?? { x: item.x, y: item.y, w: item.w, h: item.h },
+          valid: Boolean(beste),
         });
       }
     };
@@ -197,8 +215,9 @@ export function WorkspaceGrid() {
       if (drag.kind === "move" && drag.valid) {
         moveItem(drag.id, drag.previewCell.x, drag.previewCell.y);
       }
-      if (drag.kind === "resize" && drag.valid) {
-        resizeItem(drag.id, drag.previewSize.w, drag.previewSize.h);
+      if (drag.kind === "resize") {
+        if (!drag.bewegt) naechsteStufe(drag.id);
+        else if (drag.valid) setStufe(drag.id, drag.previewStufe);
       }
       setDrag({ kind: "idle" });
     };
@@ -213,7 +232,7 @@ export function WorkspaceGrid() {
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
     };
-  }, [drag, cell.w, cell.h, layout, moveItem, resizeItem, reihen]);
+  }, [drag, cell.w, cell.h, layout, moveItem, setStufe, naechsteStufe, reihen]);
 
   const hasSize = raster.zellePx > 0 && reihen > 0;
 
@@ -264,11 +283,13 @@ function DragPreview({
 }) {
   const item = layout.find((i) => i.id === drag.id);
   if (!item) return null;
+  if (drag.kind === "resize" && !drag.bewegt) return null;
   let rect: PixelRect;
   if (drag.kind === "move") {
     rect = cellToPixel(drag.previewCell.x, drag.previewCell.y, item.w, item.h, config);
   } else {
-    rect = cellToPixel(item.x, item.y, drag.previewSize.w, drag.previewSize.h, config);
+    const r = drag.previewRect;
+    rect = cellToPixel(r.x, r.y, r.w, r.h, config);
   }
   return (
     <div

@@ -1,17 +1,28 @@
 import { IconButton } from "../../../shared/ui/IconButton";
 import { useWorkspaceStore } from "../model/workspace.store";
+import { PANEL_REGISTRY } from "../model/panel-registry";
+import { navigieren, vollbildPfad } from "../../../app/navigation";
 import type { Id } from "../../../shared/types/common.types";
+import type { PanelTyp } from "../model/workspace.types";
 
 interface Props {
   panelId: Id;
+  typ: PanelTyp;
 }
 
-export function PanelToolbar({ panelId }: Props) {
+export function PanelToolbar({ panelId, typ }: Props) {
   const duplicateItem = useWorkspaceStore((s) => s.duplicateItem);
   const removeItem = useWorkspaceStore((s) => s.removeItem);
 
   return (
     <div className="flex items-center gap-0.5" onPointerDown={(e) => e.stopPropagation()}>
+      {PANEL_REGISTRY[typ].vertrag.vollbild && (
+        <IconButton label="Vollbild" onClick={() => navigieren(vollbildPfad(panelId))}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+          </svg>
+        </IconButton>
+      )}
       <IconButton
         label="Duplizieren"
         onClick={() => duplicateItem(panelId)}
