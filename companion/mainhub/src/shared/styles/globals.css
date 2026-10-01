@@ -1,0 +1,39 @@
+@import "./tokens.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Die Seite scrollt nie. Auch Gummiband-Effekt und Pull-to-Refresh sind aus,
+   damit Gesten auf der Fläche nicht mit dem Browser kollidieren. */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  margin: 0;
+  background-color: rgb(var(--color-surface));
+  color: rgb(var(--color-text));
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+*:focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: 2px;
+}
+
+/* Flächen, auf denen langes Drücken eine Aktion auslöst: keine Textauswahl
+   und kein iOS-Callout-Menü beim Halten. */
+.long-press-target {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
