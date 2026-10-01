@@ -15,7 +15,8 @@ Bei jedem Haltepunkt stehen Branch und Screenshots. Die Screenshots erzeugen die
 | H1 | **Welt-Import (Phase 4 des Biom-Plans, Strang C):** Import-Sheet mit Anleitung, Prüfung, Fortschritt, Ergebnis | `bereich/karte-welt-upload` | `karte-mcworld.test.mjs` → Screenshots des Import-Sheets und der Biom-Ebene |
 | H2 | **Biom-Plan Phase 1:** Prüfungen an echten Welten (Reihenfolge der Höhenkarte, neuere Biom-IDs wie Cherry Grove, Pale Garden) | `bereich/karte-welt-upload` | **braucht Dateien von Max:** `tests/daten/fixture-seed.mcworld` und die Realm-Welt. Bis dahin laufen die Tests mit künstlichen Welten (`tests/welt-bauen.mjs`). |
 | H3 | **A2 · Raster** mit Platzhalter-Widgets auf 16:9 und 4:3 | `bereich/widgets-groessen` | `w1-raster-16x9.png`, `w1-raster-4x3.png`, `w2-stufen.png` |
-| H4 | **A4 · Galerie mit allen 13 Typen** und Karten vom Board | `bereich/widgets-register` | `w4-galerie.png`, `w6-quelle-waehlen.png`, `w7-board-karten.png` (echtes Board), `w5-beispielkarten.png` (ohne Board) |
+| H4 | **A4 · Galerie mit allen 13 Typen** und Karten vom Board | `bereich/widgets-register` | `w4-galerie.png`, `w6-quelle-waehlen.png`, `w5-beispielkarten.png` (ohne Board). Live ausprobieren: `npm run dev` in `companion/widgets` (ohne Board, Galerie im Bearbeiten-Modus) |
+| H5 | **A5 · Bereichs-Themes** (nicht als Haltepunkt im Plan, aber zum Anschauen) | `bereich/widgets-themes` | `w8-themes.png` (Handbuch als Buch, Baupläne blau, Portale lila), `w7-board-karten.png` (Karte: Oberwelt grün, Nether rot) |
 
 Später, wenn es so weit ist: A6 (Layout am Handy anordnen), B3 (am echten iPhone im Flugmodus).
 
@@ -41,6 +42,7 @@ Später, wenn es so weit ist: A6 (Layout am Handy anordnen), B3 (am echten iPhon
 |---|---|---|
 | E6 / A7 | **Größenstufen je Widget** und `seitenleistenBreite` (Planungsrunde) | Die neun neuen Typen haben je eine Platzhalter-Stufe. Die größte Rasterstufe (`32 − Seitenleiste`) gibt es noch nicht. Beobachtet: „Sammel-Fortschritt“ (4×3) ist für seine Karte zu klein, „Alle Sammelobjekte“ (8×8) zeigt nur die Oberwelt-Hälfte. |
 | E8 | **Themes für Sammelobjekte, Banner, Rüstung** | Oberwelt-Grün als Platzhalter mit eigener Theme-ID (A5) |
+| – | **Wann löst `/dashboard` die `/anzeige` ab?** Dem Dashboard fehlen noch, was die alte Anzeige kann: „Aufs Board“ (geworfene Karte groß zeigen), QR-Code zum Beitreten, Orte der aktiven Welt mit Kennblöcken. | Beide laufen nebeneinander; der Anzeige-Link zeigt weiter auf `/anzeige`, gilt aber auch für `/dashboard`. |
 | – | **Portal-Regeln am Board:** Die Edition (Bedrock/Java) wählt jedes Handy für sich. | Die Widgets am Board rechnen mit Bedrock (Hauptedition). Soll das Board eine eigene Einstellung bekommen? |
 
 ---
