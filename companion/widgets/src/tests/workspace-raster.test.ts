@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RASTER_SPALTEN, abstandPx, rasterBerechnen } from "@/features/workspace/lib/raster";
+import { RASTER_SPALTEN, abstandPx, rasterBerechnen, rasterMitReihen } from "@/features/workspace/lib/raster";
 
 describe("Raster: 32 Spalten, quadratische Zellen", () => {
   it.each([
@@ -33,5 +33,18 @@ describe("Raster: 32 Spalten, quadratische Zellen", () => {
     expect(abstandPx(60)).toBe(9);
     expect(abstandPx(12)).toBe(2);
     expect(abstandPx(200)).toBe(10);
+  });
+});
+
+describe("Raster mit festen Reihen (Fläche einer anderen Anzeige, Anordnen am Handy)", () => {
+  it("die Zelle passt in Breite und Höhe, das Seitenverhältnis bleibt", () => {
+    // Handy quer 820×330 für einen Fernseher mit 18 Reihen: Höhe begrenzt → 18,33 px
+    const r = rasterMitReihen(820, 330, 18);
+    expect(r.reihen).toBe(18);
+    expect(r.zellePx).toBeCloseTo(330 / 18);
+    expect(RASTER_SPALTEN * r.zellePx).toBeLessThanOrEqual(820);
+    // breite Fläche, wenig Reihen: Breite begrenzt
+    expect(rasterMitReihen(640, 2000, 24).zellePx).toBe(20);
+    expect(rasterMitReihen(0, 300, 18)).toMatchObject({ reihen: 0, zellePx: 0 });
   });
 });

@@ -5,14 +5,13 @@ iOS-Kontrollzentrums. Grundlage ist der MainHub-Workspace
 (`cloud7too9/mainhub-frontend`, per `git subtree` mit Verlauf übernommen):
 Grid, Layer, Bearbeitungsmodus und Galerie.
 
-**Stand:** Phasen A1–A5 aus [`planung/PLAN.md`](../../planung/PLAN.md) und
-von A6 der Teil ohne Handy: Raster mit 32 Spalten, Größenstufen statt freier
-Größen, Vollbild als eigene Route, Widget-Struktur (Bereich → Widget-Typ →
-Instanz) mit Galerie, das Register mit allen 13 Typen, Inhalte als **Karten vom
-Board**, die **Bereichs-Themes** und **ein Layout pro Anzeige** am Server. Der
-Board-Server liefert das Dashboard unter `/dashboard` aus. Es fehlt das
-**Anordnen am Handy** (A6, wartet auf Nachfrage N2, siehe
-`planung/WARTELISTE.md`).
+**Stand:** Phasen A1–A6 aus [`planung/PLAN.md`](../../planung/PLAN.md):
+Raster mit 32 Spalten, Größenstufen statt freier Größen, Vollbild als eigene
+Route, Widget-Struktur (Bereich → Widget-Typ → Instanz) mit Galerie, das
+Register mit allen 13 Typen, Inhalte als **Karten vom Board**, die
+**Bereichs-Themes**, **ein Layout pro Anzeige** am Server und **Anordnen am
+Handy** (`/dashboard/anordnen`). Der Board-Server liefert das Dashboard unter
+`/dashboard` aus. Offen sind die echten Größenstufen (A7, Planung mit Max).
 
 ## Starten
 
@@ -183,10 +182,25 @@ Bauplan: `planung/bauplaene/Bauplan-Bereichs-Themes.md`.
 - Die Anzeige **meldet ihre Reihen** (`PUT /api/anzeige/reihen`), sobald das
   Raster die Fläche gemessen hat – damit das Handy die Fläche im richtigen
   Seitenverhältnis zeigen kann.
-- Gespeichert wird das Layout von beigetretenen Handys
-  (`PUT /api/anzeigen/:id/layout`). Die Oberfläche dafür („Anzeige anordnen“)
-  fehlt noch (N2). Bis dahin bearbeitet man das Layout nur ohne Board
-  (`npm run dev`, Beispielkarten, `localStorage`).
+- **Anordnen am Handy** (`/dashboard/anordnen?anzeige=:id`, Weg 1 aus N2):
+  In der Companion unter Board → Anzeigen → „Anzeige anordnen“. Die Seite nutzt
+  die Anmeldung der Companion (`board.verbindung` im Browser-Speicher, gleiches
+  Board) und zeigt die Fläche der Anzeige im richtigen Seitenverhältnis
+  (32 × ihre gemeldeten Reihen, `WorkspaceGrid festeReihen`) mit **leeren
+  Widgets**: Rahmen, Theme und Name, ohne Inhalt. Das ganze Widget ist Griff:
+  antippen wählt aus, ziehen verschiebt, die Ecke unten rechts wechselt die
+  Stufe. Die Leiste unter dem Kopf zeigt Name, Stufe und Werkzeuge des gewählten
+  Widgets (Vollbild, Duplizieren, Entfernen). „+ Widget“ öffnet die Galerie mit
+  den Quellen vom Board, der Layer-Umschalter wechselt den Layer der Anzeige.
+  Im Hochformat erscheint „Querformat empfohlen“.
+- Jede Änderung geht kurz gesammelt an das Board (`PUT /api/anzeigen/:id/layout`,
+  `useAnordnen`) und kommt live an der Anzeige an. Ändert ein anderes Handy
+  gleichzeitig, lädt die Seite neu – außer während eigene Änderungen unterwegs
+  sind (dann gewinnt die letzte).
+- **Vollbild** startet das Handy (`PUT /api/anzeigen/:id/vollbild`); die Anzeige
+  folgt (`/dashboard/vollbild/:id`, ohne „Zurück“), „Vollbild beenden“ holt sie
+  zurück. Abgehakt wird nicht hier, sondern in der Companion (N1).
+- Ohne Board (`npm run dev`) bearbeitet man das lokale Layout im Browser wie bisher.
 
 ## Layer
 

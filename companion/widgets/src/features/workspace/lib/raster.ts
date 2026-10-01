@@ -31,6 +31,15 @@ export function rasterBerechnen(breite: number, hoehe: number): Raster {
 }
 
 /**
+ * Feste Reihen, z. B. beim Anordnen am Handy: Die Fläche ist die einer anderen
+ * Anzeige (32 × `reihen`), die Zelle wird so groß, dass sie in Breite und Höhe passt.
+ */
+export function rasterMitReihen(breite: number, hoehe: number, reihen: number): Raster {
+  const zellePx = breite > 0 && hoehe > 0 && reihen > 0 ? Math.min(breite / RASTER_SPALTEN, hoehe / reihen) : 0;
+  return { spalten: RASTER_SPALTEN, reihen: zellePx > 0 ? reihen : 0, zellePx };
+}
+
+/**
  * Abstand zwischen Widgets: wächst mit der Zelle (am Handy ist eine Zelle
  * nur gut 12 px breit, am Fernseher 60 px). Er wird innerhalb der Zelle
  * abgezogen, damit die Zelle selbst quadratisch bleibt.
@@ -39,19 +48,24 @@ export function abstandPx(zellePx: number): number {
   return Math.min(10, Math.max(2, Math.round(zellePx * 0.15)));
 }
 
-/** Raster einer Fläche, neu berechnet bei jeder Größenänderung (ResizeObserver). */
-export function useRaster(element: HTMLElement | null): Raster {
+/**
+ * Raster einer Fläche, neu berechnet bei jeder Größenänderung (ResizeObserver).
+ * Mit `festeReihen` zeigt die Fläche die Reihen einer anderen Anzeige (`rasterMitReihen`).
+ */
+export function useRaster(element: HTMLElement | null, festeReihen?: number): Raster {
   const [raster, setRaster] = useState<Raster>(() => rasterBerechnen(0, 0));
   useLayoutEffect(() => {
     if (!element) return;
     const messen = () => {
-      const neu = rasterBerechnen(element.clientWidth, element.clientHeight);
+      const neu = festeReihen
+        ? rasterMitReihen(element.clientWidth, element.clientHeight, festeReihen)
+        : rasterBerechnen(element.clientWidth, element.clientHeight);
       setRaster((alt) => (alt.reihen === neu.reihen && alt.zellePx === neu.zellePx ? alt : neu));
     };
     messen();
     const beobachter = new ResizeObserver(messen);
     beobachter.observe(element);
     return () => beobachter.disconnect();
-  }, [element]);
+  }, [element, festeReihen]);
   return raster;
 }

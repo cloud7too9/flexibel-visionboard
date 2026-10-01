@@ -12,4 +12,9 @@ describe("Routing", () => {
     expect(routeAufloesen("/vollbild/panel-a/")).toEqual({ seite: "vollbild", instanzId: "panel-a" });
     expect(routeAufloesen(vollbildPfad("panel x/y"))).toEqual({ seite: "vollbild", instanzId: "panel x/y" });
   });
+
+  it("Anordnen am Handy: /anordnen?anzeige=:id", () => {
+    expect(routeAufloesen("/anordnen", "?anzeige=a_2")).toEqual({ seite: "anordnen", anzeigeId: "a_2" });
+    expect(routeAufloesen("/anordnen/", "")).toEqual({ seite: "anordnen", anzeigeId: null });
+  });
 });

@@ -416,7 +416,7 @@ export class Daten {
 
   /** Anzeigen ohne Layout (das holt man einzeln), reihen: null, solange sie sich nicht gemeldet hat */
   anzeigenListe() {
-    return this.inhalt.anzeigen.map(({ layout: _l, ...a }) => ({ ...kopie(a), reihen: a.reihen ?? null }));
+    return this.inhalt.anzeigen.map(({ layout: _l, vollbild: _v, ...a }) => ({ ...kopie(a), reihen: a.reihen ?? null }));
   }
 
   anzeige(id) {
@@ -451,10 +451,11 @@ export class Daten {
     return kopie(this.inhalt.anzeigen[0]);
   }
 
-  /** Layout einer Anzeige: { anzeige, reihen, layout } – layout null, solange keins gespeichert ist */
+  /** Layout einer Anzeige: { anzeige, reihen, layout, vollbild } – layout null, solange keins gespeichert ist;
+      vollbild: ID des Widgets, das die Anzeige gerade allein zeigt (vom Handy gestartet), sonst null */
   anzeigeLayout(id) {
     const a = this.anzeige(id);
-    return { anzeige: { id: a.id, name: a.name }, reihen: a.reihen ?? null, layout: kopie(a.layout ?? null) };
+    return { anzeige: { id: a.id, name: a.name }, reihen: a.reihen ?? null, layout: kopie(a.layout ?? null), vollbild: a.vollbild ?? null };
   }
 
   anzeigeLayoutSetzen(id, body) {
@@ -462,6 +463,24 @@ export class Daten {
     const { layout, fehler: problem } = layoutPruefen(body, Object.keys(WIDGETS));
     if (problem) fehler(422, problem);
     a.layout = layout;
+    // Ein Vollbild endet, wenn sein Widget nicht mehr im aktiven Layer liegt
+    if (a.vollbild && !this.imAktivenLayer(a, a.vollbild)) a.vollbild = null;
+    this.speichernVerzoegert();
+    return this.anzeigeLayout(id);
+  }
+
+  imAktivenLayer(a, instanzId) {
+    const layer = a.layout?.layer.find((l) => l.id === a.layout.aktiverLayer);
+    return Boolean(layer?.instanzen.some((i) => i.id === instanzId));
+  }
+
+  /** Vollbild an der Anzeige starten (ID eines Widgets im aktiven Layer) oder beenden (null) */
+  anzeigeVollbildSetzen(id, instanzId) {
+    const a = this.anzeige(id);
+    if (instanzId != null && (typeof instanzId !== 'string' || !this.imAktivenLayer(a, instanzId))) {
+      fehler(422, 'Dieses Widget liegt nicht im aktiven Layer der Anzeige');
+    }
+    a.vollbild = instanzId ?? null;
     this.speichernVerzoegert();
     return this.anzeigeLayout(id);
   }

@@ -261,6 +261,32 @@ describe("Layout der Anzeige vom Board (A6)", () => {
   });
 });
 
+describe("Anordnen am Handy (A6)", () => {
+  const vomBoard = { aktiverLayer: "l1", layer: [{ id: "l1", name: "Start", instanzen: [{ id: "a", typ: "portale.verbindungen", stufe: "standard", x: 0, y: 0 }] }] };
+
+  it("bearbeitet das Layout der Anzeige: Änderungen gehen an die Ablage, nicht in den Browser", () => {
+    const gesendet: string[] = [];
+    store().layoutBearbeiten(vomBoard, { ablage: (d) => gesendet.push(d.activeLayerId + ":" + d.layers[0].instanzen.map((i) => `${i.id}@${i.x}`).join()), vollbildAktion: () => {} });
+    expect(store().editMode).toBe(true);
+    expect(store().nurAnzeige).toBe(false);
+    expect(store().moveItem("a", 5, 0)).toBe(true);
+    expect(gesendet).toEqual(["l1:a@5"]);
+    expect(loadWorkspaceFromStorage()).toBeNull();
+    store().loadWorkspace();   // der Browser-Speicher bleibt außen vor
+    expect(active().instanzen[0].x).toBe(5);
+  });
+
+  it("neues Layout von einem anderen Handy: Auswahl bleibt, wenn das Widget noch da ist", () => {
+    const ziel = { ablage: () => {}, vollbildAktion: () => {} };
+    store().layoutBearbeiten(vomBoard, ziel);
+    store().selectPanel("a");
+    store().layoutBearbeiten({ ...vomBoard, layer: [{ ...vomBoard.layer[0], name: "Umbenannt" }] }, ziel);
+    expect(store().selectedPanelId).toBe("a");
+    store().layoutBearbeiten({ ...vomBoard, layer: [{ ...vomBoard.layer[0], instanzen: [] }] }, ziel);
+    expect(store().selectedPanelId).toBeNull();
+  });
+});
+
 describe("loadWorkspace", () => {
   it("restores layers and the active layer from storage", () => {
     const second = store().addLayer("Arbeit");

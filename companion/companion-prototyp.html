@@ -628,6 +628,7 @@ select.orte-eingabe { padding-right:34px;
   border-top:1px solid var(--border-soft); transition:background .45s ease; }
 .sheet-fuss .btn-primary { flex:1; }
 .knopf-raster { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.anzeige-anordnen { width:100%; margin-bottom:8px; }
 .knopf-raster button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; }
 .btn-primary, .btn-secondary, .btn-danger { min-height:44px; }
 
@@ -3941,9 +3942,10 @@ function boardAnzeigenHtml(){
         ? `<div class="create-row"><div class="input-line"><input id="anzeigeName" maxlength="40" autocomplete="off" value="${esc(a.name)}">
             <button class="btn-primary" data-aktion="anzeige-name-speichern" data-id="${a.id}">Speichern</button></div></div>`
         : `<div class="card-title">${esc(a.name)}</div>`}
-      <div class="card-meta mono">${esc(adresseKurz(a.link.split("?")[0]))}</div>
+      <div class="card-meta mono">${esc(adresseKurz(a.link.split("?")[0]))}${a.reihen ? ` · Fläche 32 × ${a.reihen}` : ""}</div>
       ${qr ? `<div class="anzeige-qr">${bd.anzeigeQr.svg}</div>
         <div class="result-hint">Mit der Kamera des Tablets oder TVs abscannen – das Gerät wird zur Anzeige „${esc(a.name)}“.</div>` : ""}
+      <button class="btn-primary anzeige-anordnen" data-aktion="anzeige-anordnen" data-id="${a.id}">Anzeige anordnen</button>
       <div class="knopf-raster">
         <button class="btn-secondary" data-aktion="anzeige-kopieren" data-id="${a.id}">Link kopieren</button>
         <button class="btn-secondary" data-aktion="anzeige-qr" data-id="${a.id}">${qr ? "QR-Code zu" : "QR-Code"}</button>
@@ -5075,6 +5077,9 @@ $sheet.addEventListener("click", async (e) => {
       try { await kopieren(anz.link); toast("Anzeige-Link kopiert"); } catch { toast("Kopieren nicht möglich", true); }
       break;
     }
+    case "anzeige-anordnen":
+      // Widget-Dashboard vom selben Board (A6): dort Widgets dieser Anzeige anordnen, „Fertig“ führt zurück
+      location.href = `/dashboard/anordnen?anzeige=${encodeURIComponent(id)}`; break;
     case "anzeige-qr":
       if(bd.anzeigeQr?.id === id) bd.anzeigeQr = null; else await anzeigeQrHolen(id);
       boardSheetRendern(); break;

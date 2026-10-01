@@ -15,6 +15,8 @@ interface Props {
   /** Verschieben/Skalieren erlaubt (Bearbeitungsmodus im Desktop-Raster). */
   arrangeable: boolean;
   selected: boolean;
+  /** Nur Gehäuse (Rahmen, Titel, Theme) ohne Inhalt – beim Anordnen am Handy */
+  leer?: boolean;
   /** Kopfzeile: startet Verschieben (Bearbeitungszustand, Desktop) oder langes Drücken. */
   onHeaderPointerDown: (e: ReactPointerEvent, id: string) => void;
   onResizePointerDown: (e: ReactPointerEvent, id: string) => void;
@@ -30,12 +32,13 @@ export function WorkspacePanel({
   editMode,
   arrangeable,
   selected,
+  leer = false,
   onHeaderPointerDown,
   onResizePointerDown,
 }: Props) {
   const typ = widgetTyp(item.typ);
   const stufe = typ && stufeVon(typ.vertrag, item.stufe);
-  const antwort = useKarte(item.typ, item.quelle);
+  const antwort = useKarte(leer ? "" : item.typ, item.quelle);   // leer: keine Karte laden
   return (
     <div
       data-panel-id={item.id}
@@ -51,13 +54,14 @@ export function WorkspacePanel({
       <WidgetGehaeuse
         typ={typ}
         zustand={editMode ? (selected ? "ausgewaehlt" : "bearbeiten") : "normal"}
+        leer={leer}
         themeZustand={{ dimension: antwort?.karte?.dimension }}
         kopfProps={{
           className: ["long-press-target", arrangeable ? "cursor-move touch-none" : ""].join(" "),
           onPointerDown: (e) => onHeaderPointerDown(e, item.id),
           onContextMenu: (e) => e.preventDefault(),
         }}
-        kopfZusatz={editMode && (
+        kopfZusatz={editMode && !leer && (
           <>
             <span
               className="ml-auto shrink-0 rounded-full border border-border px-1.5 text-[10px] leading-4 text-text-muted"
@@ -70,7 +74,7 @@ export function WorkspacePanel({
           </>
         )}
       >
-        <WidgetInhalt instanz={item} antwort={antwort} />
+        {leer ? undefined : <WidgetInhalt instanz={item} antwort={antwort} />}
       </WidgetGehaeuse>
       {arrangeable && (
         <div
