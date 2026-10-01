@@ -21,4 +21,13 @@ describe("Bereichs-Themes", () => {
     expect(g.getAttribute("data-theme")).toBe("banner");
     expect(g.getAttribute("data-bereich")).toBe("banner");
   });
+
+  it("Handbuch: Inhalt im Buchrahmen, andere Bereiche ohne Rahmen", () => {
+    const buch = render(<WidgetGehaeuse typ={widgetTyp("handbuch.eintrag")}><p>Seite</p></WidgetGehaeuse>);
+    expect(buch.container.querySelector('[data-testid="buch"]')?.textContent).toBe("Seite");
+    expect(buch.container.querySelector('[data-theme]')?.getAttribute("data-theme")).toBe("handbuch");
+    const portal = render(<WidgetGehaeuse typ={widgetTyp("portale.verbindungen")}><p>Liste</p></WidgetGehaeuse>);
+    expect(portal.container.querySelector('[data-testid="buch"]')).toBeNull();
+    expect(themeFuer("bauplaene")).toBe("bauplaene");
+  });
 });
