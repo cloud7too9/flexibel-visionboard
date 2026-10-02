@@ -1,7 +1,6 @@
 import { Button } from "../../../shared/ui/Button";
-import { useBreakpoint } from "../../../shared/hooks/useBreakpoint";
 import { selectActiveLayer, useWorkspaceStore } from "../model/workspace.store";
-import { getBreakpoint, CANONICAL_BREAKPOINT } from "../model/breakpoints";
+import { RASTER_SPALTEN } from "../lib/raster";
 import { LayerSwitcher } from "./LayerSwitcher";
 
 export function WorkspaceHeader() {
@@ -10,14 +9,11 @@ export function WorkspaceHeader() {
   const openAddPanel = useWorkspaceStore((s) => s.openAddPanel);
   const resetActiveLayer = useWorkspaceStore((s) => s.resetActiveLayer);
   const activeLayerName = useWorkspaceStore((s) => selectActiveLayer(s).name);
-  const breakpoint = useBreakpoint();
-  const canonical = getBreakpoint(CANONICAL_BREAKPOINT);
+  const reihen = useWorkspaceStore((s) => s.reihen);
 
-  // Der Button „Bearbeiten“ ist nur auf Desktop ein Einstieg. Auf kleineren
-  // Bildschirmen wird der Bearbeitungszustand ausschließlich durch langes
-  // Drücken auf die Kopfzeile eines Widgets betreten, damit die Oberfläche
-  // im Normalzustand keinen Platz für Bedienelemente verbraucht.
-  const showEditButton = !editMode && breakpoint.name === CANONICAL_BREAKPOINT;
+  // Jede Bildschirmgröße zeigt dasselbe Raster mit 32 Spalten – Bearbeiten
+  // geht überall, per Knopf oder langem Drücken auf die Kopfzeile.
+  const showEditButton = !editMode;
 
   return (
     <header className="border-b border-border bg-surface-muted">
@@ -27,10 +23,10 @@ export function WorkspaceHeader() {
           <LayerSwitcher />
           <span
             className="rounded-full border border-border px-2 py-0.5 text-[11px] leading-4 text-text-muted"
-            title={`Aktive Bildschirmgröße: ${breakpoint.label} (Raster ${breakpoint.spalten} × ${breakpoint.zeilen})`}
-            data-testid="breakpoint-badge"
+            title={`Raster: ${RASTER_SPALTEN} Spalten × ${reihen} Reihen, quadratische Zellen`}
+            data-testid="raster-badge"
           >
-            {breakpoint.label} · {breakpoint.spalten}×{breakpoint.zeilen}
+            {RASTER_SPALTEN}×{reihen}
           </span>
         </div>
         {(editMode || showEditButton) && (
@@ -63,15 +59,6 @@ export function WorkspaceHeader() {
           </div>
         )}
       </div>
-      {editMode && !breakpoint.erlaubtAnordnen && (
-        <p
-          role="status"
-          className="border-t border-border bg-surface px-3 py-2 text-xs text-text-muted sm:px-4"
-        >
-          Automatisch angeordnet. Verschieben und Skalieren ab {canonical.label}-Breite (≥{" "}
-          {canonical.minWidth}px).
-        </p>
-      )}
     </header>
   );
 }

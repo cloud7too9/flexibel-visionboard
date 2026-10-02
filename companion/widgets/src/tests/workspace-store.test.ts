@@ -7,6 +7,7 @@ import {
 } from "../features/workspace/model/workspace.store";
 import { DEFAULT_LAYOUT } from "../features/workspace/model/default-layout";
 import { loadWorkspaceFromStorage } from "../features/workspace/lib/storage";
+import { RASTER_SPALTEN } from "../features/workspace/lib/raster";
 
 const initialState = useWorkspaceStore.getState();
 const store = () => useWorkspaceStore.getState();
@@ -15,7 +16,7 @@ const active = () => selectActiveLayer(store());
 beforeEach(() => {
   localStorage.clear();
   useWorkspaceStore.setState(
-    { ...initialState, ...createInitialWorkspace(), editMode: false, selectedPanelId: null },
+    { ...initialState, ...createInitialWorkspace(), editMode: false, selectedPanelId: null, reihen: 18 },
     true,
   );
 });
@@ -111,31 +112,40 @@ describe("widgets act on the active layer only", () => {
     expect(active().items.filter((i) => i.panelTyp === "dateien")).toHaveLength(2);
   });
 
-  it("moves a widget in fine steps and rejects collisions", () => {
-    expect(store().moveItem("panel-toolstart", 67, 33)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ x: 67, y: 32 });
+  it("moves a widget cell by cell and rejects collisions", () => {
+    // Bei 18 Reihen endet ein 6 Reihen hohes Widget spätestens in Reihe 12.
+    expect(store().moveItem("panel-toolstart", 25, 13)).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ x: 25, y: 12 });
     // Schnellnotiz liegt bei (0,0) – Kollision.
     expect(store().moveItem("panel-toolstart", 0, 0)).toBe(false);
   });
 
-  it("keeps moved widgets inside the area (no scrolling below)", () => {
-    store().moveItem("panel-toolstart", 80, 500);
+  it("keeps moved widgets inside the visible rows (no scrolling below)", () => {
+    store().moveItem("panel-toolstart", 20, 500);
     const t = active().items.find((i) => i.id === "panel-toolstart")!;
-    expect(t.y + t.h).toBeLessThanOrEqual(active().zeilen);
+    expect(t.y + t.h).toBeLessThanOrEqual(store().reihen);
   });
 
-  it("resizes freely in cell steps and respects minimum size, edges and collisions", () => {
-    // Dateien liegt bei (0,16) mit 32×16, darunter ist frei.
-    expect(store().resizeItem("panel-dateien", 29, 23)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ w: 29, h: 23 });
+  it("uses the rows of the measured area", () => {
+    store().setReihen(24);   // 4:3
+    expect(store().moveItem("panel-toolstart", 26, 30)).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ y: 18 });
+    store().setReihen(0);    // ungemessen: bleibt
+    expect(store().reihen).toBe(24);
+  });
+
+  it("resizes in cell steps and respects minimum size, edges and collisions", () => {
+    // Dateien liegt bei (0,6) mit 10×6, darunter ist frei.
+    expect(store().resizeItem("panel-dateien", 9, 9)).toBe(true);
+    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ w: 9, h: 9 });
     // Größer als die Fläche wird am unteren Rand begrenzt, ohne zu verschieben.
-    store().resizeItem("panel-dateien", 29, 500);
-    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ y: 16, h: 32 });
-    // Aufgaben hat minHoehe 8: kleiner wird auf 8 begrenzt.
-    store().resizeItem("panel-aufgaben", 24, 1);
-    expect(active().items.find((i) => i.id === "panel-aufgaben")!.h).toBe(8);
+    store().resizeItem("panel-dateien", 9, 500);
+    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ y: 6, h: 12 });
+    // Aufgaben hat minHoehe 3: kleiner wird auf 3 begrenzt.
+    store().resizeItem("panel-aufgaben", 8, 1);
+    expect(active().items.find((i) => i.id === "panel-aufgaben")!.h).toBe(3);
     // Breiter würde in Projektstatus hineinragen.
-    expect(store().resizeItem("panel-aufgaben", 30, 8)).toBe(false);
+    expect(store().resizeItem("panel-aufgaben", 10, 3)).toBe(false);
   });
 
   it("reports when a layer is full", () => {
@@ -146,8 +156,8 @@ describe("widgets act on the active layer only", () => {
     expect(store().addItem("toolstart")).toBe(false);
     expect(store().duplicateItem(active().items[0].id)).toBe(false);
     for (const it of active().items) {
-      expect(it.x + it.w).toBeLessThanOrEqual(active().spalten);
-      expect(it.y + it.h).toBeLessThanOrEqual(active().zeilen);
+      expect(it.x + it.w).toBeLessThanOrEqual(RASTER_SPALTEN);
+      expect(it.y + it.h).toBeLessThanOrEqual(store().reihen);
     }
   });
 

@@ -3,10 +3,10 @@ import type { LayoutItem } from "../model/workspace.types";
 export interface GridConfig {
   cols: number;
   rows: number;
+  /** Kantenlänge einer quadratischen Zelle in Pixeln (lib/raster.ts). */
+  zellePx: number;
   /** Sichtbarer Abstand zwischen Widgets in Pixeln (je Hälfte als Einzug). */
   gap: number;
-  containerWidth: number;
-  containerHeight: number;
 }
 
 export interface PixelRect {
@@ -23,12 +23,10 @@ export interface Rect {
   h: number;
 }
 
-/** Breite und Höhe einer Rasterzelle in Pixeln. Die Fläche füllt den Container. */
+/** Breite und Höhe einer Rasterzelle in Pixeln – die Zelle ist quadratisch. */
 export function cellSize(config: GridConfig): { w: number; h: number } {
-  return {
-    w: config.cols > 0 ? Math.max(0, config.containerWidth / config.cols) : 0,
-    h: config.rows > 0 ? Math.max(0, config.containerHeight / config.rows) : 0,
-  };
+  const z = Math.max(0, config.zellePx);
+  return { w: z, h: z };
 }
 
 /**
@@ -99,21 +97,4 @@ export function findFreePosition(
     }
   }
   return null;
-}
-
-/**
- * Staucht Items vertikal, bis sie in `rows` Zeilen passen. Jede Kante wird
- * mit demselben Faktor abgebildet und abgerundet; weil die Abbildung
- * monoton ist, entstehen keine neuen Überlappungen.
- */
-export function fitItemsToRows<T extends Rect>(items: T[], rows: number): T[] {
-  const bottom = items.reduce((acc, it) => Math.max(acc, it.y + it.h), 0);
-  if (bottom <= rows) return items;
-  const factor = rows / bottom;
-  return items.map((it) => {
-    const top = Math.floor(it.y * factor);
-    const end = Math.floor((it.y + it.h) * factor);
-    const h = Math.max(1, end - top);
-    return { ...it, y: Math.min(top, rows - h), h };
-  });
 }
