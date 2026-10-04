@@ -14,22 +14,22 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 - Lange Listen scrollen von selbst langsam durch
 - Neue und geänderte Orte leuchten kurz auf und sind mit „NEU“ markiert
 - QR-Code + PIN zum Beitreten, wer online ist, zuletzt gespeicherte Orte
-- Strukturen mit Kennblock (z. B. Netherziegel für „Nether Fortress“) zeigen das Bild statt des Linien-Icons, auch in der Handy-Liste und im Ort-Detail. Bilder: `companion/icons/struktur_kennbloecke/` (der Server liefert sie unter `/icons/` aus), Zuordnung Typ → Bild: `client/src/lib/kennbloecke.ts`
+- Strukturen mit Kennblock (z. B. Netherziegel für „Nether Fortress“) zeigen das Bild statt des Linien-Icons, auch in der Handy-Liste und im Ort-Detail. Bilder: `Companion/app/icons/struktur_kennbloecke/` (der Server liefert sie unter `/icons/` aus), Zuordnung Typ → Bild: `client/src/lib/kennbloecke.ts`
 
 **Handy: die Companion** (Startseite `/`)
-- Der Server liefert die Companion aus (`../companion/companion-prototyp.html`, per `COMPANION_DATEI` austauschbar). Den QR-Code der Anzeige mit der normalen Kamera-App scannen → die Companion öffnet sich mit der PIN → Name eingeben → beigetreten.
+- Der Server liefert die Companion aus (`index.html` aus dem Repo Companion, das neben diesem Repo liegt; per `COMPANION_DATEI` austauschbar). Den QR-Code der Anzeige mit der normalen Kamera-App scannen → die Companion öffnet sich mit der PIN → Name eingeben → beigetreten.
 - Alle Bereiche arbeiten auf den Daten des Boards (`server/daten/daten.json`): Welten mit Seed, Orte der Karte, Sammelobjekte, Portal-Verbindungen, Banner, Rüstungs-Sets. Änderungen kommen bei allen Handys live an.
-- Der **Rüstungs-Baukasten** der Companion (`companion/ruestungs-baukasten/`: Texturen, fertige Icons, `baukasten.js`, `figur3d.js`, `manifest.json`) wird unter `/ruestungs-baukasten/` ausgeliefert. Erst über http kann die Companion die Texturen umfärben und die 3D-Figur bauen.
+- Der **Rüstungs-Baukasten** der Companion (`Companion/app/ruestungs-baukasten/`: Texturen, fertige Icons, `baukasten.js`, `figur3d.js`, `manifest.json`) wird unter `/ruestungs-baukasten/` ausgeliefert. Erst über http kann die Companion die Texturen umfärben und die 3D-Figur bauen.
 - **PWA:** Bringt die Companion `manifest.webmanifest`, `sw.js` und `app-icons/` mit, liefert das Board sie aus. Manifest und Icons wirken schon über http (Home-Bildschirm mit Name, Icon, Vollbild); den Service Worker startet der Browser erst über https (Offline B3).
 - Seite und Skripte der Companion (`/`, `regeln.js`, `board-karten.js`, `biom-*.js`, `sw.js`) kommen **ohne Cache** (`no-cache`), damit jedes Handy sofort den neuen Stand bekommt.
 - **Screenshot auslesen** über die lokale Texterkennung des Boards (`/api/orte/auslesen`): Kategorie, Variante (die Klammer im Titel, z. B. „Stairway“), X/(Y)/Z und Dimension. Kleine OCR-Fehler werden korrigiert.
 - **Banner-Anleitungen** („Black Base“, „Cyan Bordure“ …) erkennt dieselbe Route, wenn kein Seed-Map-Popup drauf ist: Das Bild wird vergrößert und in Schwarz-Weiß umgewandelt (`bildvorbereitung.js`, sonst liest Tesseract weiße Schrift auf Grau nicht), die Zeilen werden unscharf den englischen Farb- und Musternamen aus `regeln.js` zugeordnet (`banner-erkennung.js`).
-- Geprüft wird mit denselben Regeln wie in der Companion: Der Server lädt `../companion/regeln.js` (`server/src/regeln.js`).
+- Geprüft wird mit denselben Regeln wie in der Companion: Der Server lädt `Companion/app/regeln.js` (`server/src/regeln.js`).
 - **Anzeige steuern** (Board-Sheet der Companion): Welt auf der Anzeige, Titel, QR-Code zeigen; Orte im Detail „Auf der Anzeige anheften“.
 - **Beitreten mit Account** (`server/src/identitaet.js`): Board-PIN aus dem QR-Code (bleibt als Zugang zum Server), dann Account wählen oder anlegen – Name plus **eigene PIN** (4–8 Ziffern, nur als scrypt-Hash gespeichert). Das Token ist der Geräteschlüssel: Es nennt Account und Gerät (`benutzer`, `profile`, `geraete` in `daten.json`); ein gesperrtes Gerät oder ein Token von vor den Accounts gilt nicht mehr. Einträge tragen die Benutzer-ID als `erstellerId`. Nach **5 falschen PINs** ist das Gerät **60 s gesperrt** (`server/src/sperre.js`) – für die Board-PIN je Gerät, für die eigene PIN je Gerät und Account. `/api/beitreten`, `/api/beitreten/konten` und `/api/ich` bleiben per CORS offen, falls eine Companion von einem anderen Server beitritt.
 - **Aufs Board**: Jeder Inhalt der Companion (Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner, Rüstungs-Set) lässt sich groß auf die Anzeige werfen. Die Karte liegt über den Spalten, im Theme ihrer Dimension, mit Absender; eine neue ersetzt die alte, gespeichert wird sie nicht. Mit `typ` (Seed-Map-Typ) steht der Kennblock neben dem Titel, ein `bild`-Block (z. B. die Banner-Vorschau oder die Rüstungs-Figur) links neben den übrigen. Aufbau und Prüfung: `server/src/zeigen.js`.
 - **Welt-Import (Biome)**: Die Companion liest einen hochgeladenen Weltordner (`.zip`/`.mcworld`) selbst im Browser (Web Worker) und schickt die Biome als Kacheln ans Board (`PUT /api/welten/:id/biome`, geprüft mit `biomImportPruefen` aus `regeln.js`, bis 64 MB). Das Board speichert sie je Welt in `server/daten/biome/<weltId>.json` und meldet `geaendert` „biome“. Worker, Dekoder und Bibliothek liefert es unter `/biom-import.worker.js`, `/biom-welt.js`, `/biom-dekoder.js`, `/biom-ids.js` und `/vendor/` aus. Biom-Punkte aus Screenshots gibt es nicht mehr; alte entfernt der Server beim Start (Sicherung `daten.vor-welt-import.json`).
-- **Widget-Dashboard** (`companion/widgets`, in Arbeit): Der Server liefert den Build unter `/dashboard` aus (eigene Routen wie `/dashboard/vollbild/…` → `index.html`; `/dashboard?anzeige=…&schluessel=…` behält den Anzeige-Link). `GET /api/widgets/:typ?quelle=…` liefert die fertige Karte eines Widget-Typs (z. B. `portale.verbindungen`, `banner.banner?quelle=b_3`) aus den Daten der aktiven Welt – gebaut mit denselben Anzeigeschemas wie „Aufs Board“ (`companion/board-karten.js`, per `node:vm` geladen), geprüft mit `zeigen.js`. Ohne Inhalt kommt `{ karte:null, hinweis }` (Bereich geplant, keine Welt, Quelle gelöscht). `GET /api/widgets/:typ/quellen` nennt, was man beim Hinzufügen als Quelle wählen kann. Lesen darf die Anzeige (localhost oder Anzeige-Link) und jedes beigetretene Handy; nach Änderungen meldet `/ws` wie immer `geaendert`. Die Banner-Vorschau rendert der Server als PNG (`pngjs`), die Rüstungs-Figur gibt es nur in der Companion.
+- **Widget-Dashboard** (`companion/widgets`, in Arbeit): Der Server liefert den Build unter `/dashboard` aus (eigene Routen wie `/dashboard/vollbild/…` → `index.html`; `/dashboard?anzeige=…&schluessel=…` behält den Anzeige-Link). `GET /api/widgets/:typ?quelle=…` liefert die fertige Karte eines Widget-Typs (z. B. `portale.verbindungen`, `banner.banner?quelle=b_3`) aus den Daten der aktiven Welt – gebaut mit denselben Anzeigeschemas wie „Aufs Board“ (`Companion/app/board-karten.js`, per `node:vm` geladen), geprüft mit `zeigen.js`. Ohne Inhalt kommt `{ karte:null, hinweis }` (Bereich geplant, keine Welt, Quelle gelöscht). `GET /api/widgets/:typ/quellen` nennt, was man beim Hinzufügen als Quelle wählen kann. Lesen darf die Anzeige (localhost oder Anzeige-Link) und jedes beigetretene Handy; nach Änderungen meldet `/ws` wie immer `geaendert`. Die Banner-Vorschau rendert der Server als PNG (`pngjs`), die Rüstungs-Figur gibt es nur in der Companion.
 - **Layout pro Anzeige** (Widget-Dashboard, A6): Jede Anzeige hat ihr eigenes Widget-Layout (Layer mit Widgets im Raster, aktiver Layer) und meldet, wie viele Reihen auf ihren Bildschirm passen (`PUT /api/anzeige/reihen`). Das Dashboard liest sein Layout über `GET /api/anzeige/layout` (welche Anzeige, sagt der Anzeige-Link; localhost ohne Link ist „Board“). Handys lesen und speichern es über `GET/PUT /api/anzeigen/:id/layout` (Form geprüft in `server/src/layout.js`) und starten mit `PUT /api/anzeigen/:id/vollbild` `{ instanzId|null }` das Vollbild an der Anzeige; Änderungen gehen live als `geaendert` „layout“. Angeordnet wird am Handy unter `/dashboard/anordnen` (aus der Companion: Board → Anzeigen → „Anzeige anordnen“).
 - Aus der früheren Handy-Oberfläche des Boards noch nicht übernommen: Notiz, Kartenausschnitt als Bild, Export als JSON.
 
@@ -88,8 +88,8 @@ Aufbau:
 ```
 server/src/server.js        Fastify: Beitritt, WebSocket, liefert Companion (/) und Anzeige (/anzeige) aus
 server/src/daten.js         gemeinsame Daten (daten.json): Welten, Orte, Sammelobjekte, Banner, Rüstungs-Sets, Portale, Einstellungen
-server/src/companion-api.js REST-API der Companion unter /api (Vertrag: companion-prototyp.html, Abschnitt 4)
-server/src/regeln.js        lädt ../companion/regeln.js (und board-karten.js) per node:vm – dieselben Regeln wie am Handy
+server/src/companion-api.js REST-API der Companion unter /api (Vertrag: index.html der Companion, Abschnitt 4)
+server/src/regeln.js        lädt Companion/app/regeln.js (und board-karten.js) per node:vm – dieselben Regeln wie am Handy
 server/src/widgets.js       Widget-Typ + Quelle → Karte fürs Dashboard (GET /api/widgets/:typ)
 server/src/layout.js        Widget-Layout einer Anzeige prüfen (Form, Widget-Typen, Grenzen)
 server/src/sicht.js         Orte der aktiven Welt in der Form, die die Anzeige kennt
@@ -101,7 +101,7 @@ server/src/sperre.js        Sperre nach falschen PINs
 client/src/anzeige/         Große Anzeige (Gezeigt.tsx: geworfene Karte) – der Client ist nur noch die Anzeige
 ```
 
-Neue Feature-Typen für die Texterkennung: Liste `FEATURES` in `server/src/erkennung.js`. Kategorien, Biome und Regeln stehen in `../companion/regeln.js`.
+Neue Feature-Typen für die Texterkennung: Liste `FEATURES` in `server/src/erkennung.js`. Kategorien, Biome und Regeln stehen in `Companion/app/regeln.js`.
 
 ## Daten
 
@@ -122,5 +122,5 @@ Alles liegt in `server/daten/`:
 | `ANZEIGE_OFFEN` | aus | Notschalter: `1` = Anzeige darf von jedem Gerät im Netz geöffnet werden, ohne Anzeige-Link |
 | `OEFFENTLICHE_URL` | automatisch | Adresse im QR-Code, falls die automatische LAN-IP falsch ist |
 | `DATEN_ORDNER` | `server/daten` | Speicherort |
-| `COMPANION_ORDNER` | `../companion` | Ordner mit Companion-Seite, `regeln.js`, `icons/`, `ruestungs-baukasten/` den Dateien des Welt-Imports (`biom-*.js`, `vendor/`) und, falls vorhanden, `manifest.webmanifest`, `sw.js`, `app-icons/` |
-| `COMPANION_DATEI` | `companion-prototyp.html` | Seite, die unter `/` ausgeliefert wird (später z. B. `modul-a-live-karte.html`) |
+| `COMPANION_ORDNER` | `../Companion/app` neben `flexibel-visionboard` | Ordner der Companion-App (eigenes Repo): Seite, `regeln.js`, `board-karten.js`, `icons/`, `ruestungs-baukasten/`, den Dateien des Welt-Imports (`biom-*.js`, `vendor/`) und, falls vorhanden, `manifest.webmanifest`, `sw.js`, `app-icons/` |
+| `COMPANION_DATEI` | `index.html` | Seite, die unter `/` ausgeliefert wird (früher `companion-prototyp.html`) |

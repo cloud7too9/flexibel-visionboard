@@ -130,7 +130,7 @@ Bauplan: `planung/bauplaene/Bauplan-Widget-Inhalte.md`, Entscheidung E3.
   mit dem Namen des Typs und markiert den Bereich (`data-bereich`, für die Themes
   in A5); ohne Inhalt ist es ein leeres Widget. `WidgetInhalt` zeigt die Karte.
 - Die Karte baut der **Board-Server** (`GET /api/widgets/:typ?quelle=…`) mit den
-  Anzeigeschemas aus `companion/board-karten.js` – denselben wie „Aufs Board“.
+  Anzeigeschemas aus `Companion/app/board-karten.js` – denselben wie „Aufs Board“.
   Das Dashboard rendert nur die Blöcke (`KarteAnsicht`): Koordinaten mit
   Dimension, Zeilen, Text, Bild (pixelgenau). Fachwissen über Bereiche hat es nicht.
 - Ohne Karte zeigt das Widget den **Hinweis des Boards** als leeren Zustand:

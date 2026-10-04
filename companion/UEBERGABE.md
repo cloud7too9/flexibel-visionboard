@@ -1,5 +1,7 @@
 # Übergabe · Minecraft Companion PWA
 
+> **Die App hat ein eigenes Repo (04.10.2026):** Seite (`index.html`, vorher `companion-prototyp.html`), `regeln.js`, `board-karten.js`, Welt-Import, `icons/` und `ruestungs-baukasten/` liegen im Repo **Companion** (früher „MineTool“), Ordner `app/`. Es wird neben diesem Repo ausgecheckt (`…/flexibel-visionboard` und `…/Companion`). Hier bleiben Tests, Werkzeuge, Widgets und diese Doku. Dateinamen in diesem Text meinen die Dateien dort.
+
 Stand: 29.09.2026 · Einstieg für einen neuen Chat
 
 Arbeitsweise, Zusammenspiel mit dem Koordinaten-Board und projektübergreifende Entscheidungen stehen in der [Übergabe im Repo-Wurzelordner](../UEBERGABE.md). **Die zuerst lesen.** Diese Datei fasst zusammen, was in der Companion gebaut ist, was entschieden wurde und was als Nächstes kommt. Technische Einzelheiten (Funktionen, Regeln, API-Tabellen) stehen in `README.md`.
@@ -8,7 +10,7 @@ Arbeitsweise, Zusammenspiel mit dem Koordinaten-Board und projektübergreifende 
 
 ## Prototyp
 
-- **Eine Seite plus vier Begleiter**: `companion-prototyp.html` (Vanilla JS mit `"use strict"`, ohne Build-Schritt), dazu `regeln.js` (Stammdaten + Regel-Funktionen, klassisches Script), `board-karten.js` (Anzeigeschemas Daten → Karte und reine Hilfen, klassisches Script nach `regeln.js`), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen, Baukasten für Rüstung und Sammelobjekte).
+- **Eine Seite plus vier Begleiter**: `index.html` (Vanilla JS mit `"use strict"`, ohne Build-Schritt), dazu `regeln.js` (Stammdaten + Regel-Funktionen, klassisches Script), `board-karten.js` (Anzeigeschemas Daten → Karte und reine Hilfen, klassisches Script nach `regeln.js`), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen, Baukasten für Rüstung und Sammelobjekte).
 - **Direkt öffnen** startet den **DEMO-Mock** (`mockApi`).
   - **Live** läuft die Seite, wenn das Koordinaten-Board sie ausliefert (`http://<board>:3000/`, QR-Code der Anzeige). Erkannt über `GET /api/server`, API unter `/api`, Token aus dem Beitreten. `?demo=1` erzwingt den Mock. Details in `README.md` → Live-Betrieb.
   - `?modul=<key>` startet direkt in einem Bereich.
@@ -79,7 +81,7 @@ Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmode
 - Abhaken gilt **für die ganze Welt** und merkt sich, wer es wann gefunden hat.
 - Verknüpfung zur Karte: Zu jedem Fundort erscheinen die bekannten Strukturen, die nächste mit Entfernung. „Karte“ springt direkt dorthin.
 - **Kennblöcke als PNG** (von Max, Quelle minecraft.wiki): Jede Fundort-Struktur zeigt ihren typischen Block, z. B. Unheilvolles Banner für den Außenposten, Netherziegel für die Netherfestung. Dazu der deutsche Strukturname aus `icons/manifest.json`, klein darunter der Seed-Map-Name.
-  - Die Bilder liegen in `companion/icons/`. Das Board liefert den Ordner seit der Zusammenführung selbst unter `/icons/` aus (auch für die Anzeige); eine eigene Kopie gibt es nicht mehr.
+  - Die Bilder liegen in `Companion/app/icons/`. Das Board liefert den Ordner seit der Zusammenführung selbst unter `/icons/` aus (auch für die Anzeige); eine eigene Kopie gibt es nicht mehr.
   - **Überall eingebaut**: Sammelobjekte (Gruppen, Detail), Karte (Liste, Canvas-Marker, Detail, Screenshot-Prüfliste), Aufs Board (die Karte schickt `typ` mit) und im Board selbst (Anzeige, Handy-Liste, Ort-Detail). Kategorien ohne Bild behalten ihr Symbol bzw. Linien-Icon.
   - **Pfadruinen haben noch kein Bild** (Seltsamer Kies fehlt, minecraft.wiki ist aus dem Claude-Container gesperrt). Bis dahin steht das Symbol ⌗ da. Kommt die Datei `trail_ruins.png` dazu, in `STRUKTUREN` das `bild:false` entfernen; der Test meldet den Unterschied.
   - Die Einträge darunter (die Besätze selbst) zeigen ihre Schmiedevorlage (`vorlageDatei()`); die Item-IDs im Manifest (`sentry_armor_trim_smithing_template` …) sind zugleich die Dateinamen.
@@ -145,7 +147,7 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 
 ---
 
-## Aufbau von `companion-prototyp.html`
+## Aufbau von `index.html`
 
 | Abschnitt | Inhalt |
 |---|---|
@@ -290,20 +292,32 @@ npm test                          # biom-dekoder (18, node --test) + banner (23)
 
 ## Inhalt des Ordners
 
+Die App selbst liegt seit dem 04.10.2026 im **Repo Companion** (früher „MineTool“), neben diesem Repo ausgecheckt:
+
+```
+Companion/app/                 ← Repo Companion
+├── index.html                 ← die Seite (vorher companion-prototyp.html; live vom Board ausgeliefert, sonst DEMO)
+├── regeln.js                  ← Stammdaten + Regeln, lädt auch der Board-Server
+├── board-karten.js            ← Anzeigeschemas (Daten → Karte), lädt auch der Board-Server
+├── biom-*.js, vendor/         ← Welt-Import
+├── manifest.webmanifest, sw.js, app-icons/   ← PWA
+├── ruestungs-baukasten/       ← von Max: Bedrock-Texturen, manifest.json, baukasten.js, figur3d.js, LIESMICH.md
+│   ├── vorlagen/, zutaten/   Icons der Schmiedevorlagen und Besatz-Materialien
+│   └── fertig/items/         1116 fertige Rüstungs-Icons
+└── icons/
+    ├── manifest.json         Fundort-Strukturen: ID, deutscher Name, Kennblock, Besätze
+    └── struktur_kennbloecke/ Kennblock-PNGs der Fundorte (Pfadruinen fehlt noch)
+```
+
+Hier im Ordner `companion/` bleibt alles rund um die App:
+
 ```
 companion/
 ├── UEBERGABE.md               ← diese Datei
 ├── README.md                  ← Technik: Funktionen, Regeln, API-Tabellen, Einbau
-├── companion-prototyp.html    ← der Prototyp (live vom Board ausgeliefert, sonst DEMO)
-├── regeln.js                  ← Stammdaten + Regeln, lädt auch der Board-Server
-├── board-karten.js            ← Anzeigeschemas (Daten → Karte), lädt auch der Board-Server
+├── companion-ordner.mjs       ← wo die App liegt (../Companion/app oder COMPANION_ORDNER), für Tests und Werkzeuge
 ├── entwuerfe/banner-ruestung.js   ← alter Entwurf, überholt (Banner + Rüstung sind eingebaut)
-├── ruestungs-baukasten/       ← von Max: Bedrock-Texturen, manifest.json, baukasten.js, figur3d.js, LIESMICH.md
-│   ├── vorlagen/, zutaten/   Icons der Schmiedevorlagen und Besatz-Materialien
-│   └── fertig/items/         1116 fertige Rüstungs-Icons
-├── icons/
-│   ├── manifest.json         Fundort-Strukturen: ID, deutscher Name, Kennblock, Besätze
-│   └── struktur_kennbloecke/ Kennblock-PNGs der Fundorte (Pfadruinen fehlt noch)
+├── tools/                     ← Werkzeuge für den Welt-Import (bauen vendor/ und biom-ids.js im Repo Companion)
 ├── referenz/
 │   ├── sammelobjekte/  Trails-&-Tales-Übersicht der Fundorte
 │   ├── banner/         Beispiel aus einem Banner-Editor

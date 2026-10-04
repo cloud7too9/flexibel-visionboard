@@ -55,18 +55,18 @@ Frühere Entscheidungen (01.10.2026): Strang C als ganzer Biom-Import, N1 (abgeh
 
 | Phase | Ergebnis | Wichtige Dateien |
 |---|---|---|
-| **C** Welt-Import | `.zip`/`.mcworld` im Browser lesen (Web Worker). Biome als Kacheln ans Board, je Welt in `biome/<weltId>.json`. Import-Sheet mit Anleitung (iPhone), Prüfung, Fortschritt. Biom-Ebene auf der Karte. Phase 1 an der Fixture-Welt geprüft. | `companion/biom-welt.js`, `biom-import.worker.js`, `biom-ids.js`, `regeln.js` (`biomImportPruefen`), Board `daten.js` (`biome…`), `companion/tests/daten/fixture-seed.mcworld` |
+| **C** Welt-Import | `.zip`/`.mcworld` im Browser lesen (Web Worker). Biome als Kacheln ans Board, je Welt in `biome/<weltId>.json`. Import-Sheet mit Anleitung (iPhone), Prüfung, Fortschritt. Biom-Ebene auf der Karte. Phase 1 an der Fixture-Welt geprüft. | `Companion/app/biom-welt.js`, `biom-import.worker.js`, `biom-ids.js`, `regeln.js` (`biomImportPruefen`), Board `daten.js` (`biome…`), `companion/tests/daten/fixture-seed.mcworld` |
 | **Anzeige-Link** | Jede Anzeige hat einen eigenen Schlüssel. Andere Geräte (TV, Tablet) werden mit dem Link zur Anzeige. QR-Code und Verwaltung stehen im Board-Sheet der Companion. | Board `server.js` (`anzeigeZugang`), `daten.js` (`anzeige…`), `client/src/lib/zugang.ts` |
 | **A0** Übernahme | MainHub läuft als `companion/widgets/` (Vite, React, TS, Tailwind, zustand). | `companion/widgets/` |
 | **A1** Raster | 32 Spalten, quadratische Zellen, die Reihen folgen der Höhe. | `lib/raster.ts` |
 | **A2** Größen-Vertrag | Größenstufen statt freier Größen. Passt-Prüfung mit Belegungsmatrix. Vollbild als eigene Route. | `model/widget-vertrag.ts`, `lib/collision-utils.ts`, `pages/VollbildPage.tsx` |
 | **A3** Struktur | Die Kette Bereich → Widget-Typ → Instanz. Zusatzinhalte je Stufe. Galerie mit Suche. | `model/widget-struktur.ts`, `components/AddPanelModal.tsx` |
-| **A4** Register und Karten | **13 Typen**. Typen mit Quelle gibt es mehrfach; die Quelle wählt man beim Hinzufügen. Gehäuse und Inhalt sind getrennt. **Die Karten baut der Server** mit denselben Anzeigeschemas wie „Aufs Board“. Ohne Board gibt es Beispielkarten, Änderungen kommen live über `/ws`. | `companion/board-karten.js`, Board `widgets.js`, `features/karten/`, `model/widget-register.ts` |
+| **A4** Register und Karten | **13 Typen**. Typen mit Quelle gibt es mehrfach; die Quelle wählt man beim Hinzufügen. Gehäuse und Inhalt sind getrennt. **Die Karten baut der Server** mit denselben Anzeigeschemas wie „Aufs Board“. Ohne Board gibt es Beispielkarten, Änderungen kommen live über `/ws`. | `Companion/app/board-karten.js`, Board `widgets.js`, `features/karten/`, `model/widget-register.ts` |
 | **A5** Themes | Theme je Bereich: Karte nach Dimension, Handbuch als Buch, Baupläne blau mit Gitter, Portale schwarz-lila ohne Rot und Grün. Platzhalter für E8. | `model/widget-themes.ts`, `shared/styles/themes.css` |
 | **A6** Layout pro Anzeige | Layout und Reihen je Anzeige am Server. Am Board ist das Dashboard reine Anzeige (live). **Anordnen am Handy** unter `/dashboard/anordnen`: leere Widgets, Auswahl-Leiste, Galerie, Layer, Vollbild steuern. Das Board liefert `/dashboard` aus. | Board `layout.js`, `daten.js` (`anzeigeLayout…`), `pages/AnordnenPage.tsx`, `features/anordnen/` |
 | **B1** Datenmodell | IDs neuer Einträge kommen vom Handy (UUID, auch über http). Jeder Eintrag hat `erstellerId`. Es gibt die Sammlungen `benutzer`, `profile`, `geraete`. | `regeln.js` (`neueEintragId`, `idGueltig`), Board `daten.js` (`eintragId`) |
 | **B2** Accounts mit PIN | Board-PIN, dann Account wählen oder anlegen (Name + eigene PIN, 4–8 Ziffern). Die PIN wird nur als **scrypt-Hash** gespeichert. Sperre je Gerät und Account. Das Token ist der **Geräteschlüssel**. `werBistDu()` gekapselt an Board und Companion. | Board `identitaet.js`, Companion `IDENTITAET`, Sheet „Beitreten“ |
-| **E15** Nur Bedrock | Portal-Prüfung mit festem Suchradius ±128 (`PORTAL_SUCHRADIUS`), kein Umschalter, kein `edition` mehr im Kontext der Karten. Der Welt-Import weist Java-Welten mit klarer Meldung ab. | `companion/board-karten.js`, Portal-Verwaltung in `companion-prototyp.html` |
+| **E15** Nur Bedrock | Portal-Prüfung mit festem Suchradius ±128 (`PORTAL_SUCHRADIUS`), kein Umschalter, kein `edition` mehr im Kontext der Karten. Der Welt-Import weist Java-Welten mit klarer Meldung ab. | `Companion/app/board-karten.js`, Portal-Verwaltung in `index.html` |
 | **CI** | Drei Jobs bei jedem PR und Push auf `main`, Screenshots als Download „bilder“ | `.github/workflows/tests.yml` |
 | **B3–B5** Offline | nicht gebaut. N5 ist entschieden (eigenes Zertifikat), kann losgehen. | – |
 | **E16** Sitzung | nicht gebaut. Zuerst Bauplan zum Abnicken. | – |
@@ -110,7 +110,7 @@ Board → Anzeigen → anordnen     ──▶  PUT /api/anzeigen/:id/layout, /vo
                                      board-karten.js (gemeinsam mit Handy)           meldet Reihen, rendert Karten
 ```
 
-- **Eine Quelle für Karten:** `companion/board-karten.js` übersetzt Daten in Karten aus Titel und Blöcken (`koordinaten`, `zeilen`, `text`, `bild`). Die Companion nutzt die Datei für „Aufs Board“, der Server lädt sie per `node:vm` für die Widgets. Neue Daten gehören in beide Kontexte: `boardKontext()` in der Seite und `kontext()` in `widgets.js`.
+- **Eine Quelle für Karten:** `Companion/app/board-karten.js` übersetzt Daten in Karten aus Titel und Blöcken (`koordinaten`, `zeilen`, `text`, `bild`). Die Companion nutzt die Datei für „Aufs Board“, der Server lädt sie per `node:vm` für die Widgets. Neue Daten gehören in beide Kontexte: `boardKontext()` in der Seite und `kontext()` in `widgets.js`.
 - **Neuer Widget-Typ:**
   1. Eintrag im Register `widget-register.ts`.
   2. Zuordnung in `WIDGETS` (Board `widgets.js`).
@@ -135,7 +135,7 @@ npm start                                              # Windows: start.bat (bau
 - **Handy:** QR-Code der Anzeige scannen → „Beitreten“. Dort die Board-PIN eingeben, einen Account antippen oder einen neuen Namen tippen, dazu die eigene PIN.
 - **Anzeige:** `http://localhost:3000/dashboard` (Widgets) oder `/anzeige` (alt). Auf anderen Geräten mit dem Anzeige-Link (Konsole oder Board → Anzeigen).
 - **Anordnen:** am Handy Board → Anzeigen → „Anzeige anordnen“, am besten im Querformat.
-- **Ohne Board:** `cd companion/widgets && npm run dev`. Dann gibt es Beispielkarten, man bearbeitet lokal, die Galerie geht im Bearbeiten-Modus. `companion/companion-prototyp.html` direkt geöffnet läuft im DEMO-Mock.
+- **Ohne Board:** `cd companion/widgets && npm run dev`. Dann gibt es Beispielkarten, man bearbeitet lokal, die Galerie geht im Bearbeiten-Modus. `Companion/app/index.html` direkt geöffnet läuft im DEMO-Mock.
 
 ---
 

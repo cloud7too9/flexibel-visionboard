@@ -1,12 +1,14 @@
 # Companion · Prototyp – Karte, Sammelobjekte, Portale, Banner, Rüstung
 
+> **Die App hat ein eigenes Repo (04.10.2026):** Seite (`index.html`, vorher `companion-prototyp.html`), `regeln.js`, `board-karten.js`, Welt-Import, `icons/` und `ruestungs-baukasten/` liegen im Repo **Companion** (früher „MineTool“), Ordner `app/`. Es wird neben diesem Repo ausgecheckt (`…/flexibel-visionboard` und `…/Companion`). Hier bleiben Tests, Werkzeuge, Widgets und diese Doku. Dateinamen in diesem Text meinen die Dateien dort.
+
 Koordinaten-Sammlung für das Modul **Karte** (vormals Live-Karte) der Minecraft Companion PWA, nach dem minimalen Datenmodell (`../referenz/minecraft_tool_datenmodell.md`)
 (`World → Dimension → FeatureInstance → FeatureType → FeatureCategory`).
 Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte.html`.
 
 **Neuer Chat / Weitermachen:** zuerst `../UEBERGABE.md` (projektübergreifend), dann `UEBERGABE.md` lesen – Stand, Entscheidungen, offene Punkte.
 
-**Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop) – dann läuft der DEMO-Mock mit Beispielwelt. **Live** läuft die Companion, wenn das Koordinaten-Board sie ausliefert: Board starten, `http://<board>:3000/?pin=<PIN>` öffnen oder den QR-Code der Anzeige mit der Kamera-App scannen (siehe „Live-Betrieb“). Mit `?modul=sammelobjekte`, `?modul=portale`, `?modul=banner` oder `?modul=ruestung` startet man direkt im jeweiligen Bereich, `?demo=1` erzwingt den Mock.
+**Ausprobieren:** `index.html` direkt öffnen (am Handy oder Desktop) – dann läuft der DEMO-Mock mit Beispielwelt. **Live** läuft die Companion, wenn das Koordinaten-Board sie ausliefert: Board starten, `http://<board>:3000/?pin=<PIN>` öffnen oder den QR-Code der Anzeige mit der Kamera-App scannen (siehe „Live-Betrieb“). Mit `?modul=sammelobjekte`, `?modul=portale`, `?modul=banner` oder `?modul=ruestung` startet man direkt im jeweiligen Bereich, `?demo=1` erzwingt den Mock.
 
 Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-Server lädt), `board-karten.js` (Anzeigeschemas, lädt der Board-Server ebenfalls), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen für Rüstung und Sammelobjekte) in denselben Ordner.
 

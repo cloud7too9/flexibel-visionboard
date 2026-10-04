@@ -15,8 +15,9 @@ Diese Datei enthält, was **für beide Projekte** gilt: Arbeitsweise, Zusammensp
 
 **Anhängen oder Repo verbinden:**
 
-1. Dieses Repo (enthält Companion, Board, Referenz und den ganzen Git-Verlauf)
-2. **`modul-a-live-karte.html`**: die aktuelle Hauptdatei der Companion-PWA (Stilvorlage und Ziel für den späteren Einbau). Sie liegt bewusst nicht im Repo, weil Max sie selbst weiterpflegt.
+1. Dieses Repo (Board, Tests und Doku der Companion, Planung, Referenz)
+2. Das Repo **Companion** (früher „MineTool“): die App selbst, neben diesem Repo ausgecheckt (seit 04.10.2026)
+3. **`modul-a-live-karte.html`**: die aktuelle Hauptdatei der Companion-PWA (Stilvorlage und Ziel für den späteren Einbau). Sie liegt bewusst nicht im Repo, weil Max sie selbst weiterpflegt.
 
 **Erste Nachricht, zum Beispiel:**
 
@@ -39,7 +40,7 @@ oder
 ```
 README.md                 ← Überblick
 UEBERGABE.md              ← diese Datei (projektübergreifend)
-companion/                ← Companion: Seite + regeln.js + icons/ + ruestungs-baukasten/, Tests, Entwürfe, eigene Referenzbilder
+companion/                ← rund um die Companion: Tests, Werkzeuge, Doku, Entwürfe, eigene Referenzbilder (die App selbst: Repo Companion)
 companion/widgets/        ← Widget-Ansicht fürs Board (Vite + React + TS, aus MainHub), Umbau laut planung/PLAN.md
 koordinaten-board/        ← Board: Server der Companion (Fastify) + Anzeige (React)
 planung/                  ← Gesamtplan (PLAN.md), Ideen und Baupläne der Planungskommission
@@ -49,7 +50,8 @@ referenz/                 ← gemeinsame Referenz (Datenmodell, Seed-Map, Dashbo
 Was wohin gehört:
 
 - Code, Tests und Doku eines Projekts bleiben in dessen Ordner.
-- **Seit der Zusammenführung** gibt es genau zwei gewollte Verbindungen: Der Board-Server liefert `companion/` aus (Seite, `regeln.js`, `board-karten.js`, `icons/`, `ruestungs-baukasten/`, den Build von `widgets/` unter `/dashboard`) und lädt `companion/regeln.js` und `companion/board-karten.js`, damit Handy und Server mit denselben Regeln prüfen und dieselben Karten bauen. Pfad einstellbar über `COMPANION_ORDNER`. Sonst greift kein Projekt in den Ordner des anderen; die Playwright-Tests der Companion starten das Board als eigenen Prozess.
+- **Die Companion-App hat ein eigenes Repo** (Companion, früher „MineTool“, seit 04.10.2026). Es liegt neben diesem: `…/flexibel-visionboard` und `…/Companion`. Board, Tests und Werkzeuge finden die App unter `../Companion/app`, anders über `COMPANION_ORDNER`. Die CI checkt beide Repos aus.
+- **Seit der Zusammenführung** gibt es genau zwei gewollte Verbindungen: Der Board-Server liefert die Companion-App aus (Seite, `regeln.js`, `board-karten.js`, `icons/`, `ruestungs-baukasten/`, PWA-Dateien) und den Build von `companion/widgets/` unter `/dashboard`, und er lädt `regeln.js` und `board-karten.js` der App, damit Handy und Server mit denselben Regeln prüfen und dieselben Karten bauen. Sonst greift kein Projekt in den Ordner des anderen; die Playwright-Tests der Companion starten das Board als eigenen Prozess.
 - `referenz/` bekommt nur, was **beide** Projekte betrifft. Referenzbilder für einen einzelnen Companion-Bereich liegen in `companion/referenz/`.
 
 ---
@@ -90,7 +92,7 @@ Was wohin gehört:
 
 ```
 Handy ──http──▶ Board-Server :3000
-                ├─ /                 Companion (companion/companion-prototyp.html, live)
+                ├─ /                 Companion (Companion/app/index.html, live)
                 ├─ /regeln.js, /icons/…, /ruestungs-baukasten/…  aus companion/
                 ├─ /biom-*.js, /vendor/…  Welt-Import (Worker im Browser des Handys)
                 ├─ /api/…            Companion-API (daten.js) + Beitreten + OCR (/api/orte/auslesen)
@@ -100,14 +102,14 @@ Daten: koordinaten-board/server/daten/daten.json
 ```
 
 - **Beitreten**: Das Handy scannt den QR-Code der Anzeige mit der Kamera-App und landet auf `/?pin=…`. Die Companion erkennt den Live-Betrieb (`/api/server`), fragt nach dem Account (Name + eigene PIN, Strang B) und lädt danach die Daten des Boards. Eine eigene Kamera in der Seite braucht es dafür nicht.
-- **Gemeinsame Regeln**: `companion/regeln.js` enthält Stammdaten und Regel-Funktionen. Die Seite bindet sie ein, der Server lädt sie per `node:vm` – nichts wird doppelt gepflegt.
+- **Gemeinsame Regeln**: `Companion/app/regeln.js` enthält Stammdaten und Regel-Funktionen. Die Seite bindet sie ein, der Server lädt sie per `node:vm` – nichts wird doppelt gepflegt.
 - **Live**: Jede Änderung meldet der Server als `{ art:"geaendert", bereich, weltId }`; die Handys laden den Bereich neu, die Anzeige bekommt die Orte der aktiven Welt (`sicht.js`).
 - **Texterkennung**: Die OCR des Boards bedient `/api/orte/auslesen` im Format der Companion (`fuerCompanion()`). Ist kein Seed-Map-Popup drauf, sucht sie eine **Banner-Anleitung** („Black Base“, „Cyan Bordure“ …); die Companion speichert daraus einen Bauplan.
 - **Welt-Import**: Biome kommen nur noch aus dem Weltordner (`.zip` aus der Dateien-App oder `.mcworld`). Die Companion liest ihn am Handy im Web Worker und schickt die Biome als Kacheln ans Board (`/api/welten/:id/biome`), je Welt ein Import. Einzelheiten in `companion/README.md` → Welt-Import.
 - **Anzeige steuern** (Board-Sheet der Companion): Welt auf der Anzeige, Titel, QR-Code; Orte anheften.
 - **Anzeige-Link**: Die Anzeige kann auf jedem Gerät im WLAN laufen (TV-Browser, Tablet). Jede Anzeige hat einen Link mit eigenem Schlüssel; die Companion zeigt ihn unter Board → Anzeigen (kopieren, QR-Code, umbenennen, neuer Schlüssel), die Konsole beim Start.
 - **Aufs Board**: Die Companion wirft Inhalte groß auf die Anzeige (Variante B, wie Chromecast). **Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): `BOARD_KARTEN` übersetzt Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner und Rüstungs-Set in allgemeine Karten (Titel + Blöcke `koordinaten`/`zeilen`/`text`/`bild`, optional `typ` für den Kennblock), geprüft in `koordinaten-board/server/src/zeigen.js`. Das Board kennt keine Bereiche; neue Bereiche tragen ihr Schema ein.
-- **Kennblöcke**: liegen nur noch in `companion/icons/`; die Anzeige lädt sie über den Server unter `/icons/`.
+- **Kennblöcke**: liegen nur noch in `Companion/app/icons/`; die Anzeige lädt sie über den Server unter `/icons/`.
 - **Dashboard**: Das Board ist das Raum-Dashboard. Jeder Companion-Bereich bekommt eigene Dashboard-Ansichten (Widgets), die dort laufen sollen.
   - Vorbild ist das **iOS-Kontrollzentrum**, siehe `referenz/dashboard/`: Ansichten in festen Rastergrößen 1×1, 2×1 und 2×2 auf 4 Spalten, Galerie „Ansicht hinzufügen“ nach Bereich gruppiert mit Suche, Bearbeiten-Modus mit „−“ und Griff zum Vergrößern.
   - Im Companion-Code vorbereitet: Der Modul-Vertrag in `BEREICHE` sieht `ansichten: [{ key, titel, groessen, render(el, groesse) }]` vor. Bisher nur dokumentiert. Die Anzeigeschemas sind ein möglicher Baustein dafür.

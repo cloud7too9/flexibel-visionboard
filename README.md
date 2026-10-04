@@ -4,7 +4,8 @@ Zwei Projekte für eine gemeinsame Minecraft-Welt im Raum – seit dem 29.09.202
 
 | Ordner | Projekt | Stand |
 |---|---|---|
-| [`companion/`](companion/) | **Companion**: die App am Handy – Karte, Sammelobjekte, Portal-Verwaltung, Banner, Rüstung (eine HTML-Seite + `regeln.js`, Vanilla JS) | aktuelle Arbeit |
+| [Repo **Companion**](https://github.com/cloud7too9/Companion) | **Companion**: die App am Handy – Karte, Sammelobjekte, Portal-Verwaltung, Banner, Rüstung (eine HTML-Seite + `regeln.js`, Vanilla JS, installierbare PWA). **Eigenes Repo seit 04.10.2026**, neben diesem auschecken | aktuelle Arbeit |
+| [`companion/`](companion/) | Rund um die Companion: Playwright-Tests, Werkzeuge für den Welt-Import, Doku, Entwürfe, Referenzbilder | – |
 | [`companion/widgets/`](companion/widgets/) | **Widgets**: Widget-Dashboard fürs Board unter `/dashboard` (Vite + React + TypeScript, aus MainHub): 13 Widget-Typen, Karten vom Board, Bereichs-Themes, Layout je Anzeige | A0–A6 gebaut, A7 offen |
 | [`koordinaten-board/`](koordinaten-board/) | **Koordinaten-Board**: Server der Companion (Daten, OCR, Live-Sync) und Anzeige im Zimmer (Fastify + React) | zusammengeführt |
 | [`planung/`](planung/) | **Planung**: Gesamtplan Widget-Dashboard, Offline-Sync, Welt-Import ([`PLAN.md`](planung/PLAN.md)) plus Ideen und Baupläne der Planungskommission | 04.10.2026 |
@@ -15,7 +16,7 @@ Zwei Projekte für eine gemeinsame Minecraft-Welt im Raum – seit dem 29.09.202
 ## Wie die Projekte zusammenhängen
 
 - Das **Board** liefert die Companion unter `/` aus und hält alle Daten (`koordinaten-board/server/daten/daten.json`). Handys scannen den QR-Code der Anzeige und treten mit der Board-PIN und ihrem Account (Name + eigene PIN) bei; Änderungen kommen bei allen live an.
-- Handy und Server prüfen mit **derselben Datei** `companion/regeln.js` und bauen Karten mit derselben Datei `companion/board-karten.js`.
+- Handy und Server prüfen mit **derselben Datei** `Companion/app/regeln.js` und bauen Karten mit derselben Datei `Companion/app/board-karten.js`.
 - Die **Anzeige** (`/anzeige`) zeigt die Orte der aktiven Welt; jeder Inhalt der Companion lässt sich per „Aufs Board“ groß darauf werfen (Anzeigeschema in `BOARD_KARTEN`).
 - Das **Widget-Dashboard** (`/dashboard`, in Arbeit) zeigt je Anzeige ihr Layout aus Widgets; die Inhalte sind Karten, die das Board mit denselben Anzeigeschemas baut.
 - Die Texterkennung des Boards liest Seed-Map-Screenshots und Banner-Anleitungen für die Companion aus (`/api/orte/auslesen`).
@@ -23,6 +24,15 @@ Zwei Projekte für eine gemeinsame Minecraft-Welt im Raum – seit dem 29.09.202
 - `modul-a-live-karte.html`, die Hauptdatei der Companion-PWA, liegt **nicht** in diesem Repo. Max pflegt sie selbst; das Board kann sie später statt des Prototyps ausliefern (`COMPANION_DATEI`).
 
 ## Schnellstart
+
+Die Companion-App liegt im eigenen Repo **neben** diesem; ohne sie startet das Board nicht:
+
+```
+…/flexibel-visionboard/   ← dieses Repo
+…/Companion/              ← git clone https://github.com/cloud7too9/Companion.git
+```
+
+Liegt sie woanders: `COMPANION_ORDNER=/pfad/zu/Companion/app`.
 
 ```bash
 # Alles zusammen: Board starten, dann am Handy den QR-Code der Anzeige scannen
@@ -32,7 +42,7 @@ cd koordinaten-board && npm run installieren && npm run build && npm start   # W
 #   Widget-Dashboard (in Arbeit): npm run dashboard:installieren && npm run dashboard:build, dann http://localhost:3000/dashboard
 
 # Companion ohne Board (DEMO-Mock mit Beispielwelt)
-open companion/companion-prototyp.html
+open ../Companion/app/index.html
 
 # Tests
 cd koordinaten-board && npm test                        # Server: Daten, API, Regeln, Erkennung …
