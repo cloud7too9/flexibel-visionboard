@@ -40,4 +40,6 @@ cd companion/tests && npm install && npm test           # Playwright, auch gegen
 cd companion/widgets && npm install && npm test         # Widgets: Vitest
 ```
 
+Auf GitHub laufen dieselben Tests bei jedem Pull Request und jedem Push auf `main` ([`.github/workflows/tests.yml`](.github/workflows/tests.yml)). Die Screenshots der Playwright-Tests hängen als Download „bilder“ am Lauf.
+
 Details stehen jeweils in `companion/README.md` und `koordinaten-board/README.md`.

@@ -172,6 +172,8 @@ npm start                                              # Windows: start.bat (bau
 | Widgets | `cd companion/widgets && npm run typecheck && npm test` | Typecheck ok, 108 Unit-Tests |
 | Companion und Dashboard (Playwright) | `cd companion/tests && npm test` | 14 Dateien, 509 Prüfungen |
 
+**Seit 04.10.2026 auf GitHub:** `.github/workflows/tests.yml` führt alle drei Teile bei jedem Pull Request und jedem Push auf `main` aus (Jobs „Board-Server“, „Widgets“, „Companion und Dashboard (Playwright)“). Die Screenshots aus `companion/tests/bilder/`, darunter die Haltepunkte, hängen als Download „bilder“ am Lauf (14 Tage).
+
 Die Playwright-Dateien: `biom-dekoder` (18, `node --test`), `banner` (23), `portale` (29), `sammelobjekte` (64), `kennbloecke` (14), `board` (58), `live` (72), `anzeigeschema` (31), `ruestung` (52), `karte-mcworld` (52), `anzeige-link` (15), `widgets` (36), `widgets-board` (20), `widgets-anordnen` (25).
 
 Voraussetzungen für die Playwright-Tests:
