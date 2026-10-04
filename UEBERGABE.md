@@ -123,7 +123,7 @@ Daten: koordinaten-board/server/daten/daten.json
 
 **Entschieden am 29.09.2026** (Zusammenführung): Datenhaltung → Board im Heimnetz; OCR-Anbindung → umgesetzt; https ↔ http → im Heimnetz gelöst, weil Companion und API vom selben Server kommen; Board-Steuerung → durch die Companion ersetzt.
 
-1. **Welt-Import an echten Welten prüfen**: Biome kommen jetzt aus dem Weltordner (entschieden, Biom-Popups braucht es nicht mehr). Offen ist die Prüfung an echten Welten von Max: Höhenkarte, Stichproben gegen Chunkbase, neuere Biom-IDs, Laufzeit am iPhone (siehe `companion/PLAN-welt-import-biome.md`, Haltepunkt Phase 1).
+1. **Welt-Import an echten Welten prüfen**: Biome kommen jetzt aus dem Weltordner (entschieden, Biom-Popups braucht es nicht mehr). An der Fixture-Welt von Max bestätigt: Höhenkarte, Stichproben gegen Chunkbase, ID 195 = Dappled Forest. Offen sind die Realm-Welt am iPhone (Laufzeit) und die IDs von Cherry Grove, Pale Garden und Sulfur Caves (siehe `companion/PLAN-welt-import-biome.md`, Phase 1).
 2. **Dashboard**:
    - Eine Seite pro Bereich (wie die Kontrollzentrum-Seiten)?
    - Wird am Handy oder an der Anzeige im Zimmer bearbeitet?

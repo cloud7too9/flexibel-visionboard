@@ -20,7 +20,7 @@ import "../biom-ids.js";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const BIOME = new Map(globalThis.BIOM_IDS.map((b) => [b.id, b]));
-const VERMUTET = { 192: "Cherry Grove", 193: "Pale Garden", 195: "Dappled Forest" };   // aus dem Bauplan, unbestätigt
+const VERMUTET = { 192: "Cherry Grove", 193: "Pale Garden" };   // aus dem Bauplan, unbestätigt
 const DIM_NAME = { overworld: "Oberwelt", nether: "Nether", end: "End" };
 const zahl = (n) => n.toLocaleString("de-DE");
 const UNBEKANNT_FARBE = "#ff0000";   // kein Biom in biom-ids.js hat diese Farbe (Pilzland ist Magenta)
@@ -99,7 +99,7 @@ function chunksVon(dim) {
 }
 
 mkdirSync(ziel, { recursive: true });
-const dateiname = String(meta.weltname || path.basename(datei, path.extname(datei))).replace(/[^\p{L}\p{N}_-]+/gu, "-").toLowerCase();
+const dateiname = String(meta.weltname || path.basename(datei, path.extname(datei))).replace(/[^\p{L}\p{N}_-]+/gu, "-").replace(/^-+|-+$/g, "").toLowerCase();
 for (const dim of DIMENSIONEN) {
   const liste = chunksVon(dim);
   if (!liste.length) continue;
