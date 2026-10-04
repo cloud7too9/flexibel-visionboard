@@ -59,7 +59,7 @@ Was wohin gehört:
   - **Gemergt wird nur nach Rückfrage bei Max**, auch wenn Claude den Merge ausführt (Wunsch von Max, 04.10.2026).
 - **Bereiche geht Max einzeln durch.** Erst steht der Rahmen, dann folgen die Details. Nichts ausbauen, was nicht besprochen ist.
 - **Datenmodell minimal halten.** Es wird nur erweitert, wenn ein Bereich es konkret braucht. FeatureTypes werden nicht erfunden.
-- **Bedrock ist die Hauptedition.** Die Seed-Map-Screenshots zeigen „Bedrock 26.50“. Java-Unterschiede kommen nur dort vor, wo sie zählen (Portale).
+- **Bedrock ist die einzige Edition** (Entscheidung von Max, 04.10.2026). Die Seed-Map-Screenshots zeigen „Bedrock 26.50“. Java gibt es nirgendwo, auch nicht bei den Portalen.
 - **Optik 1:1 aus `modul-a-live-karte.html`**:
   - Dimensions-Themes: Oberwelt grün, Nether rot, End violett
   - Header mit Hamburger, darüber die Sidebar
@@ -136,7 +136,7 @@ Daten: koordinaten-board/server/daten/daten.json
    - Eine Seite pro Bereich (wie die Kontrollzentrum-Seiten)?
    - Wird am Handy oder an der Anzeige im Zimmer bearbeitet?
    - Welche Ansichten bekommt jeder Bereich? (wird beim jeweiligen Bereich geklärt)
-3. **Aufs Board**: Bleibt eine Karte liegen, bis jemand sie wegnimmt (so ist es jetzt), oder verschwindet sie nach einiger Zeit?
+3. ~~Aufs Board~~ – **entschieden (04.10.2026):** Das Board bekommt eine Sitzung, die lebt, solange das Board läuft. „Aufs Board“ fügt den Inhalt als Widget an der ersten freien Stelle ein, am Handy verschieb- und entfernbar. Noch nicht gebaut (`planung/WARTELISTE.md`, E16).
 4. **Aus der früheren Board-Steuerung** noch nicht übernommen: Notiz zu einem Ort, Kartenausschnitt als Bild, Export als JSON. Erweitert das Datenmodell.
 5. **Hetzner später**: Soll die Companion auch von unterwegs erreichbar sein (https, PWA installierbar)? Dann läuft derselbe Server dort, oder das Board verbindet sich nach außen.
-6. **Edition als Eigenschaft der Welt** statt Einstellung auf dem Gerät, weil sich auch die Seeds je Edition unterscheiden. Ändert das Datenmodell, braucht die Zustimmung von Max. Details in `companion/UEBERGABE.md`.
+6. ~~Edition als Eigenschaft der Welt~~ – **entschieden (04.10.2026):** Es gibt nur Bedrock. Die Umschaltung Bedrock/Java in der Portal-Verwaltung ist entfernt.

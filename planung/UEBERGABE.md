@@ -198,7 +198,7 @@ Voraussetzungen für die Playwright-Tests:
   - Alte Biom-Punkte werden entfernt, mit Sicherung `daten.vor-welt-import.json`.
   - Fehlende `erstellerId` wird zu „unbekannt“.
 - **Am Board kein Bearbeiten:** Das Dashboard ist dort reine Anzeige. Geändert wird nur über `/dashboard/anordnen` (Token) oder ohne Board im Browser-Speicher.
-- **Portal-Regeln am Board** sind fest Bedrock. Die Edition ist eine Einstellung je Handy (offene Frage in der Warteliste).
+- **Portal-Regeln:** Es gibt nur Bedrock (Entscheidung von Max, 04.10.2026). Handy und Board rechnen mit ±128 in beiden Dimensionen.
 - **Platzhalter-Größen:** Kleine Widgets schneiden ihre Karte ab, zum Beispiel der Sammel-Fortschritt mit 4×3 Zellen. Das ist bekannt und wird mit A7 gelöst.
 - **`ENOENT … daten.json.tmp`** in den Server-Tests ist harmlos. Ein verzögertes Speichern trifft auf den schon gelöschten Testordner.
 - **Die Startskripte** (`start.bat`, `start.sh`) bauen das Dashboard noch nicht mit. Das ist sinnvoll, sobald `/dashboard` die alte `/anzeige` ablöst.
@@ -229,13 +229,13 @@ Voraussetzungen für die Playwright-Tests:
 
 ## 9. Nächste Schritte, sobald Antworten da sind
 
-1. **Nach N5:** B3 auf einem eigenen Branch `bereich/offline`, wie es der Bauplan verlangt:
+1. **N5 ist entschieden (eigenes Zertifikat, 04.10.2026):** B3 auf einem eigenen Branch `bereich/offline`, wie es der Bauplan verlangt, dazu HTTPS am Board mit selbst erzeugtem Zertifikat und Profil fürs iPhone:
    - `companion/sw.js` mit versioniertem Cache
    - IndexedDB statt `localStorage`
    - Test mit `context.setOffline(true)`
    - Haltepunkt am echten iPhone
    - danach B4 (Offline-Regel, Warteschlange je Account) und B5 (Zustandswechsel, zuerst beim Abhaken der Sammelobjekte)
 2. **Nach A7:** echte Stufen statt der Platzhalter im Register, `SEITENLEISTEN_BREITE` setzen, größte Rasterstufe bauen.
-3. **Nach E8:** die Platzhalter-Themes in `themes.css` ersetzen. Am Widget-Code ändert sich nichts.
-4. **`/dashboard` statt `/anzeige`:** Dafür fehlen „Aufs Board“ (geworfene Karte), der QR-Code zum Beitreten und die Orte mit Kennblöcken. Danach den Anzeige-Link auf `/dashboard` umstellen und die Startskripte das Dashboard mitbauen lassen.
+3. **E8 ist vertagt** (wird an anderer Stelle geklärt). Danach die Platzhalter-Themes in `themes.css` ersetzen. Am Widget-Code ändert sich nichts.
+4. **Sitzung (E16, 04.10.2026):** Bauplan schreiben und mit Max abnicken. Die Sitzung lebt, solange das Board läuft. „Aufs Board“ fügt den Inhalt als Widget an der ersten freien Stelle ein. Danach klären, ob `/anzeige` wegfällt (QR-Code zum Beitreten und Orte mit Kennblöcken müssten dann als Widgets kommen), den Anzeige-Link umstellen und die Startskripte das Dashboard mitbauen lassen.
 5. **Inhalte**, sobald beschrieben: Typen mit Quelle bekommen ihre Quelle in `widgets.js` (`quellenVon`) und ein Anzeigeschema in `board-karten.js`.
