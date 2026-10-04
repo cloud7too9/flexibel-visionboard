@@ -330,20 +330,30 @@ setInterval(() => {
 // ---------- Ausliefern: Companion unter /, Anzeige unter /anzeige ----------
 
 const OHNE_CACHE = { 'cache-control': 'no-cache' };
-app.get('/', (req, reply) => reply.headers(OHNE_CACHE).sendFile(COMPANION_DATEI, COMPANION_ORDNER));
+// sendFile übernimmt sonst maxAge des ersten statischen Ordners (icons/, 7 Tage) und überschreibt no-cache
+const frisch = (reply, datei) => reply.headers(OHNE_CACHE).sendFile(datei, COMPANION_ORDNER, { cacheControl: false });
+app.get('/', (req, reply) => frisch(reply, COMPANION_DATEI));
 for (const datei of ['regeln.js', 'board-karten.js']) {
-  app.get(`/${datei}`, (req, reply) => reply.headers(OHNE_CACHE).sendFile(datei, COMPANION_ORDNER));
+  app.get(`/${datei}`, (req, reply) => frisch(reply, datei));
 }
 await app.register(fastifyStatic, { root: path.join(COMPANION_ORDNER, 'icons'), prefix: '/icons/', maxAge: '7d' });
 // Welt-Import: Worker und Dekoder (ES-Module) liest das Handy selbst; die Bibliothek liegt in vendor/
 for (const datei of ['biom-ids.js', 'biom-dekoder.js', 'biom-welt.js', 'biom-import.worker.js']) {
-  app.get(`/${datei}`, (req, reply) => reply.headers(OHNE_CACHE).sendFile(datei, COMPANION_ORDNER));
+  app.get(`/${datei}`, (req, reply) => frisch(reply, datei));
 }
 await app.register(fastifyStatic, { root: path.join(COMPANION_ORDNER, 'vendor'), prefix: '/vendor/', maxAge: '7d', decorateReply: false });
 // Rüstungs-Baukasten: Texturen, fertige Item-Icons, baukasten.js/figur3d.js (ES-Module) und manifest.json
 await app.register(fastifyStatic, {
   root: path.join(COMPANION_ORDNER, 'ruestungs-baukasten'), prefix: '/ruestungs-baukasten/', maxAge: '7d', decorateReply: false,
 });
+// PWA (Home-Bildschirm): Manifest, Service Worker und App-Icons – nur, wenn die Companion sie mitbringt.
+// Der Service Worker läuft im Browser erst über https (B3); Manifest und Icons wirken auch über http.
+for (const datei of ['manifest.webmanifest', 'sw.js']) {
+  app.get(`/${datei}`, (req, reply) => frisch(reply, datei));
+}
+if (existsSync(path.join(COMPANION_ORDNER, 'app-icons'))) {
+  await app.register(fastifyStatic, { root: path.join(COMPANION_ORDNER, 'app-icons'), prefix: '/app-icons/', maxAge: '7d', decorateReply: false });
+}
 
 if (existsSync(CLIENT_DIST)) {
   // Baut nur noch die Anzeige; ihre Dateien liegen unter /assets/

@@ -20,6 +20,8 @@ Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung
 - Der Server liefert die Companion aus (`../companion/companion-prototyp.html`, per `COMPANION_DATEI` austauschbar). Den QR-Code der Anzeige mit der normalen Kamera-App scannen → die Companion öffnet sich mit der PIN → Name eingeben → beigetreten.
 - Alle Bereiche arbeiten auf den Daten des Boards (`server/daten/daten.json`): Welten mit Seed, Orte der Karte, Sammelobjekte, Portal-Verbindungen, Banner, Rüstungs-Sets. Änderungen kommen bei allen Handys live an.
 - Der **Rüstungs-Baukasten** der Companion (`companion/ruestungs-baukasten/`: Texturen, fertige Icons, `baukasten.js`, `figur3d.js`, `manifest.json`) wird unter `/ruestungs-baukasten/` ausgeliefert. Erst über http kann die Companion die Texturen umfärben und die 3D-Figur bauen.
+- **PWA:** Bringt die Companion `manifest.webmanifest`, `sw.js` und `app-icons/` mit, liefert das Board sie aus. Manifest und Icons wirken schon über http (Home-Bildschirm mit Name, Icon, Vollbild); den Service Worker startet der Browser erst über https (Offline B3).
+- Seite und Skripte der Companion (`/`, `regeln.js`, `board-karten.js`, `biom-*.js`, `sw.js`) kommen **ohne Cache** (`no-cache`), damit jedes Handy sofort den neuen Stand bekommt.
 - **Screenshot auslesen** über die lokale Texterkennung des Boards (`/api/orte/auslesen`): Kategorie, Variante (die Klammer im Titel, z. B. „Stairway“), X/(Y)/Z und Dimension. Kleine OCR-Fehler werden korrigiert.
 - **Banner-Anleitungen** („Black Base“, „Cyan Bordure“ …) erkennt dieselbe Route, wenn kein Seed-Map-Popup drauf ist: Das Bild wird vergrößert und in Schwarz-Weiß umgewandelt (`bildvorbereitung.js`, sonst liest Tesseract weiße Schrift auf Grau nicht), die Zeilen werden unscharf den englischen Farb- und Musternamen aus `regeln.js` zugeordnet (`banner-erkennung.js`).
 - Geprüft wird mit denselben Regeln wie in der Companion: Der Server lädt `../companion/regeln.js` (`server/src/regeln.js`).
@@ -120,5 +122,5 @@ Alles liegt in `server/daten/`:
 | `ANZEIGE_OFFEN` | aus | Notschalter: `1` = Anzeige darf von jedem Gerät im Netz geöffnet werden, ohne Anzeige-Link |
 | `OEFFENTLICHE_URL` | automatisch | Adresse im QR-Code, falls die automatische LAN-IP falsch ist |
 | `DATEN_ORDNER` | `server/daten` | Speicherort |
-| `COMPANION_ORDNER` | `../companion` | Ordner mit Companion-Seite, `regeln.js`, `icons/`, `ruestungs-baukasten/` und den Dateien des Welt-Imports (`biom-*.js`, `vendor/`) |
+| `COMPANION_ORDNER` | `../companion` | Ordner mit Companion-Seite, `regeln.js`, `icons/`, `ruestungs-baukasten/` den Dateien des Welt-Imports (`biom-*.js`, `vendor/`) und, falls vorhanden, `manifest.webmanifest`, `sw.js`, `app-icons/` |
 | `COMPANION_DATEI` | `companion-prototyp.html` | Seite, die unter `/` ausgeliefert wird (später z. B. `modul-a-live-karte.html`) |
