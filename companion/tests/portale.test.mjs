@@ -50,18 +50,12 @@ pruefe(await p.$eval('[data-rkoord="x"]', (e) => e.value) === "-26", "±-Taste s
 await p.click('[data-rvz="x"]'); await warte(100);
 await p.screenshot({ path: `${DIR}/p2-rechner.png` });
 
-// Infokarte + Java
+// Infokarte: nur Bedrock, kein Umschalter
 await p.click("#portalInfoBtn"); await warte(300);
 pruefe(await p.$(".info-karte") !== null, "Infokarte eingeblendet");
 pruefe((await text(".info-karte")).includes("Bedrock-Falle"), "Infokarte zeigt Bedrock-Hinweis");
+pruefe(await p.$("[data-edition]") === null && !/java/i.test(await text(".info-karte")), "Kein Umschalter, kein Java");
 await p.screenshot({ path: `${DIR}/p3-info.png` });
-await p.click('[data-edition="java"]'); await warte(200);
-pruefe((await text(".info-karte")).includes("nur ±16"), "Java-Text in der Infokarte");
-const javaPills = await pills();
-console.log("     Java:", javaPills);
-await p.evaluate(() => document.getElementById("portalStage").scrollTo(0, 9999)); await warte(150);
-await p.screenshot({ path: `${DIR}/p4-java.png` });
-await p.click('[data-edition="bedrock"]'); await warte(200);
 await p.click('[data-raktion="info-zu"]'); await warte(200);
 pruefe(await p.$(".info-karte") === null, "Infokarte ausgeblendet");
 
