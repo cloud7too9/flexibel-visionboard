@@ -16,12 +16,12 @@
 - **Offen:**
   - B3–B5 (Offline-Betrieb): warten auf die Entscheidung **N5 (HTTPS)**
   - A7 (Größenstufen je Widget): Planungsrunde mit Max
-  - die Haltepunkte H1–H6 zum Anschauen
+  - die Haltepunkte H1 und H3–H6 zum Anschauen (H2 ist erledigt, #19)
   - einige Inhalte, die noch nicht beschrieben sind (siehe Warteliste)
 - **Git:**
   - Alle Branches sind gepusht.
-  - In `main` ist noch nichts gemergt. Für jeden Branch ist ein **gestapelter Pull Request** offen: **#7–#17**, siehe Kapitel 3. Gemergt wird nach Plan durch Max.
-  - `board/identitaet` enthält alles.
+  - **Alles ist in `main`** (04.10.2026). Die Kette A2–A6 mit B1/B2 kam in einem Merge über #17, #12–#16 sind darin enthalten und geschlossen. Siehe Kapitel 3.
+  - Gemergt wird nur nach Rückfrage bei Max.
 - **Tests:** alle grün auf `board/identitaet`, siehe Kapitel 6.
 - **Für Max wichtig:** Seit B2 gelten alte Anmeldungen nicht mehr. Jedes Handy meldet sich einmal neu an, mit Name und eigener PIN.
 
@@ -61,6 +61,14 @@ Pfade unter `model/`, `lib/`, `components/` und `features/` liegen in `companion
 
 ## 3. Branches und Mergen
 
+> **Stand 04.10.2026: alles in `main`.**
+> - #7 (Strang C), #9 (MainHub), #10 (A0), #11 (A1) einzeln gemergt.
+> - #8 (Anzeige-Link) wurde in `bereich/karte-welt-upload` gemergt, als der schon in `main` war. Der Anzeige-Link kam deshalb erst mit #17 nach `main` (über `9f7dee9`).
+> - #19 holte die Ergebnisse von Phase 1 des Biom-Plans nach, die nur auf `bereich/karte-mcworld` lagen (Fixture-Welt, ID 195).
+> - #17 wurde auf `main` umgestellt und in einem Merge übernommen; er enthält A2–A6 und B1/B2. #12–#16 sind darin enthalten und wurden geschlossen.
+>
+> Der Rest dieses Kapitels beschreibt die Kette, wie sie gebaut wurde.
+
 Die Branches bauen aufeinander auf. Jeder enthält alle davor:
 
 ```
@@ -70,7 +78,7 @@ bereich/mainhub-visionboard ── widgets-uebernahme (A0) ── -raster (A1) �
    ── -struktur (A3) ── -register (A4) ── -themes (A5) ── -anzeigen (A6) ── board/identitaet (B1, B2)
 ```
 
-- `bereich/mainhub-visionboard` (die MainHub-Übernahme per Subtree, vor dieser Runde) ist **noch nicht in `main`**.
+- `bereich/mainhub-visionboard`: die MainHub-Übernahme per Subtree, vor dieser Runde (#9).
 - Zwei Merge-Commits verbinden die Ketten:
   - `9f7dee9` holt Strang C und den Anzeige-Link in die Widgets-Kette.
   - `10f3c8c` holt A6 nach `board/identitaet`.
@@ -199,7 +207,7 @@ Voraussetzungen für die Playwright-Tests:
 
 - **Haltepunkte zum Anschauen:**
   - H1: Welt-Import
-  - H2: Biom-Prüfung an echten Welten. Dafür braucht es Dateien von Max: `fixture-seed.mcworld` und die Realm-Welt.
+  - ~~H2~~: erledigt an der Fixture-Welt von Max (#19). Offen bleibt nur die Realm-Welt am iPhone.
   - H3: Raster
   - H4: Galerie mit 13 Typen
   - H5: Themes

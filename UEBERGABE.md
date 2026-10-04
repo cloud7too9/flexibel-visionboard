@@ -56,6 +56,7 @@ Was wohin gehört:
 - **Git**: Bei jedem Schritt sagen, wann committet und gepusht wird. Nach einem eigenen Commit kurz bestätigen, z. B. „Commit erstellt: …“.
   - Companion: jeder Bereich bekommt einen eigenen Branch `bereich/<name>`.
   - Board: Änderungen auf einem Branch `board/<thema>`.
+  - **Gemergt wird nur nach Rückfrage bei Max**, auch wenn Claude den Merge ausführt (Wunsch von Max, 04.10.2026).
 - **Bereiche geht Max einzeln durch.** Erst steht der Rahmen, dann folgen die Details. Nichts ausbauen, was nicht besprochen ist.
 - **Datenmodell minimal halten.** Es wird nur erweitert, wenn ein Bereich es konkret braucht. FeatureTypes werden nicht erfunden.
 - **Bedrock ist die Hauptedition.** Die Seed-Map-Screenshots zeigen „Bedrock 26.50“. Java-Unterschiede kommen nur dort vor, wo sie zählen (Portale).

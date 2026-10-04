@@ -13,7 +13,7 @@ Bei jedem Haltepunkt stehen Branch und Screenshots. Die Screenshots erzeugen die
 | # | Haltepunkt | Branch | Was Max anschaut |
 |---|---|---|---|
 | H1 | **Welt-Import (Phase 4 des Biom-Plans, Strang C):** Import-Sheet mit Anleitung, Prüfung, Fortschritt, Ergebnis | `bereich/karte-welt-upload` | `karte-mcworld.test.mjs` → Screenshots des Import-Sheets und der Biom-Ebene |
-| H2 | **Biom-Plan Phase 1:** Prüfungen an echten Welten (Reihenfolge der Höhenkarte, neuere Biom-IDs wie Cherry Grove, Pale Garden) | `bereich/karte-welt-upload` | **braucht Dateien von Max:** `tests/daten/fixture-seed.mcworld` und die Realm-Welt. Bis dahin laufen die Tests mit künstlichen Welten (`tests/welt-bauen.mjs`). |
+| ~~H2~~ | **Erledigt: Biom-Plan Phase 1** an der Fixture-Welt von Max (`tests/daten/fixture-seed.mcworld`): Höhenkarte `z*16 + x`, Chunkbase 8 von 8, ID 195 = Dappled Forest. Lag nur auf `bereich/karte-mcworld`, kam mit #19 nach `main`. | `main` | Offen bleiben die Realm-Welt am iPhone (Laufzeit, Speicher) und die IDs von Cherry Grove, Pale Garden und Sulfur Caves. |
 | H3 | **A2 · Raster** mit Platzhalter-Widgets auf 16:9 und 4:3 | `bereich/widgets-groessen` | `w1-raster-16x9.png`, `w1-raster-4x3.png`, `w2-stufen.png` |
 | H4 | **A4 · Galerie mit allen 13 Typen** und Karten vom Board | `bereich/widgets-register` | `w4-galerie.png`, `w6-quelle-waehlen.png`, `w5-beispielkarten.png` (ohne Board). Live ausprobieren: `npm run dev` in `companion/widgets` (ohne Board, Galerie im Bearbeiten-Modus) |
 | H5 | **A5 · Bereichs-Themes** (nicht als Haltepunkt im Plan, aber zum Anschauen) | `bereich/widgets-themes` | `w8-themes.png` (Handbuch als Buch, Baupläne blau, Portale lila), `w7-board-karten.png` (Karte: Oberwelt grün, Nether rot) |
@@ -21,8 +21,7 @@ Bei jedem Haltepunkt stehen Branch und Screenshots. Die Screenshots erzeugen die
 
 Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
 
-**Pull Requests:** Gestapelt offen sind **#7–#17**, einer je Branch, jeweils mit dem Vorgänger als Basis. Gemergt wird nach Plan durch Max nach `main`, nach jedem Strang bzw. Haltepunkt mit OK: von unten nach oben, mit „Create a merge commit“. Die Branches bauen aufeinander auf (Übersicht und Merge-Vorschlag in [`UEBERGABE.md`](UEBERGABE.md), Kapitel 3):
-`bereich/mainhub-visionboard` (noch nicht in `main`) bzw. `bereich/karte-welt-upload` → `board/anzeige-link` → `bereich/widgets-uebernahme` → `-raster` → `-groessen` → `-struktur` → `-register` → `-themes` → `-anzeigen` → `board/identitaet` (Strang C und der Anzeige-Link sind in die Widgets-Kette gemergt).
+**Pull Requests:** Seit dem 04.10.2026 ist alles in `main`: #7, #9–#11 und #19 einzeln, die Kette A2–A6 mit B1/B2 und dem Anzeige-Link in einem Merge über #17. #12–#16 sind darin enthalten und geschlossen (Kapitel 3 in [`UEBERGABE.md`](UEBERGABE.md)). **Gemergt wird nur nach Rückfrage bei Max.**
 
 ---
 
