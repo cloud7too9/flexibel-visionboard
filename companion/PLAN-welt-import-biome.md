@@ -2,7 +2,7 @@
 
 > Für Claude Code · Repo `companion-orte` · Datei `companion-prototyp.html` · Stand 29.09.2026
 >
-> **Stand 01.10.2026:** Phasen 1–6 gebaut (Branch `bereich/karte-mcworld`, dann `bereich/karte-welt-upload` zusammen mit Strang C aus `../planung/PLAN.md`). Abweichungen: Upload als `.zip` aus der Dateien-App mit Aufbauprüfung und Anleitung (Strang C); der Worker schickt die Kacheln als Base64; der Mock erzeugt seine Biome (`demoBiome()`), weil die Fixture-Welt fehlt; das Board speichert je Welt in `biome/<weltId>.json`. **Offen bleibt der Haltepunkt nach Phase 1:** die Prüfungen an echten Welten von Max (⚠ in Kapitel 3).
+> **Stand 01.10.2026:** Phasen 1–6 gebaut (Branch `bereich/karte-mcworld`, dann `bereich/karte-welt-upload` zusammen mit Strang C aus `../planung/PLAN.md`). Abweichungen: Upload als `.zip` aus der Dateien-App mit Aufbauprüfung und Anleitung (Strang C); der Worker schickt die Kacheln als Base64; der Mock erzeugt seine Biome (`demoBiome()`) statt Kacheln aus der Fixture-Welt; das Board speichert je Welt in `biome/<weltId>.json`. **Phase 1 ist an der Fixture-Welt von Max abgeschlossen** (Ergebnis bei Phase 1 in Kapitel 7). Offen bleiben die Realm-Welt am iPhone und die IDs von Cherry Grove, Pale Garden und Sulfur Caves.
 
 ---
 

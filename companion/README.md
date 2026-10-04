@@ -77,15 +77,16 @@ Danach: Weltname und Seed bestätigen → **Biome lesen** (Fortschritt, Abbreche
 | `biom-import.worker.js` | Web Worker (`type: "module"`): `pruefen` → Name, Seed, Version; `start` → Fortschritt, dann `{ meta, kacheln }` mit Base64-Kacheln |
 | `biom-dekoder.js` | reine Funktionen: Chunk-Schlüssel, Data3D (Höhenkarte + Biom-Sektionen), Oberflächenbiom, `level.dat` (NBT), Kacheln 32 × 32 Chunks, Base64 |
 | `biom-welt.js` | `weltPruefen(datei)` (Aufbau, Name, Seed) und `weltLesen(datei)`: ZIP → `level.dat` → LevelDB-Dateien **einzeln** entpacken und mit Besucher parsen (Streaming) oder `readMcworld()` (Vergleich); gemeinsam für Worker und Node |
-| `biom-ids.js` | erzeugte ID-Tabelle (minecraft-data `bedrock/1.20.0`, IDs 0–191), setzt `globalThis.BIOM_IDS`; die Seite bindet sie per `<script>` ein (`BIOM_INFO`) |
+| `biom-ids.js` | erzeugte ID-Tabelle (minecraft-data `bedrock/1.20.0`, IDs 0–191, dazu bestätigt 195 Dappled Forest), setzt `globalThis.BIOM_IDS`; die Seite bindet sie per `<script>` ein (`BIOM_INFO`) |
 | `vendor/mcbe-leveldb.js` | Bundle aus `mcbe-leveldb-reader` 5.0.1 + zip.js (211 KB, gzip 86 KB), Lizenzen in `vendor/LIZENZEN.txt` |
 | `tools/` | `npm ci`, dann `npm run vendor` / `npm run biom-ids` (neu erzeugen), `npm test` (Gegenprobe mit prismarine-chunk), `node welt-pruefen.mjs <welt.mcworld> [--weg beide] [--massstab 4] [--punkt x,z]` |
 
 - **Daten**: pro Welt genau ein Import (`WeltImport` + Kacheln, siehe API). Kachel = 32 × 32 Chunks, Wert = Bedrock-ID + 1, 0 = unerkundet, Uint16 → 2048 Byte, im Transport Base64. Regel `biomImportPruefen()` in `regeln.js`: Seed = Seed der Welt, Dimension, genau 2048 Byte, Kachel innerhalb der Weltgrenze, keine doppelte Kachel, höchstens 20 000 Kacheln.
-- **Mock**: Die Demo-Welt `w_1` bekommt erzeugte Biome (`demoBiome()`: Rauschen, ein Fluss, erkundet rund um Spawn und Orte) – eine echte Fixture-Welt fehlt noch.
+- **Mock**: Die Demo-Welt `w_1` bekommt erzeugte Biome (`demoBiome()`: Rauschen, ein Fluss, erkundet rund um Spawn und Orte). Die echte Fixture-Welt von Max (`tests/daten/fixture-seed.mcworld`) prüft den Dekoder in `biom-dekoder.test.mjs`.
 - **Prüfskript** `tools/welt-pruefen.mjs`: Weltname, Seed, Version, Chunks je Dimension, Ausdehnung, häufigste Biome, unbekannte IDs mit Beispielkoordinate, Laufzeit und Spitzenspeicher je Weg, PNG je Dimension nach `tests/bilder/` (1 Pixel = 1 Chunk, unbekannt rot). `--punkt x,z` zeigt die Höhenkarte in beiden Lesarten – zum Abgleich mit der Y-Anzeige im Spiel.
-- **Tests**: `node --test biom-dekoder.test.mjs` (Dekoder, Aufbauprüfung, synthetische Welten aus `tests/welt-bauen.mjs`) und `node karte-mcworld.test.mjs` (Playwright: DEMO über http, als Datei, live am echten Board).
-- **Noch offen** (Haltepunkt Phase 1 des Bauplans): die Prüfungen an echten Welten von Max – Höhenkarte an einer bekannten Stelle, Stichproben gegen Chunkbase, neuere Biom-IDs (Cherry Grove, Pale Garden …), Laufzeit und Speicher am iPhone. Dafür `tests/daten/fixture-seed.mcworld` (darf ins Repo) und die Realm-Welt nur nach `tests/daten/privat/` (steht in `.gitignore`).
+- **Tests**: `node --test biom-dekoder.test.mjs` (Dekoder, Aufbauprüfung, synthetische Welten aus `tests/welt-bauen.mjs`, Fixture-Welt von Max) und `node karte-mcworld.test.mjs` (Playwright: DEMO über http, als Datei, live am echten Board).
+- **Phase 1 abgeschlossen** (29.09.2026, an der Fixture-Welt von Max `tests/daten/fixture-seed.mcworld`, Bedrock 1.26.51): Höhenkarte `z*16 + x` an seiner Stelle bestätigt, 8 von 8 Chunkbase-Stichproben passen, ID 195 = Dappled Forest.
+- **Noch offen**: die Realm-Welt am iPhone (Laufzeit und Speicher; nur nach `tests/daten/privat/`, steht in `.gitignore`) und die IDs von Cherry Grove, Pale Garden und Sulfur Caves, bis eine Welt sie enthält.
 
 ## Sammelobjekte
 
