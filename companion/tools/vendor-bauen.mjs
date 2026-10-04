@@ -6,9 +6,10 @@ import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
+import { COMPANION } from "../companion-ordner.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
-const ZIEL = path.join(HIER, "..", "vendor", "mcbe-leveldb.js");
+const ZIEL = path.join(COMPANION, "vendor", "mcbe-leveldb.js");
 const version = (paket) => JSON.parse(readFileSync(path.join(HIER, "node_modules", paket, "package.json"), "utf8")).version;
 
 const LEVELDB = "5.0.1";   // nur diese Version ist geprüft (Besucher-API von parseLdbContent/parseLogContent)

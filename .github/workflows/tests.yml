@@ -17,6 +17,11 @@ concurrency:
 permissions:
   contents: read
 
+# Die Companion-App hat ein eigenes Repo. Board und Tests finden sie über COMPANION_ORDNER;
+# lokal liegt sie neben diesem Repo (../Companion/app), in der CI im Ordner Companion/.
+env:
+  COMPANION_ORDNER: ${{ github.workspace }}/Companion/app
+
 jobs:
   board-server:
     name: Board-Server
@@ -27,6 +32,11 @@ jobs:
         working-directory: koordinaten-board/server
     steps:
       - uses: actions/checkout@v4
+      - name: Companion auschecken
+        uses: actions/checkout@v4
+        with:
+          repository: cloud7too9/MineTool   # heißt künftig Companion; GitHub leitet den alten Namen weiter
+          path: Companion
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -59,6 +69,11 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Companion auschecken
+        uses: actions/checkout@v4
+        with:
+          repository: cloud7too9/MineTool   # heißt künftig Companion; GitHub leitet den alten Namen weiter
+          path: Companion
       - uses: actions/setup-node@v4
         with:
           node-version: 22

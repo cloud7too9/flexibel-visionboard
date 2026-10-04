@@ -24,9 +24,10 @@ const PORT = Number(process.env.PORT ?? 3000);
 const DATEN = path.resolve(process.env.DATEN_ORDNER ?? path.join(HIER, '..', 'daten'));
 const CLIENT_DIST = path.resolve(HIER, '..', '..', 'client', 'dist');
 // Widget-Dashboard (companion/widgets, `npm run build` → dist/), ausgeliefert unter /dashboard
-const DASHBOARD_DIST = path.join(COMPANION_ORDNER, 'widgets', 'dist');
+// Widget-Dashboard: bleibt in diesem Repo (companion/widgets), die Companion-App hat ein eigenes Repo
+const DASHBOARD_DIST = path.resolve(HIER, '..', '..', '..', 'companion', 'widgets', 'dist');
 // Seite der Companion, die unter / ausgeliefert wird (später z. B. modul-a-live-karte.html)
-const COMPANION_DATEI = process.env.COMPANION_DATEI ?? 'companion-prototyp.html';
+const COMPANION_DATEI = process.env.COMPANION_DATEI ?? 'index.html';
 // Anzeige darf vom Gerät selbst (localhost) oder mit Anzeige-Link (Anzeige + Schlüssel) geöffnet werden.
 // Notschalter für alles im Netz ohne Schutz: ANZEIGE_OFFEN=1
 const ANZEIGE_OFFEN = process.env.ANZEIGE_OFFEN === '1';

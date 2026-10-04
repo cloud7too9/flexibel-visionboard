@@ -6,9 +6,10 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const HIER = fileURLToPath(new URL(".", import.meta.url));
-export const COMPANION = path.join(HIER, "..");
+export { COMPANION } from "../companion-ordner.mjs";
+import { COMPANION } from "../companion-ordner.mjs";
 export const THREE_URL = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
-const TYPEN = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg" };
+const TYPEN = { ".html": "text/html", ".js": "text/javascript", ".json": "application/json", ".webmanifest": "application/manifest+json", ".png": "image/png", ".jpg": "image/jpeg" };
 
 /** Kleiner statischer Server für den Companion-Ordner → { adresse, schliessen() } */
 export async function companionAusliefern(port) {

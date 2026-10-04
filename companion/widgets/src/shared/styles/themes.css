@@ -3,7 +3,7 @@
    ([data-theme]); Inhalte verwenden nur diese Tokens. Werte als RGB-Tripel für Tailwind.
    --color-theme-akzent: Leiste oben am Gehäuse, an der man den Bereich erkennt. */
 
-/* Standard: Oberwelt-Grün wie in der Companion (THEMES.overworld in companion-prototyp.html).
+/* Standard: Oberwelt-Grün wie in der Companion (THEMES.overworld in index.html der Companion).
    Platzhalter für Bereiche ohne festgelegtes Theme (E8) – jedes mit eigener ID, damit es
    später allein ersetzt werden kann. */
 [data-theme="standard"],

@@ -1,16 +1,18 @@
 import { chromium } from "playwright";
 import { fileURLToPath } from "node:url";
-import { mkdirSync, readFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import path from "node:path";
 const HIER = fileURLToPath(new URL(".", import.meta.url));
 const DIR = path.join(HIER, "bilder");
 mkdirSync(DIR, { recursive: true });
-const DATEI = new URL("../companion-prototyp.html", import.meta.url).href;
-const ICONS = path.join(HIER, "../icons");
+import { SEITE_URL as DATEI } from "../companion-ordner.mjs";
+import { COMPANION } from "../companion-ordner.mjs";
+const ICONS = path.join(COMPANION, "icons");
 const MANIFEST = JSON.parse(readFileSync(path.join(ICONS, "manifest.json"), "utf8"));
 const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
-const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+// Ohne Service Worker: Der Test sperrt unten icons/ per route – Anfragen aus dem Service-Worker-Cache sähe die Sperre nicht
+const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, serviceWorkers: "block" });
 const fehler = [];
 p.on("pageerror", (e) => fehler.push(e.message));
 p.on("console", (m) => { if (m.type() === "error") fehler.push(m.text()); });
@@ -104,13 +106,15 @@ pruefe(fehler.length === 0, `keine Fehler in der Konsole${fehler.length ? ": " +
 
 // ---- Bilder fehlen (z. B. eingebaut ohne icons/) → Symbole -----------------------------------
 const seite = createServer((req, res) => {
-  const datei = path.join(HIER, "..", decodeURIComponent(new URL(req.url, "http://x").pathname));
-  if (!datei.startsWith(path.join(HIER, "..")) || !existsSync(datei)) { res.writeHead(404); res.end(); return; }
-  res.writeHead(200, { "content-type": datei.endsWith(".png") ? "image/png" : "text/html; charset=utf-8" });
+  let datei = path.join(COMPANION, decodeURIComponent(new URL(req.url, "http://x").pathname));
+  if (existsSync(datei) && statSync(datei).isDirectory()) datei = path.join(datei, "index.html");   // ./ (Service Worker)
+  if (!datei.startsWith(COMPANION) || !existsSync(datei)) { res.writeHead(404); res.end(); return; }
+  const typ = { ".png": "image/png", ".js": "text/javascript", ".json": "application/json", ".webmanifest": "application/manifest+json" }[path.extname(datei)];
+  res.writeHead(200, { "content-type": typ ?? "text/html; charset=utf-8" });   // .js richtig, sonst lehnt der Browser sw.js ab
   res.end(readFileSync(datei));
 });
 await new Promise((ok) => seite.listen(0, "127.0.0.1", ok));
-const url = `http://127.0.0.1:${seite.address().port}/companion-prototyp.html?modul=sammelobjekte`;
+const url = `http://127.0.0.1:${seite.address().port}/index.html?modul=sammelobjekte`;
 fehler.length = 0;
 await p.goto(url); await warte(900);
 pruefe((await koepfe()).filter((x) => x.geladen).length === 12, "über http: 12 Kennblöcke geladen");

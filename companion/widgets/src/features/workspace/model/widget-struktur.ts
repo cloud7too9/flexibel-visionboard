@@ -7,7 +7,7 @@
  */
 import type { Groessenstufe, WidgetVertrag } from "./widget-vertrag";
 
-/** Bereichs-IDs wie in `BEREICHE` der Companion (companion-prototyp.html, Abschnitt 9b) */
+/** Bereichs-IDs wie in `BEREICHE` der Companion (index.html im Repo Companion, Abschnitt 9b) */
 export type BereichId = "karte" | "sammelobjekte" | "portale" | "handbuch" | "bauplaene" | "banner" | "ruestung";
 
 export interface Bereich {

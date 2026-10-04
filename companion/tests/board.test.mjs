@@ -60,7 +60,7 @@ function teilnehmerImRaum() {
 
 // --- Companion über http://localhost ausliefern (sicherer Kontext → Kamera erlaubt) ---
 // Ausgeliefert werden die Seite, regeln.js und icons/ – alles andere ist die Seite selbst
-const COMPANION = path.join(HIER, "..");
+import { COMPANION } from "../companion-ordner.mjs";
 const TYPEN = { ".js": "text/javascript; charset=utf-8", ".png": "image/png" };
 const seite = createServer((req, res) => {
   const pfad = decodeURIComponent(new URL(req.url, "http://x").pathname);
@@ -70,7 +70,7 @@ const seite = createServer((req, res) => {
     return res.end(readFileSync(datei));
   }
   res.setHeader("content-type", "text/html; charset=utf-8");
-  res.end(readFileSync(path.join(COMPANION, "companion-prototyp.html")));
+  res.end(readFileSync(path.join(COMPANION, "index.html")));
 }).listen(SEITE_PORT);
 const URL_SEITE = `http://localhost:${SEITE_PORT}/`;
 

@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
-const COMPANION = path.join(HIER, '..', '..', '..', 'companion');
+import { COMPANION_ORDNER as COMPANION } from '../src/regeln.js';
 const PORT = 3298;
 const BASIS = `http://127.0.0.1:${PORT}`;
 const DATEN = mkdtempSync(path.join(tmpdir(), 'kb-pwa-daten-'));
@@ -18,7 +18,7 @@ const PNG = Buffer.from('89504e470d0a1a0a', 'hex');
 let server;
 
 before(async () => {
-  for (const datei of ['regeln.js', 'board-karten.js', 'companion-prototyp.html']) copyFileSync(path.join(COMPANION, datei), path.join(ORDNER, datei));
+  for (const datei of ['regeln.js', 'board-karten.js', 'index.html']) copyFileSync(path.join(COMPANION, datei), path.join(ORDNER, datei));
   for (const unter of ['icons', 'vendor', 'ruestungs-baukasten', 'app-icons']) mkdirSync(path.join(ORDNER, unter));
   writeFileSync(path.join(ORDNER, 'manifest.webmanifest'), JSON.stringify({ name: 'Companion', start_url: './' }));
   writeFileSync(path.join(ORDNER, 'sw.js'), 'self.addEventListener("fetch", () => {});');

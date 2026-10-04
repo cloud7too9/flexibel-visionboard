@@ -1,18 +1,26 @@
 // Stammdaten und Regeln der Companion – dieselbe Datei, die auch das Handy lädt
-// (companion/regeln.js). Sie ist ein klassisches Script ohne Module, damit die
+// (regeln.js im Repo Companion, Ordner app/). Sie ist ein klassisches Script ohne Module, damit die
 // Companion als Datei läuft; hier wird sie in einem eigenen vm-Kontext ausgeführt.
 // So prüfen Handy und Server mit genau denselben Regeln – nichts wird nachgebaut.
-// Im selben Kontext läuft companion/board-karten.js: die Anzeigeschemas (Daten → Karte),
+// Im selben Kontext läuft board-karten.js der Companion: die Anzeigeschemas (Daten → Karte),
 // mit denen der Server die Widgets des Dashboards baut wie die Companion „Aufs Board“.
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 
-/** Ordner der Companion (Seite, regeln.js, icons/) – im Repo neben dem Board */
-export const COMPANION_ORDNER = path.resolve(process.env.COMPANION_ORDNER ?? path.join(HIER, '..', '..', '..', 'companion'));
+/**
+ * Ordner der Companion-App (Seite, regeln.js, board-karten.js, icons/ …). Die Companion hat ein
+ * eigenes Repo; es liegt neben diesem: …/flexibel-visionboard und …/Companion → ../Companion/app.
+ */
+export const COMPANION_ORDNER = path.resolve(process.env.COMPANION_ORDNER ?? path.join(HIER, '..', '..', '..', '..', 'Companion', 'app'));
+if (!existsSync(path.join(COMPANION_ORDNER, 'regeln.js'))) {
+  throw new Error(`Companion nicht gefunden: ${COMPANION_ORDNER}\n`
+    + 'Das Repo Companion neben flexibel-visionboard auschecken (git clone https://github.com/cloud7too9/Companion.git) '
+    + 'oder COMPANION_ORDNER auf dessen Ordner app/ setzen.');
+}
 
 const NAMEN = [
   'WELTGRENZE', 'DIM_ORDER', 'dimLabel', 'EIGENE_ORTE', 'BIOMES', 'FEATURE_KATEGORIEN', 'BIOME', 'biomFinden',
@@ -35,5 +43,5 @@ export function regelnLaden(datei = path.join(COMPANION_ORDNER, 'regeln.js')) {
 }
 
 export const regeln = regelnLaden();
-/** Anzeigeschemas aus companion/board-karten.js (braucht regeln.js im selben Kontext) */
+/** Anzeigeschemas aus board-karten.js der Companion (braucht regeln.js im selben Kontext) */
 export const karten = scriptsLaden([path.join(COMPANION_ORDNER, 'regeln.js'), path.join(COMPANION_ORDNER, 'board-karten.js')], KARTEN_NAMEN);

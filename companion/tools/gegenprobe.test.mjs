@@ -5,8 +5,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
-import { data3dLesen, biomAn } from "../biom-dekoder.js";
+import { modulLaden } from "../companion-ordner.mjs";
 import { data3dBauen } from "../tests/welt-bauen.mjs";
+
+const { data3dLesen, biomAn } = await modulLaden("biom-dekoder.js");
 
 const require = createRequire(import.meta.url);
 const registry = require("prismarine-registry")("bedrock_1.20.0");

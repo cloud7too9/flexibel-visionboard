@@ -14,11 +14,13 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { deflateSync, crc32 } from "node:zlib";
 import path from "node:path";
-import { weltLesen, WeltFehler } from "../biom-welt.js";
-import { data3dLesen, biomAn, oberflaechenBiom, MIN_Y, kachelZuBase64, KACHEL_CHUNKS, DIMENSIONEN, STANDARD_OPTIONEN } from "../biom-dekoder.js";
-import "../biom-ids.js";
+import { modulLaden } from "../companion-ordner.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
+// Die Dateien der App liegen im Repo Companion (companion-ordner.mjs)
+const { weltLesen, WeltFehler } = await modulLaden("biom-welt.js");
+const { data3dLesen, biomAn, oberflaechenBiom, MIN_Y, kachelZuBase64, KACHEL_CHUNKS, DIMENSIONEN, STANDARD_OPTIONEN } = await modulLaden("biom-dekoder.js");
+await modulLaden("biom-ids.js");
 const BIOME = new Map(globalThis.BIOM_IDS.map((b) => [b.id, b]));
 const VERMUTET = { 192: "Cherry Grove", 193: "Pale Garden" };   // aus dem Bauplan, unbestätigt
 const DIM_NAME = { overworld: "Oberwelt", nether: "Nether", end: "End" };

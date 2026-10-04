@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { regeln } from '../src/regeln.js';
+import path from 'node:path';
+import { regeln, COMPANION_ORDNER } from '../src/regeln.js';
 
 test('Regeln der Companion werden geladen', () => {
   assert.equal(regeln.WELTGRENZE, 30_000_000);
@@ -80,7 +81,7 @@ test('Rüstungs-Sets: dieselben Regeln wie in der Companion', () => {
 
 test('Rüstung: Namen und IDs passen zum Rüstungs-Baukasten', () => {
   const j = (x) => JSON.parse(JSON.stringify(x));   // Objekte aus dem vm-Kontext haben einen anderen Prototyp
-  const manifest = JSON.parse(readFileSync(new URL('../../../companion/ruestungs-baukasten/manifest.json', import.meta.url), 'utf8'));
+  const manifest = JSON.parse(readFileSync(path.join(COMPANION_ORDNER, 'ruestungs-baukasten', 'manifest.json'), 'utf8'));
   assert.deepEqual(j(regeln.RUESTUNGS_TEILE).map((t) => [t.id, t.name]), manifest.teile.map((t) => [t.id, t.name]));
   assert.deepEqual(j(regeln.RUESTUNGEN).map((r) => r.id).sort(), manifest.ruestungen.map((r) => r.id).sort());
   for (const r of manifest.ruestungen) {
@@ -98,7 +99,7 @@ test('Rüstung: Namen und IDs passen zum Rüstungs-Baukasten', () => {
 
 test('IDs neuer Einträge: UUID v4 vom Handy, auch ohne sicheren Kontext', () => {
   // Wie im Browser über http: crypto.getRandomValues gibt es, randomUUID wird nicht gebraucht
-  const code = readFileSync(new URL('../../../companion/regeln.js', import.meta.url), 'utf8');
+  const code = readFileSync(path.join(COMPANION_ORDNER, 'regeln.js'), 'utf8');
   const { neueEintragId, idGueltig } = vm.runInNewContext(`${code}\n;({ neueEintragId, idGueltig })`,
     { crypto: { getRandomValues: (a) => globalThis.crypto.getRandomValues(a) } });
   const ids = Array.from({ length: 200 }, neueEintragId);

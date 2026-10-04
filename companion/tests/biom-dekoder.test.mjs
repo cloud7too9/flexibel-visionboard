@@ -4,16 +4,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { openAsBlob } from "node:fs";
-import {
-  chunkSchluesselLesen, data3dLesen, biomAn, oberflaechenBiom, chunkBiom, levelDatLesen, kachelIndex,
-  kachelnBauen, kachelWert, kachelZuBase64, kachelAusBase64, chunksAuswerten, KACHEL_CHUNKS,
-  hoehenIndex, oberflaecheY,
-} from "../biom-dekoder.js";
-import { weltLesen, weltPruefen, WeltFehler, FEHLER } from "../biom-welt.js";
-import "../biom-ids.js";
+import { modulLaden } from "../companion-ordner.mjs";
 import {
   chunkSchluessel, data3dBauen, levelDatBauen, testweltBauen, zipBauen, ID, SEED,
 } from "./welt-bauen.mjs";
+// Die Dateien der App liegen im Repo Companion (companion-ordner.mjs)
+const {
+  chunkSchluesselLesen, data3dLesen, biomAn, oberflaechenBiom, chunkBiom, levelDatLesen, kachelIndex,
+  kachelnBauen, kachelWert, kachelZuBase64, kachelAusBase64, chunksAuswerten, KACHEL_CHUNKS,
+  hoehenIndex, oberflaecheY,
+} = await modulLaden("biom-dekoder.js");
+const { weltLesen, weltPruefen, WeltFehler, FEHLER } = await modulLaden("biom-welt.js");
+await modulLaden("biom-ids.js");
 
 const blob = (bytes) => new Blob([bytes]);
 const BEKANNT = globalThis.BIOM_IDS.map((b) => b.id);

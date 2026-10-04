@@ -42,7 +42,7 @@ try {
   p.on("pageerror", (e) => fehler.push(e.message));
   p.on("console", (m) => { if (m.type() === "error") fehler.push(m.text()); });
   await threeUmleiten(p);
-  await p.goto(`${companion.adresse}/companion-prototyp.html?demo=1`);
+  await p.goto(`${companion.adresse}/index.html?demo=1`);
   await p.waitForFunction(() => typeof st !== "undefined" && st.weltId && pt.liste.length);
   await p.evaluate(() => Promise.all([bannerLaden(), ruestungLaden()]));
   await p.evaluate(([adresse, t]) => { bd.verbindung = { adresse, token: t, name: "Max" }; boardVerbinden(); }, [BOARD, token]);

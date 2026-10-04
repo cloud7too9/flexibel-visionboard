@@ -9,6 +9,7 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { companionAusliefern, CHROMIUM_OPTIONEN } from "./hilfen.mjs";
+import { SEITE_URL } from "../companion-ordner.mjs";
 import { testweltBauen, zipBauen, levelDatBauen, SEED } from "./welt-bauen.mjs";
 
 const HIER = fileURLToPath(new URL(".", import.meta.url));
@@ -58,7 +59,7 @@ try {
   // ======================================================================================
   server = await companionAusliefern(3191);
   const p = await handy();
-  await p.goto(`${server.adresse}/companion-prototyp.html?demo=1&modul=karte`);
+  await p.goto(`${server.adresse}/index.html?demo=1&modul=karte`);
   await warteAuf(p, () => st.welt && bm.weltId === st.weltId && bm.import);
   await p.evaluate(() => { ansichtWechseln("karte"); dimWechseln("overworld"); });
   await schlafen(400);
@@ -226,7 +227,7 @@ try {
   // Als Datei geöffnet: Demo-Biome ja, Import nein (Worker braucht http)
   // ======================================================================================
   const d = await handy();
-  await d.goto(new URL("../companion-prototyp.html?modul=karte", import.meta.url).href);
+  await d.goto(SEITE_URL + "?modul=karte");
   await warteAuf(d, () => st.welt && bm.import);
   pruefe(await d.evaluate(() => bm.kacheln.size > 0), "Als Datei: Demo-Biome aus dem Mock");
   await d.click("#orteImportBtn"); await schlafen(200);

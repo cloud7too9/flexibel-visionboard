@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { companionAusliefern, threeUmleiten, CHROMIUM_OPTIONEN } from "./hilfen.mjs";
+import { SEITE_URL } from "../companion-ordner.mjs";
 
 const HIER = fileURLToPath(new URL(".", import.meta.url));
 const DIR = path.join(HIER, "bilder");
@@ -21,7 +22,7 @@ try {
   p.on("pageerror", (e) => fehler.push(e.message));
   p.on("console", (m) => { if (m.type() === "error") fehler.push(m.text()); });
   await threeUmleiten(p);
-  await p.goto(`${server.adresse}/companion-prototyp.html?demo=1`);
+  await p.goto(`${server.adresse}/index.html?demo=1`);
   await p.waitForFunction(() => typeof st !== "undefined" && st.weltId && sam.weltId);
   const bild = (name) => p.screenshot({ path: path.join(DIR, `ruestung-${name}.png`) });
   const sheetScrollen = async (y) => { await p.evaluate((y) => { $sheet.scrollTop = y; }, y); await p.waitForTimeout(250); };
@@ -191,7 +192,7 @@ try {
   d.on("console", (m) => { if (m.type() === "error") dateiFehler.push(m.text()); });
   let cdn = 0;
   await d.route("https://cdnjs.cloudflare.com/**", (r) => { cdn++; return r.abort(); });
-  await d.goto(new URL("../companion-prototyp.html", import.meta.url).href);
+  await d.goto(SEITE_URL);
   await d.waitForFunction(() => typeof st !== "undefined" && st.weltId);
   await d.evaluate(() => { modulWechseln("ruestung"); });
   await d.waitForFunction(() => rs.geladen);

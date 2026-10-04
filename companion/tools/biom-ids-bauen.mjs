@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { COMPANION } from "../companion-ordner.mjs";
 
 const HIER = path.dirname(fileURLToPath(import.meta.url));
 const MCDATA = path.join(HIER, "node_modules", "minecraft-data");
@@ -31,7 +32,7 @@ const doppelt = eintraege.find((b, i) => eintraege.findIndex((x) => x.id === b.i
 if (doppelt) throw new Error(`Biom-ID ${doppelt.id} doppelt`);
 
 const zeilen = eintraege.map((b) => `  { id:${b.id}, name:${JSON.stringify(b.name)}, displayName:${JSON.stringify(b.displayName)}, color:"${b.color}" },`);
-writeFileSync(path.join(HIER, "..", "biom-ids.js"), `/* biom-ids.js – erzeugt von companion/tools/biom-ids-bauen.mjs, nicht von Hand ändern.
+writeFileSync(path.join(COMPANION, "biom-ids.js"), `/* biom-ids.js – erzeugt von companion/tools/biom-ids-bauen.mjs, nicht von Hand ändern.
    Biom-IDs, wie Bedrock sie in Data3D speichert. Quelle: minecraft-data ${mcdataVersion}, ${QUELLE}/biomes.json
    ${NACHTRAG.length ? `+ ${NACHTRAG.length} an echten Welten bestätigte Nachträge` : "(ohne Nachträge – neuere Biome meldet der Import als unbekannt)"}.
    displayName entspricht der Schreibweise von Chunkbase und der Biom-Liste in regeln.js.

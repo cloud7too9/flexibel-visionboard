@@ -6,7 +6,7 @@ import path from "node:path";
 const HIER = fileURLToPath(new URL(".", import.meta.url));
 const DIR = path.join(HIER, "bilder");
 mkdirSync(DIR, { recursive: true });
-const DATEI = new URL("../companion-prototyp.html", import.meta.url).href;
+import { SEITE_URL as DATEI } from "../companion-ordner.mjs";
 const b = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});
 const p = await b.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
 const fehler = [];
