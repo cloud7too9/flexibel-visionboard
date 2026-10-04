@@ -3,6 +3,8 @@
 > **Einstieg für den nächsten Chat:** zuerst [`../UEBERGABE.md`](../UEBERGABE.md) (Arbeitsweise, Konventionen), dann diese Datei, dann [`WARTELISTE.md`](WARTELISTE.md) (was auf Max wartet). Der Plan selbst steht in [`PLAN.md`](PLAN.md).
 >
 > Diese Datei beschreibt, was aus `PLAN.md` gebaut ist, wo es liegt, wie man es startet und testet und was als Nächstes kommt.
+>
+> **Neu (05.10.2026):** [`Integration-drei-Konzepte.md`](Integration-drei-Konzepte.md) legt fest, wie Pi-Server, Live-Update und Pause/Neustart angewendet werden, mit der Reihenfolge der fünf Stufen. **Stufe 1** (Pi als reiner Server, zuerst mit `daten.json`) ist auf dem Branch `claude/integration-drei-konzepte-eucftl` gebaut: [`koordinaten-board/pi/ANLEITUNG.md`](../koordinaten-board/pi/ANLEITUNG.md), Workflow „Auf den Pi“ (`.github/workflows/pi.yml`).
 
 ---
 
@@ -196,6 +198,7 @@ Voraussetzungen für die Playwright-Tests:
 - **Realm-Welt am iPhone** importieren (Laufzeit, Speicher). Rest von H2.
 - **Später:** B3 am echten iPhone (Home-Bildschirm-App, Flugmodus); E8 (Themes) an anderer Stelle.
 - **Aufräumen:** 16 Branches löschen (Kapitel 3).
+- **Pi als Server (Stufe 1, 05.10.2026):** Merge des Branches `claude/integration-drei-konzepte-eucftl` abnicken, dann den Pi nach `koordinaten-board/pi/ANLEITUNG.md` einrichten. Die drei Baupläne (Pi-Server-und-Datenbanken, Live-Update, Server-Pause-und-Neustart) ins Repo legen (`WARTELISTE.md`, Kapitel 5).
 
 ---
 

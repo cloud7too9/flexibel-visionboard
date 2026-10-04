@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Koordinaten-Board starten: Server + Anzeige im Vollbild (Chromium-Kiosk, z. B. Raspberry Pi)
+# Koordinaten-Board starten: Server + Anzeige im Vollbild (Chromium-Kiosk, für einen Rechner mit Bildschirm).
+# Der Raspberry Pi läuft als reiner Server ohne Anzeige: pi/ANLEITUNG.md
 set -e
 cd "$(dirname "$0")"
 

@@ -1,6 +1,6 @@
 # Koordinaten-Board
 
-Lokales Board für Minecraft-Koordinaten und **der Server der Companion**. Ein Gerät im Raum (Laptop, Mini-PC, Raspberry Pi am TV) zeigt die Orte der aktiven Welt groß an. Alle anderen öffnen per QR-Code die **Companion** am Handy, die das Board selbst ausliefert: Orte (am schnellsten per **Screenshot aus der Seed Map**), Sammelobjekte, Portal-Verbindungen, Banner und Rüstungs-Sets – alle Daten liegen auf dem Board.
+Lokales Board für Minecraft-Koordinaten und **der Server der Companion**. Der Server läuft auf einem Rechner im Heimnetz (z. B. ein Raspberry Pi als reiner Server, siehe [`pi/ANLEITUNG.md`](pi/ANLEITUNG.md)); ein Gerät im Raum (TV-Browser, Tablet, Laptop) zeigt die Orte der aktiven Welt groß an. Alle anderen öffnen per QR-Code die **Companion** am Handy, die das Board selbst ausliefert: Orte (am schnellsten per **Screenshot aus der Seed Map**), Sammelobjekte, Portal-Verbindungen, Banner und Rüstungs-Sets – alle Daten liegen auf dem Board.
 
 Alles läuft offline im eigenen Netz: keine Cloud, kein Konto, die Texterkennung passiert lokal auf dem Board-Gerät.
 
@@ -37,7 +37,9 @@ Voraussetzung: [Node.js](https://nodejs.org) 20 oder neuer.
 
 **Windows:** `start.bat` doppelklicken. Beim ersten Start werden die Pakete installiert und die Oberfläche gebaut, danach öffnet sich die Anzeige im Edge-Vollbild. Windows fragt beim ersten Start nach der Firewall – **Private Netzwerke erlauben**, sonst kommen die Handys nicht durch.
 
-**Raspberry Pi / Linux:** `./start.sh` – startet Server und Chromium im Kiosk-Modus.
+**Raspberry Pi als reiner Server** (ohne Anzeige auf dem Gerät, Dienst mit Autostart, neue Fassungen kommen über GitHub): [`pi/ANLEITUNG.md`](pi/ANLEITUNG.md).
+
+**Linux mit Bildschirm:** `./start.sh` – startet Server und Chromium im Kiosk-Modus.
 
 **Von Hand:**
 ```bash

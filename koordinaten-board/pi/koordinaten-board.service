@@ -1,0 +1,31 @@
+# Koordinaten-Board als Dienst auf dem Pi: reiner Server, keine Anzeige auf dem Gerät.
+# einrichten.sh legt die Datei nach /etc/systemd/system/ und schaltet den Autostart ein.
+#   Code:  /opt/koordinaten-board/app (verteilt der Runner, verteilen.sh)
+#   Daten: /var/lib/koordinaten-board (daten.json, pin.txt, geheim.txt, biome/; legt systemd an)
+# Stoppen schickt SIGTERM: Der Server speichert und endet sauber (server.js, „Sauber speichern beim Beenden“).
+
+[Unit]
+Description=Koordinaten-Board (Server der Companion)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=board
+Group=board
+WorkingDirectory=/opt/koordinaten-board/app/koordinaten-board/server
+ExecStart=/usr/bin/node src/server.js
+Environment=PORT=3000
+Environment=DATEN_ORDNER=/var/lib/koordinaten-board
+StateDirectory=koordinaten-board
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+# Der Server schreibt nur in seinen Datenordner
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

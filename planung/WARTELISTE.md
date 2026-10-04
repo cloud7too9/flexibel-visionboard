@@ -1,6 +1,6 @@
 # Warteliste: was auf Max wartet
 
-> Stand 04.10.2026 · gehört zu [`PLAN.md`](PLAN.md)
+> Stand 05.10.2026 · gehört zu [`PLAN.md`](PLAN.md) und [`Integration-drei-Konzepte.md`](Integration-drei-Konzepte.md)
 >
 > Max hat gesagt: „Was weitere Eingaben braucht, kommt auf die Warteliste. Alles andere wird erledigt.“ Hier steht deshalb alles, was ohne Max nicht weitergeht: Haltepunkte, Nachfragen, offene Entscheidungen und Inhalte, die noch nicht beschrieben sind. Weitergearbeitet wird an allem anderen.
 
@@ -60,3 +60,18 @@ Die Typen stehen im Register und in der Galerie, liefern aber nur einen Hinweis 
 | **Gesamtkarte** | Sie zeigt vorerst einen Überblick (Orte je Dimension, angeheftete Orte). Für eine echte Karte mit Markern, „ausrichtbar auf Punkt oder Koordinate“, braucht das Kartenformat des Boards einen neuen Block (z. B. `karte` mit Ausschnitt und Markern). Das muss besprochen werden. |
 | **Handbuch-Eintrag, Materialliste** | Den Bereich Handbuch gibt es noch nicht („Bereich geplant“). |
 | **Bauplan** | Den Bereich Baupläne gibt es noch nicht („Bereich geplant“). |
+
+---
+
+## 5. Integration der drei Konzepte (05.10.2026)
+
+Plan: [`Integration-drei-Konzepte.md`](Integration-drei-Konzepte.md). Entschieden: zuerst mit `daten.json`, PostgreSQL später.
+
+| Was | Wofür |
+|---|---|
+| **Merge** von `claude/integration-drei-konzepte-eucftl` nach `main` abnicken | „Auf den Pi“ startet nur aus `main`: GitHub kennt einen Workflow erst, wenn er dort liegt. |
+| **Pi einrichten** nach [`koordinaten-board/pi/ANLEITUNG.md`](../koordinaten-board/pi/ANLEITUNG.md): System, `einrichten.sh`, Runner mit Label `pi`, Freigabe für Fork-Workflows, Variable `PI_AKTIV = ja` | Stufe 1 am echten Gerät. Geprüft ist bisher nur in der Cloud: Paket bauen, prüfen, verteilen, Start und SIGTERM wie unter systemd. |
+| Die **drei Baupläne** (Pi-Server-und-Datenbanken, Live-Update, Server-Pause-und-Neustart) nach `planung/bauplaene/` legen | Stufen 3 und 4 brauchen die Einzelheiten: Aufbau der Release-Ordner, Format von `/version`, Befehle des Skripts `tool`, Autostart. Später PostgreSQL mit Eingang/Bestand und Verarbeiter. |
+| **Merge** von `board/pwa` (hier) und `bereich/pwa` (Repo MineTool) abnicken | Stufe 2 baut auf der Companion als eigener PWA auf. Danach holt `paket-bauen.sh` die Companion aus dem anderen Repo. |
+| **Anzeigegerät** für das Board festlegen (offener Punkt im Plan) | Stufe 5 (Cache und Hinweis am Board) |
+| Ab wann lohnt sich der Ausbau der **prüfpflichtigen Klasse**? (offener Punkt im Plan) | bis dahin nur Struktur |

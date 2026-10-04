@@ -1,0 +1,62 @@
+# Neue Fassung auf den Pi (Stufe 1, planung/Integration-drei-Konzepte.md): nach grünen Tests auf main oder von Hand.
+# GitHub baut und prüft das Paket; der Pi (1 GB RAM) baut nichts, er packt nur aus, installiert die
+# Server-Pakete und startet den Dienst neu (koordinaten-board/pi/verteilen.sh).
+# Läuft erst, wenn die Repo-Variable PI_AKTIV auf „ja“ steht (koordinaten-board/pi/ANLEITUNG.md).
+# Der Runner auf dem Pi wird nur hier benutzt, nie für Pull Requests: Das Repo ist öffentlich.
+name: Auf den Pi
+
+on:
+  workflow_run:
+    workflows: [Tests]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bauen:
+    name: Paket bauen und prüfen
+    if: >-
+      vars.PI_AKTIV == 'ja' && (github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            koordinaten-board/server/package-lock.json
+            koordinaten-board/client/package-lock.json
+            companion/widgets/package-lock.json
+      - run: bash koordinaten-board/pi/paket-bauen.sh paket
+      - run: bash koordinaten-board/pi/paket-pruefen.sh paket/paket.tar.gz
+      - run: cp koordinaten-board/pi/verteilen.sh paket/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paket
+          path: paket/
+          retention-days: 7
+
+  verteilen:
+    name: Auf den Pi verteilen
+    needs: bauen
+    runs-on: [self-hosted, pi]
+    timeout-minutes: 15
+    # Immer nur ein Verteilen gleichzeitig, ein laufendes wird nicht abgebrochen. Am Job statt am Workflow,
+    # damit übersprungene Läufe (Tests eines Pull Requests) kein wartendes Verteilen verdrängen.
+    concurrency:
+      group: pi
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: paket
+          path: paket
+      - run: bash paket/verteilen.sh paket/paket.tar.gz
