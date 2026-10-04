@@ -246,12 +246,12 @@ try {
   });
   for (let i = 0; i < 60; i++) { try { if ((await fetch(`${BOARD}/api/server`)).ok) break; } catch {} await schlafen(200); }
   const token = (await (await fetch(`${BOARD}/api/beitreten`, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ pin: "4711", name: "Tim" }) })).json()).token;
+    body: JSON.stringify({ pin: "4711", name: "Tim", kontoPin: "9753" }) })).json()).token;
   const welt = (await (await fetch(`${BOARD}/api/orte/welten`, { method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` }, body: JSON.stringify({ seed: SEED }) })).json()).welt;
   const beitreten = async (q, name) => {
     await q.goto(`${BOARD}/?pin=4711`);
-    await q.waitForSelector("#boardName"); await q.fill("#boardName", name);
+    await q.waitForSelector("#boardName"); await q.fill("#boardName", name); await q.fill("#boardKontoPin", "2468");
     await q.click('[data-aktion="board-beitreten"]');
     return warteAuf(q, () => !DEMO.enabled && bd.verbindung?.name && st.welt && bm.weltId === st.weltId);
   };

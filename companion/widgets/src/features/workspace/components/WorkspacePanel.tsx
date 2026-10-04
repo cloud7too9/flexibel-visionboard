@@ -1,33 +1,48 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { LayoutItem } from "../model/workspace.types";
+import type { WidgetInstanz } from "../model/widget-struktur";
 import type { PixelRect } from "../lib/layout-utils";
-import { PanelContentRenderer } from "./PanelContentRenderer";
+import { widgetTyp } from "../model/widget-register";
+import { stufeVon } from "../model/widget-vertrag";
+import { WidgetInhalt } from "./WidgetInhalt";
 import { PanelToolbar } from "./PanelToolbar";
+import { WidgetGehaeuse } from "./WidgetGehaeuse";
+import { useKarte } from "../../karten/hooks/useKarte";
 
 interface Props {
-  item: LayoutItem;
+  instanz: WidgetInstanz;
   rect: PixelRect;
   editMode: boolean;
   /** Verschieben/Skalieren erlaubt (Bearbeitungsmodus im Desktop-Raster). */
   arrangeable: boolean;
   selected: boolean;
+  /** Nur Gehäuse (Rahmen, Titel, Theme) ohne Inhalt – beim Anordnen am Handy */
+  leer?: boolean;
   /** Kopfzeile: startet Verschieben (Bearbeitungszustand, Desktop) oder langes Drücken. */
   onHeaderPointerDown: (e: ReactPointerEvent, id: string) => void;
   onResizePointerDown: (e: ReactPointerEvent, id: string) => void;
 }
 
+/**
+ * Ein Widget an seiner Stelle im Raster: das Gehäuse mit dem Inhalt, im
+ * Bearbeiten-Modus dazu Stufe, Werkzeuge und der Griff für die Größenstufe.
+ */
 export function WorkspacePanel({
-  item,
+  instanz: item,
   rect,
   editMode,
   arrangeable,
   selected,
+  leer = false,
   onHeaderPointerDown,
   onResizePointerDown,
 }: Props) {
+  const typ = widgetTyp(item.typ);
+  const stufe = typ && stufeVon(typ.vertrag, item.stufe);
+  const antwort = useKarte(leer ? "" : item.typ, item.quelle);   // leer: keine Karte laden
   return (
     <div
       data-panel-id={item.id}
+      data-typ={item.typ}
       style={{
         position: "absolute",
         left: rect.left,
@@ -35,34 +50,37 @@ export function WorkspacePanel({
         width: rect.width,
         height: rect.height,
       }}
-      className={[
-        "flex flex-col overflow-hidden rounded-panel border bg-surface-muted transition-colors",
-        editMode
-          ? selected
-            ? "border-accent shadow-lg shadow-accent/10"
-            : "border-border-strong"
-          : "border-border",
-      ].join(" ")}
     >
-      <div
-        className={[
-          "long-press-target flex items-center justify-between gap-2 border-b border-border px-2.5 py-1.5 text-sm font-medium sm:px-3 sm:py-2",
-          editMode ? "bg-surface-raised" : "",
-          arrangeable ? "cursor-move touch-none" : "",
-        ].join(" ")}
-        onPointerDown={(e) => onHeaderPointerDown(e, item.id)}
-        onContextMenu={(e) => e.preventDefault()}
+      <WidgetGehaeuse
+        typ={typ}
+        zustand={editMode ? (selected ? "ausgewaehlt" : "bearbeiten") : "normal"}
+        leer={leer}
+        themeZustand={{ dimension: antwort?.karte?.dimension }}
+        kopfProps={{
+          className: ["long-press-target", arrangeable ? "cursor-move touch-none" : ""].join(" "),
+          onPointerDown: (e) => onHeaderPointerDown(e, item.id),
+          onContextMenu: (e) => e.preventDefault(),
+        }}
+        kopfZusatz={editMode && !leer && (
+          <>
+            <span
+              className="ml-auto shrink-0 rounded-full border border-border px-1.5 text-[10px] leading-4 text-text-muted"
+              data-testid="stufe"
+              title="Größenstufe · Breite × Höhe in Zellen"
+            >
+              {item.stufe} · {stufe?.breite}×{stufe?.hoehe}
+            </span>
+            <PanelToolbar panelId={item.id} typ={item.typ} />
+          </>
+        )}
       >
-        <span className="truncate">{item.titel}</span>
-        {editMode && <PanelToolbar panelId={item.id} />}
-      </div>
-      <div className="flex-1 overflow-auto p-2.5 sm:p-3">
-        <PanelContentRenderer typ={item.panelTyp} />
-      </div>
+        {leer ? undefined : <WidgetInhalt instanz={item} antwort={antwort} />}
+      </WidgetGehaeuse>
       {arrangeable && (
         <div
-          role="presentation"
-          aria-label="Größe ändern"
+          role="button"
+          aria-label="Größe ändern (nächste Stufe)"
+          title="Tippen: nächste Größenstufe · Ziehen: Stufe wählen"
           onPointerDown={(e) => onResizePointerDown(e, item.id)}
           className="absolute bottom-1 right-1 h-4 w-4 cursor-nwse-resize touch-none rounded-sm border border-border-strong bg-surface-raised"
         />

@@ -131,8 +131,14 @@ try {
     await p.click("#boardBtn");
     pruefe(await p.$("#boardScanner") !== null, "Sheet mit Scanner geöffnet");
     pruefe(await p.$eval("#boardName", (e) => e.value) === "Max", "Name im DEMO vorbelegt (Max)");
-    // Name gesetzt → nach dem Erkennen tritt die Companion sofort bei
-    const verbunden = await warteAuf(p, () => document.querySelector("#boardBtn")?.textContent.includes("Verbunden ·"));
+    await p.fill("#boardKontoPin", "2468");   // eigene PIN (Accounts, B2)
+    // Name und PIN gesetzt → nach dem Erkennen tritt die Companion sofort bei. War der QR-Code
+    // schneller als die PIN, steht der Fokus im PIN-Feld und Max tippt „Beitreten“.
+    let verbunden = await warteAuf(p, () => document.querySelector("#boardBtn")?.textContent.includes("Verbunden ·"), null, 4000);
+    if (!verbunden && await warteAuf(p, () => document.getElementById("boardAdresse")?.value === "127.0.0.1:3198", null, 8000)) {
+      await p.click('[data-aktion="board-beitreten"]');
+      verbunden = await warteAuf(p, () => document.querySelector("#boardBtn")?.textContent.includes("Verbunden ·"));
+    }
     pruefe(verbunden, "QR-Code per Kamera erkannt und beigetreten");
     await p.waitForTimeout(500);
     console.log("     Knopf:", await knopfText(p));
@@ -196,8 +202,11 @@ try {
     await p.click('[data-aktion="board-beitreten"]'); await p.waitForTimeout(200);
     pruefe((await text(p, "#boardBanner")).includes("Wie heißt du"), "Ohne Name → Hinweis");
 
-    // Falsche PIN
+    // Ohne eigene PIN → Hinweis; dann falsche Board-PIN
     await p.fill("#boardName", "Lena");
+    await p.click('[data-aktion="board-beitreten"]'); await p.waitForTimeout(200);
+    pruefe((await text(p, "#boardBanner")).includes("Deine eigene PIN hat 4 bis 8 Ziffern"), "Ohne eigene PIN → Hinweis");
+    await p.fill("#boardKontoPin", "1357");
     await p.fill("#boardPin", "1111");
     await p.click('[data-aktion="board-beitreten"]');
     pruefe(await warteAuf(p, () => document.getElementById("boardBanner")?.textContent.includes("Falsche PIN")), "Falsche PIN → Fehlermeldung vom Board");
@@ -224,7 +233,7 @@ try {
 
     // === Aufs Board: Ort auf die Anzeige werfen ===================================
     // Tim ist mit dem Handy am Board und hat schon Orte eingetragen
-    const tim = await (await fetch(`${BOARD}/api/beitreten`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pin: PIN, name: "Tim" }) })).json();
+    const tim = await (await fetch(`${BOARD}/api/beitreten`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ pin: PIN, name: "Tim", kontoPin: "9753" }) })).json();
     const timWs = new WebSocket(`ws://127.0.0.1:${BOARD_PORT}/ws?token=${encodeURIComponent(tim.token)}`);
     const antworten = [];
     timWs.onmessage = (e) => { const n = JSON.parse(e.data); if (n.anfrage) antworten.push(n); };

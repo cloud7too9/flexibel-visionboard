@@ -1,6 +1,8 @@
 # Übergabe · Minecraft Companion & Koordinaten-Board
 
-Stand: 29.09.2026 · Einstieg für einen neuen Chat
+Stand: 01.10.2026 · Einstieg für einen neuen Chat
+
+> **Stand der Umsetzung von `planung/PLAN.md`** (Widget-Dashboard, Welt-Import, Accounts): [`planung/UEBERGABE.md`](planung/UEBERGABE.md) – was gebaut ist, Branches, Starten, Tests, nächste Schritte. Was auf Max wartet: [`planung/WARTELISTE.md`](planung/WARTELISTE.md).
 
 Diese Datei enthält, was **für beide Projekte** gilt: Arbeitsweise, Zusammenspiel, gemeinsame Referenz und projektübergreifende Entscheidungen. Alles Projektspezifische steht in der Übergabe des jeweiligen Projekts:
 
@@ -22,6 +24,10 @@ Diese Datei enthält, was **für beide Projekte** gilt: Arbeitsweise, Zusammensp
 
 Geht es ums Raum-Board, statt der Companion-Übergabe `koordinaten-board/UEBERGABE.md` lesen.
 
+Geht es mit dem Plan weiter (Widget-Dashboard, Offline, Accounts), zum Beispiel:
+
+> Lies `UEBERGABE.md`, danach `planung/UEBERGABE.md` und `planung/WARTELISTE.md`. N5 ist entschieden: … – mach mit B3 weiter.
+
 ---
 
 ## Aufbau des Repos
@@ -39,7 +45,7 @@ referenz/                 ← gemeinsame Referenz (Datenmodell, Seed-Map, Dashbo
 Was wohin gehört:
 
 - Code, Tests und Doku eines Projekts bleiben in dessen Ordner.
-- **Seit der Zusammenführung** gibt es genau zwei gewollte Verbindungen: Der Board-Server liefert `companion/` aus (Seite, `regeln.js`, `icons/`, `ruestungs-baukasten/`) und lädt `companion/regeln.js`, damit Handy und Server mit denselben Regeln prüfen. Pfad einstellbar über `COMPANION_ORDNER`. Sonst greift kein Projekt in den Ordner des anderen; die Playwright-Tests der Companion starten das Board als eigenen Prozess.
+- **Seit der Zusammenführung** gibt es genau zwei gewollte Verbindungen: Der Board-Server liefert `companion/` aus (Seite, `regeln.js`, `board-karten.js`, `icons/`, `ruestungs-baukasten/`, den Build von `widgets/` unter `/dashboard`) und lädt `companion/regeln.js` und `companion/board-karten.js`, damit Handy und Server mit denselben Regeln prüfen und dieselben Karten bauen. Pfad einstellbar über `COMPANION_ORDNER`. Sonst greift kein Projekt in den Ordner des anderen; die Playwright-Tests der Companion starten das Board als eigenen Prozess.
 - `referenz/` bekommt nur, was **beide** Projekte betrifft. Referenzbilder für einen einzelnen Companion-Bereich liegen in `companion/referenz/`.
 
 ---
@@ -50,6 +56,7 @@ Was wohin gehört:
 - **Git**: Bei jedem Schritt sagen, wann committet und gepusht wird. Nach einem eigenen Commit kurz bestätigen, z. B. „Commit erstellt: …“.
   - Companion: jeder Bereich bekommt einen eigenen Branch `bereich/<name>`.
   - Board: Änderungen auf einem Branch `board/<thema>`.
+  - **Gemergt wird nur nach Rückfrage bei Max**, auch wenn Claude den Merge ausführt (Wunsch von Max, 04.10.2026).
 - **Bereiche geht Max einzeln durch.** Erst steht der Rahmen, dann folgen die Details. Nichts ausbauen, was nicht besprochen ist.
 - **Datenmodell minimal halten.** Es wird nur erweitert, wenn ein Bereich es konkret braucht. FeatureTypes werden nicht erfunden.
 - **Bedrock ist die Hauptedition.** Die Seed-Map-Screenshots zeigen „Bedrock 26.50“. Java-Unterschiede kommen nur dort vor, wo sie zählen (Portale).
@@ -83,16 +90,17 @@ Handy ──http──▶ Board-Server :3000
                 ├─ /biom-*.js, /vendor/…  Welt-Import (Worker im Browser des Handys)
                 ├─ /api/…            Companion-API (daten.js) + Beitreten + OCR (/api/orte/auslesen)
                 ├─ /ws               Live: geaendert, zustand, gezeigt, teilnehmer
-                └─ /anzeige          React-Anzeige (nur lokal): Orte der aktiven Welt
+                └─ /anzeige          React-Anzeige (localhost oder mit Anzeige-Link): Orte der aktiven Welt
 Daten: koordinaten-board/server/daten/daten.json
 ```
 
-- **Beitreten**: Das Handy scannt den QR-Code der Anzeige mit der Kamera-App und landet auf `/?pin=…`. Die Companion erkennt den Live-Betrieb (`/api/server`), fragt nach dem Namen und lädt danach die Daten des Boards. Eine eigene Kamera in der Seite braucht es dafür nicht.
+- **Beitreten**: Das Handy scannt den QR-Code der Anzeige mit der Kamera-App und landet auf `/?pin=…`. Die Companion erkennt den Live-Betrieb (`/api/server`), fragt nach dem Account (Name + eigene PIN, Strang B) und lädt danach die Daten des Boards. Eine eigene Kamera in der Seite braucht es dafür nicht.
 - **Gemeinsame Regeln**: `companion/regeln.js` enthält Stammdaten und Regel-Funktionen. Die Seite bindet sie ein, der Server lädt sie per `node:vm` – nichts wird doppelt gepflegt.
 - **Live**: Jede Änderung meldet der Server als `{ art:"geaendert", bereich, weltId }`; die Handys laden den Bereich neu, die Anzeige bekommt die Orte der aktiven Welt (`sicht.js`).
 - **Texterkennung**: Die OCR des Boards bedient `/api/orte/auslesen` im Format der Companion (`fuerCompanion()`). Ist kein Seed-Map-Popup drauf, sucht sie eine **Banner-Anleitung** („Black Base“, „Cyan Bordure“ …); die Companion speichert daraus einen Bauplan.
 - **Welt-Import**: Biome kommen nur noch aus dem Weltordner (`.zip` aus der Dateien-App oder `.mcworld`). Die Companion liest ihn am Handy im Web Worker und schickt die Biome als Kacheln ans Board (`/api/welten/:id/biome`), je Welt ein Import. Einzelheiten in `companion/README.md` → Welt-Import.
 - **Anzeige steuern** (Board-Sheet der Companion): Welt auf der Anzeige, Titel, QR-Code; Orte anheften.
+- **Anzeige-Link**: Die Anzeige kann auf jedem Gerät im WLAN laufen (TV-Browser, Tablet). Jede Anzeige hat einen Link mit eigenem Schlüssel; die Companion zeigt ihn unter Board → Anzeigen (kopieren, QR-Code, umbenennen, neuer Schlüssel), die Konsole beim Start.
 - **Aufs Board**: Die Companion wirft Inhalte groß auf die Anzeige (Variante B, wie Chromecast). **Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): `BOARD_KARTEN` übersetzt Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner und Rüstungs-Set in allgemeine Karten (Titel + Blöcke `koordinaten`/`zeilen`/`text`/`bild`, optional `typ` für den Kennblock), geprüft in `koordinaten-board/server/src/zeigen.js`. Das Board kennt keine Bereiche; neue Bereiche tragen ihr Schema ein.
 - **Kennblöcke**: liegen nur noch in `companion/icons/`; die Anzeige lädt sie über den Server unter `/icons/`.
 - **Dashboard**: Das Board ist das Raum-Dashboard. Jeder Companion-Bereich bekommt eigene Dashboard-Ansichten (Widgets), die dort laufen sollen.

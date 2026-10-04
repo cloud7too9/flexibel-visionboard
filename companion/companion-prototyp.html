@@ -628,6 +628,9 @@ select.orte-eingabe { padding-right:34px;
   border-top:1px solid var(--border-soft); transition:background .45s ease; }
 .sheet-fuss .btn-primary { flex:1; }
 .knopf-raster { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.anzeige-anordnen { width:100%; margin-bottom:8px; }
+.konto-liste { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.chip.konto { cursor:pointer; background:var(--surface-2); border-color:var(--border-soft); font-weight:600; }
 .knopf-raster button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:44px; }
 .btn-primary, .btn-secondary, .btn-danger { min-height:44px; }
 
@@ -956,6 +959,7 @@ button.switch { padding:0; }
 .info-liste b { color:var(--text); }
 
 /* ---- Board-Verbindung ---- */
+.anzeige-qr svg { display:block; width:100%; max-width:220px; margin:8px auto 2px; background:#fff; border-radius:10px; padding:6px; }
 .sb-fuss { margin-top:auto; padding:12px 12px max(14px, env(safe-area-inset-bottom)); border-top:1px solid var(--border-soft); }
 .board-knopf { width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px;
   background:var(--surface-2); border:1px solid var(--border-soft); color:var(--text); cursor:pointer; text-align:left; font:inherit; }
@@ -1212,6 +1216,7 @@ button.switch { padding:0; }
 </div>
 
 <script src="regeln.js"></script>
+<script src="board-karten.js"></script>
 <script src="biom-ids.js"></script>
 <script>
 "use strict";
@@ -1322,26 +1327,8 @@ const SYMBOL = Object.freeze({
 });
 const symbol = (kat) => SYMBOL[kat] || "•";
 
-/* Fundort-Strukturen der Sammelobjekte: FeatureCategory der Karte → Struktur mit deutschem Namen
-   und Kennblock-Bild (icons/manifest.json, Bilder von minecraft.wiki). bild:false = noch keine Datei,
-   dann steht das Symbol aus SYMBOL da. */
+// Kennblock-Bilder der Fundort-Strukturen (STRUKTUREN steht in board-karten.js)
 const KENNBLOCK_PFAD = "icons/struktur_kennbloecke/";
-const STRUKTUREN = Object.freeze({
-  "Outpost":         { id:"pillager_outpost", name:"Plünderer-Außenposten" },
-  "Desert Temple":   { id:"desert_pyramid",   name:"Wüstentempel" },
-  "Jungle Temple":   { id:"jungle_pyramid",   name:"Dschungeltempel" },
-  "Shipwreck":       { id:"shipwreck",        name:"Schiffswrack" },
-  "Trail Ruins":     { id:"trail_ruins",      name:"Pfadruinen", bild:false },
-  "Mansion":         { id:"mansion",          name:"Waldanwesen" },
-  "Monument":        { id:"monument",         name:"Ozeanmonument" },
-  "Ancient City":    { id:"ancient_city",     name:"Antike Stätte" },
-  "Trial Chamber":   { id:"trial_chambers",   name:"Prüfungskammern" },
-  "Stronghold":      { id:"stronghold",       name:"Festung" },
-  "Nether Fortress": { id:"fortress",         name:"Netherfestung" },
-  "Bastion":         { id:"bastion_remnant",  name:"Bastionsruine" },
-  "End City":        { id:"end_city",         name:"Endsiedlung" },
-});
-const strukturName = (kat) => STRUKTUREN[kat]?.name || kat;
 const kennblockDatei = (kat) => { const s = STRUKTUREN[kat]; return s && s.bild !== false ? `${KENNBLOCK_PFAD}${s.id}.png` : null; };
 
 /** Kennblock einer Kategorie als <img> – ohne Bild (oder wenn es nicht lädt) das Symbol */
@@ -1390,31 +1377,8 @@ const kategorienManuell = (dim) => [EIGENE_ORTE, ...FEATURE_KATEGORIEN[dim].filt
 
 /* ============================================================================
    3 · KOORDINATEN  ·  Formatierung, Umrechnung, Entfernung, Einfügen
+   zahl, umrechnen, entfernung stehen in board-karten.js (auch der Server braucht sie)
    ========================================================================== */
-/** −1 884 – schmales Leerzeichen statt Punkt/Komma (sähe nach Kommazahl aus) */
-function zahl(n){
-  return `${n < 0 ? "−" : ""}${String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, " ")}`;
-}
-/** Oberwelt ↔ Nether (÷ 8 / × 8). Für das End gibt es keine Umrechnung. */
-function umrechnen(x, z, dim){
-  if(dim === "overworld") return { x:Math.floor(x/8), z:Math.floor(z/8), dim:"nether" };
-  if(dim === "nether")    return { x:x*8, z:z*8, dim:"overworld" };
-  return null;
-}
-const RICHTUNGEN = ["N", "NO", "O", "SO", "S", "SW", "W", "NW"];
-/** Entfernung + Himmelsrichtung (Norden = −Z). Oberwelt/Nether werden umgerechnet. */
-function entfernung(von, x, z, dim){
-  if(!von) return null;
-  let zx = x, zz = z;
-  if(von.dim !== dim){
-    const u = umrechnen(x, z, dim);
-    if(!u || u.dim !== von.dim) return null;
-    zx = u.x; zz = u.z;
-  }
-  const dx = zx - von.x, dz = zz - von.z;
-  const winkel = (Math.atan2(dx, -dz) * 180 / Math.PI + 360) % 360;
-  return { meter:Math.round(Math.hypot(dx, dz)), richtung:RICHTUNGEN[Math.round(winkel/45) % 8], umgerechnet:von.dim !== dim };
-}
 const entfernungText = (m) => m >= 1000 ? `${(m/1000).toLocaleString("de-DE", { maximumFractionDigits:1 })} km` : `${m} m`;
 
 /** Bedrock: /execute in <dim> run tp @s x y z */
@@ -1459,7 +1423,7 @@ function koordinatenErkennen(text){
    GET    /orte/welten                → { welten:[{ id, seed, anzahl }] }
    POST   /orte/welten   { seed }     → { welt }            (legt 3 Dimensionen an)
    GET    /orte/welten/:id            → { welt, dimensionen, typen, instanzen }
-   POST   /orte/instanzen             { dimensionId, kategorie, variante|null, x, y|null, z,
+   POST   /orte/instanzen             { id?, dimensionId, kategorie, variante|null, x, y|null, z,
                                         quelle:"screenshot"|"manuell" }
                                       → { instanz, typ }   (Typ wird gefunden oder angelegt)
    PATCH  /orte/instanzen/:id  { x, y, z }   → { instanz }
@@ -1469,6 +1433,9 @@ function koordinatenErkennen(text){
                                                   x, y|null, z } | null,
                                         banner:{ basis|null, ebenen:[{ muster, farbe }], unklar:[text] } | null }
                                       (erst Seed-Map-Popup, sonst Banner-Anleitung „Black Base“, „Cyan Bordure“ …)
+   IDs neuer Einträge (Orte, Portale, Banner, Rüstungs-Sets) erzeugt das Handy: id = neueEintragId()
+   (UUID, regeln.js). Der Server prüft sie (400) und lehnt doppelte ab (409); ohne id vergibt er eine.
+   Er speichert dazu erstellerId (stabile Benutzer-ID, bis zu den Accounts „unbekannt“).
    Typen:  typ = { id, kategorie, variante|null }   instanz = { id, dimensionId, featureTypeId, x, y, z }
            Biome sind keine Instanzen mehr (instanzPruefen lehnt sie ab) – sie kommen aus dem Welt-Import.
 
@@ -1647,6 +1614,13 @@ function mockApi(path, opts){
   const body = typeof opts.body === "string" ? JSON.parse(opts.body) : null;
   const ok = (data, status) => ({ ok:true, status:status || 200, data });
   const fehler = (status, message) => ({ ok:false, status, data:{ error:"fehler", message } });
+  // ID eines neuen Eintrags wie am Board: vom Handy (UUID, geprüft, nicht doppelt), ohne vergibt der Mock eine
+  const eintragId = (praefix, liste) => {
+    if(body?.id == null) return { id:MOCK.neueId(praefix) };
+    if(!idGueltig(body.id)) return { fehler:fehler(400, "Ungültige ID") };
+    if(liste.some((x) => x.id === body.id)) return { fehler:fehler(409, "Diesen Eintrag gibt es schon") };
+    return { id:body.id };
+  };
   const anzahl = (weltId) => MOCK.instanzen.filter((i) => i.dimensionId.startsWith(`d_${weltId}_`)).length;
   let m;
 
@@ -1674,6 +1648,8 @@ function mockApi(path, opts){
     return ok({ welt, dimensionen, typen:MOCK.typen.slice(), instanzen:instanzen.map((i) => ({ ...i })), _benutzt:typIds.size });
   }
 
+  if(path === "/ich") return ok({ id:"demo", name:MOCK.ich });
+
   if(method === "POST" && path === "/orte/instanzen"){
     const d = MOCK.dimensionen.find((x) => x.id === body?.dimensionId);
     if(!d) return fehler(400, "Dimension unbekannt");
@@ -1682,9 +1658,10 @@ function mockApi(path, opts){
     const e = { ...body, variante };
     const problem = instanzPruefen(e, d.type, Boolean(vorhanden));
     if(problem) return fehler(422, problem);
+    const neu = eintragId("i", MOCK.instanzen); if(neu.fehler) return neu.fehler;
     let typ = vorhanden;
     if(!typ){ typ = { id:MOCK.neueId("t"), kategorie:body.kategorie, variante }; MOCK.typen.push(typ); }
-    const instanz = { id:MOCK.neueId("i"), dimensionId:d.id, featureTypeId:typ.id, x:body.x, y:body.y ?? null, z:body.z };
+    const instanz = { id:neu.id, dimensionId:d.id, featureTypeId:typ.id, x:body.x, y:body.y ?? null, z:body.z };
     MOCK.instanzen.push(instanz);
     return ok({ instanz:{ ...instanz }, typ }, 201);
   }
@@ -1742,7 +1719,8 @@ function mockApi(path, opts){
     if(method === "GET") return ok({ verbindungen:structuredClone(liste) });
     if(method === "POST"){
       const problem = verbindungRegelPruefen(body); if(problem) return fehler(422, problem);
-      const v = { id:MOCK.neueId("p"), ...verbindungSauber(body), von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
+      const neu = eintragId("p", Object.values(MOCK.portale).flat()); if(neu.fehler) return neu.fehler;
+      const v = { id:neu.id, ...verbindungSauber(body), von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
       liste.push(v);
       return ok({ verbindung:structuredClone(v) }, 201);
     }
@@ -1763,7 +1741,8 @@ function mockApi(path, opts){
     if(method === "GET") return ok({ liste:MOCK.banner.map((b) => structuredClone(b)) });
     if(method === "POST"){
       const problem = bannerPruefen(body); if(problem) return fehler(422, problem);
-      const b = { id:MOCK.neueId("b"), ...bannerSauber(body), von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
+      const neu = eintragId("b", MOCK.banner); if(neu.fehler) return neu.fehler;
+      const b = { id:neu.id, ...bannerSauber(body), von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
       MOCK.banner.unshift(b);
       return ok({ banner:structuredClone(b) }, 201);
     }
@@ -1783,7 +1762,8 @@ function mockApi(path, opts){
     if(method === "GET") return ok({ sets:MOCK.ruestung.map((x) => structuredClone(x)) });
     if(method === "POST"){
       const problem = ruestungPruefen(body); if(problem) return fehler(422, problem);
-      const x = { id:MOCK.neueId("r"), ...ruestungSauber(body), von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
+      const neu = eintragId("r", MOCK.ruestung); if(neu.fehler) return neu.fehler;
+      const x = { id:neu.id, ...ruestungSauber(body), von:MOCK.ich, am:new Date().toISOString().slice(0, 10) };
       MOCK.ruestung.unshift(x);
       return ok({ set:structuredClone(x) }, 201);
     }
@@ -1846,7 +1826,6 @@ async function kopieren(text){
   const ok = document.execCommand("copy"); ta.remove();
   if(!ok) throw new Error("Kopieren nicht möglich");
 }
-const kurzSeed = (s) => s.length > 12 ? `${s.slice(0, 5)}…${s.slice(-4)}` : s;
 /* Biom-Kachel ↔ Base64 (2048 Byte, Uint16 Little Endian) – wie kachelZuBase64/kachelAusBase64 in
    biom-dekoder.js; die Seite ist ein klassisches Script und braucht sie auch als Datei (Mock). */
 function kachelAusText(text){
@@ -2508,7 +2487,7 @@ async function formularSpeichern(){
     $b.dataset.trotzdem = "1";
     return banner($b, "warn", `Hier gibt es schon „${typLabel(typVon(d))}“. Nochmal tippen, um trotzdem zu speichern.`);
   }
-  const r = await api("/orte/instanzen", { method:"POST", body:JSON.stringify({
+  const r = await api("/orte/instanzen", { method:"POST", body:JSON.stringify({ id:neueEintragId(),
     dimensionId:dimIdVon(form.dim), kategorie:form.kategorie, variante, x:k.x, y:k.y, z:k.z, quelle:"manuell" }) });
   if(!r.ok) return banner($b, "bad", meldungAus(r));
   uebernehmen(r.data);
@@ -2666,7 +2645,7 @@ async function importSpeichern(){
       const neu = { name:e.name, ...e.banner };
       const problem = bannerPruefen(neu);
       if(problem){ e.meldungen = [["bad", problem]]; continue; }
-      const r = await api("/banner", { method:"POST", body:JSON.stringify(bannerSauber(neu)) });
+      const r = await api("/banner", { method:"POST", body:JSON.stringify({ id:neueEintragId(), ...bannerSauber(neu) }) });
       if(r.ok){
         if(!bn.liste.some((x) => x.id === r.data.banner.id)) bn.liste.unshift(r.data.banner);
         e.status = "gespeichert"; e.meldungen = []; gespeichert++;
@@ -2677,7 +2656,7 @@ async function importSpeichern(){
     if(!Number.isInteger(x) || !Number.isInteger(z) || (y !== null && !Number.isInteger(y))){
       e.meldungen = [["bad", "Koordinaten prüfen"]]; continue;
     }
-    const r = await api("/orte/instanzen", { method:"POST", body:JSON.stringify({
+    const r = await api("/orte/instanzen", { method:"POST", body:JSON.stringify({ id:neueEintragId(),
       dimensionId:dimIdVon(e.dim), kategorie:e.erkannt.kategorie, variante:e.erkannt.variante, x, y, z, quelle:"screenshot" }) });
     if(r.ok){ uebernehmen(r.data); e.status = "gespeichert"; e.meldungen = []; gespeichert++; dims.add(e.dim); }
     else e.meldungen = [["bad", meldungAus(r)]];
@@ -2754,10 +2733,10 @@ function toast(text, fehler){
    ----------------------------------------------------------------------------
    Jeder Bereich ist in sich geschlossen: eigener State, eigene API-Pfade,
    eigenes Rendering. Modul-Vertrag:
-     { key, titel, icon, mount(el), unmount(),
-       ansichten: [{ key, titel, groessen:["1x1","2x1","2x2"], render(el, groesse) }] }
-   „ansichten“ kommt später: Dashboard-Ansichten pro Bereich, nach dem Vorbild
-   des iOS-Kontrollzentrums (siehe README → Dashboard-Ansichten).
+     { key, titel, icon, mount(el), unmount() }
+   Die Dashboard-Widgets der Bereiche stehen nicht hier, sondern im Register von
+   companion/widgets (widget-register.ts, Bereichs-IDs wie diese keys); ihre
+   Inhalte baut der Board-Server aus BOARD_KARTEN (board-karten.js).
    Bereiche: Karte (Live-Karte + Koordinaten-Sammlung), Sammelobjekte,
    Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung.
    Umgesetzt sind Karte, Sammelobjekte, Portal-Verwaltung, Banner und Rüstung; ohne mount()
@@ -2825,7 +2804,6 @@ const $samListe = document.getElementById("samListe");
 const HAKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const themaStil = (dim) => Object.entries(THEMES[dim].ui).map(([k, v]) => `${k}:${v}`).join(";");
 const samGefundenAnzahl = () => SAM_ZAEHLT.filter((o) => sam.status[o.id]).length;
-const datumKurz = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString("de-DE", { day:"numeric", month:"numeric" }); };
 
 
 /** Bekannte Instanzen einer Fundort-Kategorie in der aktuellen Welt – nächste zuerst */
@@ -2993,49 +2971,23 @@ $samListe.addEventListener("click", (e) => {
 
 /** Zeichnet ein Banner auf 20×40 Pixel → Data-URL (mit Cache) */
 const bannerCache = new Map();
+/** RGBA-Pixel → PNG als Data-URL (Canvas) – auch für die Board-Karten (ctx.pngDaten) */
+function pngDaten(breite, hoehe, rgba){
+  const c = document.createElement("canvas");
+  c.width = breite; c.height = hoehe;
+  const g = c.getContext("2d"), bild = g.createImageData(breite, hoehe);
+  bild.data.set(rgba);
+  g.putImageData(bild, 0, 0);
+  return c.toDataURL();
+}
 function bannerBild(b){
   const schluessel = JSON.stringify([b.basis, b.ebenen]);
   if(bannerCache.has(schluessel)) return bannerCache.get(schluessel);
-  const c = document.createElement("canvas");
-  c.width = 20; c.height = 40;
-  const g = c.getContext("2d");
-  const bild = g.createImageData(20, 40);
-  const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  const pix = Array.from({ length:800 }, () => rgb(farbe(b.basis).hex));
-  for(const e of b.ebenen){
-    const m = muster(e.muster).m, f = rgb(farbe(e.farbe).hex);
-    for(let y = 0; y < 40; y++) for(let x = 0; x < 20; x++){
-      const a = Math.max(0, Math.min(1, Number(m(x, y))));
-      if(!a) continue;
-      const p = pix[y * 20 + x];
-      pix[y * 20 + x] = p.map((v, i) => Math.round(v * (1 - a) + f[i] * a));
-    }
-  }
-  pix.forEach((p, i) => { bild.data.set([...p, 255], i * 4); });
-  g.putImageData(bild, 0, 0);
-  const url = c.toDataURL();
+  const url = pngDaten(20, 40, bannerPixel(b));   // Pixel aus board-karten.js
   bannerCache.set(schluessel, url);
   return url;
 }
 const bannerImg = (b, klasse, alt) => `<img class="banner-bild ${klasse || ""}" src="${bannerBild(b)}" alt="${esc(alt || "")}">`;
-const vorlagenVon = (b) => [...new Set(b.ebenen.map((e) => e.muster).filter((m) => BANNERVORLAGEN[m]))];
-
-/** Material + Schritte für Werkbank und Webstuhl */
-function bannerAnleitung(b){
-  const farbstoffe = new Map();
-  for(const e of b.ebenen) farbstoffe.set(e.farbe, (farbstoffe.get(e.farbe) || 0) + 1);
-  const schritte = [
-    { titel:"Banner herstellen", info:`6 × ${farbe(b.basis).wolle} + 1 Stock · Werkbank`, bild:{ basis:b.basis, ebenen:[] } },
-    ...b.ebenen.map((e, n) => {
-      const v = BANNERVORLAGEN[e.muster];
-      return { titel:muster(e.muster).de, en:muster(e.muster).en,
-        info:`${farbe(e.farbe).farbstoff}${v ? ` + ${v.de}` : ""} · Webstuhl`,
-        bild:{ basis:b.basis, ebenen:b.ebenen.slice(0, n + 1) } };
-    }),
-  ];
-  return { farbstoffe, vorlagen:vorlagenVon(b), schritte };
-}
-
 const bn = { liste:[], suche:"", entwurf:null, offen:null };
 const $bannerListe = document.getElementById("bannerListe");
 
@@ -3208,8 +3160,9 @@ async function bannerSpeichern(){
   const $m = document.getElementById("bannerMeldung");
   const problem = bannerPruefen(e);
   if(problem) return banner($m, "bad", problem + ".");
-  const body = JSON.stringify(bannerSauber(e));
-  const r = e.id ? await api(`/banner/${e.id}`, { method:"PUT", body }) : await api("/banner", { method:"POST", body });
+  const daten = bannerSauber(e);
+  const r = e.id ? await api(`/banner/${e.id}`, { method:"PUT", body:JSON.stringify(daten) })
+    : await api("/banner", { method:"POST", body:JSON.stringify({ id:neueEintragId(), ...daten }) });
   if(!r.ok) return banner($m, "bad", meldungAus(r));
   const neu = r.data.banner;
   const i = bn.liste.findIndex((x) => x.id === neu.id);
@@ -3252,11 +3205,8 @@ document.getElementById("bannerNeuBtn").addEventListener("click", () => bannerEd
      3. Das nächste gewinnt – 3D-Abstand, Y zählt mit. Keins gefunden → neues Portal.
    Quelle: minecraft.wiki/w/Nether_portal („Portal search“)
    Die Edition (Bedrock/Java) ist eine Einstellung auf dem Gerät, Standard Bedrock.
+   Prüfung und Empfehlung (verbindungPruefen, portalEmpfehlung) stehen in board-karten.js.
    ========================================================================== */
-const PORTAL_REGELN = Object.freeze({
-  bedrock: { label:"Bedrock", radius:{ overworld:128, nether:128 } },
-  java:    { label:"Java",    radius:{ overworld:128, nether:16 } },
-});
 const pt = {
   liste: [],
   edition: lsLesen("portale.edition") === "java" ? "java" : "bedrock",
@@ -3267,57 +3217,7 @@ const pt = {
 const $portalStage = document.getElementById("portalStage");
 const andereDim = (d) => d === "overworld" ? "nether" : "overworld";
 const dimFarbe = (d) => THEMES[d].ui["--accent"];
-const kurzKoord = (p) => `X ${zahl(p.x)}${p.y != null ? ` · Y ${zahl(p.y)}` : ""} · Z ${zahl(p.z)}`;
 const regelLabel = () => PORTAL_REGELN[pt.edition].label;
-
-/** Beide Portale jeder Verbindung als flache Liste */
-function portaleAlle(liste){
-  return liste.flatMap((v) => [
-    { vid:v.id, name:v.name, dim:"overworld", ...v.oberwelt },
-    { vid:v.id, name:v.name, dim:"nether", ...v.nether },
-  ]);
-}
-
-/** Was passiert, wenn man an Punkt p (Dimension „von“) durchs Portal geht? */
-function zielSuchen(von, p, portale){
-  const u = umrechnen(p.x, p.z, von);
-  const ziel = { x:u.x, y:p.y ?? null, z:u.z, dim:u.dim };
-  const radius = PORTAL_REGELN[pt.edition].radius[u.dim];
-  let treffer = null;
-  for(const q of portale){
-    if(q.dim !== u.dim || Math.abs(q.x - ziel.x) > radius || Math.abs(q.z - ziel.z) > radius) continue;
-    const dy = q.y != null && ziel.y != null ? q.y - ziel.y : 0;
-    const abstand = Math.hypot(q.x - ziel.x, dy, q.z - ziel.z);
-    if(!treffer || abstand < treffer.abstand) treffer = { portal:q, abstand };
-  }
-  return { ziel, radius, treffer };
-}
-
-/** Prüft beide Richtungen einer Verbindung gegen alle erfassten Portale der Welt */
-function verbindungPruefen(v, liste){
-  const portale = portaleAlle([...liste.filter((x) => x.id !== v.id), v]);
-  const hin = zielSuchen("overworld", v.oberwelt, portale);
-  const rueck = zielSuchen("nether", v.nether, portale);
-  const art = (s) => !s.treffer ? "neu" : s.treffer.portal.vid === v.id ? "ok" : "anders";
-  const artHin = art(hin), artRueck = art(rueck);
-  const ideal = { x:hin.ziel.x, y:v.oberwelt.y ?? v.nether.y ?? null, z:hin.ziel.z };
-  let gesamt = "ok", label = "Verbunden";
-  if(artHin === "neu" || artRueck === "neu"){ gesamt = "bad"; label = "Neues Portal"; }
-  else if(artHin === "anders" && artRueck === "anders"){ gesamt = "warn"; label = "Falsch verknüpft"; }
-  else if(artHin === "anders" || artRueck === "anders"){ gesamt = "warn"; label = "Einseitig"; }
-  return { hin, rueck, artHin, artRueck, gesamt, label, ideal,
-    abweichung:Math.round(Math.hypot(v.nether.x - ideal.x, v.nether.z - ideal.z)) };
-}
-
-/** Konkreter Vorschlag, wenn eine Verbindung nicht passt */
-function portalEmpfehlung(v, p, liste){
-  if(p.gesamt === "ok") return null;
-  const versetzt = { ...v, nether:{ ...p.ideal } };
-  const schonIdeal = p.abweichung === 0 && (v.nether.y ?? null) === p.ideal.y;
-  if(!schonIdeal && verbindungPruefen(versetzt, liste).gesamt === "ok")
-    return { art:"info", text:`Nether-Portal genau bei ${kurzKoord(p.ideal)} bauen – dann passt es in beide Richtungen. Das alte Nether-Portal danach ausschalten.` };
-  return { art:"warn", text:"Auch am Idealpunkt klappt es nicht: Ein anderes Portal liegt zu nah. Die Portale weiter auseinander bauen oder das störende entfernen." };
-}
 
 function richtungText(s, art){
   if(art === "ok") return `kommt am eigenen Portal an${s.treffer.abstand >= 1 ? ` (${Math.round(s.treffer.abstand)} Blöcke vom Zielpunkt)` : ""}`;
@@ -3371,7 +3271,7 @@ function rechnerWerte(){
 }
 function rechnerZiel(){
   const p = rechnerWerte(); if(!p) return null;
-  return { p, s:zielSuchen(pt.rechner.von, p, portaleAlle(pt.liste)) };
+  return { p, s:zielSuchen(pt.rechner.von, p, portaleAlle(pt.liste), pt.edition) };
 }
 function rechnerErgebnisHtml(){
   const e = rechnerZiel(), nach = andereDim(pt.rechner.von);
@@ -3416,7 +3316,7 @@ function rechnerHtml(){
 
 const seiteHtml = (dim, s) => `<span class="seite"><span class="seite-dim" style="color:${dimFarbe(dim)}">${dimLabel(dim)}</span>${coordHtml(s.x, s.y, s.z)}</span>`;
 function verbindungKarte(v){
-  const p = verbindungPruefen(v, pt.liste);
+  const p = verbindungPruefen(v, pt.liste, pt.edition);
   let meta = "";
   if(p.gesamt !== "ok"){
     const [von, s, art] = p.artHin !== "ok" ? ["overworld", p.hin, p.artHin] : ["nether", p.rueck, p.artRueck];
@@ -3433,7 +3333,7 @@ function renderPortale(){
   const $info = document.getElementById("portalInfoBtn");
   $info.classList.toggle("active", pt.info); $info.setAttribute("aria-pressed", String(pt.info));
   const liste = [...pt.liste].sort((a, b) => a.name.localeCompare(b.name, "de"));
-  const probleme = pt.liste.filter((v) => verbindungPruefen(v, pt.liste).gesamt !== "ok").length;
+  const probleme = pt.liste.filter((v) => verbindungPruefen(v, pt.liste, pt.edition).gesamt !== "ok").length;
   $portalStage.innerHTML = (pt.info ? infoKarteHtml() : "") + rechnerHtml() + `
     <div class="field-group">
       <div class="field-group-label">Verbindungen · ${pt.liste.length}${probleme ? ` · ${probleme} mit Problem` : ""}</div>
@@ -3445,7 +3345,7 @@ function renderPortale(){
 // --- Detail + Editor (Sheet) -------------------------------------------------
 function portalDetailOeffnen(id){
   const v = pt.liste.find((x) => x.id === id); if(!v) return;
-  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  const p = verbindungPruefen(v, pt.liste, pt.edition), e = portalEmpfehlung(v, p, pt.liste, pt.edition);
   const seite = (dim, s) => `<div class="result-card seite-karte">
       <div class="result-label" style="color:${dimFarbe(dim)}">${dimLabel(dim)}-Portal</div>
       ${coordHtml(s.x, s.y, s.z)}
@@ -3507,7 +3407,7 @@ function portalEditorPruefen(){
     return;
   }
   const v = { id:pt.entwurfId || "__neu", ...w, name:w.name || "diese Verbindung" };
-  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  const p = verbindungPruefen(v, pt.liste, pt.edition), e = portalEmpfehlung(v, p, pt.liste, pt.edition);
   $p.innerHTML = `<div class="result-card"><div class="result-label">Prüfung · <b>${regelLabel()}</b> · <span class="pill ${p.gesamt}">${p.label}</span></div>
     ${pruefZeilen(p)}${e ? `<div class="banner ${e.art}">${esc(e.text)}</div>` : ""}</div>`;
 }
@@ -3526,10 +3426,10 @@ async function portalSpeichern(){
   const w = portalEditorWerte(), $m = document.getElementById("portalMeldung");
   const problem = verbindungRegelPruefen(w);
   if(problem) return banner($m, "bad", problem + ".");
-  const body = JSON.stringify(verbindungSauber(w));
+  const daten = verbindungSauber(w);
   const r = pt.entwurfId
-    ? await api(`/portale/${pt.entwurfId}`, { method:"PUT", body })
-    : await api(`/portale/welten/${st.weltId}`, { method:"POST", body });
+    ? await api(`/portale/${pt.entwurfId}`, { method:"PUT", body:JSON.stringify(daten) })
+    : await api(`/portale/welten/${st.weltId}`, { method:"POST", body:JSON.stringify({ id:neueEintragId(), ...daten }) });
   if(!r.ok) return banner($m, "bad", meldungAus(r));
   const neu = r.data.verbindung;
   const i = pt.liste.findIndex((x) => x.id === neu.id);
@@ -3626,8 +3526,10 @@ document.getElementById("portalWeltBtn").addEventListener("click", () => weltOef
        optional typ (Seed-Map-Typ) → die Anzeige zeigt den Kennblock neben dem Titel.
    Das Board prüft die Karte (koordinaten-board/server/src/zeigen.js) und zeigt
    sie groß, bis die nächste kommt oder jemand sie wegnimmt.
-   ANZEIGESCHEMA: Jeder Inhalt, der aufs Board kann, hat in BOARD_KARTEN eine
-   Funktion id → Karte. Das Board selbst kennt keine Bereiche; ein neuer Bereich
+   ANZEIGESCHEMA: Jeder Inhalt, der aufs Board kann, hat in BOARD_KARTEN
+   (board-karten.js) eine Funktion (ctx, id) → Karte; ctx baut boardKontext() aus
+   dem Zustand der Seite. Der Board-Server baut mit denselben Funktionen die Karten
+   der Dashboard-Widgets. Das Board selbst kennt keine Bereiche; ein neuer Bereich
    trägt dort sein Schema ein und baut boardZeigenKnopf("<art>:<id>") in sein Detail.
    ========================================================================== */
 const bd = {
@@ -3638,9 +3540,12 @@ const bd = {
   scan: null,                                // { stream } solange die Kamera läuft
   gezeigt: null,                             // Karte, die gerade auf der Anzeige liegt
   einstellungen: null,                       // Live: { titel, qrZeigen, aktiveWelt, aktiv } der Anzeige
+  anzeigen: null,                            // Live: Geräte mit Anzeige-Link [{ id, name, link }]
+  anzeigeQr: null, anzeigeFrage: null, anzeigeUmbenennen: null,   // offener QR-Code, „Neuer Schlüssel?“, Umbenennen
+  ich: null,                                 // Live: { id, anzeigename, rolle } aus IDENTITAET.werBistDu()
+  konten: [],                                // Beitreten: Accounts zum Auswählen [{ id, name }]
   offen: new Map(), zaehler: 0,              // gesendete Nachrichten, die auf „ok“ warten
 };
-const BOARD_DIM = Object.freeze({ overworld:"oberwelt", nether:"nether", end:"ende" });
 const adresseKurz = (a) => String(a || "").replace(/^https?:\/\//, "");
 
 /** Inhalt des Board-QR-Codes lesen: „http://192.168.8.184:3000/?pin=1234“ → { adresse, pin } */
@@ -3760,8 +3665,11 @@ function boardTreffer(text){
   document.getElementById("boardAdresse").value = adresseKurz(qr.adresse);
   document.getElementById("boardPin").value = qr.pin;
   banner(document.getElementById("boardBanner"), "ok", `QR-Code erkannt · ${adresseKurz(qr.adresse)}`);
-  const $name = document.getElementById("boardName");
-  if($name.value.trim()) boardBeitretenKlick(); else $name.focus();
+  boardKontenLaden(qr.adresse, qr.pin);
+  // Name und eigene PIN schon da → gleich beitreten, sonst ins fehlende Feld
+  const $name = document.getElementById("boardName"), $kontoPin = document.getElementById("boardKontoPin");
+  if($name.value.trim() && /^\d{4,8}$/.test($kontoPin.value)) boardBeitretenKlick();
+  else ($name.value.trim() ? $kontoPin : $name).focus();
   return true;
 }
 async function boardFotoLesen(datei){
@@ -3776,21 +3684,66 @@ async function boardFotoLesen(datei){
   if(!boardTreffer(text)) banner($b, "bad", "Das ist kein QR-Code vom Koordinaten-Board.");
 }
 
+// --- Identität (Strang B) --------------------------------------------------------
+/* Wer bin ich? Gekapselt hinter werBistDu(), damit später ein richtiges Login dahinter
+   stehen kann, ohne die Daten anzufassen – alle Einträge hängen an der Benutzer-ID
+   (erstellerId). Heute: Account + eigene PIN beim Beitreten, das Token ist der
+   Geräteschlüssel. Der Server prüft mit derselben Schnittstelle (identitaet.js). */
+const IDENTITAET = Object.freeze({
+  /** → { id, anzeigename, rolle:"Besitzer" } oder null (nicht angemeldet, Account oder Gerät unbekannt) */
+  async werBistDu(){
+    const r = await api("/ich");
+    return r.ok ? { id:r.data.id, anzeigename:r.data.name, rolle:"Besitzer" } : null;
+  },
+});
+
 // --- Beitreten + Live-Verbindung -----------------------------------------------
 function boardNetzFehler(adresse){
   if(location.protocol === "https:" && adresse.startsWith("http:"))
     return "Der Browser blockiert die Verbindung: Die Companion läuft über https, das Board über http.";
   return "Board nicht erreichbar – gleiches WLAN? Läuft das Board noch?";
 }
-async function boardBeitreten(adresse, pin, name){
+/** Beitreten (Strang B): Board-PIN, dann Account wählen oder anlegen – Name + eigene PIN.
+    Gibt es den Namen schon, meldet die PIN dort an; sonst entsteht ein neuer Account. */
+async function boardBeitreten(adresse, pin, name, kontoPin){
   let res, data = null;
   try {
     res = await fetch(`${adresse}/api/beitreten`, { method:"POST",
-      headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ pin, name }) });
+      headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ pin, name, kontoPin }) });
     data = await res.json().catch(() => null);
   } catch { return { fehler:boardNetzFehler(adresse) }; }
   if(!res.ok) return { fehler:data?.fehler || `Fehler ${res.status}` };
-  return { verbindung:{ adresse, token:data.token, name:data.name } };
+  return { verbindung:{ adresse, token:data.token, name:data.name }, neu:data.neu };
+}
+/** Accounts des Boards zum Auswählen (nur mit der Board-PIN) → Knöpfe über dem Namen */
+async function boardKontenLaden(adresse, pin){
+  bd.konten = [];
+  try {
+    const res = await fetch(`${adresse}/api/beitreten/konten`, { method:"POST",
+      headers:{ "Content-Type":"application/json" }, body:JSON.stringify({ pin }) });
+    if(res.ok) bd.konten = (await res.json()).konten || [];
+  } catch { /* Board nicht erreichbar – der Knopf „Beitreten“ meldet das */ }
+  const $l = document.getElementById("boardKonten");
+  if(!$l) return;
+  $l.innerHTML = bd.konten.map((k) => `<button class="chip konto" data-aktion="board-konto" data-name="${esc(k.name)}">${esc(k.name)}</button>`).join("");
+  $l.hidden = !bd.konten.length;
+  boardKontoHinweis();
+}
+/** Unter dem Namen: Anmelden bei einem bestehenden Account oder neuen anlegen? */
+function boardKontoHinweis(){
+  const $h = document.getElementById("boardKontoHinweis"), name = document.getElementById("boardName")?.value.trim() || "";
+  if(!$h) return;
+  const konto = (bd.konten || []).find((k) => k.name.toLocaleLowerCase("de") === name.toLocaleLowerCase("de"));
+  $h.textContent = !name ? "" : konto ? `Anmelden als ${konto.name} – mit deiner PIN` : `Neuer Account „${name}“ – wähl dir eine PIN`;
+}
+function boardKontoHtml(name){
+  return `<div class="field-group"><div class="field-group-label">Wer bist du?</div>
+      <div class="konto-liste" id="boardKonten" hidden></div>
+      <input class="orte-eingabe" id="boardName" maxlength="24" autocomplete="username" placeholder="Name, z. B. Max" value="${esc(name)}">
+      <div class="result-hint" id="boardKontoHinweis"></div></div>
+    <div class="field-group"><div class="field-group-label">Deine PIN</div>
+      <input class="orte-eingabe mono" id="boardKontoPin" type="password" inputmode="numeric" maxlength="8" autocomplete="current-password" placeholder="4 bis 8 Ziffern">
+      <div class="result-hint">Deine eigene PIN – damit meldest du dich auch auf einem neuen Handy an. Das Board speichert sie nicht im Klartext.</div></div>`;
 }
 async function boardBeitretenKlick(){
   const $b = document.getElementById("boardBanner"), $knopf = $sheet.querySelector('[data-aktion="board-beitreten"]');
@@ -3799,12 +3752,14 @@ async function boardBeitretenKlick(){
   const adresse = ausQr?.adresse || boardAdresseLesen(roh);
   const pin = document.getElementById("boardPin").value.trim() || ausQr?.pin || "";
   const name = document.getElementById("boardName").value.trim();
+  const kontoPin = document.getElementById("boardKontoPin").value.trim();
   if(!adresse) return banner($b, "bad", "Adresse fehlt – QR-Code scannen oder eintragen.");
   if(!/^\d{4}$/.test(pin)) return banner($b, "bad", "Die PIN hat 4 Ziffern und steht auf der Anzeige.");
   if(!name) return banner($b, "bad", "Wie heißt du? Der Name steht auf dem Board bei deinen Einträgen.");
+  if(!/^\d{4,8}$/.test(kontoPin)) return banner($b, "bad", "Deine eigene PIN hat 4 bis 8 Ziffern – damit meldest du dich auch auf neuen Geräten an.");
   lsSchreiben("board.name", name);
   $knopf.disabled = true; $knopf.textContent = "Verbinde …";
-  const r = await boardBeitreten(adresse, pin, name);
+  const r = await boardBeitreten(adresse, pin, name, kontoPin);
   const offen = st.sheet === "board" && $knopf.isConnected;   // Sheet evtl. schon zu
   if(r.fehler){
     if(!offen) return;
@@ -3818,7 +3773,7 @@ async function boardBeitretenKlick(){
     history.replaceState(null, "", location.pathname + (q.toString() ? `?${q}` : ""));
     alleSchliessen();
     boardVerbinden();
-    toast(`Willkommen, ${r.verbindung.name}`);
+    toast(r.neu ? `Account „${r.verbindung.name}“ angelegt – willkommen` : `Willkommen, ${r.verbindung.name}`);
     return datenStarten();
   }
   boardVerbinden();
@@ -3826,11 +3781,11 @@ async function boardBeitretenKlick(){
   toast("Mit dem Board verbunden");
 }
 
-/** Live: Token abgelehnt (Board neu eingerichtet, Geheimnis gelöscht) → neu beitreten */
+/** Live: Token abgelehnt (Board neu eingerichtet, Gerät gesperrt, Token von vor den Accounts) → neu beitreten */
 function anmeldungAbgelaufen(){
   if(DEMO.enabled || !bd.verbindung) return;
   boardTrennen();
-  toast("Bitte neu beitreten – das Board kennt dieses Gerät nicht mehr", true);
+  toast("Bitte neu anmelden – Name und deine PIN", true);
   boardSheetRendern();
 }
 
@@ -3840,6 +3795,7 @@ async function liveAktualisieren({ bereich, weltId }){
   if(bereich === "banner") return bannerLaden();
   if(bereich === "ruestung") return ruestungLaden();
   if(bereich === "einstellungen") return boardEinstellungenLaden();
+  if(bereich === "anzeigen") return boardAnzeigenLaden();
   if(bereich === "welten"){ await weltenAuffrischen(); return boardEinstellungenLaden(); }
   if(weltId && weltId !== st.weltId) return weltenAuffrischen();
   if(bereich === "orte") return orteAuffrischen();
@@ -3923,80 +3879,21 @@ function boardSenden(op){
 }
 
 // --- „Aufs Board“ -----------------------------------------------------------------
-// Anzeigeschema je Inhalt: quelle „<art>:<id>“ → Karte im allgemeinen Kartenformat des Boards
-const BOARD_KARTEN = {
-  ort:         { titel:"Ort",                karte:ortKarte },          // Karte: ein Ort der Sammlung
-  sammel:      { titel:"Sammelobjekt",       karte:sammelKarte },       // ein Rüstungsbesatz mit Fundort
-  sammelstand: { titel:"Sammel-Fortschritt", karte:sammelStandKarte },  // Stand der Welt (ohne id)
-  portal:      { titel:"Portal-Verbindung",  karte:portalKarte },       // beide Portale + Prüfung
-  banner:      { titel:"Banner-Bauplan",     karte:bannerKarte },       // Vorschau + Material
-  ruestung:    { titel:"Rüstungs-Set",       karte:ruestungKarte },     // Figur + Teile + Besätze der Welt (async)
-};
-const koordBlock = (label, p, dim) => ({ art:"koordinaten", label, x:p.x, y:p.y ?? null, z:p.z, dimension:BOARD_DIM[dim] });
-
-function sammelKarte(id){
-  const o = SAMMELOBJEKTE.find((x) => x.id === id); if(!o) return null;
-  const s = sam.status[id], naechster = bekannteFundorte(o.kategorie, o.dim)[0];
-  const bloecke = [{ art:"zeilen", zeilen:[
-    { label:"Fundort", wert:`${strukturName(o.kategorie)} · ${dimLabel(o.dim)}` },
-    { label:"Status", wert:s ? `gefunden von ${s.von}${datumKurz(s.am) ? ` am ${datumKurz(s.am)}` : ""}` : "noch offen" },
-  ] }];
-  if(naechster) bloecke.push(koordBlock("Nächster bekannter Fundort", naechster.i, o.dim));
-  bloecke.push({ art:"text", text:o.quelle });
-  return { titel:o.name, unter:`${o.en} · ${o.aufwertung ? "Schmiedevorlage" : "Rüstungsbesatz"}`, bereich:"Sammelobjekte",
-           quelle:`sammel:${id}`, typ:o.kategorie, dimension:BOARD_DIM[o.dim], bloecke };
-}
-function sammelStandKarte(){
-  if(!st.welt) return null;
-  const gefunden = samGefundenAnzahl(), gesamt = SAM_ZAEHLT.length;
-  const bekannt = FUNDORTE.filter((f) => bekannteFundorte(f.kategorie, f.dim).length).length;
-  const offen = SAM_ZAEHLT.filter((o) => !sam.status[o.id]).map((o) => o.name);
-  const bloecke = [{ art:"zeilen", zeilen:[
-    { label:"Gefunden", wert:`${gefunden} von ${gesamt}` },
-    { label:"Fortschritt", wert:`${Math.round(gefunden / gesamt * 100)} %` },
-    { label:"Fundorte auf der Karte", wert:`${bekannt} von ${FUNDORTE.length}` },
-  ] }];
-  bloecke.push({ art:"text", text:offen.length ? `Noch offen: ${offen.join(", ")}`.slice(0, 400) : "Alle Rüstungsbesätze gefunden!" });
-  return { titel:"Rüstungsbesätze", unter:`Sammelobjekte der Welt ${kurzSeed(st.welt.seed)}`, bereich:"Sammelobjekte",
-           quelle:"sammelstand", dimension:null, bloecke };
-}
-function portalKarte(id){
-  const v = pt.liste.find((x) => x.id === id); if(!v) return null;
-  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
-  const zeilen = [{ label:"Status", wert:p.label }];
-  if(p.abweichung) zeilen.push({ label:"Abstand zum Idealpunkt", wert:`${p.abweichung} ${p.abweichung === 1 ? "Block" : "Blöcke"}` });
-  const bloecke = [koordBlock("Oberwelt-Portal", v.oberwelt, "overworld"), koordBlock("Nether-Portal", v.nether, "nether"), { art:"zeilen", zeilen }];
-  if(e) bloecke.push({ art:"text", text:e.text });
-  return { titel:v.name, unter:`Portal-Verbindung · Regeln ${regelLabel()}`, bereich:"Portal-Verwaltung",
-           quelle:`portal:${id}`, dimension:"nether", bloecke };
-}
-function bannerKarte(id){
-  const b = bn.liste.find((x) => x.id === id); if(!b) return null;
-  const { farbstoffe, vorlagen } = bannerAnleitung(b);
-  const zeilen = [{ label:farbe(b.basis).wolle, wert:"6 ×" }, { label:"Stock", wert:"1 ×" },
-    ...[...farbstoffe].map(([f, n]) => ({ label:farbe(f).farbstoff, wert:`${n} ×` }))].slice(0, 8);
-  const bloecke = [{ art:"bild", daten:bannerBild(b), label:"Vorschau", pixelig:true }, { art:"zeilen", zeilen }];
-  if(vorlagen.length) bloecke.push({ art:"text", text:`Bannervorlagen (werden nicht verbraucht): ${vorlagen.map((v) => BANNERVORLAGEN[v].de).join(", ")}` });
-  return { titel:b.name, unter:`Banner-Bauplan · ${b.ebenen.length} Muster · Grundfarbe ${farbe(b.basis).de}`,
-           bereich:"Banner", quelle:`banner:${id}`, dimension:null, bloecke };
-}
-function ortKarte(id){
-  const i = st.instanzen.find((x) => x.id === id); if(!i) return null;
-  const t = typVon(i), dim = dimTypeVon(i.dimensionId);
-  const biom = bm.weltId === st.weltId ? biomAnStelle(dim, i.x, i.z) : null;   // aus dem Welt-Import
-  const bloecke = [{ art:"koordinaten", x:i.x, y:i.y ?? null, z:i.z }];
-  const u = umrechnen(i.x, i.z, dim);
-  if(u) bloecke.push({ art:"koordinaten", label:u.dim === "nether" ? "Im Nether" : "In der Oberwelt",
-                       x:u.x, y:null, z:u.z, dimension:BOARD_DIM[u.dim] });
-  const unter = [t.variante ? t.kategorie : null, biom?.name].filter(Boolean).join(" · ");
-  // typ = Feature-Typ der Seed Map → die Anzeige zeigt dazu den Kennblock (eigene Orte: keiner)
-  const typ = t.kategorie === EIGENE_ORTE ? undefined : t.kategorie;
-  return { titel:t.variante || t.kategorie, unter:unter || undefined, bereich:"Karte",
-           quelle:`ort:${i.id}`, typ, dimension:BOARD_DIM[dim], bloecke };
+// Anzeigeschemas (BOARD_KARTEN) stehen in board-karten.js – derselbe Code baut auf dem Board
+// die Karten der Widgets. Hier nur der Kontext aus dem, was dieses Handy gerade geladen hat.
+function boardKontext(){
+  return {
+    welt:st.welt, dimensionen:st.dimensionen, typen:st.typen, instanzen:st.instanzen,
+    sammelStatus:sam.weltId === st.weltId ? sam.status : {},
+    verbindungen:pt.liste, banner:bn.liste, ruestung:rs.sets,
+    edition:pt.edition, standort:st.standort,
+    pngDaten, ruestungFoto,
+    biomName:(dim, x, z) => (bm.weltId === st.weltId ? biomAnStelle(dim, x, z)?.name : null) || null,
+  };
 }
 async function boardZeigen(quelle){
   const [art, ...rest] = quelle.split(":");
-  const karte = await BOARD_KARTEN[art]?.karte(rest.join(":"));   // karte() darf async sein (Rüstung rendert die Figur)
+  const karte = await BOARD_KARTEN[art]?.karte(boardKontext(), rest.join(":"));   // karte() darf async sein (Rüstung rendert die Figur)
   if(!karte) return toast("Das lässt sich nicht aufs Board legen", true);
   try { await boardSenden({ art:"zeigen", karte }); toast("Liegt auf dem Board"); }
   catch(f){ toast(String(f), true); }
@@ -4051,12 +3948,13 @@ function boardAnzeigen(){
   boardZeigenKnoepfe();
   // Formular nicht neu zeichnen (Eingaben blieben sonst nicht stehen) – nur die Status-Ansicht,
   // und die auch nicht, solange jemand den Titel der Anzeige tippt
-  if(st.sheet === "board" && bd.verbindung && document.activeElement?.id !== "boardTitel") boardSheetRendern();
+  if(st.sheet === "board" && bd.verbindung && !["boardTitel", "anzeigeNeu", "anzeigeName"].includes(document.activeElement?.id)) boardSheetRendern();
 }
 function boardOeffnen(){
   alleSchliessen();
   boardSheetRendern();
   boardEinstellungenLaden();
+  boardAnzeigenLaden();
 }
 
 // --- Live: Einstellungen der Anzeige im Zimmer (aktive Welt, Titel, QR-Code) ------
@@ -4084,6 +3982,57 @@ function boardEinstellungenHtml(){
         <button class="switch ${e.qrZeigen ? "on" : ""}" data-aktion="board-qr" role="switch" aria-checked="${e.qrZeigen}" aria-label="QR-Code zeigen"></button></div>
     </div></div>`;
 }
+/* Anzeigen: Jedes Gerät mit Anzeige-Link darf Anzeige sein (TV-Browser, Tablet). Link und QR-Code
+   kommen vom Board – mit derselben Adresse wie der QR-Code der Handys. */
+async function boardAnzeigenLaden(){
+  if(DEMO.enabled || !bd.verbindung) return;
+  const r = await api("/anzeigen");
+  if(r.ok){ bd.anzeigen = r.data.anzeigen; boardAnzeigen(); }
+}
+function boardAnzeigenHtml(){
+  if(DEMO.enabled || !bd.anzeigen) return "";
+  const karten = bd.anzeigen.map((a) => {
+    const qr = bd.anzeigeQr?.id === a.id;
+    return `<div class="card anzeige-karte">
+      ${bd.anzeigeUmbenennen === a.id
+        ? `<div class="create-row"><div class="input-line"><input id="anzeigeName" maxlength="40" autocomplete="off" value="${esc(a.name)}">
+            <button class="btn-primary" data-aktion="anzeige-name-speichern" data-id="${a.id}">Speichern</button></div></div>`
+        : `<div class="card-title">${esc(a.name)}</div>`}
+      <div class="card-meta mono">${esc(adresseKurz(a.link.split("?")[0]))}${a.reihen ? ` · Fläche 32 × ${a.reihen}` : ""}</div>
+      ${qr ? `<div class="anzeige-qr">${bd.anzeigeQr.svg}</div>
+        <div class="result-hint">Mit der Kamera des Tablets oder TVs abscannen – das Gerät wird zur Anzeige „${esc(a.name)}“.</div>` : ""}
+      <button class="btn-primary anzeige-anordnen" data-aktion="anzeige-anordnen" data-id="${a.id}">Anzeige anordnen</button>
+      <div class="knopf-raster">
+        <button class="btn-secondary" data-aktion="anzeige-kopieren" data-id="${a.id}">Link kopieren</button>
+        <button class="btn-secondary" data-aktion="anzeige-qr" data-id="${a.id}">${qr ? "QR-Code zu" : "QR-Code"}</button>
+      </div>
+      <div class="knopf-raster">
+        <button class="btn-secondary" data-aktion="anzeige-umbenennen" data-id="${a.id}">Umbenennen</button>
+        <button class="btn-secondary" data-aktion="anzeige-schluessel" data-id="${a.id}">${bd.anzeigeFrage === a.id ? "Alte Links ungültig?" : "Neuer Schlüssel"}</button>
+      </div>
+    </div>`;
+  }).join("");
+  return `<div class="field-group"><div class="field-group-label">Anzeigen</div>
+    <div class="list-stack">${karten}</div>
+    <div class="create-row"><div class="input-line"><input id="anzeigeNeu" maxlength="40" autocomplete="off" placeholder="Neue Anzeige, z. B. Tablet">
+      <button class="btn-primary" data-aktion="anzeige-anlegen">Anlegen</button></div></div>
+    <div class="result-hint">Mit dem Anzeige-Link wird ein anderes Gerät im WLAN zur Anzeige (TV-Browser, Tablet, zweiter Laptop). Der Browser merkt sich den Link. „Neuer Schlüssel“ macht alte Links ungültig.</div>
+  </div>`;
+}
+/** Antwort mit { anzeige } in die Liste übernehmen; ein offener QR-Code zeigt dann den neuen Link */
+async function anzeigeUebernehmen(r, meldung){
+  if(!r.ok) return toast(meldungAus(r), true);
+  const a = r.data.anzeige, i = (bd.anzeigen ||= []).findIndex((x) => x.id === a.id);
+  if(i >= 0) bd.anzeigen[i] = a; else bd.anzeigen.push(a);
+  if(bd.anzeigeQr?.id === a.id) await anzeigeQrHolen(a.id);
+  boardSheetRendern();
+  if(meldung) toast(meldung);
+}
+async function anzeigeQrHolen(id){
+  const r = await api(`/anzeigen/${id}/qr`);
+  bd.anzeigeQr = r.ok ? { id, svg:r.data.svg } : null;
+  if(!r.ok) toast(meldungAus(r), true);
+}
 function boardSheetRendern(){
   const v = bd.verbindung;
   if(v){
@@ -4101,6 +4050,7 @@ function boardSheetRendern(){
         ${zeile("Orte auf dem Board", bd.orte ?? "—")}
       </div>
       ${boardEinstellungenHtml()}
+      ${boardAnzeigenHtml()}
       <div class="field-group"><div class="field-group-label">Auf der Anzeige</div>
         ${bd.gezeigt ? `<div class="card board-gezeigt" style="flex-direction:row">
             <span class="text"><span class="card-title">${esc(bd.gezeigt.titel)}</span>
@@ -4124,11 +4074,12 @@ function boardSheetRendern(){
       <input type="hidden" id="boardAdresse" value="${esc(location.origin)}">
       <div class="field-group"><div class="field-group-label">PIN</div>
         <input class="orte-eingabe mono" id="boardPin" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="1234" value="${esc(pin)}"></div>
-      <div class="field-group"><div class="field-group-label">Dein Name</div>
-        <input class="orte-eingabe" id="boardName" maxlength="24" autocomplete="nickname" placeholder="z. B. Max" value="${esc(name)}"></div>
+      ${boardKontoHtml(name)}
       <div class="sheet-fuss"><button class="btn-primary" data-aktion="board-beitreten">Beitreten</button></div>
     </div>`);
     document.getElementById(pin ? "boardName" : "boardPin").focus();
+    if(/^\d{4}$/.test(pin)) boardKontenLaden(location.origin, pin);
+    boardKontoHinweis();
     return;
   }
   sheetOeffnen("board", kopfHtml("Mit Board verbinden", "QR-Code auf der Anzeige im Zimmer scannen") + `<div class="orte-inhalt">
@@ -4150,8 +4101,7 @@ function boardSheetRendern(){
         <label class="field"><span class="field-label">PIN</span>
           <input id="boardPin" type="text" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="1234"></label>
       </div></div>
-    <div class="field-group"><div class="field-group-label">Dein Name</div>
-      <input class="orte-eingabe" id="boardName" maxlength="24" autocomplete="nickname" placeholder="z. B. Max" value="${esc(name)}"></div>
+    ${boardKontoHtml(name)}
     <div class="sheet-fuss"><button class="btn-primary" data-aktion="board-beitreten">Beitreten</button></div>
   </div>`);
   boardScanStarten();
@@ -4183,9 +4133,7 @@ const BUEHNE_DIMS = Object.freeze([
   { id:"end",      name:"End",      hintergrund:"bloecke/obsidian.png" },
 ]);
 
-const teilName = (teilId) => RUESTUNGS_TEILE.find((t) => t.id === teilId)?.name || teilId;
 /** Name im Spiel, z. B. „Netherithelm“ */
-const itemName = (teilId, t) => ruestungsArt(t?.ruestung)?.teile[teilId] || teilName(teilId);
 const zutatDatei = (m) => `${BAUKASTEN}zutaten/${m.icon}.png`;
 /** Leerer Slot am Schmiedetisch: blasser Platzhalter wie im Spiel */
 const GEIST = { vorlage:`${BAUKASTEN}vorlagen/sentry_armor_trim_smithing_template.png`, material:`${BAUKASTEN}zutaten/iron_ingot.png` };
@@ -4210,15 +4158,7 @@ const vorlageMini = (id) => {
 };
 
 /** Welche Rüstungsbesätze braucht das Set, welche sind in dieser Welt schon gefunden? */
-function besatzStand(s){
-  const muster = RUESTUNGS_TEILE.map(({ id }) => s.teile[id]?.muster).filter(Boolean);
-  const verschieden = [...new Set(muster)];
-  return {
-    muster, verschieden,
-    gefunden: verschieden.filter((m) => sam.status[m]),
-    netherit: RUESTUNGS_TEILE.filter(({ id }) => s.teile[id]?.ruestung === "netherite").length,
-  };
-}
+const besatzStand = (s) => besatzStandVon(s, sam.status);   // board-karten.js
 const zaehlen = (liste) => [...liste.reduce((m, x) => m.set(x, (m.get(x) || 0) + 1), new Map())];
 
 async function ruestungLaden(){
@@ -4495,8 +4435,9 @@ async function ruestungSpeichern(){
   const $m = document.getElementById("setMeldung");
   const problem = ruestungPruefen(e);
   if(problem) return banner($m, "bad", problem);
-  const body = JSON.stringify(ruestungSauber(e));
-  const r = e.id ? await api(`/ruestung/${e.id}`, { method:"PUT", body }) : await api("/ruestung", { method:"POST", body });
+  const daten = ruestungSauber(e);
+  const r = e.id ? await api(`/ruestung/${e.id}`, { method:"PUT", body:JSON.stringify(daten) })
+    : await api("/ruestung", { method:"POST", body:JSON.stringify({ id:neueEintragId(), ...daten }) });
   if(!r.ok) return banner($m, "bad", meldungAus(r));
   const neu = r.data.set;
   const i = rs.sets.findIndex((x) => x.id === neu.id);
@@ -4678,27 +4619,6 @@ async function ruestungFoto(s){
   const c = await fig.bk.figur({ ausruestung:ausruestungVon(s.teile), ansicht:"vorn", massstab:6 });
   return { daten:c.toDataURL("image/png"), pixelig:true };
 }
-async function ruestungKarte(id){
-  const s = rs.sets.find((x) => x.id === id); if(!s) return null;
-  const b = besatzStand(s);
-  const bloecke = [];
-  const foto = await ruestungFoto(s).catch(() => null);
-  if(foto) bloecke.push({ art:"bild", daten:foto.daten, label:"Auf dem Rüstungsständer", pixelig:foto.pixelig });
-  bloecke.push({ art:"zeilen", zeilen:RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).map(({ id:t }) => {
-    const x = s.teile[t], o = besatzMuster(x.muster);
-    const teile = [o ? `${o.name} · ${besatzMaterial(x.material).name}` : "ohne Besatz",
-      ruestungsArt(x.ruestung).faerbbar && (x.farbe ? farbe(x.farbe).de : "ungefärbt"), x.verzaubert && "verzaubert"];
-    return { label:itemName(t, x), wert:teile.filter(Boolean).join(" · ").slice(0, 80) };
-  }) });
-  if(b.verschieden.length){
-    const fehlt = b.verschieden.filter((m) => !sam.status[m]).map((m) => { const o = besatzMuster(m); return `${o.name} (${strukturName(o.kategorie)})`; });
-    bloecke.push({ art:"text", text:(`Rüstungsbesätze in dieser Welt: ${b.gefunden.length} von ${b.verschieden.length} gefunden.`
-      + (fehlt.length ? ` Fehlt noch: ${fehlt.join(", ")}.` : "")).slice(0, 400) });
-  }
-  return { titel:s.name, unter:`Rüstungs-Set · ${RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).length} Teile`, bereich:"Rüstung",
-           quelle:`ruestung:${id}`, dimension:null, bloecke };
-}
-
 $ruestungListe.addEventListener("click", (e) => { const k = e.target.closest("[data-set]"); if(k){ rs.offen = null; ruestungDetailOeffnen(k.dataset.set); } });
 document.getElementById("ruestungNeuBtn").addEventListener("click", () => ruestungEditorOeffnen(null));
 
@@ -5207,6 +5127,45 @@ $sheet.addEventListener("click", async (e) => {
       break;
     }
     case "board-wegnehmen": boardWegnehmen(); break;
+    // Anzeigen (Anzeige-Link für andere Geräte)
+    case "anzeige-kopieren": {
+      const anz = bd.anzeigen?.find((x) => x.id === id); if(!anz) break;
+      try { await kopieren(anz.link); toast("Anzeige-Link kopiert"); } catch { toast("Kopieren nicht möglich", true); }
+      break;
+    }
+    case "board-konto": {
+      // Account gewählt → Name übernehmen, weiter mit der eigenen PIN
+      document.getElementById("boardName").value = a.dataset.name;
+      boardKontoHinweis();
+      document.getElementById("boardKontoPin").focus();
+      break;
+    }
+    case "anzeige-anordnen":
+      // Widget-Dashboard vom selben Board (A6): dort Widgets dieser Anzeige anordnen, „Fertig“ führt zurück
+      location.href = `/dashboard/anordnen?anzeige=${encodeURIComponent(id)}`; break;
+    case "anzeige-qr":
+      if(bd.anzeigeQr?.id === id) bd.anzeigeQr = null; else await anzeigeQrHolen(id);
+      boardSheetRendern(); break;
+    case "anzeige-umbenennen":
+      bd.anzeigeUmbenennen = id; boardSheetRendern();
+      document.getElementById("anzeigeName")?.focus(); break;
+    case "anzeige-name-speichern": {
+      const name = document.getElementById("anzeigeName").value;
+      bd.anzeigeUmbenennen = null;
+      await anzeigeUebernehmen(await api(`/anzeigen/${id}`, { method:"PUT", body:JSON.stringify({ name }) }));
+      break;
+    }
+    case "anzeige-schluessel":
+      // Zweimal tippen – alte Links (TV, Tablet) gehen danach nicht mehr
+      if(bd.anzeigeFrage !== id){ bd.anzeigeFrage = id; a.textContent = "Alte Links ungültig?"; return; }
+      bd.anzeigeFrage = null;
+      await anzeigeUebernehmen(await api(`/anzeigen/${id}/schluessel`, { method:"POST" }), "Neuer Schlüssel – alte Links gelten nicht mehr");
+      break;
+    case "anzeige-anlegen": {
+      const $n = document.getElementById("anzeigeNeu");
+      await anzeigeUebernehmen(await api("/anzeigen", { method:"POST", body:JSON.stringify({ name:$n.value }) }), "Anzeige angelegt");
+      break;
+    }
     case "banner-loeschen":
       // Zweimal tippen – ein Bauplan ist schnell weg und für alle
       if(a.dataset.sicher !== "1"){ a.dataset.sicher = "1"; a.textContent = "Wirklich löschen?"; return; }
@@ -5223,7 +5182,15 @@ $sheet.addEventListener("input", (e) => {
     return;
   }
   if(t.id === "formNeu"){ form.neu = t.value; return; }
-  if(t.id === "boardPin"){ t.value = t.value.replace(/\D/g, "").slice(0, 4); return; }
+  if(t.id === "boardPin"){
+    t.value = t.value.replace(/\D/g, "").slice(0, 4);
+    // Mit vollständiger Board-PIN die Accounts zum Auswählen holen
+    const adresse = DEMO.enabled ? (boardQrLesen(document.getElementById("boardAdresse").value)?.adresse || boardAdresseLesen(document.getElementById("boardAdresse").value)) : location.origin;
+    if(t.value.length === 4 && adresse) boardKontenLaden(adresse, t.value);
+    return;
+  }
+  if(t.id === "boardKontoPin"){ t.value = t.value.replace(/\D/g, "").slice(0, 8); return; }
+  if(t.id === "boardName"){ boardKontoHinweis(); return; }
   if(t.id === "boardAdresse"){
     // Ganze Beitritts-Adresse eingefügt („…/?pin=1234“) → in Adresse und PIN aufteilen
     const qr = boardQrLesen(t.value);
@@ -5254,6 +5221,8 @@ function uhr(){ document.getElementById("uhr").textContent = new Date().toLocale
 
 /** Daten laden und in den gewünschten Bereich springen (?modul=…) */
 async function datenStarten(){
+  // Live: Gilt das Token noch? Tokens von vor den Accounts nicht – dann öffnet api() das Beitreten
+  if(!DEMO.enabled && !(bd.ich = await IDENTITAET.werBistDu())) return;
   if(!(await weltenLaden())) return;
   const start = new URLSearchParams(location.search).get("modul");
   if(start && start !== "karte") modulWechseln(start);

@@ -10,6 +10,11 @@
   --color-accent-muted: 59 130 246;
   --color-danger: 239 90 90;
 
+  /* Dimensionen in Karten (Koordinaten-Blöcke) */
+  --color-dim-oberwelt: 95 208 104;
+  --color-dim-nether: 232 96 76;
+  --color-dim-ende: 201 184 255;
+
   --radius-panel: 12px;
 
   --grid-columns: 12;

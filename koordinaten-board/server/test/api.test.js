@@ -2,8 +2,8 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs';
+import { tmpdir, networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -37,13 +37,33 @@ const anfrage = async (methode, pfad, token, body) => {
   });
   return { status: res.status, daten: await res.json() };
 };
-const beitreten = async (name) => (await anfrage('POST', '/api/beitreten', null, { pin: '4711', name })).daten.token;
+// Account anlegen oder – wenn es den Namen gibt – mit derselben PIN anmelden (B2)
+const beitreten = async (name) => (await anfrage('POST', '/api/beitreten', null, { pin: '4711', name, kontoPin: '2468' })).daten.token;
 
 test('ohne Anmeldung kein Zugriff', async () => {
   assert.deepEqual((await anfrage('GET', '/api/server')).daten, { name: 'koordinaten-board' });
   const r = await anfrage('GET', '/api/orte/welten');
   assert.equal(r.status, 401);
   assert.equal(r.daten.message, 'Nicht angemeldet');
+});
+
+test('Accounts mit PIN: Konten nur mit Board-PIN, anlegen, anmelden, Ersteller an Einträgen', async () => {
+  let r = await anfrage('POST', '/api/beitreten/konten', null, { pin: '0000' });
+  assert.equal(r.status, 401);
+  r = await anfrage('POST', '/api/beitreten', null, { pin: '4711', name: 'Tim', kontoPin: '9753' });
+  assert.deepEqual([r.status, r.daten.neu, r.daten.name], [200, true, 'Tim']);
+  const tim = r.daten;
+  assert.ok((await anfrage('POST', '/api/beitreten/konten', null, { pin: '4711' })).daten.konten.some((k) => k.id === tim.id && k.name === 'Tim'));
+  const ich = (await anfrage('GET', '/api/ich', tim.token)).daten;
+  assert.deepEqual([ich.id, ich.name], [tim.id, 'Tim']);
+  r = await anfrage('POST', '/api/beitreten', null, { pin: '4711', name: 'tim', kontoPin: '1111' });
+  assert.deepEqual([r.status, r.daten.fehler], [401, 'Falsche PIN für Tim']);
+  assert.equal((await anfrage('POST', '/api/beitreten', null, { pin: '4711', name: 'Tim', kontoPin: '9753' })).daten.neu, false);
+  assert.equal((await anfrage('POST', '/api/beitreten', null, { pin: '4711', name: 'Tim' })).status, 400, 'ohne eigene PIN');
+  // Einträge tragen die Benutzer-ID, der Name bleibt zur Anzeige
+  const b = (await anfrage('POST', '/api/banner', tim.token, { name: 'Tims Banner', basis: 'white', ebenen: [] })).daten.banner;
+  assert.deepEqual([b.von, b.erstellerId], ['Tim', tim.id]);
+  assert.equal((await anfrage('GET', '/api/orte/welten', 'alt.token')).status, 401, 'Token ohne Account gilt nicht');
 });
 
 test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner, Rüstung', async () => {
@@ -116,6 +136,163 @@ test('Welt-Import: Worker, Dekoder und Bibliothek werden als JavaScript ausgelie
     const res = await fetch(BASIS + pfad);
     assert.equal(res.status, 200, pfad);
     assert.ok(res.headers.get('content-type').startsWith('application/javascript'), `${pfad}: ${res.headers.get('content-type')}`);
+  }
+});
+
+// „Von außen“: über eine Netzwerkadresse dieses Rechners statt localhost – dann gilt die Anfrage nicht als lokal
+const AUSSEN = Object.values(networkInterfaces()).flat().find((n) => n && n.family === 'IPv4' && !n.internal)?.address;
+
+test('Anzeige-Link: von außen nur mit gültigem Schlüssel, neuer Schlüssel macht den alten ungültig', { skip: !AUSSEN && 'keine Netzwerkadresse' }, async () => {
+  const max = await beitreten('Max');
+  let r = await anfrage('GET', '/api/anzeigen', max);
+  assert.equal(r.daten.anzeigen.length, 1, 'beim ersten Start gibt es die Anzeige „Board“');
+  const board = r.daten.anzeigen[0];
+  assert.equal(board.name, 'Board');
+  assert.equal('schluessel' in board, false, 'Schlüssel nur im Link');
+  const link = new URL(board.link);
+  assert.equal(link.pathname, '/anzeige');
+  const aussen = (pfad, query = '') => fetch(`http://${AUSSEN}:${PORT}${pfad}${query}`);
+
+  // localhost darf immer, von außen nur mit Link
+  assert.equal((await fetch(`${BASIS}/api/anzeige`)).status, 200);
+  assert.equal((await aussen('/api/anzeige')).status, 403);
+  const mitLink = await aussen('/api/anzeige', link.search);
+  assert.equal(mitLink.status, 200);
+  assert.deepEqual((await mitLink.json()).anzeige, { id: board.id, name: 'Board' });
+  assert.equal((await aussen('/api/anzeige', `?anzeige=${board.id}&schluessel=falsch`)).status, 403);
+
+  // WebSocket der Anzeige mit Link: offen, nach „Neuer Schlüssel“ getrennt
+  const ws = new WebSocket(`ws://${AUSSEN}:${PORT}/ws${link.search}&rolle=anzeige`);
+  const zu = new Promise((ok) => { ws.onclose = (e) => ok(e.code); });
+  await new Promise((ok, nein) => { ws.onopen = ok; ws.onerror = nein; });
+  const ohne = new WebSocket(`ws://${AUSSEN}:${PORT}/ws?rolle=anzeige`);
+  assert.equal(await new Promise((ok) => { ohne.onclose = (e) => ok(e.code); }), 4003);
+
+  r = await anfrage('POST', `/api/anzeigen/${board.id}/schluessel`, max);
+  assert.notEqual(r.daten.anzeige.link, board.link);
+  assert.equal(await zu, 4003, 'verbundene Anzeige mit altem Schlüssel wird getrennt');
+  assert.equal((await aussen('/api/anzeige', link.search)).status, 403, 'alter Schlüssel → 403');
+  assert.equal((await aussen('/api/anzeige', new URL(r.daten.anzeige.link).search)).status, 200, 'neuer Schlüssel → erlaubt');
+
+  // Anlegen, umbenennen, QR-Code
+  r = await anfrage('POST', '/api/anzeigen', max, { name: ' Tablet ' });
+  assert.deepEqual([r.status, r.daten.anzeige.name], [201, 'Tablet']);
+  const tablet = r.daten.anzeige;
+  assert.equal((await anfrage('POST', '/api/anzeigen', max, { name: ' ' })).status, 400);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${tablet.id}`, max, { name: 'Wohnzimmer-TV' })).daten.anzeige.name, 'Wohnzimmer-TV');
+  assert.equal((await anfrage('PUT', '/api/anzeigen/a_99', max, { name: 'x' })).status, 404);
+  assert.match((await anfrage('GET', `/api/anzeigen/${tablet.id}/qr`, max)).daten.svg, /^<svg[\s\S]*<\/svg>\s*$/);
+  assert.equal((await aussen('/api/anzeige', new URL(tablet.link).search)).status, 200);
+  assert.equal((await anfrage('GET', '/api/anzeigen')).status, 401, 'Anzeigen verwalten nur beigetretene Handys');
+});
+
+test('Widgets: Karte je Widget-Typ aus der aktiven Welt, Quellen, leerer Zustand, Zugang wie die Anzeige', async () => {
+  const max = await beitreten('Max');
+  const welt = (await anfrage('POST', '/api/orte/welten', max, { seed: '424242' })).daten.welt;
+  await anfrage('PUT', '/api/board/einstellungen', max, { aktiveWelt: welt.id });
+  const festung = (await anfrage('POST', '/api/orte/instanzen', max,
+    { dimensionId: `d_${welt.id}_nether`, kategorie: 'Nether Fortress', variante: null, x: -200, y: 70, z: 96, quelle: 'manuell' })).daten.instanz;
+  await anfrage('PUT', `/api/sammelobjekte/welten/${welt.id}/rib`, max, { gefunden: true });
+  await anfrage('POST', `/api/portale/welten/${welt.id}`, max, { name: 'Basis', oberwelt: { x: 800, y: 64, z: 80 }, nether: { x: 100, y: 64, z: 10 } });
+  const banner = (await anfrage('POST', '/api/banner', max, { name: 'Kreuz', basis: 'white', ebenen: [{ muster: 'cross', farbe: 'red' }] })).daten.banner;
+  // localhost ist die Anzeige des Board-Geräts – ohne Token
+  const widget = async (typ, quelle) => anfrage('GET', `/api/widgets/${typ}${quelle ? `?quelle=${quelle}` : ''}`);
+
+  let r = await widget('karte.einzelkoordinate', festung.id);
+  assert.equal(r.status, 200);
+  assert.equal(r.daten.karte.titel, 'Nether Fortress');
+  assert.deepEqual(r.daten.karte.bloecke.map((b) => [b.art, b.x, b.z]), [['koordinaten', -200, 96], ['koordinaten', -1600, 768]]);
+  assert.equal((await widget('sammelobjekte.status')).daten.karte.bloecke[0].zeilen[0].wert, '1 von 18');
+  assert.equal((await widget('sammelobjekte.einzelobjekt', 'rib')).daten.karte.bloecke[0].zeilen[1].wert.startsWith('gefunden von Max'), true);
+  assert.equal((await widget('sammelobjekte.gesamtauflistung')).daten.karte.titel, 'Sammelobjekte');
+  assert.match((await widget('portale.verbindungen')).daten.karte.bloecke[0].zeilen[0].wert, /800 \/ 80 ↔ N 100 \/ 10/);
+  assert.equal((await widget('karte.gesamtkarte')).daten.karte.bloecke[0].zeilen[1].wert, '1 Orte');
+  const bild = (await widget('banner.banner', banner.id)).daten.karte.bloecke[0];
+  assert.equal(bild.art, 'bild');
+  const png = Buffer.from(bild.daten.split(',')[1], 'base64');
+  assert.deepEqual([png.subarray(1, 4).toString(), png.readUInt32BE(16), png.readUInt32BE(20)], ['PNG', 20, 40], 'Banner als PNG 20×40');
+
+  // Ohne Inhalt: geplant, noch nicht festgelegt, Quelle fehlt oder gelöscht, unbekannter Typ
+  assert.deepEqual((await widget('handbuch.eintrag')).daten, { karte: null, hinweis: 'Bereich geplant' });
+  assert.equal((await widget('karte.koordinatensammlung')).daten.karte, null);
+  assert.equal((await widget('banner.banner')).daten.hinweis, 'Keine Quelle gewählt');
+  await anfrage('DELETE', `/api/orte/instanzen/${festung.id}`, max);
+  assert.deepEqual((await widget('karte.einzelkoordinate', festung.id)).daten, { karte: null, hinweis: 'Die Quelle gibt es nicht mehr' });
+  assert.equal((await widget('karte.gibtsnicht')).status, 404);
+
+  // Quellen zum Auswählen beim Hinzufügen
+  r = await anfrage('GET', '/api/widgets/banner.banner/quellen');
+  assert.equal(r.daten.quelle, 'banner');
+  assert.deepEqual(r.daten.quellen.find((q) => q.id === banner.id), { id: banner.id, name: 'Kreuz' });
+  r = await anfrage('GET', '/api/widgets/sammelobjekte.einzelobjekt/quellen');
+  assert.deepEqual(r.daten.quellen.find((q) => q.id === 'rib'), { id: 'rib', name: 'Rippenzier', unter: 'Netherfestung · gefunden' });
+  assert.deepEqual((await anfrage('GET', '/api/widgets/portale.verbindungen/quellen')).daten, { quelle: null, quellen: [] });
+
+  // Von außen nur mit Anzeige-Link oder als angemeldetes Handy
+  if (AUSSEN) {
+    const aussen = (query = '', token) => fetch(`http://${AUSSEN}:${PORT}/api/widgets/sammelobjekte.status${query}`,
+      { headers: token ? { authorization: `Bearer ${token}` } : {} });
+    assert.equal((await aussen()).status, 403);
+    assert.equal((await aussen('', max)).status, 200);
+    const link = new URL((await anfrage('GET', '/api/anzeigen', max)).daten.anzeigen[0].link);
+    assert.equal((await aussen(link.search)).status, 200);
+  }
+  await anfrage('PUT', '/api/board/einstellungen', max, { aktiveWelt: null });
+});
+
+test('Widget-Dashboard unter /dashboard: Anzeige-Link bleibt beim Umleiten, eigene Routen → index.html', async () => {
+  const um = await fetch(`${BASIS}/dashboard?anzeige=a_1&schluessel=abc`, { redirect: 'manual' });
+  assert.equal(um.status, 302);
+  assert.equal(um.headers.get('location'), '/dashboard/?anzeige=a_1&schluessel=abc');
+  const gebaut = existsSync(fileURLToPath(new URL('../../../companion/widgets/dist/index.html', import.meta.url)));
+  for (const pfad of ['/dashboard/', '/dashboard/vollbild/w-portale']) {
+    const res = await fetch(BASIS + pfad);
+    assert.equal(res.status, gebaut ? 200 : 404, pfad);
+    if (gebaut) {
+      assert.equal(res.headers.get('cache-control'), 'no-cache');
+      assert.match(await res.text(), /<div id="root">/);
+    }
+  }
+  assert.equal((await fetch(`${BASIS}/dashboard/assets/gibt-es-nicht.js`)).status, 404);
+});
+
+test('Widget-Layout: Handy speichert, Anzeige liest ihres und meldet ihre Reihen, live über /ws', async () => {
+  const max = await beitreten('Max');
+  const [board] = (await anfrage('GET', '/api/anzeigen', max)).daten.anzeigen;
+  // Anzeige auf dem Board-Gerät (localhost, ohne Link) ist „Board“
+  let r = await anfrage('GET', '/api/anzeige/layout');
+  assert.deepEqual([r.status, r.daten.anzeige.id], [200, board.id]);
+  const ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws?rolle=anzeige`);
+  const nachrichten = [];
+  ws.onmessage = (e) => nachrichten.push(JSON.parse(e.data));
+  await new Promise((ok) => { ws.onopen = ok; });
+
+  assert.deepEqual((await anfrage('PUT', '/api/anzeige/reihen', null, { reihen: 24 })).daten, { reihen: 24 });
+  assert.equal((await anfrage('PUT', '/api/anzeige/reihen', null, { reihen: 'x' })).status, 400);
+  assert.equal((await anfrage('GET', '/api/anzeigen', max)).daten.anzeigen.find((a) => a.id === board.id).reihen, 24);
+
+  const layout = { layer: [{ id: 'l1', name: 'Start', instanzen: [{ id: 'w1', typ: 'sammelobjekte.status', stufe: 'standard', x: 28, y: 0 }] }], aktiverLayer: 'l1' };
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/layout`, null, layout)).status, 401, 'nur beigetretene Handys');
+  r = await anfrage('PUT', `/api/anzeigen/${board.id}/layout`, max, layout);
+  assert.equal(r.status, 200);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/layout`, max, { layer: [] })).status, 422);
+  r = await anfrage('GET', '/api/anzeige/layout');
+  assert.deepEqual([r.daten.reihen, r.daten.layout.layer[0].instanzen[0].typ], [24, 'sammelobjekte.status']);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/vollbild`, max, { instanzId: 'w1' })).daten.vollbild, 'w1');
+  assert.equal((await anfrage('GET', '/api/anzeige/layout')).daten.vollbild, 'w1', 'die Anzeige sieht das Vollbild');
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/vollbild`, max, { instanzId: 'gibt-es-nicht' })).status, 422);
+  assert.equal((await anfrage('PUT', `/api/anzeigen/${board.id}/vollbild`, max, { instanzId: null })).daten.vollbild, null);
+  await new Promise((ok) => setTimeout(ok, 150));
+  assert.ok(nachrichten.some((n) => n.art === 'geaendert' && n.bereich === 'layout'), 'Layout-Änderung kommt live an');
+  assert.ok(nachrichten.some((n) => n.art === 'geaendert' && n.bereich === 'anzeigen'), 'neue Reihen kommen live an');
+  ws.close();
+
+  // Von außen: ohne Link 403, mit Link das Layout genau dieser Anzeige
+  if (AUSSEN) {
+    const tablet = (await anfrage('POST', '/api/anzeigen', max, { name: 'Tablet' })).daten.anzeige;
+    assert.equal((await fetch(`http://${AUSSEN}:${PORT}/api/anzeige/layout`)).status, 403);
+    const res = await fetch(`http://${AUSSEN}:${PORT}/api/anzeige/layout${new URL(tablet.link).search}`);
+    assert.deepEqual((await res.json()).anzeige, { id: tablet.id, name: 'Tablet' });
   }
 });
 

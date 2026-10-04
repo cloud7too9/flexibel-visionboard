@@ -9,7 +9,7 @@ import {
 import { DEFAULT_LAYOUT } from "../features/workspace/model/default-layout";
 import type { WorkspaceData, WorkspaceLayout } from "../features/workspace/model/workspace.types";
 
-const second: WorkspaceLayout = { ...DEFAULT_LAYOUT, id: "layer-2", name: "Arbeit", items: [] };
+const second: WorkspaceLayout = { ...DEFAULT_LAYOUT, id: "layer-2", name: "Arbeit", instanzen: [] };
 const twoLayers: WorkspaceData = { layers: [DEFAULT_LAYOUT, second], activeLayerId: "layer-2" };
 
 beforeEach(() => {
@@ -26,26 +26,45 @@ describe("workspace storage", () => {
     const loaded = loadWorkspaceFromStorage();
     expect(loaded).not.toBeNull();
     expect(loaded!.layers.map((l) => l.id)).toEqual([DEFAULT_LAYOUT.id, "layer-2"]);
-    expect(loaded!.layers[0].items.length).toBe(DEFAULT_LAYOUT.items.length);
+    expect(loaded!.layers[0].instanzen.length).toBe(DEFAULT_LAYOUT.instanzen.length);
     expect(loaded!.activeLayerId).toBe("layer-2");
   });
 
-  it("discards layouts of the old 96 × 48 grid (versions 1–3)", () => {
-    for (const version of [1, 2, 3]) {
+  it("discards layouts of older versions (MainHub panels, 96 × 48 grid, free sizes)", () => {
+    for (const version of [1, 2, 3, 4, 5]) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ version, layout: DEFAULT_LAYOUT, layers: [DEFAULT_LAYOUT], activeLayerId: DEFAULT_LAYOUT.id }));
       expect(loadWorkspaceFromStorage()).toBeNull();
     }
   });
 
-  it("keeps items inside the 32 columns, rows depend on the screen", () => {
-    const breit = { ...DEFAULT_LAYOUT, items: [{ id: "a", panelTyp: "aufgaben", titel: "A", x: 30, y: 40, w: 8, h: 3 }] };
-    const parsed = parsePersistedWorkspace({ version: 4, layers: [breit], activeLayerId: breit.id })!;
-    expect(parsed.layers[0].items[0]).toMatchObject({ x: 24, w: 8, y: 40, h: 3 });
+  it("unknown types fall away, unknown stages become the standard stage, x stays inside 32 columns", () => {
+    const layer = { ...DEFAULT_LAYOUT, instanzen: [
+      { id: "a", typ: "portale.verbindungen", stufe: "groß", x: 30, y: 40, extra: 1 },
+      { id: "b", typ: "portale.verbindungen", stufe: "riesig", x: 0, y: 0 },
+      { id: "c", typ: "gibt.es.nicht", stufe: "standard", x: 0, y: 0 },
+    ] };
+    const parsed = parsePersistedWorkspace({ version: 6, layers: [layer], activeLayerId: layer.id })!;
+    expect(parsed.layers[0].instanzen).toEqual([
+      { id: "a", typ: "portale.verbindungen", stufe: "groß", x: 20, y: 40 },
+      { id: "b", typ: "portale.verbindungen", stufe: "standard", x: 0, y: 0 },
+    ]);
+  });
+
+  it("keeps the source only for types with a source", () => {
+    const layer = { ...DEFAULT_LAYOUT, instanzen: [
+      { id: "a", typ: "banner.banner", stufe: "standard", x: 0, y: 0, quelle: "b_3" },
+      { id: "b", typ: "portale.verbindungen", stufe: "standard", x: 8, y: 0, quelle: "b_3" },
+      { id: "c", typ: "ruestung.set", stufe: "standard", x: 18, y: 0, quelle: 42 },
+    ] };
+    const [a, b, c] = parsePersistedWorkspace({ version: 6, layers: [layer], activeLayerId: layer.id })!.layers[0].instanzen;
+    expect(a.quelle).toBe("b_3");
+    expect(b).not.toHaveProperty("quelle");
+    expect(c).not.toHaveProperty("quelle");
   });
 
   it("falls back to the first layer when the active id is unknown", () => {
     const parsed = parsePersistedWorkspace({
-      version: 4,
+      version: 6,
       layers: [DEFAULT_LAYOUT, second],
       activeLayerId: "gibt-es-nicht",
     });
@@ -68,9 +87,9 @@ describe("workspace storage", () => {
   });
 
   it("returns null when there are no layers or a broken layer", () => {
-    expect(parsePersistedWorkspace({ version: 4, layers: [], activeLayerId: "x" })).toBeNull();
+    expect(parsePersistedWorkspace({ version: 6, layers: [], activeLayerId: "x" })).toBeNull();
     expect(
-      parsePersistedWorkspace({ version: 4, layers: [DEFAULT_LAYOUT, { id: "y" }], activeLayerId: "y" }),
+      parsePersistedWorkspace({ version: 6, layers: [DEFAULT_LAYOUT, { id: "y" }], activeLayerId: "y" }),
     ).toBeNull();
   });
 

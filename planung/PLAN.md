@@ -17,6 +17,7 @@
    - Du sagst immer an, wann gepusht und wann gemergt wird.
    - Das Datenmodell bleibt minimal, und du baust nur Besprochenes.
 6. Was in Kapitel 8 als **offen** steht, baust du nicht vorweg.
+7. Was auf Max wartet (Haltepunkte, Nachfragen, nicht beschriebene Inhalte), steht in [`WARTELISTE.md`](WARTELISTE.md). Max hat entschieden: Daran wird nicht gewartet, alles andere geht weiter.
 
 ---
 
@@ -136,7 +137,7 @@ Grund: E4 und E5. Ein Bauplan dafür gibt es nicht.
   - Hier verschiebt man Widgets, wechselt die Stufe, entfernt sie, fügt über die Galerie hinzu, wechselt den Layer und startet das Vollbild.
   - Im Hochformat erscheint ein Hinweis „Querformat empfohlen“.
   - ⚖ Wie die React-Steuerung in die Vanilla-Companion kommt, klärt Nachfrage N2.
-- **Ausliefern:** Der Board-Server liefert den Build von `companion/widgets/` unter `/dashboard` aus, so wie `/anzeige`.
+- **Ausliefern:** Der Board-Server liefert den Build von `companion/widgets/` unter `/dashboard` aus, so wie `/anzeige`. *(Vorgezogen in A4, Commit „Dashboard unter /dashboard“, damit die Widgets am echten Board getestet werden.)*
 - **Anzeige-Link (Anzeige auf einem anderen Gerät als dem Server):**
   - Jede Anzeige bekommt am Server einen eigenen, zufälligen **Anzeige-Schlüssel**. Der Link lautet `http://<adresse>:3000/dashboard?anzeige=<id>&schluessel=<schluessel>`. Die Adresse ist dieselbe wie im QR-Code der Handys (`netzwerk.js`, `adresse.txt`, `OEFFENTLICHE_URL`).
   - Wer den Link öffnet, wird zu genau dieser Anzeige. Der Browser merkt sich den Schlüssel, damit ein Neustart des TVs ohne Link geht.
@@ -210,6 +211,8 @@ Nicht jetzt: Postfach, Bestätigungs-Oberfläche, Rechte, Protokoll. Das Modell 
 
 Betrifft die Karte in `companion-prototyp.html` und `biom-welt.js`. Branch: `bereich/karte-welt-upload`. Gehört zu Phase 5 von `companion/PLAN-welt-import-biome.md`.
 
+> **Umfang (Max, 01.10.2026):** der ganze Biom-Import, also die Phasen 2–5 des Biom-Plans zusammen mit diesem Strang. Gebaut; der Haltepunkt nach dem Import-Sheet und die Prüfungen an echten Welten stehen in der Warteliste. Die Test-ZIPs entstehen aus künstlichen Welten (`tests/welt-bauen.mjs`), bis `fixture-seed.mcworld` da ist.
+
 - **Upload-Feld** in der Karte: `accept=".zip,.mcworld"`, Verarbeitung im Worker wie im bestehenden Plan.
 - **Aufbauprüfung:**
   - Eine ZIP mit zusätzlichem Unterordner wird **angenommen, ohne Fehler und ohne Hinweis** (E12). Das ist eine Abweichung vom Bauplan. Der Dekoder sucht die Dateien ohnehin nach Basisnamen.
@@ -267,10 +270,10 @@ Git: Nach jeder Phase pushen. Nach jedem Strang (bzw. nach jedem Haltepunkt mit 
 
 | Nr. | Frage | Phase |
 |---|---|---|
-| N1 | Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet? | A4 |
-| N2 | Wie kommt die Steuerung ans Handy? Als Teil von `companion/widgets/` (React, eigene Route `/dashboard/anordnen`, aus der Companion verlinkt) oder in der Vanilla-Seite nachgebaut? Vorschlag: React-Route, weil sie dieselben Komponenten nutzt. | A6 |
+| N1 | ~~Wo genau wird am Handy abgehakt: im Bereich der Companion oder durch Tippen auf das leere Widget in „Anzeige anordnen“, das dann den Inhalt öffnet?~~ **Entschieden (Max, 01.10.2026):** im Bereich der Companion. „Anzeige anordnen“ ordnet nur an. | A4 |
+| N2 | ~~Wie kommt die Steuerung ans Handy? Als Teil von `companion/widgets/` (React, eigene Route `/dashboard/anordnen`, aus der Companion verlinkt) oder in der Vanilla-Seite nachgebaut?~~ **Entschieden (Max, 01.10.2026): Weg 1**, die React-Route `/dashboard/anordnen`, aus dem Board-Sheet der Companion verlinkt. | A6 |
 | N3 | ~~Woher weiß eine Anzeige, welche sie ist, und reicht der Schlüssel als Schutz?~~ **Entschieden:** über den Anzeige-Link (A6), der Schlüssel im Link reicht, keine zusätzliche Bestätigung am Handy. | A6 |
-| N4 | Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz? | B2 |
+| N4 | ~~Bleibt die Board-PIN im QR-Code als Zugang zum Server, oder ersetzen die Account-PINs sie ganz?~~ **Entschieden (Max, 01.10.2026, „Ja“):** Die Board-PIN im QR-Code bleibt als Zugang zum Server; die Account-PIN kommt dazu. | B2 |
 
 **Weiter offen aus den Ideen:**
 - Design-Themes für Sammelobjekte, Banner und Rüstung (E8)

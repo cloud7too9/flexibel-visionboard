@@ -5,6 +5,16 @@ export function EmptyGridHint() {
   const openAddPanel = useWorkspaceStore((s) => s.openAddPanel);
   const editMode = useWorkspaceStore((s) => s.editMode);
   const setEditMode = useWorkspaceStore((s) => s.setEditMode);
+  const nurAnzeige = useWorkspaceStore((s) => s.nurAnzeige);
+
+  if (nurAnzeige) {
+    return (
+      <div className="flex w-full max-w-md flex-col items-center justify-center rounded-panel border border-dashed border-border bg-surface/80 px-4 py-8 text-center sm:py-12">
+        <div className="text-lg font-medium">Auf dieser Anzeige liegen noch keine Widgets</div>
+        <p className="mt-1 max-w-sm text-sm text-text-muted">Angeordnet wird am Handy.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full max-w-md flex-col items-center justify-center rounded-panel border border-dashed border-border bg-surface/80 px-4 py-8 text-center sm:py-12">

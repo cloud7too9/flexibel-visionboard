@@ -8,6 +8,7 @@ import {
 import { DEFAULT_LAYOUT } from "../features/workspace/model/default-layout";
 import { loadWorkspaceFromStorage } from "../features/workspace/lib/storage";
 import { RASTER_SPALTEN } from "../features/workspace/lib/raster";
+import { instanzRect } from "../features/workspace/model/widget-register";
 
 const initialState = useWorkspaceStore.getState();
 const store = () => useWorkspaceStore.getState();
@@ -25,7 +26,7 @@ describe("initial state", () => {
   it("starts with a single default layer", () => {
     expect(store().layers).toHaveLength(1);
     expect(active().id).toBe(DEFAULT_LAYOUT.id);
-    expect(active().items.length).toBe(DEFAULT_LAYOUT.items.length);
+    expect(active().instanzen.length).toBe(DEFAULT_LAYOUT.instanzen.length);
   });
 });
 
@@ -34,7 +35,7 @@ describe("layers", () => {
     const id = store().addLayer();
     expect(store().layers).toHaveLength(2);
     expect(store().activeLayerId).toBe(id);
-    expect(active().items).toEqual([]);
+    expect(active().instanzen).toEqual([]);
     expect(active().name).toBe("Layer 2");
     expect(loadWorkspaceFromStorage()!.activeLayerId).toBe(id);
   });
@@ -55,7 +56,7 @@ describe("layers", () => {
   it("switches the active layer and clears the selection", () => {
     const second = store().addLayer();
     store().setActiveLayer(DEFAULT_LAYOUT.id);
-    store().selectPanel("panel-aufgaben");
+    store().selectPanel("w-portale");
     store().setActiveLayer(second);
     expect(store().activeLayerId).toBe(second);
     expect(store().selectedPanelId).toBeNull();
@@ -95,93 +96,194 @@ describe("layers", () => {
 });
 
 describe("widgets act on the active layer only", () => {
+  const inst = (id: string) => active().instanzen.find((i) => i.id === id)!;
+
   it("adds widgets to the active layer", () => {
     const second = store().addLayer();
-    store().addItem("aufgaben");
+    store().addItem("sammelobjekte.status");
     const layers = store().layers;
-    expect(layers.find((l) => l.id === second)!.items).toHaveLength(1);
-    expect(layers.find((l) => l.id === DEFAULT_LAYOUT.id)!.items.length).toBe(
-      DEFAULT_LAYOUT.items.length,
-    );
+    expect(layers.find((l) => l.id === second)!.instanzen).toHaveLength(1);
+    expect(layers.find((l) => l.id === DEFAULT_LAYOUT.id)!.instanzen.length).toBe(DEFAULT_LAYOUT.instanzen.length);
   });
 
-  it("removes and duplicates within the active layer", () => {
-    store().removeItem("panel-aufgaben");
-    expect(active().items.some((i) => i.id === "panel-aufgaben")).toBe(false);
-    store().duplicateItem("panel-dateien");
-    expect(active().items.filter((i) => i.panelTyp === "dateien")).toHaveLength(2);
+  it("only widget types go onto the dashboard, never a whole area", () => {
+    store().addLayer();
+    expect(store().addItem("portale")).toBe(false);
+    expect(store().addItem("gibt.es.nicht")).toBe(false);
+    expect(store().addItem("portale.verbindungen", "egal")).toBe(true);
+    expect(active().instanzen.at(-1)).toEqual(expect.objectContaining({ typ: "portale.verbindungen", stufe: "standard" }));
+    expect(active().instanzen.at(-1)).not.toHaveProperty("quelle");   // Typ ohne Quelle
+  });
+
+  it("removes within the active layer", () => {
+    store().removeItem("w-sammelstatus");
+    expect(active().instanzen.some((i) => i.id === "w-sammelstatus")).toBe(false);
+  });
+
+  it("a type without source exists once per layer (no add, no duplicate)", () => {
+    expect(store().addItem("portale.verbindungen")).toBe(false);
+    expect(store().duplicateItem("w-portale")).toBe(false);
+    expect(active().instanzen.filter((i) => i.typ === "portale.verbindungen")).toHaveLength(1);
+    store().addLayer();
+    expect(store().addItem("portale.verbindungen")).toBe(true);   // anderer Layer
+    store().removeItem(active().instanzen[0].id);
+    expect(store().addItem("portale.verbindungen")).toBe(true);   // wieder frei
+  });
+
+  it("types with a source are multiple: each instance with its own source, duplicates keep it", () => {
+    store().addLayer();
+    expect(store().addItem("banner.banner", "b_1")).toBe(true);
+    expect(store().addItem("banner.banner", "b_2")).toBe(true);
+    expect(active().instanzen.map((i) => i.quelle)).toEqual(["b_1", "b_2"]);
+    expect(store().duplicateItem(active().instanzen[0].id)).toBe(true);
+    expect(active().instanzen.at(-1)).toMatchObject({ typ: "banner.banner", quelle: "b_1" });
+    expect(active().instanzen.at(-1)!.id).not.toBe(active().instanzen[0].id);
   });
 
   it("moves a widget cell by cell and rejects collisions", () => {
-    // Bei 18 Reihen endet ein 6 Reihen hohes Widget spätestens in Reihe 12.
-    expect(store().moveItem("panel-toolstart", 25, 13)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ x: 25, y: 12 });
-    // Schnellnotiz liegt bei (0,0) – Kollision.
-    expect(store().moveItem("panel-toolstart", 0, 0)).toBe(false);
+    expect(store().moveItem("w-sammelstatus", 28, 16)).toBe(true);
+    // 3 Reihen hoch: bei 18 Reihen spätestens ab Reihe 15
+    expect(inst("w-sammelstatus")).toMatchObject({ x: 28, y: 15 });
+    expect(store().moveItem("w-sammelstatus", 0, 0)).toBe(false);
   });
 
   it("keeps moved widgets inside the visible rows (no scrolling below)", () => {
-    store().moveItem("panel-toolstart", 20, 500);
-    const t = active().items.find((i) => i.id === "panel-toolstart")!;
-    expect(t.y + t.h).toBeLessThanOrEqual(store().reihen);
+    store().moveItem("w-sammelstatus", 20, 500);
+    const r = instanzRect(inst("w-sammelstatus"))!;
+    expect(r.y + r.h).toBeLessThanOrEqual(store().reihen);
   });
 
   it("uses the rows of the measured area", () => {
     store().setReihen(24);   // 4:3
-    expect(store().moveItem("panel-toolstart", 26, 30)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-toolstart")).toMatchObject({ y: 18 });
+    expect(store().moveItem("w-sammelstatus", 28, 30)).toBe(true);
+    expect(inst("w-sammelstatus")).toMatchObject({ y: 21 });
     store().setReihen(0);    // ungemessen: bleibt
     expect(store().reihen).toBe(24);
   });
 
-  it("resizes in cell steps and respects minimum size, edges and collisions", () => {
-    // Dateien liegt bei (0,6) mit 10×6, darunter ist frei.
-    expect(store().resizeItem("panel-dateien", 9, 9)).toBe(true);
-    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ w: 9, h: 9 });
-    // Größer als die Fläche wird am unteren Rand begrenzt, ohne zu verschieben.
-    store().resizeItem("panel-dateien", 9, 500);
-    expect(active().items.find((i) => i.id === "panel-dateien")).toMatchObject({ y: 6, h: 12 });
-    // Aufgaben hat minHoehe 3: kleiner wird auf 3 begrenzt.
-    store().resizeItem("panel-aufgaben", 8, 1);
-    expect(active().items.find((i) => i.id === "panel-aufgaben")!.h).toBe(3);
-    // Breiter würde in Projektstatus hineinragen.
-    expect(store().resizeItem("panel-aufgaben", 10, 3)).toBe(false);
+  it("size follows the stage; switching keeps the top left corner and rejects collisions", () => {
+    expect(instanzRect(inst("w-portale"))).toMatchObject({ w: 10, h: 6 });
+    // „groß“ (12×9) würde in den Sammel-Fortschritt bei (22,0) ragen
+    expect(store().setStufe("w-portale", "groß")).toBe(false);
+    store().moveItem("w-sammelstatus", 28, 15);
+    expect(store().setStufe("w-portale", "groß")).toBe(true);
+    expect(inst("w-portale")).toMatchObject({ stufe: "groß", x: 12, y: 0 });
+    expect(instanzRect(inst("w-portale"))).toMatchObject({ w: 12, h: 9 });
+    expect(store().setStufe("w-portale", "riesig")).toBe(false);
+    expect(store().setStufe("w-portale", "groß")).toBe(false);
+  });
+
+  it("moves inward when the new stage would cross the edge", () => {
+    store().moveItem("w-sammelstatus", 12, 15);
+    expect(store().moveItem("w-portale", 22, 10)).toBe(true);
+    // 12×9 ab (22,10) ragte rechts und unten hinaus → rückt nach (20,9)
+    expect(store().setStufe("w-portale", "groß")).toBe(true);
+    expect(inst("w-portale")).toMatchObject({ stufe: "groß", x: 20, y: 9 });
+  });
+
+  it("the handle cycles through the stages that fit; a single stage stays", () => {
+    store().moveItem("w-sammelstatus", 28, 15);
+    expect(store().naechsteStufe("w-portale")).toBe(true);
+    expect(inst("w-portale").stufe).toBe("groß");
+    expect(store().naechsteStufe("w-portale")).toBe(true);
+    expect(inst("w-portale").stufe).toBe("standard");
+    expect(store().naechsteStufe("w-sammelstatus")).toBe(false);
   });
 
   it("reports when a layer is full", () => {
     store().addLayer();
-    let added = 0;
-    while (store().addItem("toolstart")) added++;
-    expect(added).toBeGreaterThan(0);
-    expect(store().addItem("toolstart")).toBe(false);
-    expect(store().duplicateItem(active().items[0].id)).toBe(false);
-    for (const it of active().items) {
-      expect(it.x + it.w).toBeLessThanOrEqual(RASTER_SPALTEN);
-      expect(it.y + it.h).toBeLessThanOrEqual(store().reihen);
+    store().setReihen(8);
+    // 12×8, 10×6 und 8×8 passen nebeneinander, für 4×3 ist dann kein Platz mehr
+    for (const t of ["karte.gesamtkarte", "portale.verbindungen", "sammelobjekte.gesamtauflistung"]) expect(store().addItem(t)).toBe(true);
+    expect(store().addItem("sammelobjekte.status")).toBe(false);
+    for (const i of active().instanzen) {
+      const r = instanzRect(i)!;
+      expect(r.x + r.w).toBeLessThanOrEqual(RASTER_SPALTEN);
+      expect(r.y + r.h).toBeLessThanOrEqual(store().reihen);
     }
   });
 
   it("persists widget changes of the active layer", () => {
     const second = store().addLayer();
-    store().addItem("dateien");
+    store().addItem("sammelobjekte.gesamtauflistung");
     const saved = loadWorkspaceFromStorage()!;
-    expect(saved.layers.find((l) => l.id === second)!.items).toHaveLength(1);
+    expect(saved.layers.find((l) => l.id === second)!.instanzen).toHaveLength(1);
   });
 });
 
 describe("resetActiveLayer", () => {
   it("restores default widgets on the start layer", () => {
-    store().removeItem("panel-aufgaben");
+    store().removeItem("w-portale");
     store().resetActiveLayer();
-    expect(active().items.length).toBe(DEFAULT_LAYOUT.items.length);
+    expect(active().instanzen.length).toBe(DEFAULT_LAYOUT.instanzen.length);
   });
 
   it("empties a custom layer without touching others", () => {
     store().addLayer();
-    store().addItem("aufgaben");
+    store().addItem("sammelobjekte.status");
     store().resetActiveLayer();
-    expect(active().items).toEqual([]);
-    expect(store().layers[0].items.length).toBe(DEFAULT_LAYOUT.items.length);
+    expect(active().instanzen).toEqual([]);
+    expect(store().layers[0].instanzen.length).toBe(DEFAULT_LAYOUT.instanzen.length);
+  });
+});
+
+describe("Layout der Anzeige vom Board (A6)", () => {
+  const vomBoard = {
+    aktiverLayer: "l2",
+    layer: [
+      { id: "l1", name: "Start", instanzen: [{ id: "a", typ: "portale.verbindungen", stufe: "groß", x: 30, y: 0 }] },
+      { id: "l2", name: "Sammeln", instanzen: [{ id: "b", typ: "banner.banner", stufe: "standard", x: 0, y: 0, quelle: "b_1" }, { id: "c", typ: "gibt.es.nicht", stufe: "x", x: 0, y: 0 }] },
+    ],
+  };
+
+  it("übernimmt Layer und aktiven Layer, normalisiert wie beim Laden, speichert nichts im Browser", () => {
+    store().layoutUebernehmen(vomBoard);
+    expect(store().nurAnzeige).toBe(true);
+    expect(store().activeLayerId).toBe("l2");
+    expect(active().instanzen).toEqual([{ id: "b", typ: "banner.banner", stufe: "standard", x: 0, y: 0, quelle: "b_1" }]);
+    expect(store().layers[0].instanzen[0]).toMatchObject({ x: 20 });   // 12 breit → rückt in die 32 Spalten
+    expect(loadWorkspaceFromStorage()).toBeNull();
+  });
+
+  it("noch kein Layout am Board → Start-Layout", () => {
+    store().layoutUebernehmen(null);
+    expect(store().nurAnzeige).toBe(true);
+    expect(active().id).toBe(DEFAULT_LAYOUT.id);
+  });
+
+  it("an der Anzeige gibt es keinen Bearbeiten-Modus, der Browser-Speicher bleibt außen vor", () => {
+    store().addLayer("Lokal");
+    store().layoutUebernehmen(vomBoard);
+    store().setEditMode(true);
+    expect(store().editMode).toBe(false);
+    store().loadWorkspace();
+    expect(store().layers.map((l) => l.id)).toEqual(["l1", "l2"]);
+  });
+});
+
+describe("Anordnen am Handy (A6)", () => {
+  const vomBoard = { aktiverLayer: "l1", layer: [{ id: "l1", name: "Start", instanzen: [{ id: "a", typ: "portale.verbindungen", stufe: "standard", x: 0, y: 0 }] }] };
+
+  it("bearbeitet das Layout der Anzeige: Änderungen gehen an die Ablage, nicht in den Browser", () => {
+    const gesendet: string[] = [];
+    store().layoutBearbeiten(vomBoard, { ablage: (d) => gesendet.push(d.activeLayerId + ":" + d.layers[0].instanzen.map((i) => `${i.id}@${i.x}`).join()), vollbildAktion: () => {} });
+    expect(store().editMode).toBe(true);
+    expect(store().nurAnzeige).toBe(false);
+    expect(store().moveItem("a", 5, 0)).toBe(true);
+    expect(gesendet).toEqual(["l1:a@5"]);
+    expect(loadWorkspaceFromStorage()).toBeNull();
+    store().loadWorkspace();   // der Browser-Speicher bleibt außen vor
+    expect(active().instanzen[0].x).toBe(5);
+  });
+
+  it("neues Layout von einem anderen Handy: Auswahl bleibt, wenn das Widget noch da ist", () => {
+    const ziel = { ablage: () => {}, vollbildAktion: () => {} };
+    store().layoutBearbeiten(vomBoard, ziel);
+    store().selectPanel("a");
+    store().layoutBearbeiten({ ...vomBoard, layer: [{ ...vomBoard.layer[0], name: "Umbenannt" }] }, ziel);
+    expect(store().selectedPanelId).toBe("a");
+    store().layoutBearbeiten({ ...vomBoard, layer: [{ ...vomBoard.layer[0], instanzen: [] }] }, ziel);
+    expect(store().selectedPanelId).toBeNull();
   });
 });
 

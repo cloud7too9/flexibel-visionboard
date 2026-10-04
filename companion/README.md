@@ -8,7 +8,7 @@ Eine HTML-Datei, Vanilla JS, gleiche Shell und Basis-CSS wie `modul-a-live-karte
 
 **Ausprobieren:** `companion-prototyp.html` direkt öffnen (am Handy oder Desktop) – dann läuft der DEMO-Mock mit Beispielwelt. **Live** läuft die Companion, wenn das Koordinaten-Board sie ausliefert: Board starten, `http://<board>:3000/?pin=<PIN>` öffnen oder den QR-Code der Anzeige mit der Kamera-App scannen (siehe „Live-Betrieb“). Mit `?modul=sammelobjekte`, `?modul=portale`, `?modul=banner` oder `?modul=ruestung` startet man direkt im jeweiligen Bereich, `?demo=1` erzwingt den Mock.
 
-Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-Server lädt), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen für Rüstung und Sammelobjekte) in denselben Ordner.
+Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-Server lädt), `board-karten.js` (Anzeigeschemas, lädt der Board-Server ebenfalls), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen für Rüstung und Sammelobjekte) in denselben Ordner.
 
 ## Was drin ist
 
@@ -147,7 +147,7 @@ Rüstungs-Sets wie in den Vorlagen (`referenz/ruestung/`): je Teil **Vorlage + R
 Seit der Zusammenführung (Entscheidung von Max, 29.09.2026) ist das **Koordinaten-Board der Server der Companion**: Es liefert die Seite unter `/` aus, speichert alle Daten (`koordinaten-board/server/daten/daten.json`) und hält die Anzeige im Zimmer aktuell.
 
 - **Erkennung**: `init()` fragt `GET /api/server`. Antwortet das Board, läuft die Companion live, sonst (Datei, anderer Server, `?demo=1`) der DEMO-Mock.
-- **Anmeldung = Beitreten**: Das Handy scannt den QR-Code mit der Kamera-App und landet auf `/?pin=…`. Das Sheet „Beitreten“ hat die PIN schon, es fehlt nur der Name. Danach nimmt `api()` den Token aus `board.verbindung`; bei 401 oder abgelehntem Token geht es zurück zum Beitreten. Die PIN verschwindet aus der Adresszeile. „Abmelden“ im Board-Sheet.
+- **Anmeldung = Beitreten mit Account** (Strang B, B2): Das Handy scannt den QR-Code mit der Kamera-App und landet auf `/?pin=…`. Das Sheet „Beitreten“ hat die Board-PIN schon und zeigt die Accounts des Boards zum Antippen (`POST /api/beitreten/konten`). Man wählt seinen Account oder tippt einen neuen Namen, dazu die **eigene PIN** (4–8 Ziffern): Gibt es den Namen, meldet die PIN dort an (auch auf einem neuen Handy), sonst entsteht ein neuer Account. Das Token ist danach der Geräteschlüssel; `IDENTITAET.werBistDu()` (`GET /api/ich`) fragt beim Start, ob es noch gilt – Tokens von vor den Accounts gelten nicht mehr, dann heißt es einmal neu anmelden. Danach nimmt `api()` den Token aus `board.verbindung`; bei 401 oder abgelehntem Token geht es zurück zum Beitreten. Die PIN verschwindet aus der Adresszeile. „Abmelden“ im Board-Sheet.
 - **API**: dieselben Pfade wie im API-Vertrag, mit Präfix `/api` (Umsetzung `koordinaten-board/server/src/companion-api.js` + `daten.js`). Der Server prüft mit **derselben Datei `regeln.js`**, die die Seite lädt.
 - **Live-Updates**: Nach jeder Änderung meldet das Board `{ art:"geaendert", bereich, weltId }`. `liveAktualisieren()` lädt nur den betroffenen Bereich neu (Orte ohne Ansicht, Filter oder Kartenausschnitt zu verändern).
 - **Leeres Board**: Nach dem ersten Beitreten öffnet sich „Welt“, um die erste Welt mit Seed anzulegen.
@@ -160,7 +160,7 @@ Verbindet die Companion mit dem Koordinaten-Board im Zimmer. Das ist kein Bereic
 
 - **Scannen**: Das Sheet „Mit Board verbinden“ startet die Kamera und sucht den QR-Code der Anzeige (`http://<ip>:<port>/?pin=1234`). Erkennung per `BarcodeDetector`, wo es ihn gibt (Android-Chrome), sonst per **jsQR** (wird erst beim Scannen vom CDN geladen, `CONFIG.qrBibliothek`).
 - **Ausweichwege**: „Foto vom QR-Code“ und Adresse + PIN von Hand. Die ganze Beitritts-Adresse lässt sich auch einfügen, sie wird in Adresse und PIN aufgeteilt; ohne Port gilt `:3000`.
-- **Beitreten**: Ist der Name schon bekannt, tritt die Companion nach dem Erkennen sofort bei (`POST /api/beitreten`). Danach hält sie `/ws?token=…` offen, verbindet bei Abbruch neu und nach dem Standby sofort. Lehnt das Board das Token ab, vergisst sie die Verbindung.
+- **Beitreten**: Sind Name und eigene PIN schon eingetragen, tritt die Companion nach dem Erkennen sofort bei (`POST /api/beitreten`), sonst springt sie ins fehlende Feld. Danach hält sie `/ws?token=…` offen, verbindet bei Abbruch neu und nach dem Standby sofort. Lehnt das Board das Token ab, vergisst sie die Verbindung.
 - **Verbunden**: Das Sheet zeigt Adresse, „Angemeldet als“, wer im Raum ist und wie viele Orte das Board hat. Die Anzeige des Boards führt die Companion wie ein Handy unter „online“. „Trennen“ vergisst die Verbindung.
 - Gilt pro Gerät (`localStorage` `board.verbindung`, `board.name`) und ist auch im DEMO-Modus echt, weil das Board ein eigenes Gerät ist.
 
@@ -168,7 +168,7 @@ Verbindet die Companion mit dem Koordinaten-Board im Zimmer. Das ist kein Bereic
 
 Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte liegt dort, bis die nächste kommt oder jemand sie wegnimmt. Das Board speichert sie nicht; nach einem Neustart ist die Anzeige frei.
 
-**Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): `BOARD_KARTEN` ist das Verzeichnis, je Inhaltsart `{ titel, karte(id) }`. Die Funktion übersetzt den Inhalt in das allgemeine Kartenformat des Boards; das Board kennt keine Bereiche.
+**Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): `BOARD_KARTEN` in `board-karten.js` ist das Verzeichnis, je Inhaltsart `{ titel, karte(ctx, id) }`. Die Funktion übersetzt den Inhalt in das allgemeine Kartenformat des Boards; das Board kennt keine Bereiche. Die Daten kommen über den Kontext `ctx` (in der Seite `boardKontext()`), deshalb baut der Board-Server mit genau diesen Funktionen auch die Widgets des Dashboards (`GET /api/widgets/:typ`).
 
 | Schema | Quelle | Knopf | Inhalt der Karte |
 |---|---|---|---|
@@ -178,10 +178,13 @@ Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte li
 | Portal-Verbindung | `portal:<id>` | Portal-Detail | beide Portale mit Dimension, Status, Abstand zum Idealpunkt, Vorschlag |
 | Banner-Bauplan | `banner:<id>` | Banner-Detail | Vorschau als Bild (pixelgenau), Material, Bannervorlagen |
 | Rüstungs-Set | `ruestung:<id>` | Rüstungs-Detail | Figur als Bild (3D-Aufnahme, sonst 2D; als Datei ohne Bild), je Teil Besatz · Material · Farbe · verzaubert, welche Besätze in der Welt noch fehlen |
+| Alle Sammelobjekte | `sammelliste` | – (Widget) | alle Besätze mit gefunden von oder Fundort, je Dimension ein Block |
+| Portalverbindungen | `portalliste` | – (Widget) | jede Verbindung mit Status und beiden Koordinaten |
+| Gesamtkarte | `welt` | – (Widget) | Orte je Dimension und angeheftete Orte, bis die Karte einen eigenen Block hat |
 
 - Liegt der eigene Inhalt auf dem Board, wird der Knopf zu „Liegt auf dem Board · Wegnehmen“. Das Board-Sheet zeigt unter „Auf der Anzeige“, was gerade dort liegt und von wem, mit „Wegnehmen“.
 - Die Knöpfe erscheinen nur, wenn das Gerät mit einem Board verbunden ist.
-- **Neuer Bereich**: Schema in `BOARD_KARTEN` eintragen und im Detail `boardZeigenKnopf("<art>:<id>")` einbauen, danach `boardZeigenKnoepfe()` aufrufen. Das Board bleibt unverändert. `karte(id)` darf async sein (die Rüstung rendert erst die Figur).
+- **Neuer Bereich**: Schema in `BOARD_KARTEN` eintragen und im Detail `boardZeigenKnopf("<art>:<id>")` einbauen, danach `boardZeigenKnoepfe()` aufrufen. Das Board bleibt unverändert. `karte(ctx, id)` darf async sein (die Rüstung rendert erst die Figur).
 
 Nachrichten über die bestehende Live-Verbindung: `{ art:"zeigen", karte }` und `{ art:"verbergen", id }`, Antwort `ok`/`fehler`, an alle geht `{ art:"gezeigt", karte|null }`. Das Board prüft die Karte (`koordinaten-board/server/src/zeigen.js`):
 
@@ -194,6 +197,8 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 // typ: Feature-Typ der Seed Map („Nether Fortress“), höchstens 40 Zeichen → Kennblock auf der Anzeige
 // bild: PNG, JPEG oder WebP als Data-URL, höchstens 200 KB, kein SVG; pixelig = Pixelkunst scharf vergrößern
 ```
+
+**Anzeigen** (Board-Sheet, live): Jede Anzeige des Boards hat einen Anzeige-Link mit eigenem Schlüssel, damit ein anderes Gerät im WLAN (TV-Browser, Tablet) Anzeige sein darf. Je Anzeige: Link kopieren, QR-Code (SVG vom Board), Umbenennen, Neuer Schlüssel (zweimal tippen, alte Links gehen danach nicht mehr). Darunter „Neue Anzeige“. Live über `geaendert` „anzeigen“.
 
 **https ↔ http:** Im Live-Betrieb stellt sich die Frage nicht mehr: Companion und Board kommen vom selben Server (http im Heimnetz), das Handy braucht keine Kamera in der Seite. Sie gilt nur noch, wenn die Companion woanders über **https** läuft (z. B. später Hetzner) und sich mit dem Board im Heimnetz verbinden soll. Browser blockieren Anfragen von einer https-Seite an eine http-Adresse (Mixed Content), Safari auf dem iPhone ausnahmslos. Die Kamera wiederum gibt es nur in einem sicheren Kontext (https oder localhost). Heute funktioniert die Verbindung deshalb, wenn die Companion über http oder als Datei geöffnet wird; die Kamera dann nur am Rechner, am Handy bleiben Foto und Eingabe von Hand. Die Companion meldet den Fall ausdrücklich („Der Browser blockiert die Verbindung …“).
 
@@ -214,7 +219,7 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | GET | `/orte/welten` | – | `{ welten:[{ id, seed, anzahl }] }` |
 | POST | `/orte/welten` | `{ seed }` | `{ welt }` – legt 3 Dimensionen an |
 | GET | `/orte/welten/:id` | – | `{ welt, dimensionen, typen, instanzen }` |
-| POST | `/orte/instanzen` | `{ dimensionId, kategorie, variante, x, y, z, quelle }` | `{ instanz, typ }` – Typ wird gefunden oder angelegt |
+| POST | `/orte/instanzen` | `{ id?, dimensionId, kategorie, variante, x, y, z, quelle }` | `{ instanz, typ }` – Typ wird gefunden oder angelegt |
 | PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` |
 | PUT | `/orte/instanzen/:id/angeheftet` | `{ angeheftet }` | `{ instanz }` – groß auf der Anzeige |
 | DELETE | `/orte/instanzen/:id` | – | `{ ok:true }` |
@@ -225,19 +230,21 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | GET | `/sammelobjekte/welten/:id` | – | `{ status:{ [objektId]:{ von, am } } }` |
 | PUT | `/sammelobjekte/welten/:id/:objektId` | `{ gefunden }` | `{ status }` |
 | GET | `/portale/welten/:id` | – | `{ verbindungen:[verbindung] }` |
-| POST | `/portale/welten/:id` | `{ name, oberwelt, nether }` | `{ verbindung }` – `von`/`am` setzt der Server |
+| POST | `/portale/welten/:id` | `{ id?, name, oberwelt, nether }` | `{ verbindung }` – `von`/`am` setzt der Server |
 | PUT | `/portale/:id` | `{ name, oberwelt, nether }` | `{ verbindung }` |
 | DELETE | `/portale/:id` | – | `{ ok:true }` |
 | GET | `/banner` | – | `{ liste:[banner] }` |
-| POST | `/banner` | `{ name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
+| POST | `/banner` | `{ id?, name, basis, ebenen }` | `{ banner }` – `von`/`am` setzt der Server |
 | PUT | `/banner/:id` | `{ name, basis, ebenen }` | `{ banner }` |
 | DELETE | `/banner/:id` | – | `{ ok:true }` |
 | GET | `/ruestung` | – | `{ sets:[set] }` |
-| POST | `/ruestung` | `{ name, teile }` | `{ set }` – `von`/`am` setzt der Server |
+| POST | `/ruestung` | `{ id?, name, teile }` | `{ set }` – `von`/`am` setzt der Server |
 | PUT | `/ruestung/:id` | `{ name, teile }` | `{ set }` |
 | DELETE | `/ruestung/:id` | – | `{ ok:true }` |
 | GET | `/board/einstellungen` | – | `{ titel, qrZeigen, aktiveWelt, aktiv }` – nur Board |
 | PUT | `/board/einstellungen` | `{ titel?, qrZeigen?, aktiveWelt? }` | wie GET |
+
+**IDs vom Handy (Strang B):** Beim Anlegen von Orten, Portal-Verbindungen, Bannern und Rüstungs-Sets schickt die Companion die ID mit (`id`, UUID v4 aus `neueEintragId()` in `regeln.js`, auch über http ohne sicheren Kontext), damit sie später offline anlegen kann. Der Server prüft das Format (`idGueltig()`, sonst 400) und lehnt doppelte IDs ab (409); ohne `id` vergibt er eine wie bisher. Jeder Eintrag trägt außerdem `erstellerId` (stabile Benutzer-ID; bis zu den Accounts in B2 „unbekannt“), `von` bleibt nur zur Anzeige.
 
 `verbindung = { id, name, oberwelt:{ x, y|null, z }, nether:{ x, y|null, z }, von, am }`
 
@@ -260,7 +267,7 @@ Live gelten alle Pfade mit Präfix `/api` und Bearer-Token. Die Texterkennung (`
 - **Welt-Import**: `biom-ids.js` vor dem Haupt-Script einbinden; `biom-import.worker.js`, `biom-welt.js`, `biom-dekoder.js` und `vendor/` neben die Hauptdatei legen (der Worker lädt sie als ES-Module, nur über http). Der Service Worker der PWA muss sie im Precache haben. Abschnitt 9h und `<input id="weltDatei">` übernehmen, auf dem Board liefern sie die Routen in `server.js` aus
 - JS-Abschnitte 2–9 übernehmen; `api()`, `esc()`, `THEMES` gibt es dort schon
 - Sidebar der Hauptdatei auf `BEREICHE` umstellen (Karte, Sammelobjekte, Portal-Verwaltung, Handbuch, Baupläne, Banner, Rüstung)
-- `regeln.js` neben die Hauptdatei legen und vor dem Haupt-Script einbinden (`<script src="regeln.js">`); das Board liefert dann statt der Prototyp-Datei die Hauptdatei aus (`COMPANION_DATEI`)
+- `regeln.js` und `board-karten.js` neben die Hauptdatei legen und in dieser Reihenfolge vor dem Haupt-Script einbinden (`<script src="regeln.js">`, `<script src="board-karten.js">`); das Board liefert dann statt der Prototyp-Datei die Hauptdatei aus (`COMPANION_DATEI`)
 - Ordner `icons/` neben die Hauptdatei legen (Kennblöcke für Karte und Sammelobjekte, Pfad `KENNBLOCK_PFAD`). Fehlt er, stehen überall die Symbole
 - Ordner `ruestungs-baukasten/` neben die Hauptdatei legen (Pfad `BAUKASTEN`); das Board liefert ihn unter `/ruestungs-baukasten/` aus
 - Die Canvas-Marker zeichnet dort der bestehende Renderer: Kennblock über `kennblockBild(kategorie)` holen (liefert das geladene Bild oder `null`, dann das Symbol)

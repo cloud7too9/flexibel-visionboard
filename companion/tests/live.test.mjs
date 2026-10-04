@@ -62,11 +62,14 @@ async function handy() {
 }
 const text = (p, sel) => p.$eval(sel, (e) => e.textContent.replace(/\s+/g, " ").trim());
 const warteAuf = (p, fn, arg, ms = 6000) => p.waitForFunction(fn, arg, { timeout: ms }).then(() => true, () => false);
-/** Wie ein Handy nach dem QR-Scan: /?pin=… öffnen, Name eingeben, beitreten */
+/** Eigene PIN je Account (B2) */
+const KONTO_PIN = { Max: "2468", Lena: "1357" };
+/** Wie ein Handy nach dem QR-Scan: /?pin=… öffnen, Name und eigene PIN eingeben, beitreten */
 async function beitreten(p, name) {
   await p.goto(`${BOARD}/?pin=${PIN}`);
   await p.waitForSelector("#boardName");
   await p.fill("#boardName", name);
+  await p.fill("#boardKontoPin", KONTO_PIN[name]);
   await p.click('[data-aktion="board-beitreten"]');
   return warteAuf(p, () => !DEMO.enabled && st.sheet === null && bd.verbindung?.name);
 }
@@ -85,8 +88,11 @@ try {
   pruefe((await fetch(`${BOARD}/api/typen`)).status === 404, "Die alte Handy-Steuerung des Boards ist abgelöst");
   await max.screenshot({ path: `${DIR}/l1-beitreten.png` });
   await max.fill("#boardName", "Max");
+  pruefe((await text(max, "#boardKontoHinweis")) === "Neuer Account „Max“ – wähl dir eine PIN", "Neuer Name → neuer Account");
+  await max.fill("#boardKontoPin", KONTO_PIN.Max);
   await max.click('[data-aktion="board-beitreten"]');
   pruefe(await warteAuf(max, () => document.querySelector(".sheet-kopf h2")?.textContent === "Welt"), "Beigetreten → leeres Board: Welt anlegen");
+  pruefe(await max.evaluate(() => bd.ich?.anzeigename === "Max" && /^[0-9a-f-]{36}$/.test(bd.ich.id)), "IDENTITAET.werBistDu(): Account Max mit stabiler ID");
   pruefe(!max.url().includes("pin="), "PIN steht nicht mehr in der Adresszeile");
   pruefe((await text(max, "#weltBanner")).includes("Noch keine Welt"), "Hinweis: noch keine Welt");
   await max.screenshot({ path: `${DIR}/l2-erste-welt.png` });
@@ -101,6 +107,8 @@ try {
   for (const [a, v] of [["X", 212], ["Y", 71], ["Z", -388]]) await max.fill(`[data-koord="f${a}"]`, String(v));
   await max.click('[data-aktion="formular-speichern"]');
   pruefe(await warteAuf(max, () => st.instanzen.length === 1), "Ort „Hauptbasis“ gespeichert");
+  const ortId = await max.evaluate(() => st.instanzen[0].id);
+  pruefe(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(ortId), `Ort-ID vom Handy (UUID ${ortId.slice(0, 8)}…)`);
   await max.evaluate(() => ansichtWechseln("liste"));
 
   // Screenshot aus der Seed Map: echte Texterkennung des Boards
@@ -270,9 +278,21 @@ try {
   await lena.evaluate(() => { bd.verbindung.token = "kaputt.token"; lsSchreiben("board.verbindung", bd.verbindung); });
   await lena.reload();
   pruefe(await warteAuf(lena, () => document.querySelector(".sheet-kopf h2")?.textContent === "Beitreten"), "Ungültiges Token → wieder „Beitreten“");
-  await lena.fill("#boardPin", "0000"); await lena.fill("#boardName", "Lena");
+  await lena.fill("#boardPin", PIN);   // nach dem Beitreten steht die Board-PIN nicht mehr in der Adresse
+  pruefe(await warteAuf(lena, () => [...document.querySelectorAll("#boardKonten .konto")].map((k) => k.textContent).join() === "Max,Lena"),
+    "Beitreten zeigt die Accounts zum Auswählen");
+  await lena.screenshot({ path: `${DIR}/l4b-konten.png` });
+  await lena.click('#boardKonten .konto:has-text("Lena")');
+  pruefe(await lena.$eval("#boardName", (e) => e.value) === "Lena" && (await text(lena, "#boardKontoHinweis")) === "Anmelden als Lena – mit deiner PIN", "Account antippen → „Anmelden als Lena“");
+  await lena.fill("#boardKontoPin", "9999");
   await lena.click('[data-aktion="board-beitreten"]');
-  pruefe(await warteAuf(lena, () => document.getElementById("boardBanner")?.textContent.includes("Falsche PIN")), "Falsche PIN wird gemeldet");
+  pruefe(await warteAuf(lena, () => document.getElementById("boardBanner")?.textContent.includes("Falsche PIN für Lena")), "Falsche eigene PIN wird gemeldet");
+  await lena.fill("#boardPin", "0000"); await lena.fill("#boardKontoPin", KONTO_PIN.Lena);
+  await lena.click('[data-aktion="board-beitreten"]');
+  pruefe(await warteAuf(lena, () => document.getElementById("boardBanner")?.textContent.includes("Falsche PIN") && !document.getElementById("boardBanner")?.textContent.includes("für")), "Falsche Board-PIN wird gemeldet");
+  await lena.fill("#boardPin", PIN);
+  await lena.click('[data-aktion="board-beitreten"]');
+  pruefe(await warteAuf(lena, () => st.sheet === null && bd.verbindung?.name === "Lena" && bd.ich?.anzeigename === "Lena"), "Mit der richtigen PIN wieder angemeldet – derselbe Account");
   await max.evaluate(() => boardOeffnen());
   pruefe((await text(max, "#orteSheetInhalt")).includes("Abmelden"), "Board-Sheet: „Abmelden“ statt „Trennen“");
   await max.screenshot({ path: `${DIR}/l5-board-sheet.png` });
@@ -280,8 +300,9 @@ try {
   pruefe(await warteAuf(max, () => document.querySelector(".sheet-kopf h2")?.textContent === "Beitreten" && !bd.verbindung), "Abmelden → „Beitreten“");
 
   pruefe(fehler.length === 0, `keine Fehler in der Konsole${fehler.length ? ": " + fehler.join(" | ") : ""}`);
-  // erwartet: 7 Muster abgelehnt, Schildkröten-Stiefel abgelehnt, ungültiges Token, falsche PIN
-  const erwartet = ["422 /api/banner", "422 /api/ruestung", "401 /api/orte/welten", "401 /api/beitreten"];
+  // erwartet: 7 Muster abgelehnt, Schildkröten-Stiefel abgelehnt, ungültiges Token (Prüfung mit werBistDu),
+  // falsche eigene PIN, Accounts mit falscher Board-PIN abgefragt, falsche Board-PIN
+  const erwartet = ["422 /api/banner", "422 /api/ruestung", "401 /api/ich", "401 /api/beitreten", "401 /api/beitreten/konten", "401 /api/beitreten"];
   pruefe(JSON.stringify(antworten) === JSON.stringify(erwartet), `nur erwartete HTTP-Fehler: ${antworten.join(", ")}`);
 } catch (e) {
   pruefe(false, "Abbruch: " + e.message);

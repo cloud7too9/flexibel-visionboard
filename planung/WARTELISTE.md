@@ -1,0 +1,60 @@
+# Warteliste: was auf Max wartet
+
+> Stand 01.10.2026 · gehört zu [`PLAN.md`](PLAN.md)
+>
+> Max hat gesagt: „Was weitere Eingaben braucht, kommt auf die Warteliste. Alles andere wird erledigt.“ Hier steht deshalb alles, was ohne Max nicht weitergeht: Haltepunkte, Nachfragen, offene Entscheidungen und Inhalte, die noch nicht beschrieben sind. Weitergearbeitet wird an allem anderen.
+
+---
+
+## 1. Haltepunkte (⏸): Ergebnis anschauen, OK geben
+
+Bei jedem Haltepunkt stehen Branch und Screenshots. Die Screenshots erzeugen die Playwright-Tests in `companion/tests/bilder/` (`npm test` in `companion/tests`).
+
+| # | Haltepunkt | Branch | Was Max anschaut |
+|---|---|---|---|
+| H1 | **Welt-Import (Phase 4 des Biom-Plans, Strang C):** Import-Sheet mit Anleitung, Prüfung, Fortschritt, Ergebnis | `bereich/karte-welt-upload` | `karte-mcworld.test.mjs` → Screenshots des Import-Sheets und der Biom-Ebene |
+| ~~H2~~ | **Erledigt: Biom-Plan Phase 1** an der Fixture-Welt von Max (`tests/daten/fixture-seed.mcworld`): Höhenkarte `z*16 + x`, Chunkbase 8 von 8, ID 195 = Dappled Forest. Lag nur auf `bereich/karte-mcworld`, kam mit #19 nach `main`. | `main` | Offen bleiben die Realm-Welt am iPhone (Laufzeit, Speicher) und die IDs von Cherry Grove, Pale Garden und Sulfur Caves. |
+| H3 | **A2 · Raster** mit Platzhalter-Widgets auf 16:9 und 4:3 | `bereich/widgets-groessen` | `w1-raster-16x9.png`, `w1-raster-4x3.png`, `w2-stufen.png` |
+| H4 | **A4 · Galerie mit allen 13 Typen** und Karten vom Board | `bereich/widgets-register` | `w4-galerie.png`, `w6-quelle-waehlen.png`, `w5-beispielkarten.png` (ohne Board). Live ausprobieren: `npm run dev` in `companion/widgets` (ohne Board, Galerie im Bearbeiten-Modus) |
+| H5 | **A5 · Bereichs-Themes** (nicht als Haltepunkt im Plan, aber zum Anschauen) | `bereich/widgets-themes` | `w8-themes.png` (Handbuch als Buch, Baupläne blau, Portale lila), `w7-board-karten.png` (Karte: Oberwelt grün, Nether rot) |
+| H6 | **A6 · Anzeige am Handy anordnen** (Haltepunkt laut Plan): im Querformat ein Layout für die Anzeige im Zimmer anordnen | `bereich/widgets-anzeigen` | `w9-companion-anordnen-knopf.png`, `w9-anordnen-handy.png`, `w9-anordnen-auswahl.png`, `w10-anzeige-nach-anordnen.png`, `w11-anzeige-vollbild.png`. Live: Board starten, `npm run dashboard:installieren && npm run dashboard:build`, am Handy beitreten → Board → Anzeigen → „Anzeige anordnen“ |
+
+Später, wenn es so weit ist: B3 (am echten iPhone im Flugmodus).
+
+**Pull Requests:** Seit dem 04.10.2026 ist alles in `main`: #7, #9–#11 und #19 einzeln, die Kette A2–A6 mit B1/B2 und dem Anzeige-Link in einem Merge über #17. #12–#16 sind darin enthalten und geschlossen (Kapitel 3 in [`UEBERGABE.md`](UEBERGABE.md)). **Gemergt wird nur nach Rückfrage bei Max.**
+
+---
+
+## 2. Nachfragen aus dem Plan (Kapitel 8)
+
+| Nr. | Frage | blockiert |
+|---|---|---|
+| ~~N1~~ | **Entschieden:** Abgehakt wird im Bereich der Companion (wie heute). „Anzeige anordnen“ ordnet nur an. | – |
+| ~~N2~~ | **Entschieden: Weg 1** – React-Route `/dashboard/anordnen` aus `companion/widgets/`, geöffnet aus der Companion (Board → Anzeigen → „Anzeige anordnen“). Gebaut auf `bereich/widgets-anzeigen`. | – |
+| ~~N4~~ | **Entschieden („Ja“):** Die Board-PIN im QR-Code bleibt als Zugang zum Server, die Account-PIN kommt dazu. **B2 ist gebaut** (Branch `board/identitaet`): Accounts mit eigener PIN, Auswahl beim Beitreten, Geräteschlüssel, `werBistDu()`. Wer schon beigetreten war, meldet sich einmal neu an (Name + eigene PIN). | – |
+| N5 *(neu)* | **Offline braucht HTTPS.** Service Worker (B3) laufen nur in sicheren Kontexten (https oder localhost). Die Companion läuft am Handy über `http://192.168…:3000`, dort startet kein Service Worker. Möglichkeiten: HTTPS am Board mit eigenem Zertifikat (das iPhone muss ihm einmal vertrauen), ein Zertifikat für eine eigene Domain, oder Offline ohne Service Worker (dann lädt die Seite ohne Netz nicht). | **B3–B5** (Offline-Betrieb, Warteschlange, Zustandswechsel offline) |
+
+---
+
+## 3. Offene Entscheidungen
+
+| Nr. | Thema | Stand bis zur Entscheidung |
+|---|---|---|
+| E6 / A7 | **Größenstufen je Widget** und `seitenleistenBreite` (Planungsrunde) | Die neun neuen Typen haben je eine Platzhalter-Stufe. Die größte Rasterstufe (`32 − Seitenleiste`) gibt es noch nicht. Beobachtet: „Sammel-Fortschritt“ (4×3) ist für seine Karte zu klein, „Alle Sammelobjekte“ (8×8) zeigt nur die Oberwelt-Hälfte. |
+| E8 | **Themes für Sammelobjekte, Banner, Rüstung** | Oberwelt-Grün als Platzhalter mit eigener Theme-ID (A5) |
+| – | **Wann löst `/dashboard` die `/anzeige` ab?** Dem Dashboard fehlen noch, was die alte Anzeige kann: „Aufs Board“ (geworfene Karte groß zeigen), QR-Code zum Beitreten, Orte der aktiven Welt mit Kennblöcken. | Beide laufen nebeneinander; der Anzeige-Link zeigt weiter auf `/anzeige`, gilt aber auch für `/dashboard`. |
+| – | **Portal-Regeln am Board:** Die Edition (Bedrock/Java) wählt jedes Handy für sich. | Die Widgets am Board rechnen mit Bedrock (Hauptedition). Soll das Board eine eigene Einstellung bekommen? |
+
+---
+
+## 4. Inhalte, die noch nicht beschrieben sind
+
+Die Typen stehen im Register und in der Galerie, liefern aber nur einen Hinweis statt einer Karte.
+
+| Widget-Typ | Was fehlt |
+|---|---|
+| **Koordinatensammlung** (Karte, optional) | Was ist eine „Sammlung“? Eine feste Auswahl von Orten, die man in der Companion zusammenstellt, oder z. B. alle Orte einer Kategorie? Ein Datenmodell dafür gibt es noch nicht. |
+| **Eigene Liste** (Sammelobjekte) | „Frei zusammengestellt, schließt Listen nach Art ein“: Wo legt man sie an, und was steht drin? Ein Datenmodell fehlt. |
+| **Gesamtkarte** | Sie zeigt vorerst einen Überblick (Orte je Dimension, angeheftete Orte). Für eine echte Karte mit Markern, „ausrichtbar auf Punkt oder Koordinate“, braucht das Kartenformat des Boards einen neuen Block (z. B. `karte` mit Ausschnitt und Markern). Das muss besprochen werden. |
+| **Handbuch-Eintrag, Materialliste** | Den Bereich Handbuch gibt es noch nicht („Bereich geplant“). |
+| **Bauplan** | Den Bereich Baupläne gibt es noch nicht („Bereich geplant“). |

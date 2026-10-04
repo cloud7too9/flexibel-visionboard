@@ -8,7 +8,7 @@ Arbeitsweise, Zusammenspiel mit dem Koordinaten-Board und projektübergreifende 
 
 ## Prototyp
 
-- **Eine Seite plus drei Begleiter**: `companion-prototyp.html` (Vanilla JS mit `"use strict"`, ohne Build-Schritt), dazu `regeln.js` (Stammdaten + Regel-Funktionen, klassisches Script), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen, Baukasten für Rüstung und Sammelobjekte).
+- **Eine Seite plus vier Begleiter**: `companion-prototyp.html` (Vanilla JS mit `"use strict"`, ohne Build-Schritt), dazu `regeln.js` (Stammdaten + Regel-Funktionen, klassisches Script), `board-karten.js` (Anzeigeschemas Daten → Karte und reine Hilfen, klassisches Script nach `regeln.js`), `icons/` (Kennblöcke) und `ruestungs-baukasten/` (Bedrock-Texturen, Baukasten für Rüstung und Sammelobjekte).
 - **Direkt öffnen** startet den **DEMO-Mock** (`mockApi`).
   - **Live** läuft die Seite, wenn das Koordinaten-Board sie ausliefert (`http://<board>:3000/`, QR-Code der Anzeige). Erkannt über `GET /api/server`, API unter `/api`, Token aus dem Beitreten. `?demo=1` erzwingt den Mock. Details in `README.md` → Live-Betrieb.
   - `?modul=<key>` startet direkt in einem Bereich.
@@ -133,11 +133,11 @@ Max hat einen **Rüstungs-Baukasten** geschickt (Zip „ruestung“, jetzt `rues
 Wunsch von Max: einen Scanner einbauen, mit dem man sich mit dem Board verbindet, **danach** überlegen, wie einzelne Inhalte ans Board gehen. Seit der **Zusammenführung** (Branch `board/zusammenfuehrung`) ist das Board zugleich der Server der Companion.
 
 - Kein Bereich, sondern ein Eintrag **Board** unten in der Sidebar mit Status-Punkt. Details in `README.md` → Live-Betrieb und Board-Verbindung.
-- **Live** (vom Board ausgeliefert): Beitreten mit PIN aus dem QR-Code + Name ist die Anmeldung für alle Daten; Änderungen anderer Handys kommen live an (`liveAktualisieren`). Im Board-Sheet: Welt auf der Anzeige, Titel, QR-Code, „Abmelden“. Im Ort-Detail: „Auf der Anzeige anheften“.
+- **Live** (vom Board ausgeliefert): Beitreten mit der Board-PIN aus dem QR-Code und einem **Account** (Name + eigene PIN, Auswahl der Accounts im Sheet; `IDENTITAET.werBistDu()`, `bd.ich`) ist die Anmeldung für alle Daten; Änderungen anderer Handys kommen live an (`liveAktualisieren`). Im Board-Sheet: Welt auf der Anzeige, Titel, QR-Code, **Anzeigen** (Anzeige-Link je Gerät: kopieren, QR-Code, umbenennen, neuer Schlüssel, neue Anzeige – `boardAnzeigenLaden`, `boardAnzeigenHtml`; „Anzeige anordnen“ öffnet `/dashboard/anordnen?anzeige=…` im Widget-Dashboard, A6), „Abmelden“. Im Ort-Detail: „Auf der Anzeige anheften“.
 - **Woanders geöffnet** (Datei, anderer Server): Kamera-Scanner (BarcodeDetector oder jsQR vom CDN), Foto vom QR-Code, Adresse + PIN von Hand; die Daten bleiben dann im DEMO-Mock, nur „Aufs Board“ geht ans echte Board. Dafür sind `/api/beitreten` und `/api/ich` per CORS offen, mit einer Sperre nach 5 falschen PINs.
 - **Aufs Board** (Variante B, von Max gewählt): Inhalte groß auf die Anzeige werfen, wie Chromecast. Das Board speichert nichts; die Karte liegt dort, bis die nächste kommt oder jemand sie wegnimmt.
-  - **Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): Verzeichnis `BOARD_KARTEN`, je Inhaltsart `{ titel, karte(id) }` → allgemeines Kartenformat (Titel, Blöcke `koordinaten`/`zeilen`/`text`/`bild`, optional `typ` für den Kennblock).
-  - Schemas: Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner-Bauplan, Rüstungs-Set. Tabelle in `README.md` → Aufs Board · Anzeigeschema.
+  - **Jeder Inhalt hat ein Anzeigeschema** (Wunsch von Max): Verzeichnis `BOARD_KARTEN` in **`board-karten.js`**, je Inhaltsart `{ titel, karte(ctx, id) }` → allgemeines Kartenformat (Titel, Blöcke `koordinaten`/`zeilen`/`text`/`bild`, optional `typ` für den Kennblock). Die Daten kommen über den Kontext (`boardKontext()` in der Seite), damit der **Board-Server dieselben Funktionen** für die Widgets des Dashboards nutzt (`GET /api/widgets/:typ`, Phase A4). Was nur im Browser geht (PNG per Canvas, 3D-Figur, Biom an einer Stelle), reicht die Seite als Funktion im Kontext herein.
+  - Schemas: Ort, Sammelobjekt, Sammel-Fortschritt, Portal-Verbindung, Banner-Bauplan, Rüstungs-Set; nur für die Widgets: Alle Sammelobjekte, Portalverbindungen, Gesamtkarte (Überblick, bis die Karte einen eigenen Block hat). Tabelle in `README.md` → Aufs Board · Anzeigeschema.
 
 ### Handbuch, Baupläne ⬜
 
@@ -153,6 +153,7 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 | HTML | Header, `main.module-stack` mit je einer `<section class="module" data-module="…">` pro Bereich, Sidebar, ein gemeinsames Sheet `#orteSheet`, Toast |
 | JS 0 · KONFIG | `CONFIG` (Weltgrenze, Kachelgröße, Biom-Höhe in Nether/End, Zoom …) |
 | JS 1 · THEMES | UI-Tokens der drei Dimensionen |
+| `board-karten.js` (eigene Datei) | Hilfen `zahl`, `umrechnen`, `entfernung`, `STRUKTUREN`, Portal-Prüfung (`zielSuchen`, `verbindungPruefen`, `portalEmpfehlung` mit Edition), `bannerAnleitung`, `bannerPixel`, `besatzStandVon`; Anzeigeschemas `BOARD_KARTEN` mit `karte(ctx, id)` – lädt auch der Board-Server |
 | `regeln.js` (eigene Datei) | Dimensionen, Kategorien, Biome, `SAMMELOBJEKTE`, Banner-Farben/-Muster, `RUESTUNGS_TEILE`/`RUESTUNGEN`/`BESATZ_MATERIALIEN`, `instanzPruefen`, `bannerPruefen`, `ruestungPruefen`, `verbindungRegelPruefen`, `biomImportPruefen`/`biomImportSauber` – lädt auch der Board-Server |
 | `biom-ids.js` (eigene Datei) | Biom je Bedrock-ID (`BIOM_IDS`), erzeugt aus minecraft-data |
 | JS 2 · STAMMDATEN | Kartenfarben, `BIOM_INFO` (Bedrock-ID → Name, Biom der Liste, Farbe), Symbole, `STRUKTUREN` + `kennblockHtml`/`kennblockBild` (Kategorie → Kennblock), `BAUKASTEN`, `vorlageDatei`, `itemBild` |
@@ -162,7 +163,7 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 | JS 9 · SHEETS | `sheetOeffnen(art, html, dim)`, `kopfHtml`, `koordFelder`/`koordLesen`, Karte-Sheets |
 | JS 9b · BEREICHE | `ICON`, `BEREICHE`, `modulWechseln`, `sidebarBauen` |
 | JS 9c–9e | Sammelobjekte, Banner, Portal-Verwaltung |
-| JS 9f · BOARD-VERBINDUNG | `bd`, `boardQrLesen`, `qrLeser`, `boardScanStarten`, `boardBeitreten`, `boardVerbinden`, `boardSheetRendern`; live: `anmeldungAbgelaufen`, `liveAktualisieren`, `boardEinstellungen…`; Aufs Board: `boardSenden`, `BOARD_KARTEN` (Anzeigeschemas `ortKarte`, `sammelKarte`, `sammelStandKarte`, `portalKarte`, `bannerKarte`, `ruestungKarte`), `boardZeigen`, `boardWegnehmen`, `boardZeigenKnopf` |
+| JS 9f · BOARD-VERBINDUNG | `bd`, `boardQrLesen`, `qrLeser`, `boardScanStarten`, `boardBeitreten`, `boardVerbinden`, `boardSheetRendern`; live: `anmeldungAbgelaufen`, `liveAktualisieren`, `boardEinstellungen…`; Aufs Board: `boardSenden`, `boardKontext` (Kontext für `BOARD_KARTEN` aus `board-karten.js`), `pngDaten`, `boardZeigen`, `boardWegnehmen`, `boardZeigenKnopf` |
 | JS 9g · RÜSTUNG | `rs`, `teilIcon`/`teilIconDatei`, `besatzStand`, `ruestungLaden`, `renderRuestung`, `ruestungDetailOeffnen` (`rezeptHtml`, `bedarfHtml`, `verzauberungHtml`), Editor `ruestungEditorOeffnen`/`…Rendern`/`…Klick`, `ruestungSpeichern`; Figur `fig`, `figurModus` (3d/2d/icons), `buehneZeigen`, `glanzStarten`, `drehenEinrichten`; Board `ruestungFoto`, `ruestungKarte` |
 | JS 9h · WELT-IMPORT | `WELT_ANLEITUNGEN`, `wi` (Schritt, Datei, Worker, Ergebnis), `weltImportDatei`/`…Lesen`/`…Nachricht`, `wiAuswertung` (Vorschau, häufigste Biome), `weltImportRendern`, `weltImportUebernehmen`/`…Loeschen`, `biomeLaden`, `biomKnopfZeigen` |
 | JS 10 | Weltdaten laden, Events, `$sheet`-Klick-Switch (`data-aktion`), `datenStarten()`, `init()` |
@@ -176,11 +177,11 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
    - `…Laden()` und `render…()`
    - Detail und Editor über `sheetOeffnen("<art>", html, dim)`
    - eine **Regel-Funktion** `…Pruefen()` **in `regeln.js`** (mit den Stammdaten, die sie braucht) – der Board-Server lädt sie mit
-4. API-Vertrag im Kommentar von Abschnitt 4 ergänzen und die Mock-Routen in `mockApi()` anlegen. Die Mock-Routen nutzen dieselbe Regel-Funktion. Auf dem Board: Ablauf in `server/src/daten.js`, Route in `server/src/companion-api.js` mit `geaendert("<bereich>", weltId)`, Neuladen in `liveAktualisieren()`.
+4. API-Vertrag im Kommentar von Abschnitt 4 ergänzen und die Mock-Routen in `mockApi()` anlegen. Neue Einträge bekommen ihre ID vom Handy (`id:neueEintragId()` im POST-Body, Mock und Board prüfen sie mit `eintragId`). Die Mock-Routen nutzen dieselbe Regel-Funktion. Auf dem Board: Ablauf in `server/src/daten.js`, Route in `server/src/companion-api.js` mit `geaendert("<bereich>", weltId)`, Neuladen in `liveAktualisieren()`.
 5. `ICON` und `BEREICHE` bekommen einen Eintrag mit `mount`/`unmount`. Dazu je ein Zweig in `render()` und in `renderKopf()`.
 6. Sheet-Aktionen im `$sheet`-Klick-Switch ergänzen. Löschen immer mit zweitem Tippen („Wirklich löschen?“).
 7. Hängen die Daten an einer Welt, `…Laden()` in `weltLaden()` aufrufen.
-8. **Anzeigeschema**: Eintrag in `BOARD_KARTEN` und `boardZeigenKnopf("<art>:<id>")` im Detail (danach `boardZeigenKnoepfe()`). `tests/anzeigeschema.test.mjs` prüft die neuen Karten gegen `zeigen.js` des Boards.
+8. **Anzeigeschema**: Eintrag in `BOARD_KARTEN` (`board-karten.js`, Daten nur aus `ctx`; neue Daten in `boardKontext()` und im Kontext des Servers `koordinaten-board/server/src/widgets.js` ergänzen) und `boardZeigenKnopf("<art>:<id>")` im Detail (danach `boardZeigenKnoepfe()`). `tests/anzeigeschema.test.mjs` prüft die neuen Karten gegen `zeigen.js` des Boards. Soll der Inhalt ein Widget werden: Typ im Register `widgets/src/features/workspace/model/widget-register.ts` und Zuordnung in `WIDGETS` (`widgets.js` des Boards).
 9. `tests/<bereich>.test.mjs` schreiben, den README-Abschnitt ergänzen und committen.
 10. Dashboard-Ansichten des Bereichs mit Max klären (siehe `../UEBERGABE.md` → Zusammenspiel).
 
@@ -245,7 +246,7 @@ Der Bereich Rüstung liegt auf `bereich/ruestung` (zweigt von `bereich/banner-sc
 cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist (three.js für die 3D-Tests kommt mit npm install)
-npm test                          # biom-dekoder (18, node --test) + banner (23) + portale (29) + sammelobjekte (64) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (52) + karte-mcworld (52) = 384 Prüfungen + 18 Tests
+npm test                          # biom-dekoder (18, node --test) + banner (23) + portale (29) + sammelobjekte (64) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (52) + karte-mcworld (52) + anzeige-link (15) = 399 Prüfungen + 18 Tests
 ```
 
 - `board.test.mjs`, `live.test.mjs` und `anzeigeschema.test.mjs` starten je ein **echtes Koordinaten-Board** (Ports 3198, 3195, 3194, eigener Datenordner); Anzeigeschema und Rüstung liefern die Companion zusätzlich selbst über http aus (3193, 3192). Board-Test: Companion über einen eigenen `http://localhost`-Server (DEMO) mit Kamera, Foto, Hand-Eingabe und „Aufs Board“. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).
@@ -261,6 +262,7 @@ npm test                          # biom-dekoder (18, node --test) + banner (23)
 - `kennbloecke.test.mjs` prüft die Kennblöcke der Karte: Canvas-Marker je Dimension (zählt `drawImage`), Listen-Köpfe, Detail-Kopf, Screenshot-Prüfliste (DEMO-Texterkennung) und dass Kategorien ohne Bild ihr Symbol behalten.
 - `sammelobjekte.test.mjs` prüft `STRUKTUREN` und `SAMMELOBJEKTE` gegen `icons/manifest.json` (Namen, Besätze, vorhandene Bilder), die Kennblöcke in Liste und Detail, Abhaken, den Sprung zur Karte und den Ersatz durch Symbole, wenn `icons/` fehlt.
 - `biom-dekoder.test.mjs` (`node --test`): Dekoder mit handgebauten Bytes, ganze synthetische Welten aus `welt-bauen.mjs` (Level, gelöschte Datei, Log mit Löschmarke, iOS-Ordner), Weltname aus `levelname.txt`, schnelle Prüfung, Aufbaufehler (keine ZIP, kein Weltordner, Java, kaputte `level.dat`).
+- `anzeige-link.test.mjs`: echtes Board (Port 3189), die Anzeige „von außen“ über die Netzwerkadresse des Rechners: Konsole nennt den Link, Board-Sheet mit Anzeigen und QR-Code, ohne Link gesperrt, mit Link erlaubt, Neustart ohne Link (Schlüssel im Browser), neue Anzeige, umbenennen, neuer Schlüssel trennt die verbundene Anzeige, localhost braucht keinen Link.
 - `karte-mcworld.test.mjs`: Welt-Import mit je einer Test-ZIP pro Fall (korrekt, mit Unterordner, ohne `db/`, keine ZIP, `.mcworld`, anderer Seed, leere Welt). DEMO über http (Port 3191): Demo-Biome, Tippen, Ein-/Ausblenden, Nether, Anleitung, Fehler, Bestätigung, Prüfliste, Übernehmen, Seed passt nicht (Welt wechseln, neue Welt anlegen), Verwerfen, Löschen, Biom-Screenshot ausgegraut. Als Datei: Hinweis auf http. Live gegen ein echtes Board (Port 3190): Worker vom Board, Import kommt bei Lena an, Löschen bei Max.
 
 - Mit `CHROMIUM=/pfad/zu/chromium` lässt sich ein vorhandenes Chromium nutzen. Im Claude-Container ist das `/opt/pw-browsers/chromium`.
@@ -294,6 +296,7 @@ companion/
 ├── README.md                  ← Technik: Funktionen, Regeln, API-Tabellen, Einbau
 ├── companion-prototyp.html    ← der Prototyp (live vom Board ausgeliefert, sonst DEMO)
 ├── regeln.js                  ← Stammdaten + Regeln, lädt auch der Board-Server
+├── board-karten.js            ← Anzeigeschemas (Daten → Karte), lädt auch der Board-Server
 ├── entwuerfe/banner-ruestung.js   ← alter Entwurf, überholt (Banner + Rüstung sind eingebaut)
 ├── ruestungs-baukasten/       ← von Max: Bedrock-Texturen, manifest.json, baukasten.js, figur3d.js, LIESMICH.md
 │   ├── vorlagen/, zutaten/   Icons der Schmiedevorlagen und Besatz-Materialien
@@ -305,7 +308,7 @@ companion/
 │   ├── sammelobjekte/  Trails-&-Tales-Übersicht der Fundorte
 │   ├── banner/         Beispiel aus einem Banner-Editor
 │   └── ruestung/       3 Sets + 4 Verzauberungs-Reihenfolgen
-├── tests/              Playwright-Tests: Banner, Portale, Sammelobjekte, Kennblöcke, Board, Live-Betrieb, Anzeigeschema, Rüstung
+├── tests/              Playwright-Tests: Banner, Portale, Sammelobjekte, Kennblöcke, Board, Live-Betrieb, Anzeigeschema, Rüstung, Welt-Import, Anzeige-Link, Widgets
 └── widgets/            Widget-Ansicht fürs Board (Vite + React + TS, aus MainHub), Umbau laut ../planung/PLAN.md
 ```
 

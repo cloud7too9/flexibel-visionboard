@@ -115,6 +115,36 @@ test('Sammelobjekte, Portale, Banner', () => {
   wirft(() => d.ruestungLoeschen(r.id), 404);
 });
 
+test('Strang B: IDs vom Handy, erstellerId, Benutzer-Sammlungen', async () => {
+  const o = ordner();
+  const d = new Daten(o);
+  d.weltAnlegen({ seed: '7' });
+  const id = '0b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d';
+  const ort = { id, dimensionId: 'd_w_1_overworld', kategorie: 'Village', variante: null, x: 1, y: null, z: 2, quelle: 'manuell' };
+  const { instanz } = d.instanzAnlegen(ort, 'Max');
+  assert.deepEqual([instanz.id, instanz.von, instanz.erstellerId], [id, 'Max', 'unbekannt']);
+  wirft(() => d.instanzAnlegen(ort, 'Lena'), 409, 'Diesen Eintrag gibt es schon');
+  wirft(() => d.instanzAnlegen({ ...ort, id: 'i_99' }, 'Lena'), 400, 'Ungültige ID');
+  assert.match(d.instanzAnlegen({ ...ort, id: undefined, x: 5 }, 'Lena').instanz.id, /^i_\d+$/, 'ohne ID vergibt der Server eine');
+  const b = d.bannerAnlegen({ id: '1b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d', name: 'Wappen', basis: 'white', ebenen: [] }, 'Max');
+  assert.deepEqual([b.id, b.erstellerId], ['1b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d', 'unbekannt']);
+  wirft(() => d.bannerAnlegen({ id: b.id, name: 'Nochmal', basis: 'white', ebenen: [] }, 'Max'), 409);
+  assert.equal(d.portalAnlegen('w_1', { id: '2b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d', name: 'Basis', oberwelt: { x: 8, z: 8 }, nether: { x: 1, z: 1 } }, 'Max').id,
+    '2b4c5d6e-7f80-4a1b-9c2d-3e4f5a6b7c8d');
+  assert.equal(d.sammelSetzen('w_1', 'rib', { gefunden: true }, 'Max').status.rib.erstellerId, 'unbekannt');
+  assert.deepEqual([d.inhalt.benutzer, d.inhalt.profile, d.inhalt.geraete], [[], [], []]);
+
+  // Alte daten.json ohne erstellerId: beim Laden „unbekannt“
+  writeFileSync(path.join(o, 'daten.json'), JSON.stringify({ zaehler: 3, welten: [{ id: 'w_1', seed: '7' }], typen: [],
+    banner: [{ id: 'b_1', name: 'Alt', basis: 'white', ebenen: [], von: 'Max', am: '2026-09-01' }], sammel: { w_1: { rib: { von: 'Lena', am: '2026-09-02' } } } }));
+  const alt = new Daten(o);
+  await alt.laden();
+  assert.equal(alt.inhalt.banner[0].erstellerId, 'unbekannt');
+  assert.equal(alt.inhalt.sammel.w_1.rib.erstellerId, 'unbekannt');
+  assert.deepEqual(alt.inhalt.benutzer, []);
+  rmSync(o, { recursive: true, force: true });
+});
+
 test('Speichern und Laden', async () => {
   const o = ordner();
   const d = new Daten(o);
@@ -125,8 +155,76 @@ test('Speichern und Laden', async () => {
   await neu.laden();
   assert.equal(neu.inhalt.welten[0].seed, '42');
   assert.equal(neu.einstellungenLesen().titel, 'Server-Welt');
-  assert.equal(neu.neueId('x'), 'x_2');   // Zähler läuft weiter
+  assert.equal(neu.anzeigenListe()[0].id, 'a_2');   // „Board“ beim ersten Laden
+  assert.equal(neu.neueId('x'), 'x_3');   // Zähler läuft weiter
   rmSync(o, { recursive: true, force: true });
+});
+
+test('Anzeigen: „Board“ beim ersten Start, Schlüssel prüfen und neu erzeugen', async () => {
+  const o = ordner();
+  const d = new Daten(o);
+  await d.laden();
+  const [board] = d.anzeigenListe();
+  assert.equal(board.name, 'Board');
+  assert.match(board.schluessel, /^[\w-]{24}$/);
+  assert.equal(d.anzeigeMitSchluessel(board.id, board.schluessel)?.id, board.id);
+  assert.equal(d.anzeigeMitSchluessel(board.id, 'falsch'), null);
+  assert.equal(d.anzeigeMitSchluessel('a_99', board.schluessel), null);
+  assert.equal(d.anzeigeMitSchluessel(board.id, undefined), null);
+  const neu = d.anzeigeSchluesselNeu(board.id);
+  assert.equal(d.anzeigeMitSchluessel(board.id, board.schluessel), null, 'alter Schlüssel gilt nicht mehr');
+  assert.equal(d.anzeigeMitSchluessel(board.id, neu.schluessel)?.id, board.id);
+  const tablet = d.anzeigeAnlegen({ name: 'Tablet' });
+  assert.notEqual(tablet.schluessel, neu.schluessel);
+  assert.equal(d.anzeigeUmbenennen(tablet.id, { name: '  TV ' }).name, 'TV');
+  wirft(() => d.anzeigeAnlegen({ name: '' }), 400);
+  await d.speichern();
+  const nachNeustart = new Daten(o);
+  await nachNeustart.laden();
+  assert.deepEqual(nachNeustart.anzeigenListe().map((a) => a.name), ['Board', 'TV'], 'kein zweites „Board“ nach dem Neustart');
+  rmSync(o, { recursive: true, force: true });
+});
+
+test('Widget-Layout je Anzeige: Form wird geprüft, Reihen meldet die Anzeige', () => {
+  const d = new Daten(ordner());
+  const a = d.anzeigeLokal();
+  assert.equal(a.name, 'Board');
+  assert.deepEqual(d.anzeigeLayout(a.id), { anzeige: { id: a.id, name: 'Board' }, reihen: null, layout: null, vollbild: null });
+
+  const layout = { aktiverLayer: 'l2', layer: [
+    { id: 'l1', name: ' Start ', instanzen: [{ id: 'w1', typ: 'portale.verbindungen', stufe: 'groß', x: 12, y: 0 }] },
+    { id: 'l2', name: 'Sammeln', instanzen: [{ id: 'w2', typ: 'banner.banner', stufe: 'standard', x: 0, y: 3, quelle: 'b_1', extra: 1 }] },
+  ] };
+  const r = d.anzeigeLayoutSetzen(a.id, layout);
+  assert.equal(r.layout.aktiverLayer, 'l2');
+  assert.equal(r.layout.layer[0].name, 'Start');
+  assert.deepEqual(r.layout.layer[1].instanzen[0], { id: 'w2', typ: 'banner.banner', stufe: 'standard', x: 0, y: 3, quelle: 'b_1' });
+  assert.equal(d.anzeigeLayoutSetzen(a.id, { ...layout, aktiverLayer: 'weg' }).layout.aktiverLayer, 'l1', 'unbekannter Layer → erster');
+
+  const mit = (instanz) => ({ layer: [{ id: 'l1', name: 'Start', instanzen: [instanz] }] });
+  const w = { id: 'w1', typ: 'portale.verbindungen', stufe: 'standard', x: 0, y: 0 };
+  wirft(() => d.anzeigeLayoutSetzen(a.id, {}), 422, 'Layer fehlen');
+  wirft(() => d.anzeigeLayoutSetzen(a.id, { layer: [] }), 422, '1 bis 12 Layer');
+  wirft(() => d.anzeigeLayoutSetzen(a.id, mit({ ...w, typ: 'portale' })), 422, 'Unbekannter Widget-Typ „portale“');
+  wirft(() => d.anzeigeLayoutSetzen(a.id, mit({ ...w, x: 32 })), 422, 'x muss eine ganze Zahl von 0 bis 31 sein');
+  wirft(() => d.anzeigeLayoutSetzen(a.id, mit({ ...w, y: 1.5 })), 422);
+  wirft(() => d.anzeigeLayoutSetzen(a.id, { layer: [{ id: 'l1', name: 'A', instanzen: [w, w] }] }), 422, 'Widget-IDs doppelt');
+  wirft(() => d.anzeigeLayoutSetzen('a_99', layout), 404);
+
+  // Vollbild: nur ein Widget im aktiven Layer, endet, wenn es dort nicht mehr liegt
+  d.anzeigeLayoutSetzen(a.id, layout);   // aktiv: l2 mit w2
+  assert.equal(d.anzeigeVollbildSetzen(a.id, 'w2').vollbild, 'w2');
+  wirft(() => d.anzeigeVollbildSetzen(a.id, 'w1'), 422, 'Dieses Widget liegt nicht im aktiven Layer der Anzeige');
+  assert.equal(d.anzeigeLayoutSetzen(a.id, { ...layout, aktiverLayer: 'l1' }).vollbild, null, 'Layer gewechselt → Vollbild endet');
+  assert.equal(d.anzeigeVollbildSetzen(a.id, 'w1').vollbild, 'w1');
+  assert.equal(d.anzeigeVollbildSetzen(a.id, null).vollbild, null);
+
+  assert.equal(d.anzeigeReihenSetzen(a.id, 18), true);
+  assert.equal(d.anzeigeReihenSetzen(a.id, 18), false, 'unverändert');
+  wirft(() => d.anzeigeReihenSetzen(a.id, 0), 400);
+  const liste = d.anzeigenListe();
+  assert.equal(liste[0].reihen, 18);
+  assert.equal('layout' in liste[0] || 'vollbild' in liste[0], false, 'Liste ohne Layout');
 });
 
 test('Anzeige zeigt die aktive Welt', () => {

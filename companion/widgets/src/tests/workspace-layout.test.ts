@@ -8,15 +8,13 @@ import {
   rectsOverlap,
 } from "../features/workspace/lib/layout-utils";
 import { hasCollision } from "../features/workspace/lib/collision-utils";
-import type { LayoutItem } from "../features/workspace/model/workspace.types";
+import type { Rect } from "../features/workspace/lib/layout-utils";
 
 // 1440 px breit → Zelle 45 px, 18 Reihen sichtbar
 const config = { cols: 32, rows: 18, zellePx: 45, gap: 8 };
 
-const mkItem = (overrides: Partial<LayoutItem>): LayoutItem => ({
+const mkItem = (overrides: Partial<Rect & { id: string }>): Rect & { id: string } => ({
   id: "x",
-  panelTyp: "schnellnotiz",
-  titel: "x",
   x: 0,
   y: 0,
   w: 12,

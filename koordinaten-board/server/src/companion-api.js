@@ -1,6 +1,7 @@
 // REST-API der Companion (Vertrag: companion-prototyp.html, Abschnitt 4), unter /api.
 // Anmeldung per Bearer-Token wie beim Beitreten. Nach jeder Änderung meldet
 // `geaendert` den Bereich, damit Handys und Anzeige neu laden bzw. neu zeichnen.
+import QRCode from 'qrcode';
 import { DatenFehler } from './daten.js';
 import { screenshotAuslesen, fuerCompanion } from './erkennung.js';
 import { bannerAuslesen } from './banner-erkennung.js';
@@ -12,9 +13,10 @@ const BIOME_GRENZE = 64 * 1024 * 1024;
 /**
  * @param {import('fastify').FastifyInstance} app
  * @param {{ daten: import('./daten.js').Daten, nutzer: (req) => ({ name: string } | null),
- *           geaendert: (bereich: string, weltId?: string | null) => void }} optionen
+ *           geaendert: (bereich: string, weltId?: string | null) => void,
+ *           anzeigeLink: (anzeige: { id: string, schluessel: string }) => string }} optionen
  */
-export async function companionApi(app, { daten, nutzer, geaendert }) {
+export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink }) {
   app.addHook('onRequest', async (req, reply) => {
     const n = nutzer(req);
     if (!n) return reply.code(401).send({ error: 'anmeldung', message: 'Nicht angemeldet' });
@@ -36,7 +38,7 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
   });
   app.get('/orte/welten/:id', async (req) => daten.weltLesen(req.params.id));
   app.post('/orte/instanzen', async (req, reply) => {
-    const { instanz, typ, weltId } = daten.instanzAnlegen(req.body, req.nutzer.name);
+    const { instanz, typ, weltId } = daten.instanzAnlegen(req.body, req.nutzer);
     geaendert('orte', weltId);
     return reply.code(201).send({ instanz, typ });
   });
@@ -73,7 +75,7 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
   // ---- Welt-Import: Biome je Welt (am Handy aus .mcworld/.zip gelesen, Regeln: biomImportPruefen) ----
   app.get('/welten/:id/biome', async (req) => daten.biomeLesen(req.params.id));
   app.put('/welten/:id/biome', { bodyLimit: BIOME_GRENZE }, async (req) => {
-    const antwort = await daten.biomeSetzen(req.params.id, req.body, req.nutzer.name);
+    const antwort = await daten.biomeSetzen(req.params.id, req.body, req.nutzer);
     geaendert('biome', req.params.id);
     return antwort;
   });
@@ -86,7 +88,7 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
   // ---- Sammelobjekte ----
   app.get('/sammelobjekte/welten/:id', async (req) => daten.sammelLesen(req.params.id));
   app.put('/sammelobjekte/welten/:id/:objektId', async (req) => {
-    const antwort = daten.sammelSetzen(req.params.id, req.params.objektId, req.body, req.nutzer.name);
+    const antwort = daten.sammelSetzen(req.params.id, req.params.objektId, req.body, req.nutzer);
     geaendert('sammelobjekte', req.params.id);
     return antwort;
   });
@@ -94,7 +96,7 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
   // ---- Portal-Verbindungen ----
   app.get('/portale/welten/:id', async (req) => ({ verbindungen: daten.portaleListe(req.params.id) }));
   app.post('/portale/welten/:id', async (req, reply) => {
-    const verbindung = daten.portalAnlegen(req.params.id, req.body, req.nutzer.name);
+    const verbindung = daten.portalAnlegen(req.params.id, req.body, req.nutzer);
     geaendert('portale', req.params.id);
     return reply.code(201).send({ verbindung });
   });
@@ -112,7 +114,7 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
   // ---- Banner (für alle Welten) ----
   app.get('/banner', async () => ({ liste: daten.bannerListe() }));
   app.post('/banner', async (req, reply) => {
-    const banner = daten.bannerAnlegen(req.body, req.nutzer.name);
+    const banner = daten.bannerAnlegen(req.body, req.nutzer);
     geaendert('banner');
     return reply.code(201).send({ banner });
   });
@@ -130,7 +132,7 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
   // ---- Rüstungs-Sets (für alle Welten) ----
   app.get('/ruestung', async () => ({ sets: daten.ruestungListe() }));
   app.post('/ruestung', async (req, reply) => {
-    const set = daten.ruestungAnlegen(req.body, req.nutzer.name);
+    const set = daten.ruestungAnlegen(req.body, req.nutzer);
     geaendert('ruestung');
     return reply.code(201).send({ set });
   });
@@ -143,6 +145,43 @@ export async function companionApi(app, { daten, nutzer, geaendert }) {
     daten.ruestungLoeschen(req.params.id);
     geaendert('ruestung');
     return { ok: true };
+  });
+
+  // ---- Anzeigen: Link mit eigenem Schlüssel, damit ein anderes Gerät (TV, Tablet) Anzeige sein darf ----
+  const mitLink = ({ schluessel: _s, layout: _l, vollbild: _v, ...a }) => ({ ...a, link: anzeigeLink({ id: a.id, schluessel: _s }) });
+  app.get('/anzeigen', async () => ({ anzeigen: daten.anzeigenListe().map(mitLink) }));
+  app.post('/anzeigen', async (req, reply) => {
+    const anzeige = mitLink(daten.anzeigeAnlegen(req.body));
+    geaendert('anzeigen');
+    return reply.code(201).send({ anzeige });
+  });
+  app.put('/anzeigen/:id', async (req) => {
+    const anzeige = mitLink(daten.anzeigeUmbenennen(req.params.id, req.body));
+    geaendert('anzeigen');
+    return { anzeige };
+  });
+  app.post('/anzeigen/:id/schluessel', async (req) => {
+    const anzeige = mitLink(daten.anzeigeSchluesselNeu(req.params.id));
+    geaendert('anzeigen');   // trennt auch Anzeigen, die noch mit dem alten Schlüssel verbunden sind
+    return { anzeige };
+  });
+  app.get('/anzeigen/:id/qr', async (req) => {
+    const { link } = mitLink(daten.anzeige(req.params.id));
+    return { svg: await QRCode.toString(link, { type: 'svg', margin: 1, errorCorrectionLevel: 'M' }) };
+  });
+
+  // ---- Widget-Layout je Anzeige (A6): ändern nur beigetretene Handys, die Anzeige liest es ----
+  app.get('/anzeigen/:id/layout', async (req) => daten.anzeigeLayout(req.params.id));
+  app.put('/anzeigen/:id/layout', async (req) => {
+    const antwort = daten.anzeigeLayoutSetzen(req.params.id, req.body);
+    geaendert('layout');
+    return antwort;
+  });
+  // Vollbild startet das Handy: { instanzId } eines Widgets im aktiven Layer, null beendet es
+  app.put('/anzeigen/:id/vollbild', async (req) => {
+    const antwort = daten.anzeigeVollbildSetzen(req.params.id, req.body?.instanzId ?? null);
+    geaendert('layout');
+    return antwort;
   });
 
   // ---- Einstellungen der Anzeige (Titel, QR-Code, aktive Welt) ----

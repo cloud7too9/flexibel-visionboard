@@ -1,12 +1,14 @@
 import { create } from "zustand";
 import type { Id } from "../../../shared/types/common.types";
-import type { LayoutItem, PanelTyp, WorkspaceData, WorkspaceLayout } from "./workspace.types";
+import type { WorkspaceData, WorkspaceLayout } from "./workspace.types";
+import type { WidgetInstanz } from "./widget-struktur";
 import { DEFAULT_LAYOUT } from "./default-layout";
-import { PANEL_REGISTRY } from "./panel-registry";
-import { clampItemToGrid, findFreePosition } from "../lib/layout-utils";
-import { hasCollision } from "../lib/collision-utils";
-import { loadWorkspaceFromStorage, saveWorkspaceToStorage } from "../lib/storage";
+import { instanzRect, instanzRects, schonDa, widgetTyp } from "./widget-register";
+import { clampItemToGrid } from "../lib/layout-utils";
+import { passt } from "../lib/collision-utils";
+import { SCHEMA_VERSION, loadWorkspaceFromStorage, parsePersistedWorkspace, saveWorkspaceToStorage } from "../lib/storage";
 import { RASTER_SPALTEN, STANDARD_REIHEN } from "../lib/raster";
+import { stufeVon, type Groessenstufe } from "./widget-vertrag";
 
 export const LAYER_NAME_MAX_LENGTH = 40;
 
@@ -18,6 +20,17 @@ interface WorkspaceState {
   addPanelOpen: boolean;
   /** Reihen der sichtbaren Fläche (aus dem Raster); Spalten sind immer RASTER_SPALTEN. */
   reihen: number;
+  /** true, sobald das Raster die Fläche gemessen hat (vorher gilt STANDARD_REIHEN) */
+  reihenGemessen: boolean;
+  /**
+   * Am Board: Das Layout kommt vom Server (Layout der Anzeige, A6), hier wird
+   * nichts bearbeitet und nichts im Browser gespeichert. Angeordnet wird am Handy.
+   */
+  nurAnzeige: boolean;
+  /** Wohin Änderungen gehen: ohne Ziel in den Browser-Speicher, beim Anordnen am Handy ans Board */
+  ablage: ((data: WorkspaceData) => void) | null;
+  /** Vollbild-Knopf: ohne Aktion die eigene Route, beim Anordnen startet er das Vollbild an der Anzeige */
+  vollbildAktion: ((instanzId: Id) => void) | null;
 
   setReihen: (reihen: number) => void;
   setEditMode: (value: boolean) => void;
@@ -28,11 +41,17 @@ interface WorkspaceState {
 
   // Widgets – wirken immer auf den aktiven Layer.
   moveItem: (id: Id, x: number, y: number) => boolean;
-  resizeItem: (id: Id, w: number, h: number) => boolean;
-  /** false, wenn auf dem Layer kein Platz mehr frei ist. */
-  addItem: (typ: PanelTyp) => boolean;
+  /** Andere Größenstufe aus dem Vertrag; die obere linke Ecke bleibt, am Rand rückt das Widget nach innen. */
+  setStufe: (id: Id, stufe: string) => boolean;
+  /** Griff zum Vergrößern: zur nächsten Stufe, die an dieser Stelle passt (reihum). */
+  naechsteStufe: (id: Id) => boolean;
+  /**
+   * Neue Instanz eines Widget-Typs, bei Typen mit Quelle mit der gewählten Quelle.
+   * false, wenn kein Platz mehr frei ist oder der Typ nicht mehrfach sein darf und schon da ist.
+   */
+  addItem: (typ: string, quelle?: string) => boolean;
   removeItem: (id: Id) => void;
-  /** false, wenn auf dem Layer kein Platz mehr frei ist. */
+  /** Kopie mit derselben Quelle; false ohne Platz oder bei Typen, die nicht mehrfach sein dürfen. */
   duplicateItem: (id: Id) => boolean;
 
   // Layer
@@ -43,10 +62,20 @@ interface WorkspaceState {
   resetActiveLayer: () => void;
 
   loadWorkspace: () => void;
+  /** Layout der Anzeige vom Board übernehmen (null: noch keins gespeichert → Start-Layout); schaltet auf nurAnzeige */
+  layoutUebernehmen: (layout: { layer: unknown[]; aktiverLayer: string } | null) => void;
+  /**
+   * Anordnen am Handy (A6): Layout einer Anzeige bearbeiten (null → Start-Layout). Änderungen gehen an
+   * `ablage`; Auswahl und offene Galerie bleiben, wenn ein anderes Handy gleichzeitig ändert.
+   */
+  layoutBearbeiten: (
+    layout: { layer: unknown[]; aktiverLayer: string } | null,
+    ziel: { ablage: (data: WorkspaceData) => void; vollbildAktion: (instanzId: Id) => void },
+  ) => void;
 }
 
 function cloneLayout(layout: WorkspaceLayout): WorkspaceLayout {
-  return { ...layout, items: layout.items.map((i) => ({ ...i })) };
+  return { ...layout, instanzen: layout.instanzen.map((i) => ({ ...i })) };
 }
 
 function nextId(prefix: string): Id {
@@ -72,23 +101,29 @@ function normalizeLayerName(name: string): string {
 }
 
 /**
- * Sucht Platz für ein neues Widget: zuerst in Wunschgröße, dann in
- * Mindestgröße. `null`, wenn die Fläche voll ist.
+ * Sucht Platz für eine neue Instanz: die Stufen der Reihe nach (zuerst die
+ * gewünschte), je Stufe zeilenweise von oben links. `null`, wenn keine Stufe
+ * mehr auf die Fläche passt.
  */
 function findSlot(
   layout: WorkspaceLayout,
   reihen: number,
-  preferred: { w: number; h: number },
-  minimum: { w: number; h: number },
-): { x: number; y: number; w: number; h: number } | null {
-  for (const size of [preferred, minimum]) {
-    const w = Math.min(size.w, RASTER_SPALTEN);
-    const h = Math.min(size.h, reihen);
-    const pos = findFreePosition(layout.items, w, h, RASTER_SPALTEN, reihen);
-    if (pos) return { ...pos, w, h };
+  stufen: Groessenstufe[],
+): { x: number; y: number; stufe: string } | null {
+  const belegt = instanzRects(layout.instanzen);
+  for (const s of stufen) {
+    for (let y = 0; y + s.hoehe <= reihen; y++) {
+      for (let x = 0; x + s.breite <= RASTER_SPALTEN; x++) {
+        if (passt({ x, y, w: s.breite, h: s.hoehe }, belegt, reihen).passt) return { x, y, stufe: s.name };
+      }
+    }
   }
   return null;
 }
+
+/** Stufen ab der gewünschten, danach die übrigen in Vertragsreihenfolge */
+const stufenAb = (alle: Groessenstufe[], zuerst: string) =>
+  [...alle.filter((s) => s.name === zuerst), ...alle.filter((s) => s.name !== zuerst)];
 
 export function createInitialWorkspace(): WorkspaceData {
   const first = cloneLayout(DEFAULT_LAYOUT);
@@ -99,14 +134,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
   /** Setzt Layer-Daten und speichert sie. */
   const commit = (data: WorkspaceData, extra: Partial<WorkspaceState> = {}) => {
     set({ ...data, ...extra });
-    saveWorkspaceToStorage(data);
+    (get().ablage ?? saveWorkspaceToStorage)(data);
   };
 
-  /** Ersetzt die Widgets des aktiven Layers. */
-  const commitActiveItems = (items: LayoutItem[], extra: Partial<WorkspaceState> = {}) => {
+  /** Ersetzt die Instanzen des aktiven Layers. */
+  const commitActiveItems = (instanzen: WidgetInstanz[], extra: Partial<WorkspaceState> = {}) => {
     const { layers, activeLayerId } = get();
     const active = selectActiveLayer(get());
-    const next = layers.map((l) => (l.id === active.id ? { ...l, items } : l));
+    const next = layers.map((l) => (l.id === active.id ? { ...l, instanzen } : l));
     commit({ layers: next, activeLayerId }, extra);
   };
 
@@ -116,11 +151,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
     selectedPanelId: null,
     addPanelOpen: false,
     reihen: STANDARD_REIHEN,
+    reihenGemessen: false,
+    nurAnzeige: false,
+    ablage: null,
+    vollbildAktion: null,
 
     setReihen: (reihen) => {
-      if (reihen > 0 && reihen !== get().reihen) set({ reihen });
+      if (reihen > 0 && (reihen !== get().reihen || !get().reihenGemessen)) set({ reihen, reihenGemessen: true });
     },
     setEditMode: (value) => {
+      if (value && get().nurAnzeige) return;   // die Anzeige wird am Handy angeordnet
       set({ editMode: value, selectedPanelId: value ? get().selectedPanelId : null });
     },
     toggleEditMode: () => get().setEditMode(!get().editMode),
@@ -130,52 +170,52 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
 
     moveItem: (id, x, y) => {
       const layout = selectActiveLayer(get());
-      const target = layout.items.find((i) => i.id === id);
-      if (!target) return false;
-      const candidate = clampItemToGrid({ ...target, x, y }, RASTER_SPALTEN, get().reihen);
+      const target = layout.instanzen.find((i) => i.id === id);
+      const rect = target && instanzRect(target);
+      if (!target || !rect) return false;
+      const candidate = clampItemToGrid({ ...rect, x, y }, RASTER_SPALTEN, get().reihen);
       if (candidate.x === target.x && candidate.y === target.y) return false;
-      if (hasCollision(candidate, layout.items)) return false;
-      commitActiveItems(layout.items.map((i) => (i.id === id ? candidate : i)));
+      if (!passt(candidate, instanzRects(layout.instanzen), get().reihen).passt) return false;
+      commitActiveItems(layout.instanzen.map((i) => (i.id === id ? { ...i, x: candidate.x, y: candidate.y } : i)));
       return true;
     },
 
-    resizeItem: (id, w, h) => {
+    setStufe: (id, name) => {
       const layout = selectActiveLayer(get());
-      const target = layout.items.find((i) => i.id === id);
-      if (!target) return false;
-      const def = PANEL_REGISTRY[target.panelTyp];
-      if (!def.erlaubtResize) return false;
+      const target = layout.instanzen.find((i) => i.id === id);
+      const t = target && widgetTyp(target.typ);
+      if (!target || !t) return false;
+      const s = t.vertrag.stufen.find((x) => x.name === name);
+      if (!s || s.name === target.stufe) return false;
       const reihen = get().reihen;
-      const minW = Math.min(target.minW ?? def.minBreite, RASTER_SPALTEN);
-      const minH = Math.min(target.minH ?? def.minHoehe, reihen);
-      // Skalieren verschiebt das Widget nicht: Die obere linke Ecke bleibt,
-      // die Größe endet am Rand der Fläche.
-      const clampedW = Math.max(minW, Math.min(Math.round(w), RASTER_SPALTEN - target.x));
-      const clampedH = Math.max(minH, Math.min(Math.round(h), reihen - target.y));
-      const candidate = clampItemToGrid({ ...target, w: clampedW, h: clampedH }, RASTER_SPALTEN, reihen);
-      if (candidate.w === target.w && candidate.h === target.h) return false;
-      if (hasCollision(candidate, layout.items)) return false;
-      commitActiveItems(layout.items.map((i) => (i.id === id ? candidate : i)));
+      // Obere linke Ecke bleibt; ragt die neue Stufe über den Rand, rückt das Widget nach innen.
+      const candidate = clampItemToGrid({ id, x: target.x, y: target.y, w: s.breite, h: s.hoehe }, RASTER_SPALTEN, reihen);
+      if (candidate.w !== s.breite || candidate.h !== s.hoehe) return false;   // größer als die Fläche
+      if (!passt(candidate, instanzRects(layout.instanzen), reihen, t.vertrag).passt) return false;
+      commitActiveItems(layout.instanzen.map((i) => (i.id === id ? { ...i, stufe: s.name, x: candidate.x, y: candidate.y } : i)));
       return true;
     },
 
-    addItem: (typ) => {
+    naechsteStufe: (id) => {
+      const target = selectActiveLayer(get()).instanzen.find((i) => i.id === id);
+      const t = target && widgetTyp(target.typ);
+      if (!target || !t) return false;
+      const { stufen } = t.vertrag;
+      const start = Math.max(0, stufen.findIndex((s) => s.name === target.stufe));
+      for (let n = 1; n < stufen.length; n++) {
+        if (get().setStufe(id, stufen[(start + n) % stufen.length].name)) return true;
+      }
+      return false;
+    },
+
+    addItem: (typId, quelle) => {
       const layout = selectActiveLayer(get());
-      const def = PANEL_REGISTRY[typ];
-      const slot = findSlot(
-        layout,
-        get().reihen,
-        { w: def.standardBreite, h: def.standardHoehe },
-        { w: def.minBreite, h: def.minHoehe },
-      );
+      const t = widgetTyp(typId);
+      if (!t || schonDa(layout.instanzen, typId)) return false;
+      const slot = findSlot(layout, get().reihen, t.vertrag.stufen);
       if (!slot) return false;
-      const item: LayoutItem = {
-        id: nextId(`panel-${typ}`),
-        panelTyp: typ,
-        titel: def.standardTitel,
-        ...slot,
-      };
-      commitActiveItems([...layout.items, item], { addPanelOpen: false });
+      const instanz: WidgetInstanz = { id: nextId("w"), typ: t.id, ...slot, ...(t.quelle && quelle ? { quelle } : {}) };
+      commitActiveItems([...layout.instanzen, instanz], { addPanelOpen: false });
       return true;
     },
 
@@ -183,25 +223,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const layout = selectActiveLayer(get());
       const { selectedPanelId } = get();
       commitActiveItems(
-        layout.items.filter((i) => i.id !== id),
+        layout.instanzen.filter((i) => i.id !== id),
         { selectedPanelId: selectedPanelId === id ? null : selectedPanelId },
       );
     },
 
     duplicateItem: (id) => {
       const layout = selectActiveLayer(get());
-      const target = layout.items.find((i) => i.id === id);
-      if (!target) return false;
-      const def = PANEL_REGISTRY[target.panelTyp];
-      const slot = findSlot(
-        layout,
-        get().reihen,
-        { w: target.w, h: target.h },
-        { w: target.minW ?? def.minBreite, h: target.minH ?? def.minHoehe },
-      );
+      const target = layout.instanzen.find((i) => i.id === id);
+      const t = target && widgetTyp(target.typ);
+      if (!target || !t || !t.mehrfach) return false;
+      const slot = findSlot(layout, get().reihen, stufenAb(t.vertrag.stufen, stufeVon(t.vertrag, target.stufe).name));
       if (!slot) return false;
-      const copy: LayoutItem = { ...target, id: nextId(`panel-${target.panelTyp}`), ...slot };
-      commitActiveItems([...layout.items, copy]);
+      commitActiveItems([...layout.instanzen, { ...target, id: nextId("w"), ...slot }]);
       return true;
     },
 
@@ -217,7 +251,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const layer: WorkspaceLayout = {
         id: nextId("layer"),
         name: normalized || nextLayerName(layers),
-        items: [],
+        instanzen: [],
       };
       commit({ layers: [...layers, layer], activeLayerId: layer.id }, { selectedPanelId: null });
       return layer.id;
@@ -252,14 +286,29 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => {
       const active = selectActiveLayer(get());
       // Der Start-Layer kehrt zu den Standard-Widgets zurück, eigene Layer
       // werden geleert (ihr Ausgangszustand).
-      const items =
-        active.id === DEFAULT_LAYOUT.id ? cloneLayout(DEFAULT_LAYOUT).items : [];
-      commitActiveItems(items, { selectedPanelId: null });
+      const instanzen =
+        active.id === DEFAULT_LAYOUT.id ? cloneLayout(DEFAULT_LAYOUT).instanzen : [];
+      commitActiveItems(instanzen, { selectedPanelId: null });
     },
 
     loadWorkspace: () => {
+      if (get().nurAnzeige || get().ablage) return;
       const loaded = loadWorkspaceFromStorage();
       if (loaded) set({ ...loaded, selectedPanelId: null });
+    },
+
+    layoutUebernehmen: (layout) => {
+      // Gleiche Normalisierung wie beim Laden aus dem Browser: unbekannte Typen fallen weg, Stufen passen
+      const geladen = layout && parsePersistedWorkspace({ version: SCHEMA_VERSION, layers: layout.layer, activeLayerId: layout.aktiverLayer });
+      set({ ...(geladen ?? createInitialWorkspace()), nurAnzeige: true, editMode: false, selectedPanelId: null, addPanelOpen: false });
+    },
+
+    layoutBearbeiten: (layout, { ablage, vollbildAktion }) => {
+      const geladen = layout && parsePersistedWorkspace({ version: SCHEMA_VERSION, layers: layout.layer, activeLayerId: layout.aktiverLayer });
+      const daten = geladen ?? createInitialWorkspace();
+      const { selectedPanelId } = get();
+      const nochDa = daten.layers.some((l) => l.instanzen.some((i) => i.id === selectedPanelId));
+      set({ ...daten, nurAnzeige: false, editMode: true, ablage, vollbildAktion, selectedPanelId: nochDa ? selectedPanelId : null });
     },
   };
 });
