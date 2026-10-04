@@ -1,6 +1,6 @@
 # Übergabe · Minecraft Companion & Koordinaten-Board
 
-Stand: 01.10.2026 · Einstieg für einen neuen Chat
+Stand: 04.10.2026 · Einstieg für einen neuen Chat
 
 > **Stand der Umsetzung von `planung/PLAN.md`** (Widget-Dashboard, Welt-Import, Accounts): [`planung/UEBERGABE.md`](planung/UEBERGABE.md) – was gebaut ist, Branches, Starten, Tests, nächste Schritte. Was auf Max wartet: [`planung/WARTELISTE.md`](planung/WARTELISTE.md).
 
@@ -26,7 +26,11 @@ Geht es ums Raum-Board, statt der Companion-Übergabe `koordinaten-board/UEBERGA
 
 Geht es mit dem Plan weiter (Widget-Dashboard, Offline, Accounts), zum Beispiel:
 
-> Lies `UEBERGABE.md`, danach `planung/UEBERGABE.md` und `planung/WARTELISTE.md`. N5 ist entschieden: … – mach mit B3 weiter.
+> Lies `UEBERGABE.md`, danach `planung/UEBERGABE.md` und `planung/WARTELISTE.md`. Schreib den Bauplan „Sitzung“ (E16) und leg ihn mir vor.
+
+oder
+
+> … Mach mit Offline B3 weiter (N5: eigenes Zertifikat).
 
 ---
 
@@ -74,8 +78,9 @@ Was wohin gehört:
 |---|---|---|
 | Zweck | Die App am Handy: Karte, Sammelobjekte, Portale, Banner, Rüstung, später Handbuch, Baupläne | **Server der Companion** (Daten, OCR, Live-Sync) und Anzeige im Zimmer |
 | Technik | eine HTML-Seite + `regeln.js`, Vanilla JS, kein Build; live vom Board ausgeliefert, sonst DEMO-Mock | Fastify 5, Vite + React 19 + TypeScript (nur Anzeige), JSON-Speicher, tesseract.js |
-| Stand | 5 von 7 Bereichen umgesetzt, Handbuch und Baupläne offen | zusammengeführt (Branch `board/zusammenfuehrung`) |
-| Tests | Playwright: Banner, Portale, Sammelobjekte, Kennblöcke, Board-Verbindung, Live-Betrieb, Anzeigeschema, Rüstung (332 Prüfungen) | `node --test`: Daten, API, Regeln, Erkennung, Banner-Erkennung, Karten, Netzwerk, PIN-Sperre (40 Tests) |
+| Stand | 5 von 7 Bereichen umgesetzt, Handbuch und Baupläne offen; Welt-Import; nur Bedrock | Server der Companion; Widget-Dashboard unter `/dashboard` (A0–A6); Accounts mit PIN (B1, B2) |
+| Tests | Playwright: 14 Dateien mit 492 Prüfungen, dazu 20 Dekoder-Tests (`companion/tests`); Widgets: 108 Unit-Tests | `node --test`: 57 Tests (Daten, API, Regeln, Erkennung, Karten, Identität …) |
+| CI | alle Tests bei jedem PR und Push auf `main` (`.github/workflows/tests.yml`) | ← dieselbe CI |
 
 ---
 

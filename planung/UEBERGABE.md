@@ -1,4 +1,4 @@
-# Übergabe · Umsetzung des Plans (Stand 01.10.2026)
+# Übergabe · Umsetzung des Plans (Stand 04.10.2026)
 
 > **Einstieg für den nächsten Chat:** zuerst [`../UEBERGABE.md`](../UEBERGABE.md) (Arbeitsweise, Konventionen), dann diese Datei, dann [`WARTELISTE.md`](WARTELISTE.md) (was auf Max wartet). Der Plan selbst steht in [`PLAN.md`](PLAN.md).
 >
@@ -8,52 +8,69 @@
 
 ## 1. Kurzfassung
 
-- **Gebaut:**
-  - Strang C (ganzer Biom-Import)
+- **Gebaut und in `main`:**
+  - Strang C (ganzer Biom-Import), mit der Fixture-Welt von Max und Biom-ID 195 (Phase 1 abgeschlossen)
   - der Anzeige-Link für andere Geräte
   - das Widget-Dashboard A0–A6, einschließlich **Anordnen am Handy**
   - aus Strang B die Phasen **B1** (Datenmodell) und **B2** (Accounts mit PIN)
-- **Offen:**
-  - B3–B5 (Offline-Betrieb): warten auf die Entscheidung **N5 (HTTPS)**
-  - A7 (Größenstufen je Widget): Planungsrunde mit Max
-  - die Haltepunkte H1 und H3–H6 zum Anschauen (H2 ist erledigt, #19)
-  - einige Inhalte, die noch nicht beschrieben sind (siehe Warteliste)
+  - **CI auf GitHub:** Bei jedem PR und jedem Push auf `main` laufen alle Tests (Kapitel 6)
+  - **Nur Bedrock (E15):** Java gibt es nirgendwo mehr, auch nicht bei den Portalen
+- **Als Nächstes** (Kapitel 9):
+  1. **Bauplan „Sitzung“** (E16) schreiben und mit Max abnicken
+  2. **Offline B3–B5** mit HTTPS am Board (N5 ist entschieden: eigenes Zertifikat)
+  3. A7 (Größenstufen je Widget): Planungsrunde mit Max
+  4. Inhalte, die noch nicht beschrieben sind (Warteliste, Kapitel 4)
 - **Git:**
-  - Alle Branches sind gepusht.
-  - **Alles ist in `main`** (04.10.2026). Die Kette A2–A6 mit B1/B2 kam in einem Merge über #17, #12–#16 sind darin enthalten und geschlossen. Siehe Kapitel 3.
-  - Gemergt wird nur nach Rückfrage bei Max.
-- **Tests:** alle grün auf `board/identitaet`, siehe Kapitel 6.
+  - **Alles ist in `main`.** Offene PRs: keine.
+  - **Gemergt wird nur nach Rückfrage bei Max**, auch wenn Claude den Merge ausführt.
+  - 16 gemergte Branches warten aufs Löschen durch Max (Kapitel 3). In der Cloud-Sitzung darf Claude keine Branches löschen.
+- **Tests:** alle grün in `main`, lokal und in der CI (Kapitel 6).
 - **Für Max wichtig:** Seit B2 gelten alte Anmeldungen nicht mehr. Jedes Handy meldet sich einmal neu an, mit Name und eigener PIN.
 
-Entscheidungen von Max in dieser Runde:
+### Diese Runde (04.10.2026)
+
+| PR | Inhalt |
+|---|---|
+| #19 | Ergebnisse von Phase 1 des Biom-Plans nachgeholt: Fixture-Welt von Max, Biom-ID 195 = Dappled Forest, Höhenkarte `z*16 + x`. Lagen nur auf `bereich/karte-mcworld`. |
+| #20 | Die ganze Kette A2–A6 + B1/B2 + Anzeige-Link in einem Merge (ersetzt die gestapelten #12–#17) |
+| #21 | CI: `.github/workflows/tests.yml`, dazu ein Fix für eine Race Condition in `anzeige-link.test.mjs` |
+| #22 | Nur Bedrock: Java-Umschaltung entfernt. Entscheidungen festgehalten. Diese Übergabe. |
+
+Entscheidungen von Max (Details in `WARTELISTE.md` und `PLAN.md`, Kapitel 7):
 
 | Nr. | Entscheidung |
 |---|---|
-| Strang C | Umfang: der **ganze Biom-Import** (Phasen 2–5 des Biom-Plans) |
-| N1 | Abgehakt wird **im Bereich der Companion**. „Anzeige anordnen“ ordnet nur an. |
-| N2 | **Weg 1**: React-Route `/dashboard/anordnen` aus `companion/widgets/`, geöffnet aus der Companion |
-| N4 | „Ja“ = Die **Board-PIN im QR-Code bleibt** als Zugang zum Server, die Account-PIN kommt dazu |
-| Arbeitsweise | „Was Eingaben braucht, kommt auf die Warteliste, alles andere wird erledigt“ → `WARTELISTE.md` |
+| N5 | HTTPS am Board mit **eigenem Zertifikat**, das iPhone vertraut ihm einmal |
+| E15 | **Nur Bedrock**, Java gibt es nirgendwo |
+| E16 | Das Board bekommt eine **Sitzung**, die lebt, solange das Board läuft. „Aufs Board“ fügt den Inhalt als **Widget an der ersten freien Stelle** ein, am Handy verschieb- und entfernbar. |
+| E8 | Themes für Sammelobjekte, Banner, Rüstung: **vertagt**, wird an anderer Stelle geklärt |
+| H1, H3–H6 | abgenommen |
+| Mergen | **nur nach Rückfrage bei Max** |
+
+Frühere Entscheidungen (01.10.2026): Strang C als ganzer Biom-Import, N1 (abgehakt wird im Bereich der Companion), N2 (Anordnen als React-Route `/dashboard/anordnen`), N4 (Board-PIN im QR-Code bleibt, Account-PIN kommt dazu), Arbeitsweise „Was Eingaben braucht, kommt auf die Warteliste, alles andere wird erledigt“.
 
 ---
 
 ## 2. Stand je Phase
 
-| Phase | Ergebnis | Branch | Wichtige Dateien |
-|---|---|---|---|
-| **C** Welt-Import | `.zip`/`.mcworld` im Browser lesen (Web Worker). Biome als Kacheln ans Board, je Welt in `biome/<weltId>.json`. Import-Sheet mit Anleitung (iPhone), Prüfung, Fortschritt. Biom-Ebene auf der Karte. | `bereich/karte-welt-upload` | `companion/biom-welt.js`, `biom-import.worker.js`, `regeln.js` (`biomImportPruefen`), Board `daten.js` (`biome…`) |
-| **Anzeige-Link** | Jede Anzeige hat einen eigenen Schlüssel. Andere Geräte (TV, Tablet) werden mit dem Link zur Anzeige. QR-Code und Verwaltung stehen im Board-Sheet der Companion. | `board/anzeige-link` | Board `server.js` (`anzeigeZugang`), `daten.js` (`anzeige…`), `client/src/lib/zugang.ts` |
-| **A0** Übernahme | MainHub läuft als `companion/widgets/` (Vite, React, TS, Tailwind, zustand). | `bereich/widgets-uebernahme` | `companion/widgets/` |
-| **A1** Raster | 32 Spalten, quadratische Zellen, die Reihen folgen der Höhe. | `bereich/widgets-raster` | `lib/raster.ts` |
-| **A2** Größen-Vertrag | Größenstufen statt freier Größen. Passt-Prüfung mit Belegungsmatrix. Vollbild als eigene Route. | `bereich/widgets-groessen` | `model/widget-vertrag.ts`, `lib/collision-utils.ts`, `pages/VollbildPage.tsx` |
-| **A3** Struktur | Die Kette Bereich → Widget-Typ → Instanz. Zusatzinhalte je Stufe. Galerie mit Suche. | `bereich/widgets-struktur` | `model/widget-struktur.ts`, `components/AddPanelModal.tsx` |
-| **A4** Register und Karten | **13 Typen**. Typen mit Quelle gibt es mehrfach; die Quelle wählt man beim Hinzufügen. Gehäuse und Inhalt sind getrennt. **Die Karten baut der Server** mit denselben Anzeigeschemas wie „Aufs Board“. Ohne Board gibt es Beispielkarten, Änderungen kommen live über `/ws`. | `bereich/widgets-register` | `companion/board-karten.js`, Board `widgets.js`, `features/karten/`, `model/widget-register.ts` |
-| **A5** Themes | Theme je Bereich: Karte nach Dimension, Handbuch als Buch, Baupläne blau mit Gitter, Portale schwarz-lila ohne Rot und Grün. Platzhalter für E8. | `bereich/widgets-themes` | `model/widget-themes.ts`, `shared/styles/themes.css` |
-| **A6** Layout pro Anzeige | Layout und Reihen je Anzeige am Server. Am Board ist das Dashboard reine Anzeige (live). **Anordnen am Handy** unter `/dashboard/anordnen`: leere Widgets, Auswahl-Leiste, Galerie, Layer, Vollbild steuern. Das Board liefert `/dashboard` aus. | `bereich/widgets-anzeigen` | Board `layout.js`, `daten.js` (`anzeigeLayout…`), `pages/AnordnenPage.tsx`, `features/anordnen/` |
-| **B1** Datenmodell | IDs neuer Einträge kommen vom Handy (UUID, auch über http). Jeder Eintrag hat `erstellerId`. Es gibt die Sammlungen `benutzer`, `profile`, `geraete`. | `board/identitaet` | `regeln.js` (`neueEintragId`, `idGueltig`), Board `daten.js` (`eintragId`) |
-| **B2** Accounts mit PIN | Board-PIN, dann Account wählen oder anlegen (Name + eigene PIN, 4–8 Ziffern). Die PIN wird nur als **scrypt-Hash** gespeichert. Sperre je Gerät und Account. Das Token ist der **Geräteschlüssel**. `werBistDu()` gekapselt an Board und Companion. | `board/identitaet` | Board `identitaet.js`, Companion `IDENTITAET`, Sheet „Beitreten“ |
-| **B3–B5** Offline | nicht gebaut: wartet auf **N5** (Service Worker brauchen HTTPS) | – | – |
-| **A7** Größenstufen | nicht gebaut: Planungsrunde mit Max (E6) | – | – |
+| Phase | Ergebnis | Wichtige Dateien |
+|---|---|---|
+| **C** Welt-Import | `.zip`/`.mcworld` im Browser lesen (Web Worker). Biome als Kacheln ans Board, je Welt in `biome/<weltId>.json`. Import-Sheet mit Anleitung (iPhone), Prüfung, Fortschritt. Biom-Ebene auf der Karte. Phase 1 an der Fixture-Welt geprüft. | `companion/biom-welt.js`, `biom-import.worker.js`, `biom-ids.js`, `regeln.js` (`biomImportPruefen`), Board `daten.js` (`biome…`), `companion/tests/daten/fixture-seed.mcworld` |
+| **Anzeige-Link** | Jede Anzeige hat einen eigenen Schlüssel. Andere Geräte (TV, Tablet) werden mit dem Link zur Anzeige. QR-Code und Verwaltung stehen im Board-Sheet der Companion. | Board `server.js` (`anzeigeZugang`), `daten.js` (`anzeige…`), `client/src/lib/zugang.ts` |
+| **A0** Übernahme | MainHub läuft als `companion/widgets/` (Vite, React, TS, Tailwind, zustand). | `companion/widgets/` |
+| **A1** Raster | 32 Spalten, quadratische Zellen, die Reihen folgen der Höhe. | `lib/raster.ts` |
+| **A2** Größen-Vertrag | Größenstufen statt freier Größen. Passt-Prüfung mit Belegungsmatrix. Vollbild als eigene Route. | `model/widget-vertrag.ts`, `lib/collision-utils.ts`, `pages/VollbildPage.tsx` |
+| **A3** Struktur | Die Kette Bereich → Widget-Typ → Instanz. Zusatzinhalte je Stufe. Galerie mit Suche. | `model/widget-struktur.ts`, `components/AddPanelModal.tsx` |
+| **A4** Register und Karten | **13 Typen**. Typen mit Quelle gibt es mehrfach; die Quelle wählt man beim Hinzufügen. Gehäuse und Inhalt sind getrennt. **Die Karten baut der Server** mit denselben Anzeigeschemas wie „Aufs Board“. Ohne Board gibt es Beispielkarten, Änderungen kommen live über `/ws`. | `companion/board-karten.js`, Board `widgets.js`, `features/karten/`, `model/widget-register.ts` |
+| **A5** Themes | Theme je Bereich: Karte nach Dimension, Handbuch als Buch, Baupläne blau mit Gitter, Portale schwarz-lila ohne Rot und Grün. Platzhalter für E8. | `model/widget-themes.ts`, `shared/styles/themes.css` |
+| **A6** Layout pro Anzeige | Layout und Reihen je Anzeige am Server. Am Board ist das Dashboard reine Anzeige (live). **Anordnen am Handy** unter `/dashboard/anordnen`: leere Widgets, Auswahl-Leiste, Galerie, Layer, Vollbild steuern. Das Board liefert `/dashboard` aus. | Board `layout.js`, `daten.js` (`anzeigeLayout…`), `pages/AnordnenPage.tsx`, `features/anordnen/` |
+| **B1** Datenmodell | IDs neuer Einträge kommen vom Handy (UUID, auch über http). Jeder Eintrag hat `erstellerId`. Es gibt die Sammlungen `benutzer`, `profile`, `geraete`. | `regeln.js` (`neueEintragId`, `idGueltig`), Board `daten.js` (`eintragId`) |
+| **B2** Accounts mit PIN | Board-PIN, dann Account wählen oder anlegen (Name + eigene PIN, 4–8 Ziffern). Die PIN wird nur als **scrypt-Hash** gespeichert. Sperre je Gerät und Account. Das Token ist der **Geräteschlüssel**. `werBistDu()` gekapselt an Board und Companion. | Board `identitaet.js`, Companion `IDENTITAET`, Sheet „Beitreten“ |
+| **E15** Nur Bedrock | Portal-Prüfung mit festem Suchradius ±128 (`PORTAL_SUCHRADIUS`), kein Umschalter, kein `edition` mehr im Kontext der Karten. Der Welt-Import weist Java-Welten mit klarer Meldung ab. | `companion/board-karten.js`, Portal-Verwaltung in `companion-prototyp.html` |
+| **CI** | Drei Jobs bei jedem PR und Push auf `main`, Screenshots als Download „bilder“ | `.github/workflows/tests.yml` |
+| **B3–B5** Offline | nicht gebaut. N5 ist entschieden (eigenes Zertifikat), kann losgehen. | – |
+| **E16** Sitzung | nicht gebaut. Zuerst Bauplan zum Abnicken. | – |
+| **A7** Größenstufen | nicht gebaut: Planungsrunde mit Max (E6) | – |
 
 Pfade unter `model/`, `lib/`, `components/` und `features/` liegen in `companion/widgets/src/` (`model/`, `lib/` und `components/` unter `features/workspace/`). „Board“ meint `koordinaten-board/server/src/`.
 
@@ -61,63 +78,20 @@ Pfade unter `model/`, `lib/`, `components/` und `features/` liegen in `companion
 
 ## 3. Branches und Mergen
 
-> **Stand 04.10.2026: alles in `main`.**
-> - #7 (Strang C), #9 (MainHub), #10 (A0), #11 (A1) einzeln gemergt.
-> - #8 (Anzeige-Link) wurde in `bereich/karte-welt-upload` gemergt, als der schon in `main` war. Der Anzeige-Link kam deshalb erst mit #17 nach `main` (über `9f7dee9`).
-> - #19 holte die Ergebnisse von Phase 1 des Biom-Plans nach, die nur auf `bereich/karte-mcworld` lagen (Fixture-Welt, ID 195).
-> - #17 wurde auf `main` umgestellt und in einem Merge übernommen; er enthält A2–A6 und B1/B2. #12–#16 sind darin enthalten und wurden geschlossen.
->
-> Der Rest dieses Kapitels beschreibt die Kette, wie sie gebaut wurde.
+- **Alles ist in `main`**, offene PRs gibt es nicht. Gearbeitet wurde zuletzt auf `claude/pr-status-review-yrg9m9`. Er ist mit #22 gemergt und kann für die nächste Runde neu von `main` abzweigen.
+- **Mergen:** nur nach Rückfrage bei Max, immer mit **„Create a merge commit“**.
+- **Zum Löschen** (Max auf GitHub → Branches; Inhalt komplett in `main`):
+  `bereich/banner-screenshot`, `bereich/karte-welt-upload`, `bereich/mainhub-visionboard`, `bereich/ruestung`, `bereich/sammelobjekte`, `bereich/widgets-uebernahme`, `bereich/widgets-raster`, `bereich/widgets-groessen`, `bereich/widgets-struktur`, `bereich/widgets-register`, `bereich/widgets-themes`, `bereich/widgets-anzeigen`, `board/anzeige-link`, `board/identitaet`, `board/scanner`, `board/zusammenfuehrung`.
+  Bei `bereich/karte-welt-upload` fehlt in `main` nur der leere Merge-Commit von #8.
+- **Behalten:** `bereich/karte-mcworld`. Dort liegen die Phasen 2–4 des Biom-Plans in einer älteren Fassung (Prüfseite `welt-pruefen.html`, `welt-import.test.mjs` mit einer 55-MB-Welt). #7 hat sie ersetzt; Phase 1 kam mit #19.
+- **Empfehlung:** In den Repo-Einstellungen „Automatically delete head branches“ einschalten. Dann verschwindet ein Branch nach dem Merge, und ein PR kann nicht mehr in einen schon gemergten Branch gehen (so ging #8 verloren).
 
-Die Branches bauen aufeinander auf. Jeder enthält alle davor:
+### Verlauf bis 04.10.2026
 
-```
-main ── bereich/karte-welt-upload (C) ── board/anzeige-link ──┐
-                                                               │ (gemergt in -register)
-bereich/mainhub-visionboard ── widgets-uebernahme (A0) ── -raster (A1) ── -groessen (A2)
-   ── -struktur (A3) ── -register (A4) ── -themes (A5) ── -anzeigen (A6) ── board/identitaet (B1, B2)
-```
-
-- `bereich/mainhub-visionboard`: die MainHub-Übernahme per Subtree, vor dieser Runde (#9).
-- Zwei Merge-Commits verbinden die Ketten:
-  - `9f7dee9` holt Strang C und den Anzeige-Link in die Widgets-Kette.
-  - `10f3c8c` holt A6 nach `board/identitaet`.
-- **Offene Pull Requests (gestapelt):** Jeder zielt auf seinen Vorgänger, damit im Diff nur seine Phase steht.
-
-  | PR | Head → Basis | Inhalt |
-  |---|---|---|
-  | #7 | `bereich/karte-welt-upload` → `main` | Strang C: Welt-Import (H1, H2) |
-  | #8 | `board/anzeige-link` → `bereich/karte-welt-upload` | Anzeige-Link |
-  | #9 | `bereich/mainhub-visionboard` → `main` | MainHub-Übernahme und Plan (von vor dieser Runde) |
-  | #10 | `bereich/widgets-uebernahme` → `bereich/mainhub-visionboard` | A0 |
-  | #11 | `bereich/widgets-raster` → `bereich/widgets-uebernahme` | A1 |
-  | #12 | `bereich/widgets-groessen` → `bereich/widgets-raster` | A2 (H3) |
-  | #13 | `bereich/widgets-struktur` → `bereich/widgets-groessen` | A3 |
-  | #14 | `bereich/widgets-register` → `bereich/widgets-struktur` | A4 (H4), mit dem Merge von #7/#8 |
-  | #15 | `bereich/widgets-themes` → `bereich/widgets-register` | A5 (H5) |
-  | #16 | `bereich/widgets-anzeigen` → `bereich/widgets-themes` | A6 (H6) |
-  | #17 | `board/identitaet` → `bereich/widgets-anzeigen` | B1 + B2 |
-
-- **So mergen:**
-  - Von unten nach oben, mit **„Create a merge commit“**. Bei Squash oder Rebase passen die PRs darüber nicht mehr.
-  - Wird beim Mergen der Branch gelöscht, stellt GitHub den nächsten PR selbst auf `main` um. #14 zeigt die Änderungen aus #7/#8 so lange mit, bis die gemergt sind.
-  - #7/#8 und #9–#17 sind zwei Stränge und können in beliebiger Reihenfolge zueinander gemergt werden.
-- Nach dem Mergen die Branches löschen.
-
-Commits dieser Runde (ohne Merges), in Reihenfolge:
-
-| Branch | Commits |
-|---|---|
-| `bereich/karte-welt-upload` | `84ed32f` Welt-Upload: Aufbau prüfen, Worker · `5a1d02e` Biom-Raster: Datenmodell, Regeln, Board-API · `e9c1efd` Welt-Import in der Karte · `2570c56` Doku und Übergabe |
-| `board/anzeige-link` | `51db22f` Anzeige-Link für andere Geräte |
-| `bereich/widgets-uebernahme` | `b6d4082` MainHub als companion/widgets lauffähig |
-| `bereich/widgets-raster` | `7ab7275` · `bedcfda` · `ca7eba6` (Raster) |
-| `bereich/widgets-groessen` | `c777042` Größen-Vertrag · `5de5ccc` Passt-Prüfung · `e8d03ee` Größenstufen · `76f9fc2` Vollbild |
-| `bereich/widgets-struktur` | `223f46c` Widget-Struktur |
-| `bereich/widgets-register` | `e00aeea` board-karten.js · `2e5e602` Board-Karten im Server · `a174a6a` Mehrfach und Quelle · `dfc67b4` 13 Typen · `436da0d` Gehäuse/Inhalt · `a913663` Karten vom Board · `a980f09` Quelle wählen · `b097d3b` Karten-Darstellung · `f23a1e3` Dashboard unter /dashboard · `876aad6` Doku |
-| `bereich/widgets-themes` | `23f3a36` Warteliste · `cd011d1` · `ed8119e` · `792261d` (Themes) · `c54583a` Doku |
-| `bereich/widgets-anzeigen` | `0905882` Anzeigen-Layout am Server · `90ba916` Dashboard zeigt Layout · `d1873ae` Doku · `766544a` **Anordnen am Handy** |
-| `board/identitaet` | `75d4f89` IDs vom Handy und Ersteller · `1cae081` Überblick · `c09ec0a` N1/N4 entschieden · `8ee1ad6` **Accounts mit PIN, Identität gekapselt** |
+- #7 (Strang C), #9 (MainHub), #10 (A0), #11 (A1) wurden einzeln gemergt.
+- #8 (Anzeige-Link) wurde in `bereich/karte-welt-upload` gemergt, als der schon in `main` war. Der Anzeige-Link kam erst mit #20 nach `main` (über `9f7dee9`).
+- #12–#17 waren gestapelt (jeder PR auf seinen Vorgänger). GitHub ließ die Basis von #17 nicht auf `main` umstellen („part of a stack“). Darum brachte **#20** denselben Branch `board/identitaet` in einem Merge nach `main`; #12 hat GitHub selbst als gemergt markiert, #13–#17 sind geschlossen.
+- Commits der Kette (ohne Merges): C `84ed32f` · `5a1d02e` · `e9c1efd` · `2570c56`; Anzeige-Link `51db22f`; A0 `b6d4082`; A1 `7ab7275` · `bedcfda` · `ca7eba6`; A2 `c777042` · `5de5ccc` · `e8d03ee` · `76f9fc2`; A3 `223f46c`; A4 `e00aeea` … `876aad6`; A5 `23f3a36` … `c54583a`; A6 `0905882` · `90ba916` · `d1873ae` · `766544a`; B1/B2 `75d4f89` · `1cae081` · `c09ec0a` · `8ee1ad6`.
 
 ---
 
@@ -145,6 +119,7 @@ Board → Anzeigen → anordnen     ──▶  PUT /api/anzeigen/:id/layout, /vo
   - **Anzeige**: localhost ohne Link ist die erste Anzeige „Board“, andere Geräte brauchen den Anzeige-Link. Sie hat keine Bedienelemente.
   - **Steuerung**: ein Handy mit Token. Es ändert Layouts und startet das Vollbild.
 - **Identität:** Das Token enthält Account und Gerät. Ein gesperrtes Gerät oder ein Token von vor B2 gilt nicht. Hinter `werBistDu()` kann später ein richtiges Login stehen, ohne die Daten anzufassen.
+- **Heute vs. E16:** „Aufs Board“ geht heute über `/ws` (`zeigen` → `gezeigt`) an die alte `/anzeige` und bleibt dort liegen. Mit der Sitzung (E16) wird daraus ein Widget im Dashboard (Kapitel 9).
 
 ---
 
@@ -164,24 +139,24 @@ npm start                                              # Windows: start.bat (bau
 
 ---
 
-## 6. Tests (alle grün auf `board/identitaet`, 01.10.2026)
+## 6. Tests (alle grün in `main`, 04.10.2026)
 
 | Teil | Befehl | Ergebnis |
 |---|---|---|
 | Board-Server | `cd koordinaten-board && npm test` | 57 Tests |
 | Widgets | `cd companion/widgets && npm run typecheck && npm test` | Typecheck ok, 108 Unit-Tests |
-| Companion und Dashboard (Playwright) | `cd companion/tests && npm test` | 14 Dateien, 509 Prüfungen |
+| Companion und Dashboard (Playwright) | `cd companion/tests && npm test` | 14 Dateien, 492 Prüfungen und 20 Dekoder-Tests |
 
-**Seit 04.10.2026 auf GitHub:** `.github/workflows/tests.yml` führt alle drei Teile bei jedem Pull Request und jedem Push auf `main` aus (Jobs „Board-Server“, „Widgets“, „Companion und Dashboard (Playwright)“). Die Screenshots aus `companion/tests/bilder/`, darunter die Haltepunkte, hängen als Download „bilder“ am Lauf (14 Tage).
+**CI auf GitHub:** `.github/workflows/tests.yml` führt alle drei Teile bei jedem Pull Request und jedem Push auf `main` aus (Jobs „Board-Server“, „Widgets“, „Companion und Dashboard (Playwright)“, zusammen etwa 5 Minuten). Die Screenshots aus `companion/tests/bilder/`, darunter die Haltepunkte, hängen als Download „bilder“ am Lauf (14 Tage). Ein neuer Push auf denselben PR bricht den alten Lauf ab.
 
-Die Playwright-Dateien: `biom-dekoder` (18, `node --test`), `banner` (23), `portale` (29), `sammelobjekte` (64), `kennbloecke` (14), `board` (58), `live` (72), `anzeigeschema` (31), `ruestung` (52), `karte-mcworld` (52), `anzeige-link` (15), `widgets` (36), `widgets-board` (20), `widgets-anordnen` (25).
+Die Playwright-Dateien: `biom-dekoder` (20, `node --test`), `banner` (23), `portale` (29), `sammelobjekte` (64), `kennbloecke` (14), `board` (58), `live` (72), `anzeigeschema` (31), `ruestung` (52), `karte-mcworld` (52), `anzeige-link` (16), `widgets` (36), `widgets-board` (20), `widgets-anordnen` (25).
 
 Voraussetzungen für die Playwright-Tests:
 - Alles muss gebaut sein:
   - `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build`
   - `npm --prefix ../widgets install && npm --prefix ../widgets run build`
-- In der Cloud-Umgebung braucht es `CHROMIUM=/opt/pw-browsers/chromium`.
-- Die Tests starten eigene Board-Prozesse auf Ports 3185–3198. Ein hängender Prozess blockiert den nächsten Lauf; mit `ps -eo pid,args | grep "node src/server.js"` finden.
+- In der Cloud-Umgebung braucht es `CHROMIUM=/opt/pw-browsers/chromium`. Auf GitHub installiert die CI Chromium selbst (`npx playwright install --with-deps chromium`).
+- Die Tests starten eigene Board-Prozesse auf Ports 3185–3198. Ein hängender Prozess blockiert den nächsten Lauf; mit `ps -eo pid,args | grep "node src/server.js"` finden. Server-Tests und Playwright nicht parallel starten.
 - Screenshots für die Haltepunkte landen in `companion/tests/bilder/`.
 
 ---
@@ -190,52 +165,58 @@ Voraussetzungen für die Playwright-Tests:
 
 - **Typecheck der Widgets:** Dafür `npm run typecheck` nehmen (`tsc -b`). `tsc -p .` prüft nichts, weil die oberste `tsconfig.json` nur Referenzen enthält. `npm run build` prüft ebenfalls.
 - **Die Playwright-Tests laufen gegen `dist`.** Nach Änderungen an den Widgets erst `npm run build`, sonst testet man den alten Stand.
+- **Tests auf dem langsameren Runner:** Nach dem Beitreten öffnet die Companion bei einem leeren Board „Noch keine Welt“ erst nach dem Laden der Welten. Ein Test, der Sheets schließt, muss vorher auf dieses Sheet warten (`.sheet-kopf h2` = „Welt“), sonst überdeckt es später den nächsten Klick. Nachstellen lässt sich so etwas mit einer Verzögerung per `page.route("**/api/orte/welten", …)`.
 - **Am Handy läuft die Companion über `http://192.168…`, also nicht in einem sicheren Kontext.**
   - `crypto.randomUUID` gibt es dort nicht. Deshalb erzeugt `neueEintragId()` die IDs aus `getRandomValues`.
-  - Service Worker gehen dort gar nicht, das ist **N5**.
+  - Service Worker gehen dort gar nicht. Deshalb kommt mit B3 HTTPS (N5).
 - **Alte Anmeldungen:** Tokens von vor B2 werden abgelehnt. Die Companion prüft beim Start mit `IDENTITAET.werBistDu()` und öffnet dann das Beitreten. Die Accounts bleiben, auch wenn man `geheim.txt` löscht (nur die Anmeldungen verfallen).
 - **Migrationen beim Laden von `daten.json`:**
   - Alte Biom-Punkte werden entfernt, mit Sicherung `daten.vor-welt-import.json`.
   - Fehlende `erstellerId` wird zu „unbekannt“.
 - **Am Board kein Bearbeiten:** Das Dashboard ist dort reine Anzeige. Geändert wird nur über `/dashboard/anordnen` (Token) oder ohne Board im Browser-Speicher.
-- **Portal-Regeln:** Es gibt nur Bedrock (Entscheidung von Max, 04.10.2026). Handy und Board rechnen mit ±128 in beiden Dimensionen.
+- **Portal-Regeln:** Es gibt nur Bedrock (E15). Handy und Board rechnen mit ±128 in beiden Dimensionen.
 - **Platzhalter-Größen:** Kleine Widgets schneiden ihre Karte ab, zum Beispiel der Sammel-Fortschritt mit 4×3 Zellen. Das ist bekannt und wird mit A7 gelöst.
 - **`ENOENT … daten.json.tmp`** in den Server-Tests ist harmlos. Ein verzögertes Speichern trifft auf den schon gelöschten Testordner.
-- **Die Startskripte** (`start.bat`, `start.sh`) bauen das Dashboard noch nicht mit. Das ist sinnvoll, sobald `/dashboard` die alte `/anzeige` ablöst.
+- **Die Startskripte** (`start.bat`, `start.sh`) bauen das Dashboard noch nicht mit. Das kommt mit E16, wenn `/dashboard` die Anzeige wird.
+- **GitHub und Git:**
+  - Gestapelte PRs lassen sich auf GitHub nicht auf eine andere Basis umstellen („part of a stack“). Lieber keine Stapel mehr, sondern einen PR je abgeschlossenem Schritt direkt gegen `main`.
+  - Haben zwei Stränge sich vorher schon gekreuzt (zwei Merge-Basen), meldet GitHub einen Konflikt, den `git` lokal ohne Konflikt löst. Abhilfe: `main` in den Branch mergen und pushen.
+  - In der Cloud-Sitzung lehnt der Git-Proxy das Löschen von Branches ab (HTTP 403). Das macht Max auf GitHub.
 
 ---
 
 ## 8. Was auf Max wartet (Details in `WARTELISTE.md`)
 
-- **Haltepunkte zum Anschauen:**
-  - H1: Welt-Import
-  - ~~H2~~: erledigt an der Fixture-Welt von Max (#19). Offen bleibt nur die Realm-Welt am iPhone.
-  - H3: Raster
-  - H4: Galerie mit 13 Typen
-  - H5: Themes
-  - **H6: Anzeige am Handy anordnen** (der Haltepunkt aus A6)
-- **N5:** HTTPS für den Offline-Betrieb (B3–B5). Möglich wären HTTPS am Board mit eigenem Zertifikat (das iPhone vertraut ihm einmal), ein Zertifikat für eine eigene Domain, oder kein Service Worker.
-- **Entscheidungen:**
-  - A7/E6: Größenstufen und `seitenleistenBreite`
-  - E8: Themes für Sammelobjekte, Banner und Rüstung
-  - wann `/dashboard` die alte `/anzeige` ablöst
-  - Portal-Regeln am Board
+- **Bauplan „Sitzung“ abnicken** (E16), sobald er geschrieben ist.
+- **A7/E6:** Planungsrunde zu den Größenstufen je Widget und `seitenleistenBreite`.
 - **Inhalte beschreiben:**
   - Koordinatensammlung, Eigene Liste
   - echte Gesamtkarte mit Markern (braucht einen neuen Karten-Block)
   - die Bereiche Handbuch und Baupläne
+- **Realm-Welt am iPhone** importieren (Laufzeit, Speicher). Rest von H2.
+- **Später:** B3 am echten iPhone (Home-Bildschirm-App, Flugmodus); E8 (Themes) an anderer Stelle.
+- **Aufräumen:** 16 Branches löschen (Kapitel 3).
 
 ---
 
-## 9. Nächste Schritte, sobald Antworten da sind
+## 9. Nächste Schritte
 
-1. **N5 ist entschieden (eigenes Zertifikat, 04.10.2026):** B3 auf einem eigenen Branch `bereich/offline`, wie es der Bauplan verlangt, dazu HTTPS am Board mit selbst erzeugtem Zertifikat und Profil fürs iPhone:
-   - `companion/sw.js` mit versioniertem Cache
-   - IndexedDB statt `localStorage`
-   - Test mit `context.setOffline(true)`
-   - Haltepunkt am echten iPhone
-   - danach B4 (Offline-Regel, Warteschlange je Account) und B5 (Zustandswechsel, zuerst beim Abhaken der Sammelobjekte)
-2. **Nach A7:** echte Stufen statt der Platzhalter im Register, `SEITENLEISTEN_BREITE` setzen, größte Rasterstufe bauen.
-3. **E8 ist vertagt** (wird an anderer Stelle geklärt). Danach die Platzhalter-Themes in `themes.css` ersetzen. Am Widget-Code ändert sich nichts.
-4. **Sitzung (E16, 04.10.2026):** Bauplan schreiben und mit Max abnicken. Die Sitzung lebt, solange das Board läuft. „Aufs Board“ fügt den Inhalt als Widget an der ersten freien Stelle ein. Danach klären, ob `/anzeige` wegfällt (QR-Code zum Beitreten und Orte mit Kennblöcken müssten dann als Widgets kommen), den Anzeige-Link umstellen und die Startskripte das Dashboard mitbauen lassen.
-5. **Inhalte**, sobald beschrieben: Typen mit Quelle bekommen ihre Quelle in `widgets.js` (`quellenVon`) und ein Anzeigeschema in `board-karten.js`.
+1. **Bauplan „Sitzung“ (E16)** als `planung/bauplaene/Bauplan-Sitzung.md`, dann Max fragen. Fest steht:
+   - Die Sitzung lebt, solange das Board läuft. Ein Neustart beginnt leer; das gespeicherte Layout der Anzeige (A6) bleibt.
+   - Inhalte lassen sich während der Laufzeit live ändern.
+   - „Aufs Board“ fügt den Inhalt als **Widget an der ersten freien Stelle** ein (Größe aus dem Größen-Vertrag, Passt-Prüfung aus A2). Am Handy lässt er sich in „Anzeige anordnen“ verschieben oder entfernen.
+
+   Im Bauplan zu klären:
+   - Wo die Sitzung liegt: im Speicher des Servers, neben `layout.js`. Bekommt sie einen eigenen Layer über dem gespeicherten Layout?
+   - Was passiert, wenn kein Platz frei ist.
+   - Ob `/anzeige` wegfällt. Dann brauchen der QR-Code zum Beitreten und die Orte mit Kennblöcken eigene Widgets, der Anzeige-Link zeigt auf `/dashboard`, und die Startskripte bauen das Dashboard mit.
+   - Wie die Anzeigeschemas (`BOARD_KARTEN`, Quelle wie `portal:<id>`) auf Widget-Typen mit Quelle abgebildet werden. `WIDGETS` und `quellenVon` in Board `widgets.js` sind der Anknüpfungspunkt.
+2. **Offline B3–B5 mit HTTPS** auf einem eigenen Branch (der Bauplan verlangt `bereich/offline`):
+   - **HTTPS am Board:** Das Board erzeugt beim ersten Start eine eigene Zertifizierungsstelle und daraus ein Server-Zertifikat mit der IP im Heimnetz (SAN), höchstens 825 Tage gültig, sonst lehnt iOS es ab.
+   - **Am iPhone:** Das Zertifikat der Zertifizierungsstelle gibt es über http als Profil zum Laden. Danach unter Einstellungen → Allgemein → Info → Zertifikatsvertrauenseinstellungen voll vertrauen. Der QR-Code führt danach auf `https://…`.
+   - `companion/sw.js` mit versioniertem Cache (die Seite kommt heute bewusst ohne Cache, `OHNE_CACHE`), IndexedDB statt `localStorage`, Test mit `context.setOffline(true)`.
+   - ⏸ Haltepunkt am echten iPhone (Home-Bildschirm-App, Flugmodus).
+   - Danach B4 (Offline-Regel, Warteschlange je Account) und B5 (Zustandswechsel, zuerst beim Abhaken der Sammelobjekte).
+3. **Nach A7:** echte Stufen statt der Platzhalter im Register, `SEITENLEISTEN_BREITE` setzen, größte Rasterstufe bauen.
+4. **Inhalte**, sobald beschrieben: Typen mit Quelle bekommen ihre Quelle in `widgets.js` (`quellenVon`) und ein Anzeigeschema in `board-karten.js`.
+5. **E8**, wenn an anderer Stelle geklärt: die Platzhalter-Themes in `themes.css` ersetzen. Am Widget-Code ändert sich nichts.
