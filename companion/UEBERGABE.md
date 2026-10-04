@@ -58,7 +58,8 @@ Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmode
 - Kennblöcke (PNG) statt Symbol bei Strukturen mit Bild: Listen-Gruppe, Canvas-Marker, Detail-Kopf, Screenshot-Prüfliste. Siehe Sammelobjekte → Kennblöcke.
 - **Welt-Import** (Biom-Plan `PLAN-welt-import-biome.md` Phasen 1–6 und Strang C in `../planung/PLAN.md`, Branch `bereich/karte-welt-upload`): Weltordner als `.zip` aus der Dateien-App (oder `.mcworld`) hochladen, Anleitung nur fürs iPhone, Aufbauprüfung, Bestätigung mit Weltname und Seed, Lesen im Web Worker, Prüfliste, Übernehmen; Biome als Kacheln auf der Karte. Einzelheiten in `README.md` → Welt-Import.
   - **Entscheidungen von Max (01.10.2026)**: ZIP mit zusätzlichem Ordner wird ohne Hinweis angenommen (E12). Anleitung nur iPhone, besuchte Gebiete reichen (E14). Strang C umfasst den ganzen Biom-Import, nicht nur das Upload-Feld.
-  - **Offen (Haltepunkt Phase 1 des Biom-Plans)**: Prüfung an echten Welten von Max – Höhenkarte an einer bekannten Stelle, Stichproben gegen Chunkbase, neuere Biom-IDs (Cherry Grove, Pale Garden, Dappled Forest …), Laufzeit und Speicher am iPhone. Es fehlen `tests/daten/fixture-seed.mcworld` und eine Realm-Welt (bleibt lokal in `tests/daten/privat/`).
+  - **Phase 1 des Biom-Plans abgeschlossen** (29.09.2026): an der Fixture-Welt von Max (`tests/daten/fixture-seed.mcworld`) Höhenkarte, Chunkbase 8/8 und ID 195 = Dappled Forest bestätigt.
+  - **Offen**: die Realm-Welt am iPhone (Laufzeit und Speicher, bleibt lokal in `tests/daten/privat/`) und die IDs von Cherry Grove, Pale Garden und Sulfur Caves.
 
 **Regeln von Max** (prüfen `instanzPruefen()` und `biomImportPruefen()`, der Server prüft mit derselben Datei):
 

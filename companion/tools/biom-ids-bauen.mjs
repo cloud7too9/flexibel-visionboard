@@ -14,9 +14,11 @@ const mcdataVersion = JSON.parse(readFileSync(path.join(MCDATA, "package.json"),
 
 // Neuere Biome, die in 1.20.0 fehlen. Erst eintragen, wenn die ID an einer echten Welt bestätigt ist
 // (tools/welt-pruefen.mjs meldet sie als unbekannt, mit Beispielkoordinate zum Nachsehen).
-// Vermutet: Cherry Grove 192, Pale Garden 193, Dappled Forest 195 (BedrockMapper), Sulfur Caves unbekannt.
+// Noch vermutet: Cherry Grove 192, Pale Garden 193, Sulfur Caves unbekannt.
 const NACHTRAG = [
-  // { id: 192, name: "cherry_grove", displayName: "Cherry Grove", color: 0xf1b6d0 },
+  // Bestätigt 29.09.2026 an der Fixture-Welt von Max (1.26.51): Spawn X 0 / Z 0, Chunkbase „Dappled Forest“,
+  // alle 8 Stichproben passen. Herbstwald mit roten und orangen Blättern; name ist aus dem Anzeigenamen abgeleitet.
+  { id: 195, name: "dappled_forest", displayName: "Dappled Forest", color: 0xc96a2b },
 ];
 // minecraft-data hat für diese Biome keine Farbe (0) – eigene, damit sie in Vorschaubildern sichtbar sind
 const FARBE_ERSATZ = { deep_dark: 0x1d2b33, mangrove_swamp: 0x4f6b3a };
