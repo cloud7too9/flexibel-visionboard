@@ -1,0 +1,102 @@
+# Tests für Board-Server, Widgets und Companion – bei jedem Pull Request und jedem Push auf main.
+# Dieselben Befehle wie lokal (planung/UEBERGABE.md, Kapitel 6). Die Screenshots der Playwright-Tests
+# (companion/tests/bilder/, darunter die Haltepunkte) hängen als Download „bilder“ am Lauf.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Ein neuer Push auf denselben PR bricht den alten Lauf ab; Läufe auf main laufen immer zu Ende.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  board-server:
+    name: Board-Server
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: koordinaten-board/server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: koordinaten-board/server/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  widgets:
+    name: Widgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: companion/widgets
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: companion/widgets/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  playwright:
+    name: Companion und Dashboard (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            koordinaten-board/server/package-lock.json
+            koordinaten-board/client/package-lock.json
+            companion/widgets/package-lock.json
+            companion/tests/package-lock.json
+
+      # Die Tests starten eigene Board-Prozesse; die brauchen den Server, die alte Anzeige (client/dist)
+      # und das Widget-Dashboard (companion/widgets/dist).
+      - name: Board installieren und bauen
+        working-directory: koordinaten-board
+        run: |
+          npm ci --prefix server
+          npm ci --prefix client
+          npm run build
+      - name: Dashboard installieren und bauen
+        working-directory: companion/widgets
+        run: |
+          npm ci
+          npm run build
+      - name: Test-Abhängigkeiten und Chromium
+        working-directory: companion/tests
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Tests
+        working-directory: companion/tests
+        run: npm test
+
+      - name: Screenshots hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bilder
+          path: companion/tests/bilder/
+          if-no-files-found: ignore
+          retention-days: 14

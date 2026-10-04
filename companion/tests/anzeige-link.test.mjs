@@ -54,7 +54,9 @@ try {
   await max.waitForSelector("#boardName"); await max.fill("#boardName", "Max"); await max.fill("#boardKontoPin", "2468");
   await max.click('[data-aktion="board-beitreten"]');
   await warteAuf(max, () => !DEMO.enabled && bd.verbindung?.name);
-  await max.evaluate(() => alleSchliessen());   // „Noch keine Welt“ zu
+  // „Noch keine Welt“ geht erst nach dem Laden der Welten auf – vorher schließen, und es überdeckt später das Board-Sheet
+  pruefe(await warteAuf(max, () => document.querySelector(".sheet-kopf h2")?.textContent === "Welt"), "Beigetreten → leeres Board: Welt anlegen");
+  await max.evaluate(() => alleSchliessen());
   await max.click("#burgerBtn"); await schlafen(300);   // Board-Knopf unten in der Sidebar
   await max.click("#boardBtn");
   pruefe(await warteAuf(max, () => bd.anzeigen?.length === 1 && document.querySelector(".anzeige-karte")), "Board-Sheet: Abschnitt „Anzeigen“");
