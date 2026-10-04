@@ -20,7 +20,7 @@ Arbeitsweise, Zusammenspiel mit dem Koordinaten-Board und projektübergreifende 
 - **`localStorage`** speichert nur Bequemlichkeiten pro Gerät:
   - `orte.welt`, `orte.dim`, `orte.ansicht`, `orte.standort`, `orte.biome` (Biom-Ebene ein/aus)
   - `banner.schritte.<id>`, `ruestung.schritte.<set>.<teil>` (Amboss-Schritte), `ruestung.buehne` (Dimension + Träger der Figur)
-  - `portale.edition`, `portale.info`, `portale.rechner`
+  - `portale.info`, `portale.rechner`
   - `board.verbindung` (live zugleich die Anmeldung), `board.name`
 - **Jeder Bereich endet mit** einem Browser-Test (Playwright), dem Ansehen der Screenshots, einem README-Abschnitt und einem Commit.
 
@@ -92,7 +92,7 @@ Die Wünsche von Max waren: Koordinaten umrechnen, Verbindungen mit den Koordina
 - **Verbindungen** gelten je Welt. Jede zeigt einen Status: Verbunden, Einseitig, Falsch verknüpft oder Neues Portal.
   - Das Detail enthält einen durchgerechneten Vorschlag, z. B. „Nether-Portal genau bei X 37 · Y 80 · Z −53 bauen“.
   - Der Editor rechnet die Gegenseite mit ÷ 8 bzw. × 8 und prüft live.
-- **Infokarte** mit 8 Tipps, umschaltbar zwischen Bedrock und Java. Der Schalter bestimmt auch die Regeln der Prüfung. Er ist eine Einstellung auf dem Gerät, Standard ist Bedrock.
+- **Infokarte** mit 8 Tipps nach den Regeln von Bedrock. Einen Umschalter auf Java gibt es nicht mehr (Entscheidung von Max, 04.10.2026: nur Bedrock).
 
 ### Banner ✅
 
@@ -119,7 +119,7 @@ Max hat einen **Rüstungs-Baukasten** geschickt (Zip „ruestung“, jetzt `rues
 - Liste (vier Icons, nötige Vorlagen, „2/3 gefunden“), Detail (Figur, Schmiedetisch je Teil, „Du brauchst“, Verzaubern am Amboss, Aufs Board), Editor als **Schmiedetisch** mit den Slots Vorlage + Rüstung + Material wie in den Vorlagen von Max (`referenz/ruestung/`).
 - **Figur**: 3D über http mit three.js r128 vom CDN (drehbar, Ständer oder Steve, Sockel und Hintergrund je Dimension); ohne three.js 2D; als Datei nur die Icons, weil `file://` Canvas-Pixel und ES-Module sperrt. Icons immer aus `fertig/items/` (gehen auch als Datei).
 - **Anpassung am Baukasten**: `figur3d.js` hat eine Option `abstand` (Kamera-Abstand, Standard wie vorher 104), damit der Helm nicht am Rand klebt. Sonst ist der Baukasten unverändert.
-- **Amboss-Pläne** aus dem alten Entwurf (Helm 27, Harnisch 13, Beinschutz 28, Stiefel 49 XP-Level) – **Java-Werte, Bedrock noch nicht geprüft**.
+- **Amboss-Pläne** aus dem alten Entwurf (Helm 27, Harnisch 13, Beinschutz 28, Stiefel 49 XP-Level) – **in Bedrock noch nicht geprüft**, in der Seite als Richtwerte gekennzeichnet.
 - `entwuerfe/banner-ruestung.js` ist damit überholt.
 
 **Noch offen:**
@@ -153,7 +153,7 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 | HTML | Header, `main.module-stack` mit je einer `<section class="module" data-module="…">` pro Bereich, Sidebar, ein gemeinsames Sheet `#orteSheet`, Toast |
 | JS 0 · KONFIG | `CONFIG` (Weltgrenze, Kachelgröße, Biom-Höhe in Nether/End, Zoom …) |
 | JS 1 · THEMES | UI-Tokens der drei Dimensionen |
-| `board-karten.js` (eigene Datei) | Hilfen `zahl`, `umrechnen`, `entfernung`, `STRUKTUREN`, Portal-Prüfung (`zielSuchen`, `verbindungPruefen`, `portalEmpfehlung` mit Edition), `bannerAnleitung`, `bannerPixel`, `besatzStandVon`; Anzeigeschemas `BOARD_KARTEN` mit `karte(ctx, id)` – lädt auch der Board-Server |
+| `board-karten.js` (eigene Datei) | Hilfen `zahl`, `umrechnen`, `entfernung`, `STRUKTUREN`, Portal-Prüfung (`zielSuchen`, `verbindungPruefen`, `portalEmpfehlung`, Suchradius ±128), `bannerAnleitung`, `bannerPixel`, `besatzStandVon`; Anzeigeschemas `BOARD_KARTEN` mit `karte(ctx, id)` – lädt auch der Board-Server |
 | `regeln.js` (eigene Datei) | Dimensionen, Kategorien, Biome, `SAMMELOBJEKTE`, Banner-Farben/-Muster, `RUESTUNGS_TEILE`/`RUESTUNGEN`/`BESATZ_MATERIALIEN`, `instanzPruefen`, `bannerPruefen`, `ruestungPruefen`, `verbindungRegelPruefen`, `biomImportPruefen`/`biomImportSauber` – lädt auch der Board-Server |
 | `biom-ids.js` (eigene Datei) | Biom je Bedrock-ID (`BIOM_IDS`), erzeugt aus minecraft-data |
 | JS 2 · STAMMDATEN | Kartenfarben, `BIOM_INFO` (Bedrock-ID → Name, Biom der Liste, Farbe), Symbole, `STRUKTUREN` + `kennblockHtml`/`kennblockBild` (Kategorie → Kennblock), `BAUKASTEN`, `vorlageDatei`, `itemBild` |
@@ -222,10 +222,10 @@ Die vollständigen Tabellen stehen in `README.md`.
    - Die Sidebar wird auf `BEREICHE` umgestellt.
    - `regeln.js` und `icons/` kommen neben die Hauptdatei; das Board liefert dann sie aus (`COMPANION_DATEI`).
    - **Der alte Portal-Linker dort sagt „Bedrock sucht im Nether ±16“. Das ist falsch**, Bedrock sucht ±128. Er wird durch die Portal-Verwaltung ersetzt oder korrigiert.
-2. **Edition**: In der Portal-Verwaltung ist Bedrock/Java zurzeit eine Einstellung auf dem Gerät. Vorschlag: später eine Eigenschaft der Welt, denn auch die Seeds unterscheiden sich je Edition. Dafür braucht es die Zustimmung von Max, weil es das Datenmodell ändert.
+2. ~~Edition~~ – **entschieden (04.10.2026):** Es gibt nur Bedrock. Der Umschalter in der Portal-Verwaltung ist entfernt.
 3. **Handbuch, Baupläne**: Inhalte mit Max klären. Rüstung: offene Punkte siehe oben.
 4. **Idee, nicht besprochen**: Portal-Verbindungen auch auf der Karte zeigen.
-5. **Aufs Board**: Bleibt eine Karte liegen, bis sie jemand wegnimmt (so ist es jetzt), oder verschwindet sie nach einiger Zeit? Neue Bereiche bekommen ihr Anzeigeschema (Checkliste Punkt 8).
+5. **Aufs Board**: entschieden (04.10.2026) – künftig ein Widget an der ersten freien Stelle der Board-Sitzung statt einer liegenbleibenden Karte (`planung/WARTELISTE.md`, E16). Neue Bereiche bekommen ihr Anzeigeschema (Checkliste Punkt 8).
 6. **Aus der früheren Board-Steuerung noch nicht übernommen**: Notiz zu einem Ort, Kartenausschnitt als Bild, Export als JSON. Erweitert das Datenmodell – Details geht Max einzeln durch.
 
 Projektübergreifend offen (Dashboard, Biom-Erkennung, Hetzner): siehe `../UEBERGABE.md`.
@@ -275,12 +275,12 @@ npm test                          # biom-dekoder (18, node --test) + banner (23)
 
 - **Portal-Suche** (minecraft.wiki, „Nether portal → Portal search“):
   - Umrechnung: Oberwelt → Nether ÷ 8, abgerundet (`Math.floor`, auch bei negativen Werten); zurück × 8; Y bleibt.
-  - Suchbereich ist ein Quadrat um den Zielpunkt: **Bedrock ±128 in beiden Dimensionen**, **Java ±16 im Nether und ±128 in der Oberwelt** (seit Java 1.16.2, MC-197538).
+  - Suchbereich ist ein Quadrat um den Zielpunkt: **±128 in beiden Dimensionen** (Bedrock).
   - Es gewinnt das nächste Portal nach **3D-Abstand, Y zählt mit**. Wird keins gefunden, baut das Spiel ein neues. Nur entzündete Portale zählen.
 - **Banner** (de.minecraft.wiki „Banner/Muster“):
   - 16 Farben, höchstens 6 Muster im Webstuhl
   - 42 Muster-IDs mit deutschen Namen, davon 10 mit Bannervorlage
-  - **Mauerung** und **Spickelbord** brauchen seit Java 1.21.2 auch eine Vorlage, wie in Bedrock.
+  - **Mauerung** und **Spickelbord** brauchen eine Vorlage.
 - **Sammelobjekte**: 18 Rüstungsbesätze (einschließlich Fluss und Blitz aus 1.21) plus die Netheritaufwertung. Bedrock-Namen und Fundorte stehen in `SAMMELOBJEKTE`.
 - **Rüstung** (aus dem Baukasten, `LIESMICH.md`): Besatz umfärben über 8 Grauwerte → Material-Palette; gleiches Material wie die Rüstung → `_darker`-Palette; Leder = Graustufen × Farbe + Overlay, ungefärbt `#A06540`, Bedrock-Weiß `#F0F0F0`; Reihenfolge Grundtextur → Besatz → Glanz; das Inventar-Icon zeigt nur die Besatz-Farbe; Schildkröte gibt es nur als Helm. Kupferrüstung und Harz als Material sind im Baukasten enthalten.
 - **Verzauberungen**, deutsche Namen: Schutz, Haltbarkeit, Reparatur, Atmung, Wasseraffinität, Huschen (nur Hose), Wasserläufer, Seelenläufer, Federfall.

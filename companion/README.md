@@ -125,11 +125,11 @@ Rüstungs-Sets wie in den Vorlagen (`referenz/ruestung/`): je Teil **Vorlage + R
   - **Neues Portal**: im Suchbereich liegt kein Portal, das Spiel würde ein neues bauen
 - **Detail**: beide Portale mit Kopieren/TP-Befehl, Prüfung beider Richtungen, Abstand zum Idealpunkt und ein konkreter Vorschlag (z. B. „Nether-Portal genau bei X 37 · Y 80 · Z −53 bauen“). Der Vorschlag wird vorher durchgerechnet
 - **Editor**: „Aus Oberwelt berechnen (÷ 8)“ / „Aus Nether berechnen (× 8)“, **Live-Prüfung** beim Tippen
-- **Infokarte** (über „Info“ in der Bottom-Bar ein-/ausblendbar): 8 Punkte zum gezielten Verknüpfen, umschaltbar **Bedrock / Java**. Der Schalter legt auch die Regeln der Prüfung fest (Einstellung auf dem Gerät, Standard Bedrock)
+- **Infokarte** (über „Info“ in der Bottom-Bar ein-/ausblendbar): 8 Punkte zum gezielten Verknüpfen, nach den Regeln von Bedrock (der einzigen Edition)
 
-**Prüf-Logik** (nach minecraft.wiki, „Portal search“): Position umrechnen → im quadratischen Suchbereich um den Zielpunkt nach Portalen suchen (**Bedrock ±128 in beiden Dimensionen**, **Java ±16 im Nether / ±128 in der Oberwelt**) → das nächste nach 3D-Abstand gewinnt (Y zählt mit), keins gefunden → neues Portal. Geprüft wird nur mit den erfassten Portalen; nicht erfasste (vom Spiel erzeugte, alte) können trotzdem stören.
+**Prüf-Logik** (nach minecraft.wiki, „Portal search“): Position umrechnen → im quadratischen Suchbereich um den Zielpunkt nach Portalen suchen (**±128 in beiden Dimensionen**) → das nächste nach 3D-Abstand gewinnt (Y zählt mit), keins gefunden → neues Portal. Geprüft wird nur mit den erfassten Portalen; nicht erfasste (vom Spiel erzeugte, alte) können trotzdem stören.
 
-> Hinweis zu `modul-a-live-karte.html`: Der Text im alten Portal-Linker („Bedrock sucht im Nether … ±16 Blöcken“) stimmt nur für Java. Bedrock sucht auch im Nether ±128.
+> Hinweis zu `modul-a-live-karte.html`: Der Text im alten Portal-Linker („Bedrock sucht im Nether … ±16 Blöcken“) ist falsch. Bedrock sucht auch im Nether ±128.
 
 ## Banner
 
@@ -138,7 +138,7 @@ Rüstungs-Sets wie in den Vorlagen (`referenz/ruestung/`): je Teil **Vorlage + R
 - **Liste** als Raster mit Vorschau; Suche nach Name oder Musternamen
 - **Detail**: Material (Wolle, Stock, Farbstoffe gezählt), nötige Bannervorlagen mit Herkunft, **Anleitung Schritt für Schritt** – jeder Schritt zeigt, wie das Banner danach aussieht; abhaken (nur auf diesem Gerät, wird zurückgesetzt, wenn sich das Muster ändert)
 - **Editor**: Grundfarbe (16), bis zu 6 Ebenen; pro Ebene Farbe + Muster aus einem Raster mit Vorschaubildern (wie am Webstuhl), Ebenen verschieben/entfernen; Vorschau bleibt oben stehen
-- Alle 42 Muster mit **deutschen Spielnamen**, englischer Name klein daneben; 10 davon brauchen eine Bannervorlage (Java seit 1.21.2 wie Bedrock)
+- Alle 42 Muster mit **deutschen Spielnamen**, englischer Name klein daneben; 10 davon brauchen eine Bannervorlage
 - Löschen mit zweitem Tippen („Wirklich löschen?“), weil ein Bauplan für alle weg ist
 - Vorschau ist vereinfacht (Pixel-Masken, keine Original-Texturen)
 

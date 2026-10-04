@@ -104,7 +104,7 @@ const farbe = (id) => FARBEN.find((f) => f.id === id) || FARBEN[0];
 const HELLE_FARBEN = new Set(["white", "light_gray", "yellow", "lime", "pink", "light_blue", "orange"]);
 const kontrast = (id) => HELLE_FARBEN.has(id) ? "black" : "white";
 
-// Bannervorlagen – werden im Webstuhl nicht verbraucht (Java seit 1.21.2 wie Bedrock)
+// Bannervorlagen – werden im Webstuhl nicht verbraucht
 const BANNERVORLAGEN = Object.freeze({
   flower:       { de:"Blumen-Bannervorlage",      herkunft:"Werkbank: Papier + Margerite" },
   creeper:      { de:"Creeper-Bannervorlage",     herkunft:"Werkbank: Papier + Creeperkopf" },

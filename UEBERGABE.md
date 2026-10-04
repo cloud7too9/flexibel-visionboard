@@ -1,6 +1,6 @@
 # Übergabe · Minecraft Companion & Koordinaten-Board
 
-Stand: 01.10.2026 · Einstieg für einen neuen Chat
+Stand: 04.10.2026 · Einstieg für einen neuen Chat
 
 > **Stand der Umsetzung von `planung/PLAN.md`** (Widget-Dashboard, Welt-Import, Accounts): [`planung/UEBERGABE.md`](planung/UEBERGABE.md) – was gebaut ist, Branches, Starten, Tests, nächste Schritte. Was auf Max wartet: [`planung/WARTELISTE.md`](planung/WARTELISTE.md).
 
@@ -26,7 +26,11 @@ Geht es ums Raum-Board, statt der Companion-Übergabe `koordinaten-board/UEBERGA
 
 Geht es mit dem Plan weiter (Widget-Dashboard, Offline, Accounts), zum Beispiel:
 
-> Lies `UEBERGABE.md`, danach `planung/UEBERGABE.md` und `planung/WARTELISTE.md`. N5 ist entschieden: … – mach mit B3 weiter.
+> Lies `UEBERGABE.md`, danach `planung/UEBERGABE.md` und `planung/WARTELISTE.md`. Schreib den Bauplan „Sitzung“ (E16) und leg ihn mir vor.
+
+oder
+
+> … Mach mit Offline B3 weiter (N5: eigenes Zertifikat).
 
 ---
 
@@ -59,7 +63,7 @@ Was wohin gehört:
   - **Gemergt wird nur nach Rückfrage bei Max**, auch wenn Claude den Merge ausführt (Wunsch von Max, 04.10.2026).
 - **Bereiche geht Max einzeln durch.** Erst steht der Rahmen, dann folgen die Details. Nichts ausbauen, was nicht besprochen ist.
 - **Datenmodell minimal halten.** Es wird nur erweitert, wenn ein Bereich es konkret braucht. FeatureTypes werden nicht erfunden.
-- **Bedrock ist die Hauptedition.** Die Seed-Map-Screenshots zeigen „Bedrock 26.50“. Java-Unterschiede kommen nur dort vor, wo sie zählen (Portale).
+- **Bedrock ist die einzige Edition** (Entscheidung von Max, 04.10.2026). Die Seed-Map-Screenshots zeigen „Bedrock 26.50“. Java gibt es nirgendwo, auch nicht bei den Portalen.
 - **Optik 1:1 aus `modul-a-live-karte.html`**:
   - Dimensions-Themes: Oberwelt grün, Nether rot, End violett
   - Header mit Hamburger, darüber die Sidebar
@@ -74,8 +78,9 @@ Was wohin gehört:
 |---|---|---|
 | Zweck | Die App am Handy: Karte, Sammelobjekte, Portale, Banner, Rüstung, später Handbuch, Baupläne | **Server der Companion** (Daten, OCR, Live-Sync) und Anzeige im Zimmer |
 | Technik | eine HTML-Seite + `regeln.js`, Vanilla JS, kein Build; live vom Board ausgeliefert, sonst DEMO-Mock | Fastify 5, Vite + React 19 + TypeScript (nur Anzeige), JSON-Speicher, tesseract.js |
-| Stand | 5 von 7 Bereichen umgesetzt, Handbuch und Baupläne offen | zusammengeführt (Branch `board/zusammenfuehrung`) |
-| Tests | Playwright: Banner, Portale, Sammelobjekte, Kennblöcke, Board-Verbindung, Live-Betrieb, Anzeigeschema, Rüstung (332 Prüfungen) | `node --test`: Daten, API, Regeln, Erkennung, Banner-Erkennung, Karten, Netzwerk, PIN-Sperre (40 Tests) |
+| Stand | 5 von 7 Bereichen umgesetzt, Handbuch und Baupläne offen; Welt-Import; nur Bedrock | Server der Companion; Widget-Dashboard unter `/dashboard` (A0–A6); Accounts mit PIN (B1, B2) |
+| Tests | Playwright: 14 Dateien mit 492 Prüfungen, dazu 20 Dekoder-Tests (`companion/tests`); Widgets: 108 Unit-Tests | `node --test`: 57 Tests (Daten, API, Regeln, Erkennung, Karten, Identität …) |
+| CI | alle Tests bei jedem PR und Push auf `main` (`.github/workflows/tests.yml`) | ← dieselbe CI |
 
 ---
 
@@ -136,7 +141,7 @@ Daten: koordinaten-board/server/daten/daten.json
    - Eine Seite pro Bereich (wie die Kontrollzentrum-Seiten)?
    - Wird am Handy oder an der Anzeige im Zimmer bearbeitet?
    - Welche Ansichten bekommt jeder Bereich? (wird beim jeweiligen Bereich geklärt)
-3. **Aufs Board**: Bleibt eine Karte liegen, bis jemand sie wegnimmt (so ist es jetzt), oder verschwindet sie nach einiger Zeit?
+3. ~~Aufs Board~~ – **entschieden (04.10.2026):** Das Board bekommt eine Sitzung, die lebt, solange das Board läuft. „Aufs Board“ fügt den Inhalt als Widget an der ersten freien Stelle ein, am Handy verschieb- und entfernbar. Noch nicht gebaut (`planung/WARTELISTE.md`, E16).
 4. **Aus der früheren Board-Steuerung** noch nicht übernommen: Notiz zu einem Ort, Kartenausschnitt als Bild, Export als JSON. Erweitert das Datenmodell.
 5. **Hetzner später**: Soll die Companion auch von unterwegs erreichbar sein (https, PWA installierbar)? Dann läuft derselbe Server dort, oder das Board verbindet sich nach außen.
-6. **Edition als Eigenschaft der Welt** statt Einstellung auf dem Gerät, weil sich auch die Seeds je Edition unterscheiden. Ändert das Datenmodell, braucht die Zustimmung von Max. Details in `companion/UEBERGABE.md`.
+6. ~~Edition als Eigenschaft der Welt~~ – **entschieden (04.10.2026):** Es gibt nur Bedrock. Die Umschaltung Bedrock/Java in der Portal-Verwaltung ist entfernt.

@@ -3201,15 +3201,13 @@ document.getElementById("bannerNeuBtn").addEventListener("click", () => bannerEd
    den hier erfassten Portalen:
      1. Position umrechnen: Oberwelt → Nether ÷ 8 (abgerundet), zurück × 8, Y bleibt
      2. Im Suchbereich (Quadrat) um diesen Zielpunkt nach Portalen suchen:
-        Bedrock ±128 in beiden Dimensionen · Java ±16 im Nether, ±128 in der Oberwelt
+        ±128 in beiden Dimensionen (Bedrock)
      3. Das nächste gewinnt – 3D-Abstand, Y zählt mit. Keins gefunden → neues Portal.
    Quelle: minecraft.wiki/w/Nether_portal („Portal search“)
-   Die Edition (Bedrock/Java) ist eine Einstellung auf dem Gerät, Standard Bedrock.
    Prüfung und Empfehlung (verbindungPruefen, portalEmpfehlung) stehen in board-karten.js.
    ========================================================================== */
 const pt = {
   liste: [],
-  edition: lsLesen("portale.edition") === "java" ? "java" : "bedrock",
   info: Boolean(lsLesen("portale.info")),
   rechner: Object.assign({ von:"overworld", x:"", y:"", z:"" }, lsLesen("portale.rechner") || {}),
   entwurfId: null,   // Verbindung im Editor (null = neu)
@@ -3217,7 +3215,6 @@ const pt = {
 const $portalStage = document.getElementById("portalStage");
 const andereDim = (d) => d === "overworld" ? "nether" : "overworld";
 const dimFarbe = (d) => THEMES[d].ui["--accent"];
-const regelLabel = () => PORTAL_REGELN[pt.edition].label;
 
 function richtungText(s, art){
   if(art === "ok") return `kommt am eigenen Portal an${s.treffer.abstand >= 1 ? ` (${Math.round(s.treffer.abstand)} Blöcke vom Zielpunkt)` : ""}`;
@@ -3240,26 +3237,20 @@ async function portaleLaden(){
 
 // --- Bühne: Infokarte, Umrechner, Verbindungen ------------------------------
 function infoKarteHtml(){
-  const bedrock = pt.edition === "bedrock";
   return `<section class="info-karte" aria-label="Tipps zum Verknüpfen">
     <div class="info-kopf"><h2>Portale gezielt verknüpfen</h2>
       <button class="icon-btn" data-raktion="info-zu" aria-label="Infokarte ausblenden">${X_ICON}</button></div>
-    <div class="tool-segment" role="group" aria-label="Regeln für">
-      ${Object.entries(PORTAL_REGELN).map(([k, e]) => `<button class="seg-btn ${k === pt.edition ? "active" : ""}" data-edition="${k}">${e.label}</button>`).join("")}
-    </div>
     <ol class="info-liste">
       <li><span><b>Umrechnen:</b> Nether = Oberwelt ÷ 8 (X und Z, abgerundet), zurück × 8. Die Höhe Y bleibt gleich.</span></li>
-      <li><span><b>So sucht das Spiel:</b> Beim Durchgehen rechnet es deine Position um und sucht dort nach einem entzündeten Portal – ${bedrock ? "in ±128 Blöcken, in beiden Dimensionen" : "im Nether in ±16, in der Oberwelt in ±128 Blöcken"}. Das nächste gewinnt, gemessen in 3D: Y zählt mit.</span></li>
+      <li><span><b>So sucht das Spiel:</b> Beim Durchgehen rechnet es deine Position um und sucht dort nach einem entzündeten Portal – in ±128 Blöcken, in beiden Dimensionen. Das nächste gewinnt, gemessen in 3D: Y zählt mit.</span></li>
       <li><span><b>Nichts gefunden?</b> Dann baut das Spiel selbst ein Portal in der Nähe – gern über Lava oder mitten in einer Wand.</span></li>
       <li><span><b>Reihenfolge:</b> Oberwelt-Portal bauen und hier eintragen. Dann im Nether genau am umgerechneten Punkt (gleiches Y) selbst ein Portal bauen und anzünden – erst danach durchgehen.</span></li>
-      ${bedrock
-        ? "<li><span><b>Bedrock-Falle:</b> Im Nether wird in ±128 Blöcken gesucht – das sind 1 024 Oberwelt-Blöcke. Ein neues Oberwelt-Portal landet deshalb meist in einem vorhandenen Nether-Portal, wenn du die Nether-Seite nicht vorher selbst baust.</span></li>"
-        : "<li><span><b>Java:</b> Im Nether wird nur ±16 Blöcke gesucht. Steht das Nether-Portal weiter weg vom umgerechneten Punkt, entsteht ein neues.</span></li>"}
+      <li><span><b>Bedrock-Falle:</b> Im Nether wird in ±128 Blöcken gesucht – das sind 1 024 Oberwelt-Blöcke. Ein neues Oberwelt-Portal landet deshalb meist in einem vorhandenen Nether-Portal, wenn du die Nether-Seite nicht vorher selbst baust.</span></li>
       <li><span><b>Einseitige Verbindung:</b> Hin kommst du richtig an, zurück landest du woanders – weil auf dem Rückweg ein anderes Portal näher liegt. Meist hilft es, das Nether-Portal genau auf den Idealpunkt zu setzen.</span></li>
       <li><span><b>Aufräumen:</b> Vom Spiel erzeugte Fehl-Portale ausschalten (einen Obsidianblock abbauen), sonst funken sie dazwischen. Nicht entzündete Rahmen wie Portalruinen zählen nicht.</span></li>
-      <li><span><b>Koordinaten ablesen:</b> ${bedrock ? "In den Welteinstellungen „Koordinaten anzeigen“ einschalten" : "F3 drücken"} und den Block eintragen, in dem du im Portal stehst.</span></li>
+      <li><span><b>Koordinaten ablesen:</b> In den Welteinstellungen „Koordinaten anzeigen“ einschalten und den Block eintragen, in dem du im Portal stehst.</span></li>
     </ol>
-    <p class="result-hint">Bedrock/Java legt fest, nach welchen Regeln hier geprüft wird (gilt für dieses Gerät). Die Prüfung kennt nur die hier erfassten Portale.</p>
+    <p class="result-hint">Die Prüfung kennt nur die hier erfassten Portale.</p>
   </section>`;
 }
 
@@ -3271,7 +3262,7 @@ function rechnerWerte(){
 }
 function rechnerZiel(){
   const p = rechnerWerte(); if(!p) return null;
-  return { p, s:zielSuchen(pt.rechner.von, p, portaleAlle(pt.liste), pt.edition) };
+  return { p, s:zielSuchen(pt.rechner.von, p, portaleAlle(pt.liste)) };
 }
 function rechnerErgebnisHtml(){
   const e = rechnerZiel(), nach = andereDim(pt.rechner.von);
@@ -3293,7 +3284,7 @@ function rechnerErgebnisHtml(){
       <button class="btn-secondary" data-raktion="tp">TP-Befehl</button>
       <button class="btn-primary" data-raktion="verbindung">Als Verbindung anlegen</button>
     </div>
-    <p class="result-hint">Suchbereich ±${s.radius} Blöcke · ${regelLabel()}-Regeln${p.y == null ? " · ohne Y nur grob" : ""}</p>`;
+    <p class="result-hint">Suchbereich ±${s.radius} Blöcke · Bedrock-Regeln${p.y == null ? " · ohne Y nur grob" : ""}</p>`;
 }
 function rechnerHtml(){
   const r = pt.rechner;
@@ -3316,7 +3307,7 @@ function rechnerHtml(){
 
 const seiteHtml = (dim, s) => `<span class="seite"><span class="seite-dim" style="color:${dimFarbe(dim)}">${dimLabel(dim)}</span>${coordHtml(s.x, s.y, s.z)}</span>`;
 function verbindungKarte(v){
-  const p = verbindungPruefen(v, pt.liste, pt.edition);
+  const p = verbindungPruefen(v, pt.liste);
   let meta = "";
   if(p.gesamt !== "ok"){
     const [von, s, art] = p.artHin !== "ok" ? ["overworld", p.hin, p.artHin] : ["nether", p.rueck, p.artRueck];
@@ -3333,7 +3324,7 @@ function renderPortale(){
   const $info = document.getElementById("portalInfoBtn");
   $info.classList.toggle("active", pt.info); $info.setAttribute("aria-pressed", String(pt.info));
   const liste = [...pt.liste].sort((a, b) => a.name.localeCompare(b.name, "de"));
-  const probleme = pt.liste.filter((v) => verbindungPruefen(v, pt.liste, pt.edition).gesamt !== "ok").length;
+  const probleme = pt.liste.filter((v) => verbindungPruefen(v, pt.liste).gesamt !== "ok").length;
   $portalStage.innerHTML = (pt.info ? infoKarteHtml() : "") + rechnerHtml() + `
     <div class="field-group">
       <div class="field-group-label">Verbindungen · ${pt.liste.length}${probleme ? ` · ${probleme} mit Problem` : ""}</div>
@@ -3345,7 +3336,7 @@ function renderPortale(){
 // --- Detail + Editor (Sheet) -------------------------------------------------
 function portalDetailOeffnen(id){
   const v = pt.liste.find((x) => x.id === id); if(!v) return;
-  const p = verbindungPruefen(v, pt.liste, pt.edition), e = portalEmpfehlung(v, p, pt.liste, pt.edition);
+  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
   const seite = (dim, s) => `<div class="result-card seite-karte">
       <div class="result-label" style="color:${dimFarbe(dim)}">${dimLabel(dim)}-Portal</div>
       ${coordHtml(s.x, s.y, s.z)}
@@ -3356,7 +3347,7 @@ function portalDetailOeffnen(id){
   const html = kopfHtml(esc(v.name), `Portal-Verbindung${v.von ? ` · von ${esc(v.von)}` : ""}`) + `<div class="orte-inhalt">
     ${seite("overworld", v.oberwelt)}${seite("nether", v.nether)}
     <div class="result-card">
-      <div class="result-label">Prüfung · <b>${regelLabel()}</b></div>
+      <div class="result-label">Prüfung · <b>Bedrock</b></div>
       ${pruefZeilen(p)}
       <p class="result-hint">${p.abweichung ? `Idealpunkt im Nether: ${kurzKoord(p.ideal)} – das Portal steht ${p.abweichung} ${p.abweichung === 1 ? "Block" : "Blöcke"} daneben.` : "Das Nether-Portal steht genau auf dem Idealpunkt."}</p>
       ${e ? `<div class="banner ${e.art}">${esc(e.text)}</div>` : ""}
@@ -3407,8 +3398,8 @@ function portalEditorPruefen(){
     return;
   }
   const v = { id:pt.entwurfId || "__neu", ...w, name:w.name || "diese Verbindung" };
-  const p = verbindungPruefen(v, pt.liste, pt.edition), e = portalEmpfehlung(v, p, pt.liste, pt.edition);
-  $p.innerHTML = `<div class="result-card"><div class="result-label">Prüfung · <b>${regelLabel()}</b> · <span class="pill ${p.gesamt}">${p.label}</span></div>
+  const p = verbindungPruefen(v, pt.liste), e = portalEmpfehlung(v, p, pt.liste);
+  $p.innerHTML = `<div class="result-card"><div class="result-label">Prüfung · <b>Bedrock</b> · <span class="pill ${p.gesamt}">${p.label}</span></div>
     ${pruefZeilen(p)}${e ? `<div class="banner ${e.art}">${esc(e.text)}</div>` : ""}</div>`;
 }
 /** Eine Seite aus der anderen berechnen und in die Felder schreiben */
@@ -3466,8 +3457,6 @@ $portalStage.addEventListener("click", async (e) => {
     pt.rechner.von = von.dataset.rvon; lsSchreiben("portale.rechner", pt.rechner);
     return renderPortale();
   }
-  const ed = t.closest("[data-edition]");
-  if(ed){ pt.edition = ed.dataset.edition; lsSchreiben("portale.edition", pt.edition); return render(); }
   const karte = t.closest("[data-verbindung]");
   if(karte) return portalDetailOeffnen(karte.dataset.verbindung);
   const a = t.closest("[data-raktion]"); if(!a) return;
@@ -3886,7 +3875,7 @@ function boardKontext(){
     welt:st.welt, dimensionen:st.dimensionen, typen:st.typen, instanzen:st.instanzen,
     sammelStatus:sam.weltId === st.weltId ? sam.status : {},
     verbindungen:pt.liste, banner:bn.liste, ruestung:rs.sets,
-    edition:pt.edition, standort:st.standort,
+    standort:st.standort,
     pngDaten, ruestungFoto,
     biomName:(dim, x, z) => (bm.weltId === st.weltId ? biomAnStelle(dim, x, z)?.name : null) || null,
   };
@@ -4239,7 +4228,7 @@ function bedarfHtml(s, b){
 }
 
 /* Verzauberungs-Pläne je Teil – beste Verzauberung mit wenig XP (Vorlage: lighthousepng).
-   XP-Werte gelten für die Java Edition; in Bedrock können sie leicht abweichen.
+   XP-Werte sind Richtwerte und können im Spiel leicht abweichen.
    Schritt = [links, rechts, xp]; links/rechts: { teil:true|false, v:[Verzauberungen] } */
 const T = (...v) => ({ teil:true, v }), B = (...v) => ({ teil:false, v });
 const VERZAUBERUNG = Object.freeze({
@@ -4277,7 +4266,7 @@ function verzauberungHtml(s){
           <span class="schritt-nr">${erledigt.has(n) ? "✓" : n + 1}</span>
           <span class="amboss-seite">${ambossSeite(l, name)}</span><span class="plus">+</span><span class="amboss-seite">${ambossSeite(r, name)}</span>
           <span class="xp">${xp}<small>XP</small></span></button>`).join("")}
-        <p class="result-hint">Reihenfolge mit wenig XP (Vorlage: lighthousepng) · XP-Werte aus der Java Edition, in Bedrock leicht abweichend. Abhaken gilt nur auf diesem Gerät.</p></div>` : ""}
+        <p class="result-hint">Reihenfolge mit wenig XP (Vorlage: lighthousepng) · XP-Werte sind Richtwerte, im Spiel leicht abweichend. Abhaken gilt nur auf diesem Gerät.</p></div>` : ""}
     </div>`;
   }).join("")}</div></div>`;
 }

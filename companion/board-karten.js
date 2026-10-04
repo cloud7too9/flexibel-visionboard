@@ -18,7 +18,6 @@
      sammelStatus:{ [objektId]:{ von, am } }, // Sammelobjekte der Welt
      verbindungen,                            // Portal-Verbindungen der Welt
      banner, ruestung,                        // für alle Welten
-     edition:"bedrock" | "java",              // Regeln der Portal-Prüfung
      standort:{ x, y, z, dim } | null,        // nur am Handy
      pngDaten?(breite, hoehe, rgba) → "data:image/png;base64,…",
      ruestungFoto?(set) → Promise<{ daten, pixelig }>,
@@ -80,13 +79,10 @@ const strukturName = (kat) => STRUKTUREN[kat]?.name || kat;
 /* ---- Portale: Prüfung wie im Spiel ---------------------------------------- */
 /*   1. Position umrechnen: Oberwelt → Nether ÷ 8 (abgerundet), zurück × 8, Y bleibt
      2. Im Suchbereich (Quadrat) um diesen Zielpunkt nach Portalen suchen:
-        Bedrock ±128 in beiden Dimensionen · Java ±16 im Nether, ±128 in der Oberwelt
+        ±128 in beiden Dimensionen (Bedrock)
      3. Das nächste gewinnt – 3D-Abstand, Y zählt mit. Keins gefunden → neues Portal.
-   Quelle: minecraft.wiki/w/Nether_portal („Portal search“). Die Edition wählt der Aufrufer. */
-const PORTAL_REGELN = Object.freeze({
-  bedrock: { label:"Bedrock", radius:{ overworld:128, nether:128 } },
-  java:    { label:"Java",    radius:{ overworld:128, nether:16 } },
-});
+   Quelle: minecraft.wiki/w/Nether_portal („Portal search“). */
+const PORTAL_SUCHRADIUS = 128;
 
 /** Beide Portale jeder Verbindung als flache Liste */
 function portaleAlle(liste){
@@ -97,10 +93,10 @@ function portaleAlle(liste){
 }
 
 /** Was passiert, wenn man an Punkt p (Dimension „von“) durchs Portal geht? */
-function zielSuchen(von, p, portale, edition){
+function zielSuchen(von, p, portale){
   const u = umrechnen(p.x, p.z, von);
   const ziel = { x:u.x, y:p.y ?? null, z:u.z, dim:u.dim };
-  const radius = PORTAL_REGELN[edition].radius[u.dim];
+  const radius = PORTAL_SUCHRADIUS;
   let treffer = null;
   for(const q of portale){
     if(q.dim !== u.dim || Math.abs(q.x - ziel.x) > radius || Math.abs(q.z - ziel.z) > radius) continue;
@@ -112,10 +108,10 @@ function zielSuchen(von, p, portale, edition){
 }
 
 /** Prüft beide Richtungen einer Verbindung gegen alle erfassten Portale der Welt */
-function verbindungPruefen(v, liste, edition){
+function verbindungPruefen(v, liste){
   const portale = portaleAlle([...liste.filter((x) => x.id !== v.id), v]);
-  const hin = zielSuchen("overworld", v.oberwelt, portale, edition);
-  const rueck = zielSuchen("nether", v.nether, portale, edition);
+  const hin = zielSuchen("overworld", v.oberwelt, portale);
+  const rueck = zielSuchen("nether", v.nether, portale);
   const art = (s) => !s.treffer ? "neu" : s.treffer.portal.vid === v.id ? "ok" : "anders";
   const artHin = art(hin), artRueck = art(rueck);
   const ideal = { x:hin.ziel.x, y:v.oberwelt.y ?? v.nether.y ?? null, z:hin.ziel.z };
@@ -128,11 +124,11 @@ function verbindungPruefen(v, liste, edition){
 }
 
 /** Konkreter Vorschlag, wenn eine Verbindung nicht passt */
-function portalEmpfehlung(v, p, liste, edition){
+function portalEmpfehlung(v, p, liste){
   if(p.gesamt === "ok") return null;
   const versetzt = { ...v, nether:{ ...p.ideal } };
   const schonIdeal = p.abweichung === 0 && (v.nether.y ?? null) === p.ideal.y;
-  if(!schonIdeal && verbindungPruefen(versetzt, liste, edition).gesamt === "ok")
+  if(!schonIdeal && verbindungPruefen(versetzt, liste).gesamt === "ok")
     return { art:"info", text:`Nether-Portal genau bei ${kurzKoord(p.ideal)} bauen – dann passt es in beide Richtungen. Das alte Nether-Portal danach ausschalten.` };
   return { art:"warn", text:"Auch am Idealpunkt klappt es nicht: Ein anderes Portal liegt zu nah. Die Portale weiter auseinander bauen oder das störende entfernen." };
 }
@@ -271,28 +267,26 @@ function sammelListeKarte(ctx){
 
 function portalKarte(ctx, id){
   const v = ctx.verbindungen.find((x) => x.id === id); if(!v) return null;
-  const edition = ctx.edition || "bedrock";
-  const p = verbindungPruefen(v, ctx.verbindungen, edition), e = portalEmpfehlung(v, p, ctx.verbindungen, edition);
+  const p = verbindungPruefen(v, ctx.verbindungen), e = portalEmpfehlung(v, p, ctx.verbindungen);
   const zeilen = [{ label:"Status", wert:p.label }];
   if(p.abweichung) zeilen.push({ label:"Abstand zum Idealpunkt", wert:`${p.abweichung} ${p.abweichung === 1 ? "Block" : "Blöcke"}` });
   const bloecke = [koordBlock("Oberwelt-Portal", v.oberwelt, "overworld"), koordBlock("Nether-Portal", v.nether, "nether"), { art:"zeilen", zeilen }];
   if(e) bloecke.push({ art:"text", text:e.text });
-  return { titel:v.name, unter:`Portal-Verbindung · Regeln ${PORTAL_REGELN[edition].label}`, bereich:"Portal-Verwaltung",
+  return { titel:v.name, unter:"Portal-Verbindung · Regeln Bedrock", bereich:"Portal-Verwaltung",
            quelle:`portal:${id}`, dimension:"nether", bloecke };
 }
 
 /** Alle Portal-Verbindungen der Welt mit Status und beiden Koordinaten */
 function portalListeKarte(ctx){
   if(!ctx.welt) return null;
-  const edition = ctx.edition || "bedrock";
   const kurz = (p) => `${zahl(p.x)} / ${zahl(p.z)}`;
   const zeilen = ctx.verbindungen.slice(0, 16).map((v) => ({ label:v.name.slice(0, 40),
-    wert:`${verbindungPruefen(v, ctx.verbindungen, edition).label} · O ${kurz(v.oberwelt)} ↔ N ${kurz(v.nether)}`.slice(0, 80) }));
+    wert:`${verbindungPruefen(v, ctx.verbindungen).label} · O ${kurz(v.oberwelt)} ↔ N ${kurz(v.nether)}`.slice(0, 80) }));
   const bloecke = [];
   for(let n = 0; n < zeilen.length; n += 8) bloecke.push({ art:"zeilen", zeilen:zeilen.slice(n, n + 8) });
   if(!bloecke.length) bloecke.push({ art:"text", text:"Noch keine Portal-Verbindung erfasst." });
   if(ctx.verbindungen.length > 16) bloecke.push({ art:"text", text:`… und ${ctx.verbindungen.length - 16} weitere` });
-  return { titel:"Portalverbindungen", unter:`Oberwelt ↔ Nether · Regeln ${PORTAL_REGELN[edition].label}`, bereich:"Portal-Verwaltung",
+  return { titel:"Portalverbindungen", unter:"Oberwelt ↔ Nether · Regeln Bedrock", bereich:"Portal-Verwaltung",
            quelle:"portalliste", dimension:"nether", bloecke };
 }
 

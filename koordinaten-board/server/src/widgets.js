@@ -49,8 +49,6 @@ function kontext(daten) {
     verbindungen: welt ? daten.portaleListe(welt.id) : [],
     banner: daten.bannerListe(),
     ruestung: daten.ruestungListe(),
-    // Die Portal-Regeln wählt jedes Handy für sich; am Board gilt Bedrock
-    edition: 'bedrock',
     standort: null,
     pngDaten,
   };
