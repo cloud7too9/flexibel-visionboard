@@ -90,6 +90,7 @@ Danach: Weltname und Seed bestätigen → **Biome lesen** (Fortschritt, Abbreche
 
 ## Sammelobjekte
 
+- **Reiter oben** (Wunsch von Max, 05.10.2026): **Besätze** · Scherben · Platten · Vorlagen. Im Reiter stehen kurze Namen, damit alle vier ohne Wischen passen; voller Name als Tooltip/Vorlesetext und im Untertitel. Töpferscherben, Musikplatten und Bannervorlagen sind erreichbar, haben aber noch keinen Inhalt: Sie zeigen „Bald verfügbar“, ohne Kopf, Liste und Filter (`SAM_REITER`, `sam.reiter`). Alles Folgende gilt für den Reiter Besätze
 - 18 Rüstungsbesätze + Netheritaufwertung mit den **Namen aus Bedrock** (`texts/de_DE.lang`, z. B. „Wächterzier“, „Mündelzier“), englischer Name klein daneben, Stand inkl. Fluss/Blitz aus 1.21
 - **Icon je Besatz**: die Schmiedevorlage aus `ruestungs-baukasten/vorlagen/` (`vorlageDatei()`), in der Liste und im Kopf des Details; offene blass
 - Gruppiert nach Fundort-Struktur, Karten nach Dimension eingefärbt; Fundort-Hinweis (Truhe, Seltsamer Kies, Tresor, Großer Wächter)

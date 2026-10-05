@@ -88,6 +88,31 @@ pruefe(zr.every((z) => z.gefunden === z.haken), "Haken nur bei gefundenen");
 pruefe(await p.$eval("#samUebersicht", (e) => e.scrollWidth <= e.clientWidth), "Übersicht passt ohne Scrollen in 390 px");
 await p.screenshot({ path: `${DIR}/s0-uebersicht.png`, clip: await p.$eval(".ach-header", (e) => { const r = e.getBoundingClientRect(); return { x: r.x - 4, y: r.y - 8, width: r.width + 8, height: r.height + 12 }; }) });
 
+// ---- Reiter: Rüstungsbesätze + neue Arten („Bald verfügbar“) -------------------------------------
+const reiter = () => p.$$eval("#samReiter .tab", (l) => l.map((t) => ({ key: t.dataset.samReiter, text: t.textContent.trim(), name: t.getAttribute("aria-label"), aktiv: t.classList.contains("active"), bald: (t.getAttribute("aria-label") || "").includes("bald verfügbar"),
+  rechts: Math.round(t.getBoundingClientRect().right), voll: t.scrollWidth <= t.clientWidth })));
+const sichtbar = (sel) => p.$eval(sel, (e) => !e.hidden && e.getBoundingClientRect().height > 0);
+let rt = await reiter();
+console.log("     Reiter:", rt.map((r) => r.text).join(" | "));
+pruefe(JSON.stringify(rt.map((r) => r.key)) === '["besaetze","scherben","platten","vorlagen"]', "4 Reiter: Rüstungsbesätze, Töpferscherben, Musikplatten, Bannervorlagen");
+pruefe(JSON.stringify(rt.map((r) => r.text)) === '["Besätze","Scherben","Platten","Vorlagen"]' && rt[1].name.startsWith("Töpferscherben"), "kurze Namen im Reiter, voller Name für Vorlesen und Tooltip");
+pruefe(rt[0].aktiv && !rt[0].bald && rt.slice(1).every((r) => r.bald && !r.aktiv), "Rüstungsbesätze aktiv, die drei neuen als „bald verfügbar“");
+pruefe(rt.every((r) => r.rechts <= 390 - 14 && r.voll), `alle 4 Reiter ganz sichtbar ohne Wischen (rechter Rand ${rt[3].rechts} px)`);
+pruefe(await p.$eval("#moduleSammel", (e) => e.scrollWidth <= e.clientWidth), "Reiter schieben die Seite nicht seitlich");
+await p.screenshot({ path: `${DIR}/s0-reiter.png` });
+for (const [key, name] of [["scherben", "Töpferscherben"], ["platten", "Musikplatten"], ["vorlagen", "Bannervorlagen"]]) {
+  await p.click(`#samReiter [data-sam-reiter="${key}"]`); await warte();
+  const bald = await text("#samBald");
+  pruefe(await sichtbar("#samBald") && bald.includes("Bald verfügbar") && bald.includes(name), `${name}: erreichbar, zeigt „Bald verfügbar“`);
+  pruefe(!(await sichtbar("#samKopf")) && !(await sichtbar("#samListe")) && !(await sichtbar("#samFilterBtn")), `${name}: kein Kopf, keine Liste, kein Filter`);
+  pruefe((await text("#orteSub")) === `${name} · bald verfügbar`, `${name}: Untertitel „bald verfügbar“`);
+  pruefe((await reiter()).find((r) => r.key === key).aktiv, `${name}: Reiter aktiv`);
+  if (key === "scherben") await p.screenshot({ path: `${DIR}/s0-bald.png` });
+}
+await p.click('#samReiter [data-sam-reiter="besaetze"]'); await warte();
+pruefe(await sichtbar("#samKopf") && await sichtbar("#samListe") && await sichtbar("#samFilterBtn") && !(await sichtbar("#samBald")), "zurück zu Rüstungsbesätze: Kopf, Liste und Filter wieder da");
+pruefe((await zier()).length === 18 && (await text("#orteSub")).includes("/ 18 gefunden"), "Übersicht und Untertitel wie vorher");
+
 // ---- Filter-Knopf in der Bottom-Bar → Sheet ---------------------------------------------------
 const knopf = () => p.$eval("#samFilterBtn", (e) => ({ lab: e.querySelector(".lab").textContent, aktiv: e.classList.contains("active") }));
 const eintraege = () => p.$$eval("#samListe .sam-item", (l) => l.map((e) => e.classList.contains("earned")));

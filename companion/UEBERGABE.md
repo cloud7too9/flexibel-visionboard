@@ -74,6 +74,10 @@ Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmode
 ### Sammelobjekte ✅
 
 - Zurzeit nur **Rüstungsbesätze zum Abhaken plus Fundort**: 18 Besätze einschließlich Fluss und Blitz, dazu die Netheritaufwertung. Gruppiert nach Fundort-Struktur.
+- **Überarbeitung mit Max (05.10.2026, Branch `bereich/sammelobjekte`)**:
+  - Reiter oben: Besätze · Scherben · Platten · Vorlagen. **Töpferscherben, Musikplatten und Bannervorlagen** sind erreichbar, zeigen aber nur „Bald verfügbar“. Inhalt und Datenmodell dafür sind noch nicht besprochen.
+  - Zier-Übersicht im Kopf: alle 18 Besätze, je 2 untereinander, Haken über dem Symbol, Tippen → Detail.
+  - Filter als Knopf in der Bottom-Bar (Sheet: Alle, Noch offene, Gefunden) statt der drei Pillen.
 - **Namen wie in Bedrock** (Entscheidung von Max, 29.09.2026): aus `texts/de_DE.lang`, z. B. „Wächterzier“, „Mündelzier“, „Wilde Zier“; der englische Name steht klein daneben. Vorher standen die Java-Wiki-Namen da („Wachen“, „Warthof“ …).
 - **Icon je Besatz** ist die Schmiedevorlage aus `ruestungs-baukasten/vorlagen/` (Liste und Detail-Kopf, offene blass).
 - Abhaken gilt **für die ganze Welt** und merkt sich, wer es wann gefunden hat.
@@ -246,7 +250,7 @@ Der Bereich Rüstung liegt auf `bereich/ruestung` (zweigt von `bereich/banner-sc
 cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist (three.js für die 3D-Tests kommt mit npm install)
-npm test                          # biom-dekoder (18, node --test) + banner (23) + portale (29) + sammelobjekte (89) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (52) + karte-mcworld (52) + anzeige-link (15) = 424 Prüfungen + 18 Tests
+npm test                          # biom-dekoder (18, node --test) + banner (23) + portale (29) + sammelobjekte (108) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (52) + karte-mcworld (52) + anzeige-link (15) = 443 Prüfungen + 18 Tests
 ```
 
 - `board.test.mjs`, `live.test.mjs` und `anzeigeschema.test.mjs` starten je ein **echtes Koordinaten-Board** (Ports 3198, 3195, 3194, eigener Datenordner); Anzeigeschema und Rüstung liefern die Companion zusätzlich selbst über http aus (3193, 3192). Board-Test: Companion über einen eigenen `http://localhost`-Server (DEMO) mit Kamera, Foto, Hand-Eingabe und „Aufs Board“. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).
