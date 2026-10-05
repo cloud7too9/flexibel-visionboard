@@ -39,7 +39,7 @@ Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-
 
 Neue Bereiche: Eintrag in `BEREICHE` + Icon in `ICON`. Ohne `mount()` zeigt die Sidebar den Bereich als „geplant“.
 Die Details jedes Bereichs werden einzeln festgelegt. Reihenfolge: Banner ✓ → Portal-Verwaltung ✓ → Rüstung ✓ → Handbuch, Baupläne.
-`entwuerfe/banner-ruestung.js` ist überholt (Banner und Rüstung sind eingebaut); die Verzauberungs-Pläne daraus stecken jetzt in der Rüstung.
+`entwuerfe/banner-ruestung.js` ist überholt (Banner und Rüstung sind eingebaut); die Verzauberungs-Pläne daraus lagen bis 05.10.2026 in der Rüstung und warten jetzt in `entwuerfe/handbuch-verzauberung.js` aufs Handbuch.
 
 ## Dashboard-Ansichten (später)
 
@@ -107,13 +107,13 @@ Danach: Weltname und Seed bestätigen → **Biome lesen** (Fortschritt, Abbreche
 
 Rüstungs-Sets wie in den Vorlagen (`referenz/ruestung/`): je Teil **Vorlage + Rüstung + Material** am Schmiedetisch. Grundlage ist der **Rüstungs-Baukasten** (`ruestungs-baukasten/`, Bedrock-Texturen aus Mojangs `bedrock-samples`, Regeln in dessen `LIESMICH.md`).
 
-- **Sets gelten für alle Welten** (wie Banner), alle im Raum sehen und bearbeiten dieselben. Ein Set hat bis zu vier Teile (Helm, Harnisch, Beinschutz, Stiefel); je Teil Rüstung (Leder, Kette, Kupfer, Eisen, Gold, Diamant, Netherit, Schildkröte nur als Helm), Rüstungsbesatz + Material (11 Materialien), Lederfarbe (16 Farbstoffe oder ungefärbt) und verzaubert ja/nein
+- **Sets gelten für alle Welten** (wie Banner), alle im Raum sehen und bearbeiten dieselben. Ein Set hat bis zu vier Teile (Helm, Harnisch, Beinschutz, Stiefel); je Teil Rüstung (Leder, Kette, Kupfer, Eisen, Gold, Diamant, Netherit, Schildkröte nur als Helm), Rüstungsbesatz + Material (11 Materialien), Lederfarbe (16 Farbstoffe oder ungefärbt). **Verzauberungen gibt es in der Rüstung nicht mehr** (Entscheidung von Max, 05.10.2026): Sie kommen ins Handbuch, der bisherige Stand liegt in `entwuerfe/handbuch-verzauberung.js`
 - **Besätze der Welt**: Was das Set braucht, wird mit den Sammelobjekten der aktuellen Welt abgeglichen – in der Liste „2/3 gefunden“, im Detail je Teil „✓ In dieser Welt gefunden · Lena“ oder „Fehlt noch · Pfadruinen ›“ (springt zum Sammelobjekt)
-- **Liste** (Wunsch von Max, 05.10.2026): links das **Set auf dem Ständer** vor dem Block der Dimension (wie die Bühne im Detail; 3D-Aufnahme je Set, zwischengespeichert nach Teilen + Dimension, ohne three.js die 2D-Figur, als Datei die vier Icons – `staenderFoto`, `staenderFotosLaden`). Rechts je Teil ein Chip wie am Schmiedetisch: **Rüstungsteil · Ziervorlage · Rohstoff** (`teilChipHtml`; gefundene Vorlage hervorgehoben, fehlende blass, ohne Besatz freie Slots). Darunter der Stand „2/3 gefunden“
-- **Detail**: Figur auf dem Rüstungsständer, darunter je Teil der Schmiedetisch (Vorlage + Rüstung + Material → Ergebnis), „Du brauchst“ (Vorlagen gezählt mit Stand, Netheritaufwertungen, Materialien, Hinweis zum Vervielfältigen), Verzaubern am Amboss (Pläne mit wenig XP, Schritte abhaken nur auf dem Gerät), Aufs Board, Bearbeiten, Löschen (zweimal tippen)
-- **Editor = Schmiedetisch**: oben die Figur (bleibt stehen), Reiter für die vier Teile, darunter die drei Slots. Ein Slot öffnet sein Raster: Vorlagen (✓ = in dieser Welt gefunden), Rüstungen, Materialien. Nach der Vorlage geht es gleich zum Material. Bei Leder die Farben, dazu der Schalter „Verzaubert“
+- **Liste** (Wunsch von Max, 05.10.2026): links das **Set auf dem Ständer** vor dem Block der Dimension (wie die Bühne im Detail; 3D-Aufnahme je Set, zwischengespeichert nach Teilen + Dimension, ohne three.js die 2D-Figur, als Datei die vier Icons – `staenderFoto`, `staenderFotosLaden`). Rechts je Teil ein Chip wie am Schmiedetisch: **Rüstungsteil · Ziervorlage · Rohstoff** (`teilChipHtml`; das Rüstungsteil als Grundform ohne Besatz, Leder in seiner Farbe; gefundene Vorlage hervorgehoben, fehlende blass, ohne Besatz freie Slots). Darunter der Stand „2/3 gefunden“
+- **Detail**: Figur auf dem Rüstungsständer, darunter je Teil der Schmiedetisch (Vorlage + Rüstung + Material → Ergebnis), „Du brauchst“ (Vorlagen gezählt mit Stand, Netheritaufwertungen, Materialien, Hinweis zum Vervielfältigen), Aufs Board, Bearbeiten, Löschen (zweimal tippen)
+- **Editor = Schmiedetisch**: oben die Figur (bleibt stehen), Reiter für die vier Teile, darunter die drei Slots. Ein Slot öffnet sein Raster: Vorlagen (✓ = in dieser Welt gefunden), Rüstungen, Materialien. Nach der Vorlage geht es gleich zum Material. Bei Leder die Farben
 - **Figur**, je nachdem, was geht:
-  - **3D** (über http, three.js r128 vom CDN): `figur3d.js` – drehbar per Ziehen, Rüstungsständer oder Steve, Sockel und Hintergrund der Dimension (Oberwelt, Nether, End; auf dem Gerät gemerkt), verzauberte Teile schimmern
+  - **3D** (über http, three.js r128 vom CDN): `figur3d.js` – drehbar per Ziehen, Rüstungsständer oder Steve, Sockel und Hintergrund der Dimension (Oberwelt, Nether, End; auf dem Gerät gemerkt)
   - **2D** (über http ohne three.js, z. B. ohne Internet): flache Figur aus `baukasten.js`, antippen dreht sie um
   - **Nur Icons** (als Datei geöffnet): Canvas-Pixel und ES-Module sind bei `file://` gesperrt, deshalb zeigt die Bühne die vier Icons
 - **Icons** kommen immer aus `fertig/items/` (1116 vorgerenderte Kombinationen, `<ruestung>_<teil>[_<farbe|standard>][__<material>].png`) – das geht auch als Datei. Das Inventar-Icon zeigt wie im Spiel nur die Besatz-Farbe, das Muster sieht man an der Figur
@@ -180,7 +180,7 @@ Inhalte groß auf die Anzeige im Zimmer werfen, wie bei Chromecast. Die Karte li
 | Sammel-Fortschritt | `sammelstand` | Bottom-Bar der Sammelobjekte | gefunden, Fortschritt, Fundorte auf der Karte, was noch offen ist |
 | Portal-Verbindung | `portal:<id>` | Portal-Detail | beide Portale mit Dimension, Status, Abstand zum Idealpunkt, Vorschlag |
 | Banner-Bauplan | `banner:<id>` | Banner-Detail | Vorschau als Bild (pixelgenau), Material, Bannervorlagen |
-| Rüstungs-Set | `ruestung:<id>` | Rüstungs-Detail | Figur als Bild (3D-Aufnahme, sonst 2D; als Datei ohne Bild), je Teil Besatz · Material · Farbe · verzaubert, welche Besätze in der Welt noch fehlen |
+| Rüstungs-Set | `ruestung:<id>` | Rüstungs-Detail | Figur als Bild (3D-Aufnahme, sonst 2D; als Datei ohne Bild), je Teil Besatz · Material · Farbe, welche Besätze in der Welt noch fehlen |
 | Alle Sammelobjekte | `sammelliste` | – (Widget) | alle Besätze mit gefunden von oder Fundort, je Dimension ein Block |
 | Portalverbindungen | `portalliste` | – (Widget) | jede Verbindung mit Status und beiden Koordinaten |
 | Gesamtkarte | `welt` | – (Widget) | Orte je Dimension und angeheftete Orte, bis die Karte einen eigenen Block hat |
@@ -253,7 +253,7 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 
 `banner = { id, name, basis, ebenen:[{ muster, farbe }], von, am }` (Farb- und Muster-IDs wie im Spiel, z. B. `light_blue`, `stripe_bottom`)
 
-`set = { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster|null, material|null, farbe|null, verzaubert } | null }, von, am }` (IDs wie im Rüstungs-Baukasten, `muster` = ID des Sammelobjekts)
+`set = { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster|null, material|null, farbe|null } | null }, von, am }` (IDs wie im Rüstungs-Baukasten, `muster` = ID des Sammelobjekts)
 
 `typ = { id, kategorie, variante|null }` · `instanz = { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, von, am }` · `quelle = "screenshot" | "manuell"`
 

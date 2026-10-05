@@ -53,9 +53,11 @@ try {
     `Liste: ${karten.map((k) => k.join(" ")).join(" | ")}`);
   pruefe(await alleIconsGeladen("#ruestungListe"), "Alle Rüstungs-Icons geladen (fertig/items)");
   const icons = await p.$$eval('[data-set="r_3"] .chip-ruestung img', (l) => l.map((i) => i.src.split("/").pop()));
-  pruefe(icons.join() === "turtle_helmet__lapis.png,leather_chestplate_cyan.png,leather_leggings_blue__diamond.png,empty_armor_slot_boots.png",
-    `Icons nach Schema <ruestung>_<teil>[_<farbe>][__<material>]: ${icons.join(", ")}`);
-  pruefe((await p.$$('[data-set="r_1"] .glanz-schicht')).length === 4, "Verzauberte Teile schimmern");
+  pruefe(icons.join() === "turtle_helmet.png,leather_chestplate_cyan.png,leather_leggings_blue.png,empty_armor_slot_boots.png",
+    `Rüstungsteile als Grundform (ohne Besatz, Leder in seiner Farbe): ${icons.join(", ")}`);
+  const umbreonTeile = await p.$$eval('[data-set="r_2"] .chip-ruestung img', (l) => l.map((i) => i.src.split("/").pop()));
+  pruefe(umbreonTeile.join() === "netherite_helmet.png,netherite_chestplate.png,netherite_leggings.png,netherite_boots.png", "Umbreon: Netherit-Teile als Grundform");
+  pruefe((await p.$$("#ruestungListe .glanz-schicht, #ruestungListe .glanz")).length === 0, "keine Verzauberung mehr: kein Schimmer in der Liste");
 
   // Karte: je Teil Rüstungsteil · Ziervorlage · Rohstoff
   const chips = (set) => p.$$eval(`[data-set="${set}"] .teil-chip`, (l) => l.map((c) => ({
@@ -133,13 +135,9 @@ try {
   const zumSammel = await p.$('.besatz-status.fehlt[data-id="host"]');
   await p.evaluate(() => { $sheet.scrollTop = $sheet.scrollHeight; });
   await p.waitForTimeout(250);
-  await p.click('[data-aktion="verz-auf"][data-teil-id="boots"]');
-  await p.waitForTimeout(300);
-  pruefe(await p.$$eval('.amboss[data-teil-id="boots"]', (l) => l.length) === 6, "Verzauberung Stiefel: 6 Amboss-Schritte");
-  await p.click('.amboss[data-teil-id="boots"][data-n="0"]');
-  await p.waitForTimeout(200);
-  pruefe(JSON.stringify(await p.evaluate(() => lsLesen("ruestung.schritte.r_2.boots"))) === "[0]", "Amboss-Schritt abgehakt (nur dieses Gerät)");
-  await bild("detail-verzauberung");
+  const detailText = await p.textContent("#orteSheetInhalt");
+  pruefe(!/verzaub|Amboss/i.test(detailText) && (await p.$$(".amboss, .verz, [data-aktion^='verz']")).length === 0, "Detail: keine Verzauberung, kein Amboss mehr");
+  await bild("detail-ende");
   pruefe(zumSammel !== null, "Knopf zum Sammelobjekt vorhanden");
   await p.evaluate(() => { $sheet.scrollTop = 0; });
   await p.click('.besatz-status.fehlt[data-id="host"]');
@@ -149,7 +147,6 @@ try {
   // ---- Editor: Schmiedetisch --------------------------------------------------------
   await p.evaluate(() => alleSchliessen());
   await p.waitForTimeout(300);
-  pruefe(await p.evaluate(() => fig.glanzTimer === null), "Sheet zu → Schimmer-Takt der Figur hält an");
   await p.click("#ruestungNeuBtn");
   await p.waitForTimeout(600);
   const slotIcon = () => p.$eval(".schmiedetisch .slot.ergebnis img", (i) => i.src.split("/").pop());
@@ -173,8 +170,8 @@ try {
   await p.click('[data-wahl-ruestung="leather"]');
   await p.click('[data-wahl-farbe="red"]');
   pruefe(await slotIcon() === "leather_chestplate_red.png", "Lederjacke rot gefärbt");
-  await p.click("[data-wahl-verzaubert]");
-  pruefe(await p.evaluate(() => rs.entwurf.teile.chestplate.verzaubert === false), "Verzaubert umgeschaltet");
+  pruefe(await p.$("[data-wahl-verzaubert]") === null && !/verzaub/i.test(await p.textContent("#orteSheetInhalt")), "Editor: kein Schalter „Verzaubert“ mehr");
+  pruefe(await p.evaluate(() => Object.values(rs.entwurf.teile).every((t) => !t || !("verzaubert" in t))), "Entwurf ohne Feld „verzaubert“");
   await p.waitForTimeout(700);
   await bild("editor-leder");
   await p.click('[data-teil-wahl="leggings"]');
@@ -190,6 +187,7 @@ try {
   const neu = await p.evaluate(() => rs.sets[0]);
   pruefe(neu.name === "Wache" && neu.von === "Max" && neu.teile.leggings === null && neu.teile.helmet.muster === "sentry" && neu.teile.chestplate.farbe === "red",
     "Gespeichert: Wache (Wächterzier-Helm, rote Lederjacke, ohne Beinschutz)");
+  pruefe(Object.values(neu.teile).every((t) => !t || !("verzaubert" in t)), "Gespeichertes Set ohne Feld „verzaubert“");
   pruefe((await p.textContent("#orteSheetInhalt")).includes("Alle Rüstungsbesätze sind in dieser Welt gefunden"), "Wächterzier ist gefunden → alle Besätze da");
 
   // Bearbeiten, Abbrechen, Löschen (zweimal tippen)
@@ -210,7 +208,7 @@ try {
   pruefe(karte.bloecke[0].art === "bild" && /^data:image\/(png|webp);base64,/.test(karte.bloecke[0].daten) && karte.bloecke[0].pixelig === false,
     `Karte: 3D-Aufnahme als Bild (${Math.round(karte.bloecke[0].daten.length / 1024)} KB Base64)`);
   pruefe(karte.bloecke[1].zeilen.map((z) => z.label).join() === "Netherithelm,Netheritharnisch,Netheritbeinschutz,Netheritstiefel"
-    && karte.bloecke[1].zeilen[0].wert === "Augenzier · Redstone · verzaubert", `Karte: Zeilen je Teil (${karte.bloecke[1].zeilen[0].label}: ${karte.bloecke[1].zeilen[0].wert})`);
+    && karte.bloecke[1].zeilen[0].wert === "Augenzier · Redstone", `Karte: Zeilen je Teil (${karte.bloecke[1].zeilen[0].label}: ${karte.bloecke[1].zeilen[0].wert})`);
   pruefe(karte.bloecke[2].text.includes("2 von 3") && karte.bloecke[2].text.includes("Hüterzier (Pfadruinen)"), "Karte: fehlende Besätze mit Fundort");
 
   pruefe(fehler.length === 0, `Keine Fehler in der Konsole${fehler.length ? ": " + fehler.join(" | ") : ""}`);

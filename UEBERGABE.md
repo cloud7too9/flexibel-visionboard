@@ -79,7 +79,7 @@ Was wohin gehört:
 | Zweck | Die App am Handy: Karte, Sammelobjekte, Portale, Banner, Rüstung, später Handbuch, Baupläne | **Server der Companion** (Daten, OCR, Live-Sync) und Anzeige im Zimmer |
 | Technik | eine HTML-Seite + `regeln.js`, Vanilla JS, kein Build; live vom Board ausgeliefert, sonst DEMO-Mock | Fastify 5, Vite + React 19 + TypeScript (nur Anzeige), JSON-Speicher, tesseract.js |
 | Stand | 5 von 7 Bereichen umgesetzt, Handbuch und Baupläne offen; Welt-Import; nur Bedrock | Server der Companion; Widget-Dashboard unter `/dashboard` (A0–A6); Accounts mit PIN (B1, B2) |
-| Tests | Playwright: 14 Dateien mit 547 Prüfungen, dazu 20 Dekoder-Tests (`companion/tests`); Widgets: 108 Unit-Tests | `node --test`: 57 Tests (Daten, API, Regeln, Erkennung, Karten, Identität …) |
+| Tests | Playwright: 14 Dateien mit 548 Prüfungen, dazu 20 Dekoder-Tests (`companion/tests`); Widgets: 108 Unit-Tests | `node --test`: 57 Tests (Daten, API, Regeln, Erkennung, Karten, Identität …) |
 | CI | alle Tests bei jedem PR und Push auf `main` (`.github/workflows/tests.yml`) | ← dieselbe CI |
 
 ---

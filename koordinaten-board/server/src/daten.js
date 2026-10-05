@@ -35,7 +35,7 @@ const leer = () => ({
   instanzen: [],     // { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, von, am, geaendert? }
   sammel: {},        // { [weltId]: { [objektId]: { von, am } } }
   banner: [],        // { id, name, basis, ebenen, von, am }
-  ruestung: [],      // { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster, material, farbe, verzaubert }|null }, von, am }
+  ruestung: [],      // { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster, material, farbe }|null }, von, am }
   portale: [],       // { id, weltId, name, oberwelt, nether, von, am }
   anzeigen: [],      // { id, name, schluessel, am, reihen?, layout? } – Geräte, die als Anzeige laufen dürfen (Anzeige-Link), mit ihrem Widget-Layout
   einstellungen: { ...STANDARD_EINSTELLUNGEN },

@@ -106,7 +106,7 @@ test('Sammelobjekte, Portale, Banner', () => {
   assert.deepEqual(b.ebenen, [{ muster: 'cross', farbe: 'red' }]);
   wirft(() => d.bannerAendern(b.id, { name: 'x', basis: 'lila', ebenen: [] }), 422, 'Unbekannte Grundfarbe');
 
-  const r = d.ruestungAnlegen({ name: 'Amethyst', teile: { helmet: { ruestung: 'iron', muster: 'eye', material: 'amethyst', verzaubert: true } } }, 'Lena');
+  const r = d.ruestungAnlegen({ name: 'Amethyst', teile: { helmet: { ruestung: 'iron', muster: 'eye', material: 'amethyst' } } }, 'Lena');
   assert.deepEqual([r.id.startsWith('r_'), r.von, r.teile.helmet.material, r.teile.boots], [true, 'Lena', 'amethyst', null]);
   wirft(() => d.ruestungAendern(r.id, { name: 'x', teile: { boots: { ruestung: 'turtle' } } }), 422, 'Schildkröte gibt es nur als Schildkrötenpanzer');
   assert.equal(d.ruestungAendern(r.id, { name: 'Neu', teile: { boots: { ruestung: 'gold' } } }).teile.helmet, null);

@@ -157,7 +157,7 @@ try {
   await lena.evaluate(() => modulWechseln("ruestung"));
   pruefe(await warteAuf(max, () => rs.geladen && document.querySelector("#ruestungListe .empty-list")), "Rüstung: noch keine Sets");
   await lena.evaluate(() => api("/ruestung", { method: "POST", body: JSON.stringify({ name: "Rippen-Set", teile: {
-    helmet: { ruestung: "netherite", muster: "rib", material: "gold", verzaubert: true }, boots: { ruestung: "iron", muster: "eye", material: "amethyst" } } }) }));
+    helmet: { ruestung: "netherite", muster: "rib", material: "gold" }, boots: { ruestung: "iron", muster: "eye", material: "amethyst" } } }) }));
   pruefe(await warteAuf(max, () => rs.sets[0]?.name === "Rippen-Set" && rs.sets[0].von === "Lena"), "Max sieht Lenas Rüstungs-Set live");
   pruefe(await warteAuf(max, () => document.querySelector(".ruestung-karte .pill")?.textContent.trim() === "1/2 gefunden"), "Rippenzier ist in dieser Welt gefunden → 1/2");
   await max.click(".ruestung-karte");

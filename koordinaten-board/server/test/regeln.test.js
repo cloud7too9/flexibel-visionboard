@@ -66,14 +66,14 @@ test('Rüstungs-Sets: dieselben Regeln wie in der Companion', () => {
   assert.equal(regeln.ruestungPruefen({ name: 'x', teile: { helmet: { ...helm, material: null } } }), 'Helm: Material für den Besatz fehlt');
   assert.equal(regeln.ruestungPruefen({ name: 'x', teile: { helmet: { ...helm, muster: 'netherite' } } }), 'Helm: Unbekannter Rüstungsbesatz');
   assert.equal(regeln.ruestungPruefen({ name: 'x', teile: { helmet: { ruestung: 'leather', farbe: 'lila' } } }), 'Helm: Unbekannte Farbe');
-  // Material ohne Besatz und Farbe bei Netherit fallen weg, fehlende Teile werden null
+  // Material ohne Besatz, Farbe bei Netherit und das alte Feld „verzaubert“ fallen weg, fehlende Teile werden null
   assert.deepEqual(JSON.parse(JSON.stringify(regeln.ruestungSauber({ ...set, name: ' Amethyst ', extra: 1 }))), {
     name: 'Amethyst',
     teile: {
-      helmet: { ruestung: 'netherite', muster: 'eye', material: 'amethyst', farbe: null, verzaubert: true },
+      helmet: { ruestung: 'netherite', muster: 'eye', material: 'amethyst', farbe: null },
       chestplate: null,
       leggings: null,
-      boots: { ruestung: 'leather', muster: null, material: null, farbe: 'red', verzaubert: false },
+      boots: { ruestung: 'leather', muster: null, material: null, farbe: 'red' },
     },
   });
 });

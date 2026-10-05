@@ -69,7 +69,7 @@ const BEISPIELE: Record<string, Karte> = {
   "ruestung.set": {
     titel: "Amethyst", unter: "Rüstungs-Set · 2 Teile", bloecke: [
       { art: "zeilen", zeilen: [
-        { label: "Diamantbrustplatte", wert: "Stillezier · Amethyst · verzaubert" },
+        { label: "Diamantbrustplatte", wert: "Stillezier · Amethyst" },
         { label: "Schildkrötenpanzer", wert: "ohne Besatz" },
       ] },
     ],

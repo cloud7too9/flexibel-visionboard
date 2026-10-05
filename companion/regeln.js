@@ -270,7 +270,7 @@ const ruestungSauber = (s) => ({
     if(t == null) return [id, null];
     const muster = t.muster ?? null;
     return [id, { ruestung:t.ruestung, muster, material:muster ? t.material : null,
-                  farbe:ruestungsArt(t.ruestung).faerbbar ? t.farbe ?? null : null, verzaubert:Boolean(t.verzaubert) }];
+                  farbe:ruestungsArt(t.ruestung).faerbbar ? t.farbe ?? null : null }];
   })),
 });
 
