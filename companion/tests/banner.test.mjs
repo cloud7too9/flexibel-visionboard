@@ -34,47 +34,94 @@ await p.click('[data-banner="b_4"]');
 await warte();
 const detail = await p.$eval("#orteSheetInhalt", (e) => e.innerText);
 pruefe(detail.includes("Türkise Wolle") && detail.includes("Fluss-Bannervorlage") && detail.includes("Mauerung-Bannervorlage"), "Detail: Material + Vorlagen");
-pruefe(await p.$$eval(".schritt", (l) => l.length) === 4, "Detail: 4 Schritte (Banner + 3 Ebenen)");
+pruefe(await p.$$eval(".bstufe", (l) => l.length) === 4, "Detail: 4 Schritte (Banner + 3 Muster)");
+// Layout wie die Vorlage von Max: links das Banner, rechts die Schritte mit Rezept
+const lage = await p.evaluate(() => {
+  const r = (s) => document.querySelector(s).getBoundingClientRect();
+  return { bild: r(".banner-anleitung-bild"), stufen: r(".banner-stufen") };
+});
+pruefe(lage.bild.right <= lage.stufen.left && Math.abs(lage.bild.top - lage.stufen.top) < 12, "Banner links, Schritte rechts daneben");
+const stufen = await p.$$eval(".bstufe", (l) => l.map((z) => ({
+  nr: z.querySelector(".bstufe-nr").textContent, titel: z.querySelector(".bstufe-text b").textContent,
+  werkbank: [...z.querySelectorAll(".rezept-werkbank .rslot")].map((x) => x.querySelector("img")?.src.split("/").pop() || ""),
+  webstuhl: [...z.querySelectorAll(".rezept-webstuhl .rslot")].map((x) => { const q = x.querySelector("img")?.getAttribute("src") || ""; return q.startsWith("data:") ? "banner" : q.split("/").pop(); }),
+})));
+console.log("     Schritte:", stufen.map((x) => `${x.nr} ${x.titel}`).join(" | "));
+pruefe(stufen[0].werkbank.join() === "wolle_cyan.png,wolle_cyan.png,wolle_cyan.png,wolle_cyan.png,wolle_cyan.png,wolle_cyan.png,,stock.png,", "Schritt 1: Werkbank 3 × 3 mit 6 Türkiser Wolle + Stock");
+pruefe(stufen[1].webstuhl[0] === "banner" && stufen[1].webstuhl[1] === "farbstoff_gray.png" && stufen[1].webstuhl[2] === "bannervorlage.png", "Schritt 2: Webstuhl Banner + Grauer Farbstoff + Bannervorlage");
+pruefe(stufen[3].webstuhl[1] === "farbstoff_black.png" && stufen[3].webstuhl[2] === "", "Schritt 4 (Bord): ohne Vorlage");
+pruefe(await p.$$eval("#orteSheetInhalt img.item-bild", (l) => l.length > 10 && l.every((i) => i.naturalWidth === 16)), "Bedrock-Icons (Wolle, Stock, Farbstoffe, Vorlage) geladen");
+pruefe(await p.$eval("#orteSheet", (e) => e.scrollWidth <= e.clientWidth), "Detail ohne seitliches Scrollen bei 390 px");
 await p.screenshot({ path: `${DIR}/b2-detail.png` });
-await p.click('.schritt[data-n="0"]'); await warte(150);
-await p.click('.schritt[data-n="1"]'); await warte(150);
+await p.click('.bstufe[data-n="0"]'); await warte(150);
+await p.click('.bstufe[data-n="1"]'); await warte(150);
+pruefe(await p.$eval('.bstufe[data-n="1"] .bstufe-nr', (e) => e.textContent) === "✓", "abgehakter Schritt zeigt ✓");
 console.log("     Stand:", await p.$eval("#orteSheetInhalt .field-group-label", (e) => e.textContent), await p.evaluate(() => localStorage.getItem("banner.schritte.b_4")));
 pruefe((await p.$eval("#orteSheetInhalt", (e) => e.textContent)).includes("2/4 erledigt"), "Schritte abhaken → 2/4");
 await p.evaluate(() => document.getElementById("orteSheet").scrollTo(0, 9999)); await warte(150);
 await p.screenshot({ path: `${DIR}/b3-detail-unten.png` });
 
-// Bearbeiten: Ebene ändern → Haken werden zurückgesetzt
+// Editor in 7 Schritten: 1 = Banner (Grundfarbe), 2–7 = Muster; freie Schritte nur am Ende
+const leiste = () => p.$$eval(".bschritt", (l) => l.map((b) => ({ n: Number(b.dataset.n), voll: b.classList.contains("voll"), aktiv: b.classList.contains("aktiv"), aus: b.disabled, label: b.getAttribute("aria-label") })));
+const schrittTitel = () => p.$eval(".schritt-wahl .field-group-label, .orte-inhalt > .field-group .field-group-label", (e) => e.textContent.replace(/\s+/g, " ").trim());
 await p.click('[data-aktion="banner-bearbeiten"]'); await warte();
 pruefe(await p.$eval("#bannerName", (e) => e.value) === "Prüfungskammer", "Editor mit Namen gefüllt");
-await p.click('[data-aktion="ebene-auf"][data-n="1"]'); await warte();
+let ls = await leiste();
+pruefe(ls.length === 7, `7 Schritte in der Leiste (${ls.length})`);
+pruefe(ls[0].aktiv && ls[0].label.includes("Banner, Türkis"), "Start bei Schritt 1: Banner in Türkis");
+pruefe(ls.slice(0, 4).every((x) => x.voll) && !ls[4].voll && !ls[4].aus && ls[5].aus && ls[6].aus, "Schritte 1–4 belegt, 5 frei und wählbar, 6–7 gesperrt");
+pruefe(await p.$$eval(".bschritt.voll .banner-bild", (l) => l.length) === 4, "belegte Schritte zeigen ihren Zwischenstand");
+pruefe((await schrittTitel()).startsWith("Schritt 1 · Banner"), "Schritt 1: Grundfarbe wählen");
+await p.click('.bschritt[data-n="3"]'); await warte();
+pruefe((await schrittTitel()).startsWith("Schritt 3 · Fluss"), `Schritt 3 zeigt Fluss (${await schrittTitel()})`);
+await p.click('.schritt-wahl [data-farbe="red"]'); await warte(150);
+await p.click('.schritt-wahl [data-muster="skull"]'); await warte(150);
+pruefe((await leiste())[2].label.includes("Schädel, Rot"), "Schritt 3 → Schädel in Rot");
 await p.screenshot({ path: `${DIR}/b4-editor-offen.png` });
-await p.click('.ebene-wahl [data-farbe="red"]'); await warte(150);
-await p.click('.ebene-wahl [data-muster="skull"]'); await warte(150);
-const ebene1 = await p.$eval('.ebene.offen .ebene-text', (e) => e.innerText);
-pruefe(ebene1.includes("Schädel") && ebene1.includes("Rot"), "Ebene 2 → Schädel in Rot");
-await p.click('[data-aktion="ebene-hoch"][data-n="1"]'); await warte(150);
-pruefe((await p.$eval('.ebene:first-child .ebene-text b', (e) => e.textContent)) === "Schädel", "Ebene nach oben verschoben");
+await p.click('.bschritt[data-n="2"]'); await warte();
+pruefe((await p.$eval('[data-aktion="bschritt-leeren"]', (e) => e.textContent)).includes("rücken nach"), "Leeren-Knopf sagt, dass spätere nachrücken");
+await p.click('[data-aktion="bschritt-leeren"]'); await warte(150);
+ls = await leiste();
+pruefe(ls[1].label.includes("Schädel") && ls[2].label.includes("Bord") && !ls[3].voll && ls[4].aus, "Schritt 2 geleert → Schädel und Bord rücken nach, Schritt 4 frei");
 await p.click('[data-aktion="banner-speichern"]'); await warte(500);
 pruefe(await p.evaluate(() => st.sheet) === "banner", "Nach Speichern: Detail offen");
-pruefe((await p.$eval("#orteSheetInhalt", (e) => e.textContent)).includes("0/4 erledigt"), "Muster geändert → Haken zurückgesetzt");
-pruefe((await p.$eval("#orteSheetInhalt", (e) => e.innerText)).includes("Schädel-Bannervorlage"), "Neue Vorlage im Detail");
+let txt = await p.$eval("#orteSheetInhalt", (e) => e.innerText);
+pruefe((await p.$eval("#orteSheetInhalt", (e) => e.textContent)).includes("0/3 erledigt"), "Muster geändert → Haken zurückgesetzt, 3 Schritte");
+pruefe(txt.includes("Schädel-Bannervorlage") && !txt.includes("Mauerung-Bannervorlage"), "Detail: Schädel-Vorlage neu, Mauerung weg");
 
-// Neuer Banner: Name fehlt → Fehler, dann 7 Ebenen versuchen
+// Neuer Banner: Name fehlt → Fehler; Schritte nacheinander, gesperrt bis der davor belegt ist
 await p.click('[data-aktion="schliessen"]'); await warte();
 await p.click("#bannerNeuBtn"); await warte();
+ls = await leiste();
+pruefe(ls[0].aktiv && !ls[1].voll && !ls[1].aus && ls.slice(2).every((x) => x.aus), "Neu: Schritt 2 frei, 3–7 gesperrt");
 await p.click('[data-aktion="banner-speichern"]'); await warte(200);
 pruefe((await p.$eval("#bannerMeldung", (e) => e.textContent)).includes("Namen"), "Ohne Namen → Fehlermeldung");
 await p.click('[data-basis="black"]'); await warte(150);
 await p.fill("#bannerName", "Test-Banner");
-for (let i = 0; i < 6; i++) { await p.click('[data-aktion="ebene-neu"]'); await warte(80); }
-pruefe(await p.$('[data-aktion="ebene-neu"]') === null, "Nach 6 Ebenen kein „+ Ebene“ mehr");
+await p.click('[data-aktion="bschritt-weiter"]'); await warte();
+pruefe((await schrittTitel()).startsWith("Schritt 2 · frei"), "Weiter → Schritt 2 ist frei");
+pruefe(await p.$('[data-aktion="bschritt-weiter"]') === null, "Freier Schritt: kein „Weiter“, bis ein Muster gewählt ist");
+await p.click('.schritt-wahl [data-muster="cross"]'); await warte(150);
+pruefe((await leiste())[1].label.includes("Weiß"), "Muster auf Schwarz bekommt Kontrastfarbe Weiß");
+const reihe = ["border", "stripe_top", "stripe_bottom", "creeper", "skull"];
+for (const m of reihe) {
+  await p.click('[data-aktion="bschritt-weiter"]'); await warte(120);
+  if (m === "creeper") { await p.click('.schritt-wahl [data-farbe="lime"]'); await warte(80); }
+  await p.click(`.schritt-wahl [data-muster="${m}"]`); await warte(120);
+}
+ls = await leiste();
+pruefe(ls.every((x) => x.voll) && ls[6].aktiv, "Alle 7 Schritte belegt, Schritt 7 aktiv");
+pruefe(ls[5].label.includes("Hellgrün"), "Freier Schritt: zuerst Farbe gewählt, dann Muster → Hellgrün");
+pruefe(await p.$('[data-aktion="bschritt-weiter"]') === null, "Nach Schritt 7 geht es nicht weiter (höchstens 6 Muster)");
 pruefe(await p.$eval("#bannerName", (e) => e.value) === "Test-Banner", "Name bleibt beim Neuzeichnen erhalten");
-const farbeNeu = await p.$eval('.ebene.offen .ebene-text small', (e) => e.innerText);
-pruefe(farbeNeu.includes("Weiß"), "Neue Ebene auf Schwarz bekommt Kontrastfarbe Weiß");
-await p.click('[data-aktion="ebene-weg"][data-n="5"]'); await warte(100);
+await p.click('[data-aktion="bschritt-leeren"]'); await warte(150);
+ls = await leiste();
+pruefe(!ls[6].voll && ls[5].voll, "Schritt 7 geleert → bleibt am Ende frei");
+await p.evaluate(() => { $sheet.scrollTop = 0; }); await warte(100);
 await p.screenshot({ path: `${DIR}/b5-editor-neu.png` });
 await p.click('[data-aktion="banner-speichern"]'); await warte(500);
 pruefe(await p.$$eval("#bannerListe .banner-karte", (l) => l.length) === 5, "Neuer Banner in der Liste (5)");
+pruefe((await p.$eval("#orteSheetInhalt", (e) => e.textContent)).includes("0/6 erledigt"), "Gespeichert mit 5 Mustern → Anleitung mit 6 Schritten");
 
 // Löschen mit Bestätigung
 const knopf = '[data-aktion="banner-loeschen"]';

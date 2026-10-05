@@ -737,16 +737,16 @@ button.switch { padding:0; }
 .banner-rahmen.mittel::before { width:66px; }
 .banner-bild.mini { width:18px; height:36px; box-shadow:none; border-radius:2px; flex:0 0 auto; }
 
-.banner-detail-kopf { display:flex; gap:14px; align-items:flex-start; }
-.banner-detail-kopf .result-card { flex:1; min-width:0; gap:8px; }
 .mat { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-dim); }
 .mat b { color:var(--text); font-weight:700; font-variant-numeric:tabular-nums; }
 .farbpunkt { width:14px; height:14px; border-radius:4px; flex:0 0 auto; display:inline-block;
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.35); }
-.vorlage-zeile { display:flex; flex-direction:column; gap:1px; padding-top:8px; border-top:1px solid var(--border-soft); }
+.vorlage-zeile { display:flex; align-items:center; gap:10px; padding-top:8px; border-top:1px solid var(--border-soft); }
+.vorlage-zeile > .item-bild, .mat > .item-bild { width:22px; height:22px; flex:0 0 auto; }
+.vorlage-text { display:flex; flex-direction:column; gap:1px; min-width:0; }
 .vorlage-zeile:first-of-type { border-top:none; padding-top:0; }
 .vorlage-zeile b { font-size:13.5px; }
-.vorlage-zeile span { font-size:12px; color:var(--text-faint); }
+.vorlage-text > span { font-size:12px; color:var(--text-faint); }
 
 /* Anleitung: jeder Schritt zeigt, wie das Banner danach aussieht */
 .schritt { flex-direction:row; align-items:center; gap:12px; text-align:left; cursor:pointer; font:inherit; color:var(--text); padding:10px 12px; }
@@ -758,28 +758,55 @@ button.switch { padding:0; }
 .schritt-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
 .schritt-text b { font-size:14px; }
 .schritt-text small { font-size:12px; color:var(--text-faint); line-height:1.35; }
-.schritt-text .en, .ebene-text .en { font-weight:600; color:var(--text-faint); font-size:11px; margin-left:5px; }
+.schritt-text .en { font-weight:600; color:var(--text-faint); font-size:11px; margin-left:5px; }
+
+/* Detail: links das Banner, rechts die Schritte mit Rezept (Vorlage von Max, 05.10.2026) */
+.banner-anleitung { display:grid; grid-template-columns:84px minmax(0, 1fr); gap:10px; align-items:start; }
+.banner-anleitung-bild { position:sticky; top:8px; display:flex; justify-content:center; }
+.banner-anleitung-bild .banner-rahmen { padding-top:2px; }
+.banner-stufen { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.bstufe { display:flex; align-items:center; gap:7px; width:100%; min-height:58px; padding:6px 6px 6px 4px; border-radius:10px; text-align:left;
+  cursor:pointer; background:var(--surface-2); border:1px solid var(--border-soft); color:var(--text); font:inherit; }
+.bstufe:nth-child(even) { background:var(--surface-3); }
+.bstufe-nr { width:18px; flex:0 0 auto; text-align:center; font:800 12px ui-monospace,monospace; color:var(--text-dim); }
+.bstufe-icon { flex:0 0 auto; line-height:0; }
+.bstufe-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.bstufe-text b { font-size:13px; line-height:1.25; overflow-wrap:anywhere; }
+.bstufe-text small { font-size:11px; color:var(--text-faint); line-height:1.3; }
+.bstufe-text .en { display:block; font-weight:600; font-size:10.5px; }
+.bstufe.erledigt .bstufe-nr { color:var(--accent); }
+.bstufe.erledigt .bstufe-text, .bstufe.erledigt .bstufe-icon, .bstufe.erledigt .rezept-werkbank, .bstufe.erledigt .rezept-webstuhl { opacity:.45; }
+/* Rezept-Kästen wie im Spiel: Werkbank 3 × 3, Webstuhl Banner + Farbstoff + Vorlage */
+.rezept-werkbank, .rezept-webstuhl { flex:0 0 auto; display:grid; gap:1px; padding:2px; border-radius:3px; background:#c6c6c6;
+  box-shadow:inset 1px 1px 0 #fff, inset -1px -1px 0 #555; }
+.rezept-werkbank { grid-template-columns:repeat(3, 15px); grid-template-rows:repeat(3, 15px); }
+.rezept-webstuhl { grid-template-columns:repeat(3, 15px); grid-template-rows:24px; }
+.rslot { background:#8b8b8b; box-shadow:inset 1px 1px 0 #373737, inset -1px -1px 0 #fff; display:grid; place-items:center; overflow:hidden; }
+.rslot .item-bild { width:13px; height:13px; }
+.rslot .banner-bild.mini { width:10px; height:20px; box-shadow:none; }
 
 /* Editor */
-.banner-editor-kopf { position:sticky; top:-1px; z-index:2; display:flex; gap:14px; align-items:center;
+.banner-editor-kopf { position:sticky; top:-1px; z-index:2; display:flex; flex-direction:column; gap:10px;
   background:var(--surface); padding:4px 0 10px; margin-bottom:-6px; border-bottom:1px solid var(--border-soft);
   transition:background .45s ease; }
+.banner-editor-zeile { display:flex; gap:14px; align-items:center; }
 .banner-editor-kopf .field-group { flex:1; min-width:0; }
+/* 7 Schritte: 1 Banner + 6 Muster, jeder zeigt den Zwischenstand */
+.bschritt-leiste { display:grid; grid-template-columns:repeat(7, 1fr); gap:5px; }
+.bschritt { display:flex; flex-direction:column; align-items:center; gap:3px; padding:5px 0 4px; border-radius:10px; cursor:pointer;
+  background:var(--surface-2); border:1.5px solid var(--border-soft); color:var(--text-dim); font:inherit; }
+.bschritt-bild { height:36px; display:grid; place-items:center; }
+.bschritt.frei { border-style:dashed; background:transparent; }
+.bschritt.aktiv { border-color:var(--accent); border-style:solid; background:var(--accent-soft); color:var(--text); }
+.bschritt:disabled { opacity:.3; cursor:default; }
+.bschritt-nr { font:800 12px ui-monospace,monospace; }
+.schritt-wahl { border:1px solid var(--border-soft); border-radius:14px; }
+.schritt-wahl .en { font-weight:600; color:var(--text-faint); font-size:11px; margin-left:5px; letter-spacing:0; text-transform:none; }
+.bschritt-weiter { width:100%; }
 .farbraster { display:grid; grid-template-columns:repeat(8, 1fr); gap:6px; }
 .farbfeld { aspect-ratio:1; border-radius:10px; border:2px solid transparent; cursor:pointer; padding:0;
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.35); transition:transform .1s, border-color .2s; }
 .farbfeld.aktiv { border-color:var(--text); transform:scale(1.08); box-shadow:0 0 0 2px var(--accent), inset 0 0 0 1px rgba(0,0,0,.35); }
-.ebene { padding:0; gap:0; overflow:hidden; }
-.ebene.offen { border-color:var(--accent); }
-.ebene-zeile { display:flex; align-items:center; gap:4px; padding:6px 6px 6px 10px; }
-.ebene-kopf { flex:1; min-width:0; display:flex; align-items:center; gap:10px; background:none; border:none;
-  color:var(--text); font:inherit; text-align:left; cursor:pointer; padding:4px 0; }
-.ebene-text { display:flex; flex-direction:column; gap:1px; min-width:0; }
-.ebene-text b { font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.ebene-text small { font-size:12px; color:var(--text-faint); display:flex; align-items:center; gap:6px; }
-.ebene-knoepfe { display:flex; gap:2px; flex:0 0 auto; }
-.ebene-knoepfe .icon-btn { position:static; transform:none; width:36px; height:36px; color:var(--text-dim); font-size:16px; }
-.ebene-knoepfe .icon-btn:disabled { opacity:.3; cursor:default; }
 .ebene-wahl { display:flex; flex-direction:column; gap:8px; padding:10px 12px 14px; border-top:1px solid var(--border-soft); background:var(--surface); }
 .ebene-wahl .field-group-label { margin-top:4px; }
 .muster-raster { display:grid; grid-template-columns:repeat(6, 1fr); gap:6px; }
@@ -3069,7 +3096,7 @@ function bannerBild(b){
   return url;
 }
 const bannerImg = (b, klasse, alt) => `<img class="banner-bild ${klasse || ""}" src="${bannerBild(b)}" alt="${esc(alt || "")}">`;
-const bn = { liste:[], suche:"", entwurf:null, offen:null };
+const bn = { liste:[], suche:"", entwurf:null, schritt:1, neueFarbe:null, gezeigt:null };
 const $bannerListe = document.getElementById("bannerListe");
 
 async function bannerLaden(){
@@ -3096,34 +3123,63 @@ function renderBanner(){
 
 const bannerFortschritt = (id) => new Set(lsLesen(`banner.schritte.${id}`) || []);
 
+/* ---------- Detail im Layout der Vorlage von Max (05.10.2026) ----------
+   Links das Banner groß (bleibt beim Scrollen stehen), rechts je Schritt: Nummer (abhaken),
+   Muster für sich, Name, Rezept. Schritt 1 = Werkbank (6 Wolle + Stock, 3×3), danach Webstuhl
+   (Banner + Farbstoff + Bannervorlage). Icons aus Bedrock: icons/banner/ (siehe QUELLE.md). */
+const BANNER_ICONS = "icons/banner/";
+const bannerIcon = (datei, titel) => `<img class="item-bild" src="${BANNER_ICONS}${datei}.png" alt="${esc(titel)}" title="${esc(titel)}" draggable="false">`;
+/** Ein Muster für sich (wie im Bild der Vorlage): auf Weiß, helle Farben auf Grau */
+const musterAllein = (l) => ({ basis:HELLE_FARBEN.has(l.farbe) ? "gray" : "white", ebenen:[l] });
+function bannerRezeptHtml(b, n){
+  const slot = (inhalt = "") => `<span class="rslot">${inhalt}</span>`;
+  if(n === 0){
+    const w = bannerIcon(`wolle_${b.basis}`, farbe(b.basis).wolle);
+    return `<span class="rezept-werkbank" title="Werkbank: 6 × ${esc(farbe(b.basis).wolle)} + 1 Stock">${[w, w, w, w, w, w, "", bannerIcon("stock", "Stock"), ""].map(slot).join("")}</span>`;
+  }
+  const l = b.ebenen[n - 1], v = BANNERVORLAGEN[l.muster];
+  return `<span class="rezept-webstuhl" title="Webstuhl: Banner + ${esc(farbe(l.farbe).farbstoff)}${v ? ` + ${esc(v.de)}` : ""}">${
+    slot(bannerImg({ basis:b.basis, ebenen:b.ebenen.slice(0, n - 1) }, "mini", "Banner"))}${
+    slot(bannerIcon(`farbstoff_${l.farbe}`, farbe(l.farbe).farbstoff))}${
+    slot(v ? bannerIcon("bannervorlage", v.de) : "")}</span>`;
+}
 function bannerDetailOeffnen(id){
   const b = bn.liste.find((x) => x.id === id); if(!b) return;
   const { farbstoffe, vorlagen, schritte } = bannerAnleitung(b);
   const erledigt = bannerFortschritt(id);
   const scroll = st.sheet === "banner" ? $sheet.scrollTop : 0;
-  const sub = `${b.ebenen.length} ${b.ebenen.length === 1 ? "Ebene" : "Ebenen"} · Grundfarbe ${farbe(b.basis).de}${b.von ? ` · von ${esc(b.von)}` : ""}`;
+  const sub = `${b.ebenen.length} Muster · Grundfarbe ${farbe(b.basis).de}${b.von ? ` · von ${esc(b.von)}` : ""}`;
+  const zeilen = schritte.map((s, n) => {
+    const l = n ? b.ebenen[n - 1] : null;
+    const icon = bannerImg(l ? musterAllein(l) : { basis:b.basis, ebenen:[] }, "mini", l ? muster(l.muster).de : "Banner");
+    const titel = l ? muster(l.muster).de : "Banner";
+    const unter = l ? `${farbe(l.farbe).de}<span class="en">${esc(muster(l.muster).en)}</span>` : `${farbe(b.basis).de} · Werkbank`;
+    return `<button class="bstufe ${erledigt.has(n) ? "erledigt" : ""}" data-aktion="banner-schritt" data-id="${b.id}" data-n="${n}" aria-pressed="${erledigt.has(n)}"
+      aria-label="Schritt ${n + 1}: ${esc(s.titel)} – ${esc(s.info)}">
+      <span class="bstufe-nr">${erledigt.has(n) ? "✓" : n + 1}</span>
+      <span class="bstufe-icon">${icon}</span>
+      <span class="bstufe-text"><b>${esc(titel)}</b><small>${unter}</small></span>
+      ${bannerRezeptHtml(b, n)}
+    </button>`;
+  }).join("");
   const html = kopfHtml(esc(b.name), sub) + `<div class="orte-inhalt">
-    <div class="banner-detail-kopf">
-      <span class="banner-rahmen gross">${bannerImg(b, "", "Vorschau")}</span>
-      <div class="result-card">
-        <div class="result-label">Material</div>
-        <span class="mat"><i class="farbpunkt" style="background:${farbe(b.basis).hex}"></i><span><b>6 ×</b> ${farbe(b.basis).wolle}</span></span>
-        <span class="mat"><i class="farbpunkt" style="background:#7a5a3a"></i><span><b>1 ×</b> Stock</span></span>
-        ${[...farbstoffe].map(([f, n]) => `<span class="mat"><i class="farbpunkt" style="background:${farbe(f).hex}"></i><span><b>${n} ×</b> ${farbe(f).farbstoff}</span></span>`).join("")}
-      </div>
+    <div class="field-group-label">Anleitung · ${erledigt.size}/${schritte.length} erledigt</div>
+    <div class="banner-anleitung">
+      <div class="banner-anleitung-bild"><span class="banner-rahmen gross">${bannerImg(b, "", "Vorschau")}</span></div>
+      <div class="banner-stufen">${zeilen}</div>
+    </div>
+    ${erledigt.size ? `<button class="btn-secondary" data-aktion="banner-schritte-weg" data-id="${b.id}">Haken zurücksetzen</button>` : ""}
+    <div class="result-card">
+      <div class="result-label">Material</div>
+      <span class="mat">${bannerIcon(`wolle_${b.basis}`, farbe(b.basis).wolle)}<span><b>6 ×</b> ${farbe(b.basis).wolle}</span></span>
+      <span class="mat">${bannerIcon("stock", "Stock")}<span><b>1 ×</b> Stock</span></span>
+      ${[...farbstoffe].map(([f, n]) => `<span class="mat">${bannerIcon(`farbstoff_${f}`, farbe(f).farbstoff)}<span><b>${n} ×</b> ${farbe(f).farbstoff}</span></span>`).join("")}
     </div>
     ${vorlagen.length ? `<div class="result-card">
         <div class="result-label">Bannervorlagen</div>
-        ${vorlagen.map((v) => `<div class="vorlage-zeile"><b>${esc(BANNERVORLAGEN[v].de)}</b><span>${esc(BANNERVORLAGEN[v].herkunft)}</span></div>`).join("")}
+        ${vorlagen.map((v) => `<div class="vorlage-zeile">${bannerIcon("bannervorlage", BANNERVORLAGEN[v].de)}<span class="vorlage-text"><b>${esc(BANNERVORLAGEN[v].de)}</b><span>${esc(BANNERVORLAGEN[v].herkunft)}</span></span></div>`).join("")}
         <p class="result-hint">Werden im Webstuhl nicht verbraucht.</p>
       </div>` : ""}
-    <div class="field-group"><div class="field-group-label">Anleitung · ${erledigt.size}/${schritte.length} erledigt</div>
-      <div class="list-stack">${schritte.map((s, n) => `<button class="card schritt ${erledigt.has(n) ? "erledigt" : ""}" data-aktion="banner-schritt" data-id="${b.id}" data-n="${n}">
-        <span class="schritt-nr">${erledigt.has(n) ? "✓" : n + 1}</span>
-        <span class="schritt-text"><b>${esc(s.titel)}${s.en ? `<span class="en">${esc(s.en)}</span>` : ""}</b><small>${esc(s.info)}</small></span>
-        ${bannerImg(s.bild, "mini")}</button>`).join("")}</div>
-      ${erledigt.size ? `<button class="btn-secondary" data-aktion="banner-schritte-weg" data-id="${b.id}">Haken zurücksetzen</button>` : ""}
-    </div>
     ${boardZeigenKnopf(`banner:${b.id}`)}
     <div class="knopf-raster">
       <button class="btn-primary" data-aktion="banner-bearbeiten" data-id="${b.id}">Bearbeiten</button>
@@ -3135,65 +3191,79 @@ function bannerDetailOeffnen(id){
   $sheet.scrollTop = scroll;
 }
 
+/* ---------- Editor in 7 Schritten (Wunsch von Max, 05.10.2026) ----------
+   Schritt 1 = Banner (Grundfarbe), Schritte 2–7 = die Muster im Webstuhl (Schritt k ist Ebene k−2).
+   Leere Schritte gibt es nur am Ende: Ein Schritt ist erst wählbar, wenn der davor belegt ist.
+   „Schritt leeren“ nimmt das Muster heraus, die späteren rücken nach. Beim Speichern zählen nur belegte. */
+const BANNER_SCHRITTE = 1 + MAX_EBENEN;
+const bannerBisSchritt = (e, k) => ({ basis:e.basis, ebenen:e.ebenen.slice(0, Math.max(0, k - 1)) });
+const bannerSchrittOffenBis = (e) => Math.min(BANNER_SCHRITTE, e.ebenen.length + 2);
+
 function bannerEditorOeffnen(id){
   const b = id ? bn.liste.find((x) => x.id === id) : null;
   bn.entwurf = b ? structuredClone(b) : { id:null, name:"", basis:"white", ebenen:[] };
-  bn.offen = null;
+  bn.schritt = 1; bn.neueFarbe = null; bn.gezeigt = null;
   bannerEditorRendern();
 }
 function bannerEditorRendern(){
-  const e = bn.entwurf;
+  const e = bn.entwurf, k = bn.schritt, offenBis = bannerSchrittOffenBis(e);
   const name = document.getElementById("bannerName");
   if(name && st.sheet === "banner-editor") e.name = name.value;
-  const scroll = st.sheet === "banner-editor" ? $sheet.scrollTop : 0;
+  // Innerhalb eines Schritts bleibt die Scroll-Position, beim Schrittwechsel geht es nach oben
+  const scroll = st.sheet === "banner-editor" && bn.gezeigt === k ? $sheet.scrollTop : 0;
+  bn.gezeigt = k;
   const farbFelder = (aktiv, attr) => FARBEN.map((f) => `<button class="farbfeld ${f.id === aktiv ? "aktiv" : ""}" ${attr}="${f.id}" style="background:${f.hex}" aria-label="${f.de}" title="${f.de}"></button>`).join("");
   const musterFelder = (l, liste) => liste.map((m) => {
     const bild = { basis:l.farbe === e.basis ? kontrast(l.farbe) : e.basis, ebenen:[{ muster:m.id, farbe:l.farbe }] };
     return `<button class="muster-feld ${m.id === l.muster ? "aktiv" : ""}" data-muster="${m.id}" aria-label="${esc(m.de)}" title="${esc(m.de)}"><img src="${bannerBild(bild)}" alt=""></button>`;
   }).join("");
-  const ebenen = e.ebenen.map((l, n) => {
-    const m = muster(l.muster), v = BANNERVORLAGEN[l.muster], offen = bn.offen === n;
-    const einzeln = { basis:l.farbe === e.basis ? kontrast(l.farbe) : e.basis, ebenen:[l] };
-    return `<div class="card ebene ${offen ? "offen" : ""}">
-      <div class="ebene-zeile">
-        <button class="ebene-kopf" data-aktion="ebene-auf" data-n="${n}" aria-expanded="${offen}">
-          <span class="schritt-nr">${n + 1}</span>
-          ${bannerImg(einzeln, "mini")}
-          <span class="ebene-text"><b>${esc(m.de)}</b><small><i class="farbpunkt" style="background:${farbe(l.farbe).hex}"></i>${farbe(l.farbe).de}${v ? " · Vorlage" : ""}</small></span>
-        </button>
-        <span class="ebene-knoepfe">
-          <button class="icon-btn" data-aktion="ebene-hoch" data-n="${n}" aria-label="Eine Ebene früher" ${n ? "" : "disabled"}>↑</button>
-          <button class="icon-btn" data-aktion="ebene-runter" data-n="${n}" aria-label="Eine Ebene später" ${n < e.ebenen.length - 1 ? "" : "disabled"}>↓</button>
-          <button class="icon-btn" data-aktion="ebene-weg" data-n="${n}" aria-label="Ebene entfernen">✕</button>
-        </span>
-      </div>
-      ${offen ? `<div class="ebene-wahl" data-ebene="${n}">
-          <div class="field-group-label">Farbe · ${farbe(l.farbe).de}</div>
-          <div class="farbraster">${farbFelder(l.farbe, "data-farbe")}</div>
-          <div class="field-group-label">Muster · ${esc(m.de)}</div>
-          <div class="muster-raster">${musterFelder(l, MUSTER.filter((x) => !BANNERVORLAGEN[x.id]))}</div>
-          <div class="field-group-label">Mit Bannervorlage</div>
-          <div class="muster-raster">${musterFelder(l, MUSTER.filter((x) => BANNERVORLAGEN[x.id]))}</div>
-        </div>` : ""}
-    </div>`;
+
+  const leiste = Array.from({ length:BANNER_SCHRITTE }, (_, i) => {
+    const n = i + 1, voll = n === 1 || n - 1 <= e.ebenen.length, waehlbar = n <= offenBis;
+    const was = n === 1 ? `Banner, ${farbe(e.basis).de}` : voll ? `${muster(e.ebenen[n - 2].muster).de}, ${farbe(e.ebenen[n - 2].farbe).de}` : "frei";
+    return `<button class="bschritt ${n === k ? "aktiv" : ""} ${voll ? "voll" : "frei"}" data-aktion="bschritt" data-n="${n}" ${waehlbar ? "" : "disabled"}
+      aria-label="Schritt ${n}: ${esc(was)}" ${n === k ? 'aria-current="step"' : ""}>
+      <span class="bschritt-bild">${voll ? bannerImg(bannerBisSchritt(e, n), "mini") : ""}</span><span class="bschritt-nr">${n}</span></button>`;
   }).join("");
-  const html = kopfHtml(e.id ? "Banner bearbeiten" : "Neuer Banner", "Grundfarbe + bis zu 6 Muster-Ebenen") + `<div class="orte-inhalt">
+
+  let inhalt;
+  if(k === 1){
+    inhalt = `<div class="field-group"><div class="field-group-label">Schritt 1 · Banner · ${farbe(e.basis).de}</div>
+      <div class="farbraster">${farbFelder(e.basis, "data-basis")}</div>
+      <p class="result-hint">An der Werkbank: 6 × ${esc(farbe(e.basis).wolle)} + 1 Stock</p></div>`;
+  } else {
+    const l = e.ebenen[k - 2];
+    const wahl = l || { muster:null, farbe:bn.neueFarbe || kontrast(e.basis) };
+    const m = l ? muster(l.muster) : null, spaeter = e.ebenen.length - (k - 1);
+    inhalt = `<div class="ebene-wahl schritt-wahl" data-ebene="${k - 2}">
+      <div class="field-group-label">Schritt ${k} · ${m ? `${esc(m.de)}<span class="en">${esc(m.en || "")}</span>` : "frei"}${l && BANNERVORLAGEN[l.muster] ? " · Vorlage" : ""}</div>
+      ${l ? "" : '<p class="result-hint">Farbe und Muster wählen – oder den Schritt frei lassen und speichern.</p>'}
+      <div class="field-group-label">Farbe · ${farbe(wahl.farbe).de}</div>
+      <div class="farbraster">${farbFelder(wahl.farbe, "data-farbe")}</div>
+      <div class="field-group-label">Muster${m ? ` · ${esc(m.de)}` : ""}</div>
+      <div class="muster-raster">${musterFelder(wahl, MUSTER.filter((x) => !BANNERVORLAGEN[x.id]))}</div>
+      <div class="field-group-label">Mit Bannervorlage</div>
+      <div class="muster-raster">${musterFelder(wahl, MUSTER.filter((x) => BANNERVORLAGEN[x.id]))}</div>
+      ${l ? `<button class="btn-secondary" data-aktion="bschritt-leeren">Schritt ${k} leeren${spaeter > 0 ? ` · ${spaeter === 1 ? "Schritt " + (k + 1) + " rückt" : "spätere rücken"} nach` : ""}</button>` : ""}
+    </div>`;
+  }
+  const weiter = k < offenBis
+    ? `<button class="btn-secondary bschritt-weiter" data-aktion="bschritt-weiter">Weiter zu Schritt ${k + 1} ›</button>` : "";
+
+  const html = kopfHtml(e.id ? "Banner bearbeiten" : "Neuer Banner", `${BANNER_SCHRITTE} Schritte: Banner + bis zu ${MAX_EBENEN} Muster`) + `<div class="orte-inhalt">
     <div class="banner-editor-kopf">
-      <span class="banner-rahmen mittel">${bannerImg(e, "", "Vorschau")}</span>
-      <div class="field-group">
-        <div class="field-group-label">Name</div>
-        <input class="orte-eingabe" id="bannerName" maxlength="60" placeholder="z. B. Creeper-Wache" value="${esc(e.name)}" autocomplete="off">
-        <div class="card-meta">${e.ebenen.length}/${MAX_EBENEN} Ebenen · Vorschau vereinfacht</div>
+      <div class="banner-editor-zeile">
+        <span class="banner-rahmen mittel">${bannerImg(e, "", "Vorschau")}</span>
+        <div class="field-group">
+          <div class="field-group-label">Name</div>
+          <input class="orte-eingabe" id="bannerName" maxlength="60" placeholder="z. B. Creeper-Wache" value="${esc(e.name)}" autocomplete="off">
+          <div class="card-meta">${e.ebenen.length}/${MAX_EBENEN} Muster · freie Schritte am Ende bleiben leer</div>
+        </div>
       </div>
+      <div class="bschritt-leiste" role="list" aria-label="Schritte">${leiste}</div>
     </div>
-    <div class="field-group"><div class="field-group-label">Grundfarbe · ${farbe(e.basis).de}</div>
-      <div class="farbraster">${farbFelder(e.basis, "data-basis")}</div></div>
-    <div class="field-group"><div class="field-group-label">Ebenen · Reihenfolge im Webstuhl</div>
-      ${ebenen ? `<div class="list-stack">${ebenen}</div>` : ""}
-      ${e.ebenen.length >= MAX_EBENEN
-        ? `<div class="banner warn">Im Webstuhl passen höchstens ${MAX_EBENEN} Muster auf ein Banner.</div>`
-        : '<button class="btn-secondary" data-aktion="ebene-neu">+ Ebene hinzufügen</button>'}
-    </div>
+    ${inhalt}
+    ${weiter}
     <div class="banner" id="bannerMeldung" hidden></div>
     <div class="sheet-fuss"><button class="btn-secondary" data-aktion="banner-abbrechen">Abbrechen</button>
       <button class="btn-primary" data-aktion="banner-speichern">Speichern</button></div>
@@ -3211,23 +3281,23 @@ function bannerEditorKlick(ziel){
   const f = ziel.closest("[data-farbe]"), m = ziel.closest("[data-muster]");
   if(wahl && (f || m)){
     const l = e.ebenen[Number(wahl.dataset.ebene)];
-    if(f) l.farbe = f.dataset.farbe; else l.muster = m.dataset.muster;
+    if(l){ if(f) l.farbe = f.dataset.farbe; else l.muster = m.dataset.muster; }
+    else if(f) bn.neueFarbe = f.dataset.farbe;            // freier Schritt: Farbe vormerken
+    else { e.ebenen.push({ muster:m.dataset.muster, farbe:bn.neueFarbe || kontrast(e.basis) }); bn.neueFarbe = null; }
     bannerEditorRendern(); return true;
   }
   const a = ziel.closest("[data-aktion]"); if(!a) return false;
-  const n = Number(a.dataset.n);
-  const tauschen = (i, j) => { [e.ebenen[i], e.ebenen[j]] = [e.ebenen[j], e.ebenen[i]]; if(bn.offen === i) bn.offen = j; else if(bn.offen === j) bn.offen = i; };
   switch(a.dataset.aktion){
-    case "ebene-auf": bn.offen = bn.offen === n ? null : n; break;
-    case "ebene-neu":
-      if(e.ebenen.length >= MAX_EBENEN) return true;
-      e.ebenen.push({ muster:"stripe_bottom", farbe:kontrast(e.basis) });
-      bn.offen = e.ebenen.length - 1; break;
-    case "ebene-hoch": if(n > 0) tauschen(n, n - 1); break;
-    case "ebene-runter": if(n < e.ebenen.length - 1) tauschen(n, n + 1); break;
-    case "ebene-weg":
-      e.ebenen.splice(n, 1);
-      if(bn.offen === n) bn.offen = null; else if(bn.offen > n) bn.offen--;
+    case "bschritt": {
+      const n = Number(a.dataset.n);
+      if(n <= bannerSchrittOffenBis(e)){ bn.schritt = n; bn.neueFarbe = null; }
+      break;
+    }
+    case "bschritt-weiter":
+      if(bn.schritt < bannerSchrittOffenBis(e)){ bn.schritt += 1; bn.neueFarbe = null; }
+      break;
+    case "bschritt-leeren":
+      if(bn.schritt > 1 && e.ebenen[bn.schritt - 2]){ e.ebenen.splice(bn.schritt - 2, 1); bn.neueFarbe = null; bn.gezeigt = null; }
       break;
     default: return false;
   }
