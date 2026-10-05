@@ -66,14 +66,52 @@ await p.evaluate(() => document.getElementById("samStage").scrollTo(0, 99999));
 await warte(150);
 await p.screenshot({ path: `${DIR}/s3-nether-end.png` });
 
+// ---- Zier-Übersicht im Kopf ----------------------------------------------------------------
+await p.evaluate(() => document.getElementById("samStage").scrollTo(0, 0)); await warte(150);
+const zier = () => p.$$eval("#samUebersicht .sam-zier", (l) => l.map((z) => {
+  const r = z.getBoundingClientRect(), bild = z.querySelector("img.item-bild");
+  return { id: z.dataset.samZier, gefunden: z.classList.contains("gefunden"), haken: Boolean(z.querySelector(".sam-zier-haken")),
+    x: Math.round(r.left), y: Math.round(r.top), b: Math.round(r.width), geladen: Boolean(bild?.naturalWidth) };
+}));
+let zr = await zier();
+const listenReihe = await p.$$eval("#samListe .sam-item", (l) => l.map((e) => e.dataset.sam));
+const besatzReihe = listenReihe.filter((id) => !objekte.find((o) => o.id === id).aufwertung);
+pruefe(zr.length === 18, `Übersicht zeigt alle 18 Besätze (${zr.length}), ohne Netheritaufwertung`);
+pruefe(JSON.stringify(zr.map((z) => z.id)) === JSON.stringify(besatzReihe), "Übersicht in der Reihenfolge der Liste");
+const zeilen = [...new Set(zr.map((z) => z.y))], spalten = [...new Set(zr.map((z) => z.x))];
+pruefe(zeilen.length === 2 && spalten.length === 9, `2 untereinander, Rest in Reihe: ${zeilen.length} Zeilen × ${spalten.length} Spalten`);
+pruefe(zr[0].x === zr[1].x && zr[1].y > zr[0].y && zr[2].x > zr[0].x, "je zwei untereinander, dann die nächste Spalte");
+pruefe(zr.every((z) => z.geladen), "alle Vorlagen-Icons geladen");
+pruefe(zr.every((z) => z.b >= 28), `Felder groß genug zum Tippen (min. ${Math.min(...zr.map((z) => z.b))} px)`);
+pruefe(zr.filter((z) => z.gefunden).length === Number(await text("#samGefunden")), "Haken in der Übersicht = Zähler „gefunden“");
+pruefe(zr.every((z) => z.gefunden === z.haken), "Haken nur bei gefundenen");
+pruefe(await p.$eval("#samUebersicht", (e) => e.scrollWidth <= e.clientWidth), "Übersicht passt ohne Scrollen in 390 px");
+await p.click('#samFilter [data-filter="gefunden"]'); await warte();
+pruefe((await zier()).length === 18, "Filter ändert die Übersicht nicht");
+await p.click('#samFilter [data-filter="alle"]'); await warte();
+await p.screenshot({ path: `${DIR}/s0-uebersicht.png`, clip: await p.$eval(".ach-header", (e) => { const r = e.getBoundingClientRect(); return { x: r.x - 4, y: r.y - 8, width: r.width + 8, height: r.height + 12 }; }) });
+
 // ---- Abhaken -----------------------------------------------------------------------------
 const vorher = await text("#samGefunden");
 await p.click('[data-sam-haken="wild"]'); await warte();
 pruefe(Number(await text("#samGefunden")) === Number(vorher) + 1, `Wildnis abgehakt: ${vorher} → ${await text("#samGefunden")}`);
 pruefe(await p.$eval('[data-sam="wild"]', (e) => e.classList.contains("earned")), "Wildnis als gefunden markiert");
+pruefe((await zier()).find((z) => z.id === "wild").haken, "Übersicht: Wilde Zier bekommt den Haken");
 pruefe(await p.$eval('[data-sam-kat="overworld:Jungle Temple"] img.kennblock', (e) => e.naturalWidth > 0), "Kennblock bleibt nach dem Neuzeichnen");
 await p.click('[data-sam-haken="wild"]'); await warte();
 pruefe(await text("#samGefunden") === vorher, "Wildnis zurückgesetzt");
+pruefe(!(await zier()).find((z) => z.id === "wild").haken, "Übersicht: Haken wieder weg");
+
+// Tippen in der Übersicht → Detail, Abhaken im Detail → Haken in der Übersicht
+await p.click('#samUebersicht [data-sam-zier="spire"]'); await warte();
+pruefe((await text("#orteSheetInhalt")).includes("Turmzier") && (await text("#orteSheetInhalt")).includes("Endsiedlung"), "Tippen auf Turmzier öffnet das Detail");
+await p.click('#orteSheetInhalt [data-aktion="sam-umschalten"]'); await warte();
+await p.click('#orteSheetInhalt [data-aktion="schliessen"]'); await warte();
+pruefe((await zier()).find((z) => z.id === "spire").haken, "im Detail abgehakt → Haken in der Übersicht");
+await p.screenshot({ path: `${DIR}/s0-uebersicht-end.png`, clip: await p.$eval(".ach-header", (e) => { const r = e.getBoundingClientRect(); return { x: r.x - 4, y: r.y - 8, width: r.width + 8, height: r.height + 12 }; }) });
+await p.click('#samUebersicht [data-sam-zier="spire"]'); await warte();
+await p.click('#orteSheetInhalt [data-aktion="sam-umschalten"]'); await warte();
+await p.click('#orteSheetInhalt [data-aktion="schliessen"]'); await warte();
 
 // ---- Detail ------------------------------------------------------------------------------
 await p.click('[data-sam="rib"] .ach-body'); await warte();

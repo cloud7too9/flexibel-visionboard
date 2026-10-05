@@ -689,6 +689,20 @@ button.switch { padding:0; }
   transition:background .2s, border-color .2s, color .2s; }
 .sam-check svg { width:18px; height:18px; }
 .ach-item.earned .sam-check { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+/* Zier-Übersicht im Kopf: alle Besätze, je 2 untereinander, Haken über dem Symbol */
+.sam-uebersicht { display:grid; grid-template-rows:repeat(2, auto); grid-auto-flow:column; grid-auto-columns:1fr;
+  gap:7px 6px; margin-top:14px; padding-top:6px; }
+.sam-zier { position:relative; aspect-ratio:1; min-width:0; padding:0; border-radius:9px; cursor:pointer;
+  background:var(--surface-2); border:1px solid var(--border-soft); display:grid; place-items:center;
+  transition:background .2s, border-color .2s; }
+.sam-zier:active { transform:scale(.94); }
+.sam-zier .item-bild { width:72%; height:72%; opacity:.45; filter:grayscale(.8); transition:opacity .2s, filter .2s; }
+.sam-zier.gefunden { background:var(--accent-soft); border-color:var(--accent); }
+.sam-zier.gefunden .item-bild { opacity:1; filter:none; }
+.sam-zier-haken { position:absolute; top:-6px; right:-6px; width:16px; height:16px; border-radius:50%;
+  background:var(--accent); color:var(--accent-ink); display:grid; place-items:center;
+  box-shadow:0 0 0 2px var(--surface); }
+.sam-zier-haken svg { width:10px; height:10px; }
 .fund-zeile { display:flex; align-items:center; gap:10px; flex-direction:row; }
 .fund-zeile .coord { flex:1; font-size:13px; }
 .fund-zeile .weg { font-family:ui-monospace,monospace; font-weight:700; color:var(--accent); font-size:13px; }
@@ -1124,6 +1138,8 @@ button.switch { padding:0; }
             </div>
           </div>
           <div class="ach-bar"><span id="samBalken"></span></div>
+          <!-- Alle Besätze auf einen Blick: je 2 untereinander, der Rest in einer Reihe -->
+          <div class="sam-uebersicht" id="samUebersicht" aria-label="Alle Besätze auf einen Blick"></div>
         </div>
         <div class="ach-filter" id="samFilter">
           <button class="seg-btn active" data-filter="alle">Alle</button>
@@ -2848,6 +2864,7 @@ function renderSammel(){
   document.getElementById("samProzent").textContent = Math.round(gefunden / gesamt * 100);
   document.getElementById("samBalken").style.width = `${gefunden / gesamt * 100}%`;
   document.querySelectorAll("#samFilter .seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.filter === sam.filter));
+  samUebersichtRendern();
 
   const passt = (o) => sam.filter === "alle" || (sam.filter === "gefunden") === Boolean(sam.status[o.id]);
   $samListe.innerHTML = FUNDORTE.map((f) => {
@@ -2884,6 +2901,22 @@ function renderSammel(){
     </div>`;
   }).join("") || `<div class="empty-list">${sam.filter === "gefunden" ? "Noch nichts abgehakt." : "Alles gefunden – stark!"}</div>`;
 }
+
+/** Zier-Übersicht im Kopf: alle Besätze (ohne Aufwertung) in der Reihenfolge der Liste, ungefiltert.
+ *  Je 2 untereinander (Raster mit 2 Zeilen, spaltenweise gefüllt), Haken über dem Symbol, Tippen → Detail. */
+function samUebersichtRendern(){
+  const reihe = FUNDORTE.flatMap((f) => SAM_ZAEHLT.filter((o) => o.kategorie === f.kategorie && o.dim === f.dim));
+  document.getElementById("samUebersicht").innerHTML = reihe.map((o) => {
+    const s = sam.status[o.id];
+    return `<button class="sam-zier ${s ? "gefunden" : ""}" data-sam-zier="${o.id}" style="${themaStil(o.dim)}"
+      aria-label="${esc(o.name)}: ${s ? "gefunden" : "offen"}" title="${esc(o.name)}">
+      ${itemBild(vorlageDatei(o), o.name)}${s ? `<span class="sam-zier-haken">${HAKEN}</span>` : ""}
+    </button>`;
+  }).join("");
+}
+document.getElementById("samUebersicht").addEventListener("click", (e) => {
+  const k = e.target.closest("[data-sam-zier]"); if(k) samDetailOeffnen(k.dataset.samZier);
+});
 
 async function samUmschalten(id){
   const vorher = sam.status[id];
