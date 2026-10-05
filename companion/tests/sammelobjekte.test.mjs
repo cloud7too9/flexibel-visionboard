@@ -86,10 +86,40 @@ pruefe(zr.every((z) => z.b >= 28), `Felder groß genug zum Tippen (min. ${Math.m
 pruefe(zr.filter((z) => z.gefunden).length === Number(await text("#samGefunden")), "Haken in der Übersicht = Zähler „gefunden“");
 pruefe(zr.every((z) => z.gefunden === z.haken), "Haken nur bei gefundenen");
 pruefe(await p.$eval("#samUebersicht", (e) => e.scrollWidth <= e.clientWidth), "Übersicht passt ohne Scrollen in 390 px");
-await p.click('#samFilter [data-filter="gefunden"]'); await warte();
-pruefe((await zier()).length === 18, "Filter ändert die Übersicht nicht");
-await p.click('#samFilter [data-filter="alle"]'); await warte();
 await p.screenshot({ path: `${DIR}/s0-uebersicht.png`, clip: await p.$eval(".ach-header", (e) => { const r = e.getBoundingClientRect(); return { x: r.x - 4, y: r.y - 8, width: r.width + 8, height: r.height + 12 }; }) });
+
+// ---- Filter-Knopf in der Bottom-Bar → Sheet ---------------------------------------------------
+const knopf = () => p.$eval("#samFilterBtn", (e) => ({ lab: e.querySelector(".lab").textContent, aktiv: e.classList.contains("active") }));
+const eintraege = () => p.$$eval("#samListe .sam-item", (l) => l.map((e) => e.classList.contains("earned")));
+const filterWaehlen = async (key) => { await p.click("#samFilterBtn"); await warte(); await p.click(`#orteSheetInhalt [data-aktion="sam-filter"][data-filter="${key}"]`); await warte(); };
+pruefe(await p.$("#samFilter") === null, "keine Filter-Pillen mehr über der Liste");
+let kn = await knopf();
+pruefe(kn.lab === "Filter" && !kn.aktiv, `Bottom-Bar: Knopf „Filter“, nicht hervorgehoben (${kn.lab})`);
+const alleEintraege = (await eintraege()).length;
+await p.click("#samFilterBtn"); await warte();
+const zeilenFilter = await p.$$eval('#orteSheetInhalt [data-aktion="sam-filter"]', (l) => l.map((z) => ({ key: z.dataset.filter, text: z.textContent.replace(/\s+/g, " ").trim(), aktiv: z.classList.contains("aktiv") })));
+console.log("     Filter:", zeilenFilter.map((z) => z.text).join(" | "));
+pruefe(JSON.stringify(zeilenFilter.map((z) => z.key)) === '["alle","offen","gefunden"]', "Sheet zeigt Alle, Noch offene, Gefunden");
+pruefe(zeilenFilter.find((z) => z.key === "alle").aktiv && zeilenFilter.filter((z) => z.aktiv).length === 1, "„Alle“ ist aktiv");
+const gef = Number(await text("#samGefunden"));
+pruefe(zeilenFilter.find((z) => z.key === "offen").text.includes(`${18 - gef} von 18`), `„Noch offene“ zählt ${18 - gef} von 18`);
+await p.screenshot({ path: `${DIR}/s0-filter-sheet.png` });
+await p.click('#orteSheetInhalt [data-aktion="sam-filter"][data-filter="offen"]'); await warte();
+pruefe(!(await p.$eval("#orteSheet", (e) => e.classList.contains("open"))), "Auswahl schließt das Sheet");
+let ein = await eintraege();
+pruefe(ein.length > 0 && ein.every((x) => !x), `„Noch offene“: nur offene in der Liste (${ein.length} von ${alleEintraege})`);
+kn = await knopf();
+pruefe(kn.lab === "Noch offene" && kn.aktiv, "Knopf zeigt „Noch offene“ und ist hervorgehoben");
+pruefe((await zier()).length === 18, "Filter ändert die Übersicht nicht");
+await p.evaluate(() => document.getElementById("samStage").scrollTo(0, 99999)); await warte(150);
+await p.screenshot({ path: `${DIR}/s0-filter-offen.png` });
+await filterWaehlen("gefunden");
+ein = await eintraege();
+pruefe(ein.length === gef && ein.every((x) => x), `„Gefunden“: nur abgehakte (${ein.length})`);
+pruefe((await knopf()).lab === "Gefunden", "Knopf zeigt „Gefunden“");
+await filterWaehlen("alle");
+kn = await knopf();
+pruefe((await eintraege()).length === alleEintraege && kn.lab === "Filter" && !kn.aktiv, "„Alle“ setzt zurück");
 
 // ---- Abhaken -----------------------------------------------------------------------------
 const vorher = await text("#samGefunden");

@@ -99,6 +99,7 @@ Danach: Weltname und Seed bestätigen → **Biome lesen** (Fortschritt, Abbreche
 - **Abhaken gilt für die ganze Welt** und merkt sich, wer es wann gefunden hat
 - Fortschritt: gefunden / 18, Fundorte bekannt / 13, Prozent
 - **Zier-Übersicht im Kopf** (Wunsch von Max, 05.10.2026): alle 18 Besätze auf einen Blick, je 2 untereinander, der Rest in einer Reihe (Raster mit 2 Zeilen, spaltenweise gefüllt → 2 × 9), in der Reihenfolge der Liste und ohne Netheritaufwertung. Gefundene farbig mit Haken über dem Symbol, offene blass; Nether und End in ihrer Dimensionsfarbe. Die Übersicht ignoriert den Filter. Tippen öffnet das Detail (`samUebersichtRendern()`)
+- **Filter als Knopf** (Wunsch von Max, 05.10.2026): statt der drei Pillen über der Liste ein Knopf „Filter“ in der Bottom-Bar. Er öffnet ein Sheet mit **Alle**, **Noch offene**, **Gefunden** (Zahlen wie im Kopf: Besätze ohne Aufwertung, die Aufwertung folgt in der Liste trotzdem dem Filter). Ist ein Filter aktiv, trägt der Knopf seinen Namen und ist hervorgehoben (`SAM_FILTER`, `samFilterOeffnen()`, Aktion `sam-filter`)
 - Verknüpfung zur Karte: pro Fundort die bekannten Strukturen aus der Koordinaten-Sammlung, nächste mit Entfernung; „Karte“ springt direkt hin
 
 ## Rüstung

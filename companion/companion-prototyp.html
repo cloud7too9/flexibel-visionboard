@@ -1141,14 +1141,14 @@ button.switch { padding:0; }
           <!-- Alle Besätze auf einen Blick: je 2 untereinander, der Rest in einer Reihe -->
           <div class="sam-uebersicht" id="samUebersicht" aria-label="Alle Besätze auf einen Blick"></div>
         </div>
-        <div class="ach-filter" id="samFilter">
-          <button class="seg-btn active" data-filter="alle">Alle</button>
-          <button class="seg-btn" data-filter="offen">Offen</button>
-          <button class="seg-btn" data-filter="gefunden">Gefunden</button>
-        </div>
         <div class="ach-list" id="samListe"></div>
       </div>
       <nav class="bottombar">
+        <!-- Filter-Knopf: öffnet das Sheet mit allen Filtern (statt der früheren drei Pillen) -->
+        <button class="bb-item" id="samFilterBtn" aria-haspopup="dialog">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></svg></span>
+          <span class="lab" id="samFilterLab">Filter</span>
+        </button>
         <div class="bb-placeholder" id="samFuss">Gilt für die ganze Welt · alle können abhaken</div>
       </nav>
     </section>
@@ -2863,7 +2863,7 @@ function renderSammel(){
   document.getElementById("samFundorteGesamt").textContent = FUNDORTE.length;
   document.getElementById("samProzent").textContent = Math.round(gefunden / gesamt * 100);
   document.getElementById("samBalken").style.width = `${gefunden / gesamt * 100}%`;
-  document.querySelectorAll("#samFilter .seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.filter === sam.filter));
+  samFilterKnopfRendern();
   samUebersichtRendern();
 
   const passt = (o) => sam.filter === "alle" || (sam.filter === "gefunden") === Boolean(sam.status[o.id]);
@@ -2976,10 +2976,33 @@ function aufKarteZeigen(instanzId){
   detailOeffnen(i.id);
 }
 
-document.getElementById("samFilter").addEventListener("click", (e) => {
-  const b = e.target.closest(".seg-btn"); if(!b) return;
-  sam.filter = b.dataset.filter; render();
-});
+/* ---- Filter: Knopf in der Bottom-Bar → Sheet mit allen Filtern ---------------------------
+   Zahlen wie im Kopf: nur Besätze (ohne Netheritaufwertung); die Aufwertung folgt in der Liste trotzdem dem Filter. */
+const SAM_FILTER = [
+  { key:"alle",     titel:"Alle",         text:"Alle Besätze und die Netheritaufwertung",  zahl:() => `${SAM_ZAEHLT.length}` },
+  { key:"offen",    titel:"Noch offene",  text:"Nur, was in dieser Welt noch fehlt",        zahl:() => `${SAM_ZAEHLT.length - samGefundenAnzahl()} von ${SAM_ZAEHLT.length}` },
+  { key:"gefunden", titel:"Gefunden",     text:"Nur, was schon abgehakt ist",               zahl:() => `${samGefundenAnzahl()} von ${SAM_ZAEHLT.length}` },
+];
+function samFilterKnopfRendern(){
+  const f = SAM_FILTER.find((x) => x.key === sam.filter) || SAM_FILTER[0];
+  const aktiv = f.key !== "alle";
+  document.getElementById("samFilterLab").textContent = aktiv ? f.titel : "Filter";
+  const k = document.getElementById("samFilterBtn");
+  k.classList.toggle("active", aktiv);
+  k.setAttribute("aria-label", `Filter: ${f.titel}`);
+}
+function samFilterOeffnen(){
+  const html = kopfHtml("Filter", "Was die Liste zeigt · die Übersicht oben zeigt immer alle") + `<div class="orte-inhalt">
+    <div class="list-stack">${SAM_FILTER.map((f) => `
+      <button class="card welt-zeile sam-filter-zeile ${f.key === sam.filter ? "aktiv" : ""}" data-aktion="sam-filter" data-filter="${f.key}" aria-pressed="${f.key === sam.filter}" style="flex-direction:row">
+        <span style="flex:1;min-width:0"><span class="card-title">${f.titel}</span><span class="card-meta" style="display:block">${f.text}</span></span>
+        <span class="card-meta mono">${f.zahl()}</span>
+        ${f.key === sam.filter ? '<span class="pill">Aktiv</span>' : ""}
+      </button>`).join("")}</div>
+  </div>`;
+  sheetOeffnen("sam-filter", html, "overworld");
+}
+document.getElementById("samFilterBtn").addEventListener("click", samFilterOeffnen);
 $samListe.addEventListener("click", (e) => {
   const haken = e.target.closest("[data-sam-haken]");
   if(haken) return samUmschalten(haken.dataset.samHaken);
@@ -5067,6 +5090,9 @@ $sheet.addEventListener("click", async (e) => {
     case "welt-waehlen":
       if(id !== st.weltId){ await weltLaden(id); toast("Welt gewechselt"); }
       alleSchliessen(); break;
+    case "sam-filter":
+      sam.filter = a.dataset.filter; alleSchliessen(); render();
+      document.getElementById("samStage").scrollTo(0, 0); break;
     case "welt-anlegen": {
       const seed = document.getElementById("weltSeed").value.trim();
       const r = await api("/orte/welten", { method:"POST", body:JSON.stringify({ seed }) });
