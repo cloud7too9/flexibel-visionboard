@@ -311,7 +311,7 @@ async function ruestungKarte(ctx, id){
   bloecke.push({ art:"zeilen", zeilen:RUESTUNGS_TEILE.filter(({ id:t }) => s.teile[t]).map(({ id:t }) => {
     const x = s.teile[t], o = besatzMuster(x.muster);
     const teile = [o ? `${o.name} · ${besatzMaterial(x.material).name}` : "ohne Besatz",
-      ruestungsArt(x.ruestung).faerbbar && (x.farbe ? farbe(x.farbe).de : "ungefärbt"), x.verzaubert && "verzaubert"];
+      ruestungsArt(x.ruestung).faerbbar && (x.farbe ? farbe(x.farbe).de : "ungefärbt")];
     return { label:itemName(t, x), wert:teile.filter(Boolean).join(" · ").slice(0, 80) };
   }) });
   if(b.verschieden.length){

@@ -90,7 +90,7 @@ test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner, Rüstung'
   assert.equal(r.status, 201);
   assert.equal((await anfrage('GET', '/api/banner', lena)).daten.liste[0].name, 'Wappen');
   assert.equal((await anfrage('PUT', '/api/banner/b_99', max, { name: 'x', basis: 'white', ebenen: [] })).status, 404);
-  r = await anfrage('POST', '/api/ruestung', lena, { name: 'Amethyst', teile: { chestplate: { ruestung: 'diamond', muster: 'silence', material: 'amethyst', verzaubert: true } } });
+  r = await anfrage('POST', '/api/ruestung', lena, { name: 'Amethyst', teile: { chestplate: { ruestung: 'diamond', muster: 'silence', material: 'amethyst' } } });
   assert.equal(r.status, 201);
   const set = r.daten.set;
   assert.equal((await anfrage('GET', '/api/ruestung', max)).daten.sets[0].von, 'Lena');

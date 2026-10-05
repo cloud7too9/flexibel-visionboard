@@ -790,31 +790,31 @@ button.switch { padding:0; }
 
 /* ---- Rüstung  ·  Sets am Schmiedetisch (Liste, Detail, Editor, Bühne) ------ */
 .ruestung-stage { padding-top:2px; }
-/* Item-Rahmen: Icon + Verzauberungs-Schimmer (das Icon ist die Maske) */
+/* Item-Rahmen: Icon eines Rüstungsteils */
 .item-rahmen { position:relative; display:inline-block; line-height:0; flex:0 0 auto; }
 .item-rahmen.leer .item-bild { opacity:.35; }
-.glanz-schicht { position:absolute; inset:0; pointer-events:none;
-  -webkit-mask:var(--maske) center / 100% 100% no-repeat; mask:var(--maske) center / 100% 100% no-repeat;
-  background:linear-gradient(120deg, transparent 22%, rgba(196,130,255,.85) 34%, transparent 46%, transparent 58%, rgba(160,96,255,.6) 68%, transparent 80%) 0 0 / 300% 300%;
-  mix-blend-mode:screen; animation:glanz 3.4s linear infinite; }
-@keyframes glanz { from { background-position:100% 100%; } to { background-position:0 0; } }
-@media (prefers-reduced-motion: reduce) { .glanz-schicht { animation:none; background-position:50% 50%; } }
-.item-rahmen.glanz:not(:has(.glanz-schicht)) .item-bild { filter:drop-shadow(0 0 2px rgba(186,120,255,.95)); }
 
-.ruestung-karte { flex-direction:row; align-items:center; gap:14px; text-align:left; cursor:pointer; font:inherit; color:var(--text); width:100%; }
+.ruestung-karte { flex-direction:row; align-items:stretch; gap:12px; text-align:left; cursor:pointer; font:inherit; color:var(--text); width:100%; }
 .ruestung-karte:active { background:var(--surface-3); }
-.ruestung-icons { display:grid; grid-template-columns:repeat(2, 30px); gap:4px; padding:7px; border-radius:12px;
-  background:var(--surface-3); border:1px solid var(--border-soft); flex:0 0 auto; }
-.ruestung-icons .item-bild { width:30px; height:30px; }
-.ruestung-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+/* Set auf dem Ständer: Figur vor dem Block der Dimension, wie die Bühne im Detail */
+.ruestung-staender { flex:0 0 88px; min-height:128px; border-radius:12px; overflow:hidden; border:1px solid var(--border-soft);
+  background:linear-gradient(rgba(10,12,16,.35), rgba(10,12,16,.72)), var(--hintergrund) 0 0 / 32px 32px;
+  image-rendering:pixelated; display:grid; place-items:center; }
+.ruestung-staender .dreher { width:18px; height:18px; margin:0; }
+.staender-bild { width:100%; height:100%; object-fit:contain; object-position:center bottom; image-rendering:auto; }
+.staender-icons { display:grid; grid-template-columns:repeat(2, 30px); gap:4px; }
+.staender-icons .item-bild { width:30px; height:30px; }
+.ruestung-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; align-items:flex-start; justify-content:center; }
 .ruestung-text .card-meta { margin-top:0; }
-.besatz-reihe { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:3px; }
-.besatz-reihe .pill { margin-left:4px; }
-.vorlage-mini { position:relative; width:24px; height:24px; border-radius:6px; display:grid; place-items:center;
-  background:var(--surface-3); border:1px solid var(--border-soft); }
-.vorlage-mini .item-bild { width:18px; height:18px; opacity:.45; filter:grayscale(.8); }
-.vorlage-mini.gefunden { border-color:var(--accent); background:var(--accent-soft); }
-.vorlage-mini.gefunden .item-bild { opacity:1; filter:none; }
+/* Je Teil: Rüstungsteil · Ziervorlage · Rohstoff (wie am Schmiedetisch, klein) */
+.teil-chips { display:grid; grid-template-columns:repeat(2, max-content); gap:5px 6px; margin:3px 0 2px; }
+.teil-chip { display:flex; gap:2px; padding:2px; border-radius:8px; background:var(--surface-3); border:1px solid var(--border-soft); }
+.chip-slot { width:24px; height:24px; border-radius:5px; display:grid; place-items:center; background:rgba(0,0,0,.18); }
+.chip-slot .item-bild { width:20px; height:20px; }
+.chip-slot.frei { background:transparent; border:1px dashed var(--border-soft); }
+.chip-vorlage.gefunden { box-shadow:inset 0 0 0 1.5px var(--accent); background:var(--accent-soft); }
+.chip-vorlage.fehlt .item-bild { opacity:.45; filter:grayscale(.8); }
+.teil-chip.leer .chip-ruestung .item-bild { opacity:.35; }
 
 /* Bühne: Figur vor dem Block der Dimension */
 .buehne { position:relative; border-radius:16px; overflow:hidden; border:1px solid var(--border-soft);
@@ -856,7 +856,6 @@ button.switch { padding:0; }
 .rezept-text b { font-size:14.5px; }
 .rezept-text small { font-size:12px; color:var(--text-faint); line-height:1.4; display:flex; align-items:center; flex-wrap:wrap; gap:0 5px; }
 .rezept-text .en { font-weight:600; font-size:11px; margin-left:4px; }
-.rezept-text .verz, .schmiede-text .verz { color:#c49bff; font-weight:700; }
 .farbpunkt.klein { width:11px; height:11px; border-radius:3px; }
 .besatz-status { display:flex; align-items:center; gap:8px; border-radius:10px; padding:8px 10px; font:inherit; font-size:12.5px;
   font-weight:600; text-align:left; border:none; width:100%; }
@@ -872,24 +871,6 @@ button.switch { padding:0; }
 .bedarf-zeile b { color:var(--text); font-variant-numeric:tabular-nums; }
 .bedarf-zeile small { display:block; font-size:11px; color:var(--text-faint); }
 
-/* Verzauberung am Amboss */
-.verz { padding:0; gap:0; overflow:hidden; }
-.verz.offen { border-color:var(--accent); }
-.verz-kopf { display:flex; align-items:center; gap:10px; width:100%; background:none; border:none; color:var(--text);
-  font:inherit; text-align:left; cursor:pointer; padding:10px 12px; }
-.verz-kopf .item-bild { width:28px; height:28px; }
-.verz-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-.verz-text b { font-size:14px; }
-.verz-text small { font-size:11.5px; color:var(--text-faint); line-height:1.4; }
-.verz.offen .ach-cat-chevron { transform:rotate(180deg); }
-.verz-schritte { padding:0 10px 12px; }
-.amboss { gap:8px; }
-.amboss-seite { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; font-size:12.5px; }
-.amboss-seite small { font-size:11px; color:var(--text-faint); line-height:1.3; }
-.amboss .plus { color:var(--text-faint); font-weight:800; }
-.amboss .xp { font:800 14px ui-monospace,monospace; color:#9be36a; text-align:right; flex:0 0 auto; }
-.amboss .xp small { font-size:9px; margin-left:1px; }
-.amboss.erledigt .amboss-seite, .amboss.erledigt .xp { opacity:.5; }
 
 /* Editor */
 .ruestung-editor-kopf { position:sticky; top:-1px; z-index:2; background:var(--surface); padding:2px 0 8px; margin-bottom:-8px; }
@@ -921,9 +902,6 @@ button.switch { padding:0; }
 .wahl-leer { width:30px; height:30px; display:grid; place-items:center; font-size:18px; color:var(--text-faint); }
 .schmiede .farbraster { grid-template-columns:repeat(9, 1fr); }
 .schmiede .farbraster .farbfeld:first-child { box-shadow:inset 0 0 0 1px rgba(0,0,0,.35), inset 0 0 0 3px rgba(255,255,255,.18); }
-.verz-schalter { padding:6px 2px 2px; border-bottom:none; }
-.verz-schalter .oname { font-size:14px; }
-.verz-schalter .oname, .verz-schalter .odesc { display:block; }
 
 /* ---- Portal-Verwaltung  ·  Umrechner, Verbindungen, Infokarte ------------- */
 .portal-stage { padding-top:2px; }
@@ -1493,7 +1471,7 @@ function koordinatenErkennen(text){
    PUT    /ruestung/:id  { name, teile }     → { set }
    DELETE /ruestung/:id                      → { ok:true }
    set = { id, name, teile:{ helmet|chestplate|leggings|boots:
-             { ruestung, muster|null, material|null, farbe|null, verzaubert } | null }, von, am }
+             { ruestung, muster|null, material|null, farbe|null } | null }, von, am }
 
    Portal-Verbindungen (je Welt, für alle gemeinsam, Regeln siehe verbindungRegelPruefen()):
    GET    /portale/welten/:id                                  → { verbindungen:[verbindung] }
@@ -1586,14 +1564,14 @@ const MOCK = (() => {
     { id:"b_4", name:"Prüfungskammer", basis:"cyan", ebenen:[{ muster:"bricks", farbe:"gray" }, { muster:"flow", farbe:"white" }, { muster:"border", farbe:"black" }], von:"Tom", am:"2026-09-25" },
   ];
   // Rüstungs-Sets (weltunabhängig) – nach den Vorlagen in referenz/ruestung/
-  const teil = (ruestung, muster, material, verzaubert = true, farbe = null) => ({ ruestung, muster, material, farbe, verzaubert });
+  const teil = (ruestung, muster, material, farbe = null) => ({ ruestung, muster, material, farbe });
   const ruestung = [
     { id:"r_1", name:"Amethyst-Netherit", teile:{ helmet:teil("netherite", "flow", "amethyst"), chestplate:teil("netherite", "silence", "amethyst"),
         leggings:teil("netherite", "tide", "amethyst"), boots:teil("netherite", "silence", "amethyst") }, von:"Lena", am:"2026-09-20" },
     { id:"r_2", name:"Umbreon", teile:{ helmet:teil("netherite", "eye", "redstone"), chestplate:teil("netherite", "ward", "gold"),
         leggings:teil("netherite", "ward", "gold"), boots:teil("netherite", "host", "gold") }, von:"Max", am:"2026-09-23" },
-    { id:"r_3", name:"Taucher", teile:{ helmet:teil("turtle", "coast", "lapis", false), chestplate:teil("leather", null, null, false, "cyan"),
-        leggings:teil("leather", "tide", "diamond", false, "blue"), boots:null }, von:"Tom", am:"2026-09-26" },
+    { id:"r_3", name:"Taucher", teile:{ helmet:teil("turtle", "coast", "lapis"), chestplate:teil("leather", null, null, "cyan"),
+        leggings:teil("leather", "tide", "diamond", "blue"), boots:null }, von:"Tom", am:"2026-09-26" },
   ];
   // Portal-Verbindungen der Beispielwelt: passt · einseitig · Nether-Portal zu weit weg
   const portale = {
@@ -4216,7 +4194,7 @@ document.addEventListener("visibilitychange", () => {
      über http (Board-Server). Ohne three.js → flache 2D-Figur, als Datei → Icons.
    ========================================================================== */
 const THREE_URL = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
-const rs = { sets:[], geladen:false, detail:null, entwurf:null, teil:"helmet", slot:"vorlage", offen:null };
+const rs = { sets:[], geladen:false, detail:null, entwurf:null, teil:"helmet", slot:"vorlage" };
 const $ruestungListe = document.getElementById("ruestungListe");
 const PFEIL = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h14M13 6l6 6-6 6"/></svg>';
 const BUEHNE_DIMS = Object.freeze([
@@ -4230,24 +4208,17 @@ const zutatDatei = (m) => `${BAUKASTEN}zutaten/${m.icon}.png`;
 /** Leerer Slot am Schmiedetisch: blasser Platzhalter wie im Spiel */
 const GEIST = { vorlage:`${BAUKASTEN}vorlagen/sentry_armor_trim_smithing_template.png`, material:`${BAUKASTEN}zutaten/iron_ingot.png` };
 const geistBild = (art) => `<span class="geist">${itemBild(GEIST[art])}</span>`;
-const ohneBesatz = (t) => t && { ...t, muster:null, material:null, verzaubert:false };
+const ohneBesatz = (t) => t && { ...t, muster:null, material:null };
 function teilIconDatei(teilId, t){
   if(!t) return `${BAUKASTEN}slots/empty_armor_slot_${teilId}.png`;
   const farbe = ruestungsArt(t.ruestung)?.faerbbar ? `_${t.farbe || "standard"}` : "";
   return `${BAUKASTEN}fertig/items/${t.ruestung}_${teilId}${farbe}${t.muster && t.material ? `__${t.material}` : ""}.png`;
 }
-/** Item-Icon eines Teils; verzauberte Teile schimmern. Über http mit dem Icon als Maske,
-    als Datei nur mit violettem Schein (Masken-Bilder brauchen CORS, file:// hat keins). */
-const MASKE_GEHT = location.protocol.startsWith("http");
+/** Item-Icon eines Teils (fertiges Teil oder leerer Slot) */
 function teilIcon(teilId, t){
   const datei = teilIconDatei(teilId, t);
-  return `<span class="item-rahmen ${t ? "" : "leer"} ${t?.verzaubert ? "glanz" : ""}">${itemBild(datei, t ? itemName(teilId, t) : teilName(teilId))}${t?.verzaubert && MASKE_GEHT
-    ? `<span class="glanz-schicht" style="--maske:url('${datei}')"></span>` : ""}</span>`;
+  return `<span class="item-rahmen ${t ? "" : "leer"}">${itemBild(datei, t ? itemName(teilId, t) : teilName(teilId))}</span>`;
 }
-const vorlageMini = (id) => {
-  const o = besatzMuster(id);
-  return `<span class="vorlage-mini ${sam.status[id] ? "gefunden" : ""}" title="${esc(o.name)}${sam.status[id] ? " – gefunden" : ""}">${itemBild(vorlageDatei(o), o.name)}</span>`;
-};
 
 /** Welche Rüstungsbesätze braucht das Set, welche sind in dieser Welt schon gefunden? */
 const besatzStand = (s) => besatzStandVon(s, sam.status);   // board-karten.js
@@ -4264,22 +4235,78 @@ async function ruestungLaden(){
 
 function renderRuestung(){
   if(!rs.geladen){ $ruestungListe.innerHTML = '<div class="empty-list"><span class="dreher"></span>Sets werden geladen …</div>'; return; }
+  const hintergrund = (BUEHNE_DIMS.find((x) => x.id === fig.dim) || BUEHNE_DIMS[0]).hintergrund;
   $ruestungListe.innerHTML = rs.sets.map((s) => {
     const b = besatzStand(s);
     const teile = RUESTUNGS_TEILE.filter(({ id }) => s.teile[id]);
     const arten = [...new Set(teile.map(({ id }) => ruestungsArt(s.teile[id].ruestung).name))].join(", ");
     return `<button class="card ruestung-karte" data-set="${s.id}">
-      <span class="ruestung-icons">${RUESTUNGS_TEILE.map(({ id }) => teilIcon(id, s.teile[id])).join("")}</span>
+      <span class="ruestung-staender" data-staender="${s.id}" style="--hintergrund:url('${BAUKASTEN}${hintergrund}')">${staenderInhalt(s)}</span>
       <span class="ruestung-text">
         <span class="card-title">${esc(s.name)}</span>
         <span class="card-meta">${esc(arten)} · ${teile.length} ${teile.length === 1 ? "Teil" : "Teile"}${s.von ? ` · von ${esc(s.von)}` : ""}</span>
+        <span class="teil-chips">${RUESTUNGS_TEILE.map(({ id }) => teilChipHtml(id, s.teile[id])).join("")}</span>
         ${b.verschieden.length
-          ? `<span class="besatz-reihe">${b.verschieden.map(vorlageMini).join("")}
-              <span class="pill ${b.gefunden.length === b.verschieden.length ? "ok" : "warn"}">${b.gefunden.length}/${b.verschieden.length} gefunden</span></span>`
+          ? `<span class="pill ${b.gefunden.length === b.verschieden.length ? "ok" : "warn"}">${b.gefunden.length}/${b.verschieden.length} gefunden</span>`
           : '<span class="card-meta">Ohne Besatz</span>'}
       </span>
     </button>`;
   }).join("") || '<div class="empty-list">Noch keine Rüstungs-Sets. Unten „Neues Set“ antippen.</div>';
+  staenderFotosLaden();
+}
+
+/* ---------- Liste: Set auf dem Ständer + je Teil Rüstung, Vorlage, Rohstoff (Wunsch von Max, 05.10.2026) ----------
+   Die Figur wird je Set einmal als Bild aufgenommen (3D auf dem Ständer, ohne three.js die 2D-Figur)
+   und nach Teilen + Dimension zwischengespeichert. Als Datei gibt es keine Figur → die vier Icons. */
+const staenderFotos = new Map();
+const staenderSchluessel = (s) => JSON.stringify([fig.dim, s.teile]);
+const staenderIcons = (s) => `<span class="staender-icons">${RUESTUNGS_TEILE.map(({ id }) => teilIcon(id, s.teile[id])).join("")}</span>`;
+function staenderInhalt(s){
+  const foto = staenderFotos.get(staenderSchluessel(s));
+  if(foto) return `<img class="staender-bild" src="${foto}" alt="${esc(s.name)} auf dem Rüstungsständer" draggable="false">`;
+  return fig.art === "icons" ? staenderIcons(s) : '<span class="dreher"></span>';
+}
+async function staenderFoto(s){
+  const modus = await figurModus();
+  if(modus === "icons") return null;
+  if(modus === "3d"){
+    fig.staender3d ??= fig.erstelle3D(document.createElement("canvas"), 180, 260, 96);   // näher dran: Figur füllt die Kachel
+    const lauf = fig.kette.then(async () => {
+      await fig.staender3d.setzen({ ausruestung:ausruestungVon(s.teile), traeger:"staender", sockel:sockelVon(fig.dim) });
+      fig.staender3d.drehen(-0.55, 0.16);   // wie die Bühne im Detail
+      return fig.staender3d.canvas.toDataURL("image/png");
+    });
+    fig.kette = lauf.catch(() => {});   // die Kette darf nie abgelehnt bleiben
+    return lauf;
+  }
+  const c = await fig.bk.figur({ ausruestung:ausruestungVon(s.teile), ansicht:"vorn", massstab:4, skin:false });
+  return c.toDataURL("image/png");
+}
+/** Fehlende Ständer-Bilder nacheinander aufnehmen und an Ort und Stelle einsetzen */
+async function staenderFotosLaden(){
+  const lauf = (fig.staenderLauf = (fig.staenderLauf || 0) + 1);
+  for(const s of rs.sets){
+    const schluessel = staenderSchluessel(s);
+    if(!staenderFotos.has(schluessel)){
+      try {
+        const foto = await staenderFoto(s);
+        if(foto) staenderFotos.set(schluessel, foto);
+      } catch(f){ console.warn("Ständer-Bild:", f); }
+    }
+    if(lauf !== fig.staenderLauf) return;   // Liste wurde inzwischen neu gezeichnet
+    const el = $ruestungListe.querySelector(`[data-staender="${s.id}"]`);
+    if(el && staenderSchluessel(s) === schluessel) el.innerHTML = staenderInhalt(s);
+  }
+}
+/** Ein Teil wie am Schmiedetisch, klein: Rüstungsteil (Grundform, ohne Besatz) · Ziervorlage · Rohstoff */
+function teilChipHtml(teilId, t){
+  const o = t?.muster ? besatzMuster(t.muster) : null, m = o ? besatzMaterial(t.material) : null;
+  const gefunden = o && sam.status[o.id];
+  return `<span class="teil-chip ${t ? "" : "leer"}" title="${esc(t ? itemName(teilId, t) : teilName(teilId))}">
+    <span class="chip-slot chip-ruestung">${teilIcon(teilId, ohneBesatz(t))}</span>
+    <span class="chip-slot chip-vorlage ${o ? (gefunden ? "gefunden" : "fehlt") : "frei"}" title="${o ? `${esc(o.name)}${gefunden ? " – gefunden" : " – fehlt noch"}` : "Keine Vorlage"}">${o ? itemBild(vorlageDatei(o), o.name) : ""}</span>
+    <span class="chip-slot chip-rohstoff ${m ? "" : "frei"}" title="${m ? esc(m.zutat) : "Kein Rohstoff"}">${m ? itemBild(zutatDatei(m), m.zutat) : ""}</span>
+  </span>`;
 }
 
 // ---------- Detail ----------
@@ -4301,7 +4328,7 @@ function rezeptHtml(teilId, t){
     </div>
     <div class="rezept-text">
       <b>${esc(itemName(teilId, t))}</b>
-      <small>${o ? `${esc(o.name)}<span class="en">${esc(o.en)}</span> · ${esc(m.name)}` : "Ohne Besatz"}${leder}${t.verzaubert ? ' · <span class="verz">verzaubert</span>' : ""}</small>
+      <small>${o ? `${esc(o.name)}<span class="en">${esc(o.en)}</span> · ${esc(m.name)}` : "Ohne Besatz"}${leder}</small>
     </div>
     ${!o ? "" : gefunden
       ? `<div class="besatz-status ok">✓ In dieser Welt gefunden · ${esc(gefunden.von)}</div>`
@@ -4330,56 +4357,6 @@ function bedarfHtml(s, b){
   </div>`;
 }
 
-/* Verzauberungs-Pläne je Teil – beste Verzauberung mit wenig XP (Vorlage: lighthousepng).
-   XP-Werte sind Richtwerte und können im Spiel leicht abweichen.
-   Schritt = [links, rechts, xp]; links/rechts: { teil:true|false, v:[Verzauberungen] } */
-const T = (...v) => ({ teil:true, v }), B = (...v) => ({ teil:false, v });
-const VERZAUBERUNG = Object.freeze({
-  helmet:     { ziel:["Schutz IV", "Haltbarkeit III", "Atmung III", "Wasseraffinität", "Reparatur"], schritte:[
-    [T(), B("Atmung III"), 6], [B("Schutz IV"), B("Reparatur"), 2], [T("Atmung III"), B("Schutz IV", "Reparatur"), 8],
-    [B("Haltbarkeit III"), B("Wasseraffinität"), 2], [T("Atmung III", "Schutz IV", "Reparatur"), B("Haltbarkeit III", "Wasseraffinität"), 9]] },
-  chestplate: { ziel:["Schutz IV", "Haltbarkeit III", "Reparatur"], schritte:[
-    [T(), B("Schutz IV"), 4], [B("Haltbarkeit III"), B("Reparatur"), 4], [T("Schutz IV"), B("Haltbarkeit III", "Reparatur"), 5]] },
-  leggings:   { ziel:["Schutz IV", "Haltbarkeit III", "Reparatur", "Huschen III"], schritte:[
-    [T(), B("Huschen III"), 12], [B("Haltbarkeit III"), B("Reparatur"), 2], [T("Huschen III"), B("Haltbarkeit III", "Reparatur"), 7],
-    [T("Huschen III", "Haltbarkeit III", "Reparatur"), B("Schutz IV"), 7]] },
-  boots:      { ziel:["Schutz IV", "Haltbarkeit III", "Reparatur", "Wasserläufer III", "Seelenläufer III", "Federfall IV"], schritte:[
-    [T(), B("Seelenläufer III"), 12], [B("Wasserläufer III"), B("Federfall IV"), 3], [T("Seelenläufer III"), B("Wasserläufer III", "Federfall IV"), 11],
-    [B("Schutz IV"), B("Haltbarkeit III"), 2], [B("Schutz IV", "Haltbarkeit III"), B("Reparatur"), 10],
-    [T("Seelenläufer III", "Wasserläufer III", "Federfall IV"), B("Schutz IV", "Haltbarkeit III", "Reparatur"), 11]] },
-});
-const xpSumme = (teilId) => VERZAUBERUNG[teilId].schritte.reduce((n, s) => n + s[2], 0);
-const verzSchritte = (setId, teilId) => new Set(lsLesen(`ruestung.schritte.${setId}.${teilId}`) || []);
-const ambossSeite = (seite, name) => seite.teil
-  ? `<b>${esc(name)}</b>${seite.v.length ? `<small>${seite.v.map(esc).join(", ")}</small>` : ""}`
-  : `<b>Buch</b><small>${seite.v.map(esc).join(", ")}</small>`;
-
-function verzauberungHtml(s){
-  const teile = RUESTUNGS_TEILE.filter(({ id }) => s.teile[id]?.verzaubert);
-  if(!teile.length) return "";
-  return `<div class="field-group"><div class="field-group-label">Verzaubern am Amboss</div><div class="list-stack">${teile.map(({ id }) => {
-    const plan = VERZAUBERUNG[id], erledigt = verzSchritte(s.id, id), offen = rs.offen === id, name = itemName(id, s.teile[id]);
-    return `<div class="card verz ${offen ? "offen" : ""}">
-      <button class="verz-kopf" data-aktion="verz-auf" data-teil-id="${id}" aria-expanded="${offen}">
-        ${teilIcon(id, s.teile[id])}
-        <span class="verz-text"><b>${esc(name)}</b><small>${erledigt.size}/${plan.schritte.length} Schritte · ${xpSumme(id)} XP · ${plan.ziel.map(esc).join(" · ")}</small></span>
-        <span class="ach-cat-chevron">${CHEVRON}</span>
-      </button>
-      ${offen ? `<div class="list-stack verz-schritte">${plan.schritte.map(([l, r, xp], n) => `<button class="card schritt amboss ${erledigt.has(n) ? "erledigt" : ""}" data-aktion="verz-schritt" data-id="${s.id}" data-teil-id="${id}" data-n="${n}">
-          <span class="schritt-nr">${erledigt.has(n) ? "✓" : n + 1}</span>
-          <span class="amboss-seite">${ambossSeite(l, name)}</span><span class="plus">+</span><span class="amboss-seite">${ambossSeite(r, name)}</span>
-          <span class="xp">${xp}<small>XP</small></span></button>`).join("")}
-        <p class="result-hint">Reihenfolge mit wenig XP (Vorlage: lighthousepng) · XP-Werte sind Richtwerte, im Spiel leicht abweichend. Abhaken gilt nur auf diesem Gerät.</p></div>` : ""}
-    </div>`;
-  }).join("")}</div></div>`;
-}
-function verzSchrittUmschalten(setId, teilId, n){
-  const erledigt = verzSchritte(setId, teilId);
-  erledigt.has(n) ? erledigt.delete(n) : erledigt.add(n);
-  lsSchreiben(`ruestung.schritte.${setId}.${teilId}`, erledigt.size ? [...erledigt] : null);
-  ruestungDetailOeffnen(setId);
-}
-
 function ruestungDetailOeffnen(id){
   const s = rs.sets.find((x) => x.id === id); if(!s) return;
   const scroll = st.sheet === "ruestung" && rs.detail === id ? $sheet.scrollTop : 0;
@@ -4393,7 +4370,6 @@ function ruestungDetailOeffnen(id){
         : `${b.gefunden.length} von ${b.verschieden.length} Rüstungsbesätzen in dieser Welt gefunden.`}</div>` : ""}
     <div class="field-group"><div class="field-group-label">Am Schmiedetisch</div><div class="list-stack">${rezepte}</div></div>
     ${bedarfHtml(s, b)}
-    ${verzauberungHtml(s)}
     ${boardZeigenKnopf(`ruestung:${s.id}`)}
     <div class="knopf-raster">
       <button class="btn-primary" data-aktion="set-bearbeiten" data-id="${s.id}">Bearbeiten</button>
@@ -4415,11 +4391,11 @@ async function ruestungLoeschen(id){
 
 // ---------- Editor: der Schmiedetisch ----------
 
-const neuesTeil = (ruestung = "netherite") => ({ ruestung, muster:null, material:null, farbe:null, verzaubert:false });
+const neuesTeil = (ruestung = "netherite") => ({ ruestung, muster:null, material:null, farbe:null });
 function ruestungEditorOeffnen(id){
   const s = id ? rs.sets.find((x) => x.id === id) : null;
   rs.entwurf = s ? structuredClone(s)
-    : { id:null, name:"", teile:Object.fromEntries(RUESTUNGS_TEILE.map(({ id:t }) => [t, { ...neuesTeil(), verzaubert:true }])) };
+    : { id:null, name:"", teile:Object.fromEntries(RUESTUNGS_TEILE.map(({ id:t }) => [t, neuesTeil()])) };
   rs.teil = "helmet"; rs.slot = "vorlage";
   ruestungEditorRendern();
 }
@@ -4480,8 +4456,6 @@ function ruestungEditorRendern(){
         : `<b>Kein ${esc(teilName(rs.teil))}</b><small>Dieses Teil gehört nicht zum Set</small>`}</div>
       <div class="wahl-bereich">${auswahlHtml(t)}</div>
       ${leder}
-      ${t ? `<label class="opt verz-schalter"><span class="otext"><span class="oname">Verzaubert</span><span class="odesc">${VERZAUBERUNG[rs.teil].ziel.join(" · ")}</span></span>
-        <button class="switch ${t.verzaubert ? "on" : ""}" data-wahl-verzaubert role="switch" aria-checked="${t.verzaubert}" aria-label="Verzaubert"></button></label>` : ""}
     </div>
     <div class="banner bad" id="setMeldung" hidden></div>
     <div class="sheet-fuss"><button class="btn-secondary" data-aktion="set-abbrechen">Abbrechen</button>
@@ -4495,7 +4469,7 @@ function ruestungEditorRendern(){
 /** Klicks im Schmiedetisch – true, wenn erledigt */
 function ruestungEditorKlick(ziel){
   const e = rs.entwurf; if(!e) return false;
-  const k = ziel.closest("[data-teil-wahl],[data-slot],[data-wahl-ruestung],[data-wahl-muster],[data-wahl-material],[data-wahl-farbe],[data-wahl-verzaubert]");
+  const k = ziel.closest("[data-teil-wahl],[data-slot],[data-wahl-ruestung],[data-wahl-muster],[data-wahl-material],[data-wahl-farbe]");
   if(!k || k.disabled) return false;
   const d = k.dataset, t = e.teile[rs.teil];
   if(d.teilWahl){ rs.teil = d.teilWahl; if(!e.teile[rs.teil]) rs.slot = "ruestung"; }
@@ -4516,7 +4490,6 @@ function ruestungEditorKlick(ziel){
   }
   else if("wahlMaterial" in d) t.material = d.wahlMaterial;
   else if("wahlFarbe" in d) t.farbe = d.wahlFarbe || null;
-  else if("wahlVerzaubert" in d) t.verzaubert = !t.verzaubert;
   ruestungEditorRendern();
   return true;
 }
@@ -4542,7 +4515,7 @@ async function ruestungSpeichern(){
 
 const fig = {
   modus:null, art:null, bk:null, erstelle3D:null, f3d:null, canvas3d:null, foto3d:null, groesse:null,
-  kette:Promise.resolve(), auftrag:0, teile:null, glanzTimer:null, ansicht:"vorn",
+  kette:Promise.resolve(), auftrag:0, teile:null, ansicht:"vorn",
   dim:lsLesen("ruestung.buehne")?.dim || "oberwelt", traeger:lsLesen("ruestung.buehne")?.traeger || "staender",
 };
 const buehneMerken = () => lsSchreiben("ruestung.buehne", { dim:fig.dim, traeger:fig.traeger });
@@ -4552,7 +4525,7 @@ function ausruestungVon(teile){
   return Object.fromEntries(RUESTUNGS_TEILE.flatMap(({ id }) => {
     const t = teile[id]; if(!t) return [];
     const farbe = t.farbe && ruestungsArt(t.ruestung)?.faerbbar ? fig.bk.manifest.farbstoffe.find((f) => f.id === t.farbe)?.hex : null;
-    return [[id, { ruestung:t.ruestung, muster:t.muster, material:t.material, farbe, glanz:t.verzaubert }]];
+    return [[id, { ruestung:t.ruestung, muster:t.muster, material:t.material, farbe }]];
   }));
 }
 
@@ -4584,7 +4557,7 @@ function figurModus(){
       const THREE = await threeLaden();
       if(!THREE) return "2d";
       const { erstelleFigur3D } = await import(`./${BAUKASTEN}figur3d.js`);
-      fig.erstelle3D = (canvas, breite, hoehe) => erstelleFigur3D({ THREE, baukasten:fig.bk, canvas, breite, hoehe, abstand:118 });
+      fig.erstelle3D = (canvas, breite, hoehe, abstand = 118) => erstelleFigur3D({ THREE, baukasten:fig.bk, canvas, breite, hoehe, abstand });
       fig.canvas3d = document.createElement("canvas");
       fig.canvas3d.className = "figur-3d";
       fig.f3d = fig.erstelle3D(fig.canvas3d, 320, 320);
@@ -4636,22 +4609,7 @@ async function buehneZeigen(teile){
       flaeche.replaceChildren(c);
       hinweis.textContent = `${fig.ansicht === "vorn" ? "Vorderseite" : "Rückseite"} · antippen zum Umdrehen`;
     }
-    glanzStarten();
   }).catch((f) => { console.warn("Figur:", f); hinweis.textContent = "Figur konnte nicht gezeichnet werden"; });
-}
-
-/** Verzauberte Teile schimmern – nur solange die 3D-Figur zu sehen ist */
-function glanzStarten(){
-  clearInterval(fig.glanzTimer); fig.glanzTimer = null;
-  if(fig.art !== "3d" || !fig.f3d.hatGlanz() || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  let phase = 0, laeuft = false;
-  fig.glanzTimer = setInterval(async () => {
-    // Das Sheet bleibt nach dem Schließen im DOM – deshalb am offenen Sheet festmachen
-    if(!fig.canvas3d.isConnected || (st.sheet !== "ruestung" && st.sheet !== "ruestung-editor")){ clearInterval(fig.glanzTimer); fig.glanzTimer = null; return; }
-    if(laeuft || document.hidden) return;
-    laeuft = true; phase = (phase + 0.02) % 1;
-    fig.kette = fig.kette.then(() => fig.f3d.glanzTick(phase)).catch(() => {}).finally(() => { laeuft = false; });
-  }, 110);
 }
 
 /** Ziehen dreht die Figur (waagerecht: Blickwinkel, senkrecht: Neigung) */
@@ -4711,7 +4669,7 @@ async function ruestungFoto(s){
   const c = await fig.bk.figur({ ausruestung:ausruestungVon(s.teile), ansicht:"vorn", massstab:6 });
   return { daten:c.toDataURL("image/png"), pixelig:true };
 }
-$ruestungListe.addEventListener("click", (e) => { const k = e.target.closest("[data-set]"); if(k){ rs.offen = null; ruestungDetailOeffnen(k.dataset.set); } });
+$ruestungListe.addEventListener("click", (e) => { const k = e.target.closest("[data-set]"); if(k) ruestungDetailOeffnen(k.dataset.set); });
 document.getElementById("ruestungNeuBtn").addEventListener("click", () => ruestungEditorOeffnen(null));
 
 /* ============================================================================
@@ -5200,8 +5158,6 @@ $sheet.addEventListener("click", async (e) => {
       if(a.dataset.sicher !== "1"){ a.dataset.sicher = "1"; a.textContent = "Wirklich löschen?"; return; }
       ruestungLoeschen(id); break;
     case "zum-sammelobjekt": samDetailOeffnen(id); break;
-    case "verz-auf": rs.offen = rs.offen === a.dataset.teilId ? null : a.dataset.teilId; ruestungDetailOeffnen(rs.detail); break;
-    case "verz-schritt": verzSchrittUmschalten(id, a.dataset.teilId, Number(a.dataset.n)); break;
     // Board-Verbindung
     case "board-beitreten": boardBeitretenKlick(); break;
     case "board-kamera": boardScanStarten(); break;
