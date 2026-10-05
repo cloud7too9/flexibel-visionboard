@@ -90,6 +90,7 @@ Danach: Weltname und Seed bestätigen → **Biome lesen** (Fortschritt, Abbreche
 
 ## Sammelobjekte
 
+- **Reiter oben** (Wunsch von Max, 05.10.2026): **Besätze** · Scherben · Platten · Vorlagen. Im Reiter stehen kurze Namen, damit alle vier ohne Wischen passen; voller Name als Tooltip/Vorlesetext und im Untertitel. Töpferscherben, Musikplatten und Bannervorlagen sind erreichbar, haben aber noch keinen Inhalt: Sie zeigen „Bald verfügbar“, ohne Kopf, Liste und Filter (`SAM_REITER`, `sam.reiter`). Alles Folgende gilt für den Reiter Besätze
 - 18 Rüstungsbesätze + Netheritaufwertung mit den **Namen aus Bedrock** (`texts/de_DE.lang`, z. B. „Wächterzier“, „Mündelzier“), englischer Name klein daneben, Stand inkl. Fluss/Blitz aus 1.21
 - **Icon je Besatz**: die Schmiedevorlage aus `ruestungs-baukasten/vorlagen/` (`vorlageDatei()`), in der Liste und im Kopf des Details; offene blass
 - Gruppiert nach Fundort-Struktur, Karten nach Dimension eingefärbt; Fundort-Hinweis (Truhe, Seltsamer Kies, Tresor, Großer Wächter)
@@ -98,6 +99,8 @@ Danach: Weltname und Seed bestätigen → **Biome lesen** (Fortschritt, Abbreche
   - Ohne Bild (`bild:false`, zurzeit **Pfadruinen**: Seltsamer Kies fehlt noch) oder wenn die Datei nicht lädt, steht das Symbol aus `SYMBOL` im Kasten
 - **Abhaken gilt für die ganze Welt** und merkt sich, wer es wann gefunden hat
 - Fortschritt: gefunden / 18, Fundorte bekannt / 13, Prozent
+- **Zier-Übersicht im Kopf** (Wunsch von Max, 05.10.2026): alle 18 Besätze auf einen Blick, je 2 untereinander, der Rest in einer Reihe (Raster mit 2 Zeilen, spaltenweise gefüllt → 2 × 9), in der Reihenfolge der Liste und ohne Netheritaufwertung. Gefundene farbig mit Haken über dem Symbol, offene blass; Nether und End in ihrer Dimensionsfarbe. Die Übersicht ignoriert den Filter. Tippen öffnet das Detail (`samUebersichtRendern()`)
+- **Filter als Knopf** (Wunsch von Max, 05.10.2026): statt der drei Pillen über der Liste ein Knopf „Filter“ in der Bottom-Bar. Er öffnet ein Sheet mit **Alle**, **Noch offene**, **Gefunden** (Zahlen wie im Kopf: Besätze ohne Aufwertung, die Aufwertung folgt in der Liste trotzdem dem Filter). Ist ein Filter aktiv, trägt der Knopf seinen Namen und ist hervorgehoben (`SAM_FILTER`, `samFilterOeffnen()`, Aktion `sam-filter`)
 - Verknüpfung zur Karte: pro Fundort die bekannten Strukturen aus der Koordinaten-Sammlung, nächste mit Entfernung; „Karte“ springt direkt hin
 
 ## Rüstung

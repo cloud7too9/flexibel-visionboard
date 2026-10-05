@@ -689,6 +689,27 @@ button.switch { padding:0; }
   transition:background .2s, border-color .2s, color .2s; }
 .sam-check svg { width:18px; height:18px; }
 .ach-item.earned .sam-check { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+/* Reiter der Sammelobjekte; Bereiche ohne Inhalt zeigen „Bald verfügbar“ */
+#moduleSammel [hidden] { display:none !important; }
+.sam-reiter-wrap { padding-top:12px; padding-bottom:0; }
+.sam-reiter-wrap + .ach-stage { padding-top:12px; }
+.sam-reiter .tab { font-size:14px; padding:10px 2px; white-space:nowrap; min-width:0; }
+.sam-bald { padding:48px 16px; }
+.sam-bald .en { color:var(--text-faint); font-size:12px; }
+/* Zier-Übersicht im Kopf: alle Besätze, je 2 untereinander, Haken über dem Symbol */
+.sam-uebersicht { display:grid; grid-template-rows:repeat(2, auto); grid-auto-flow:column; grid-auto-columns:1fr;
+  gap:7px 6px; margin-top:14px; padding-top:6px; }
+.sam-zier { position:relative; aspect-ratio:1; min-width:0; padding:0; border-radius:9px; cursor:pointer;
+  background:var(--surface-2); border:1px solid var(--border-soft); display:grid; place-items:center;
+  transition:background .2s, border-color .2s; }
+.sam-zier:active { transform:scale(.94); }
+.sam-zier .item-bild { width:72%; height:72%; opacity:.45; filter:grayscale(.8); transition:opacity .2s, filter .2s; }
+.sam-zier.gefunden { background:var(--accent-soft); border-color:var(--accent); }
+.sam-zier.gefunden .item-bild { opacity:1; filter:none; }
+.sam-zier-haken { position:absolute; top:-6px; right:-6px; width:16px; height:16px; border-radius:50%;
+  background:var(--accent); color:var(--accent-ink); display:grid; place-items:center;
+  box-shadow:0 0 0 2px var(--surface); }
+.sam-zier-haken svg { width:10px; height:10px; }
 .fund-zeile { display:flex; align-items:center; gap:10px; flex-direction:row; }
 .fund-zeile .coord { flex:1; font-size:13px; }
 .fund-zeile .weg { font-family:ui-monospace,monospace; font-weight:700; color:var(--accent); font-size:13px; }
@@ -1107,8 +1128,13 @@ button.switch { padding:0; }
     </section>
     <!-- === Modul: Sammelobjekte · Rüstungs-Modifikationen =================== -->
     <section class="module" data-module="sammelobjekte" id="moduleSammel">
+      <!-- Reiter: Rüstungsbesätze + weitere Sammelobjekte (noch ohne Inhalt: „Bald verfügbar“) -->
+      <div class="tabs-wrap sam-reiter-wrap">
+        <div class="tabs sam-reiter" id="samReiter" role="tablist" aria-label="Art der Sammelobjekte"></div>
+      </div>
       <div class="ach-stage" id="samStage">
-        <div class="ach-header">
+        <div class="module-empty sam-bald" id="samBald" hidden></div>
+        <div class="ach-header" id="samKopf">
           <div class="ach-header-row">
             <div class="ach-meter">
               <div class="ach-meter-num mono"><b id="samGefunden">0</b><span>/<span id="samGesamt">0</span></span></div>
@@ -1124,15 +1150,17 @@ button.switch { padding:0; }
             </div>
           </div>
           <div class="ach-bar"><span id="samBalken"></span></div>
-        </div>
-        <div class="ach-filter" id="samFilter">
-          <button class="seg-btn active" data-filter="alle">Alle</button>
-          <button class="seg-btn" data-filter="offen">Offen</button>
-          <button class="seg-btn" data-filter="gefunden">Gefunden</button>
+          <!-- Alle Besätze auf einen Blick: je 2 untereinander, der Rest in einer Reihe -->
+          <div class="sam-uebersicht" id="samUebersicht" aria-label="Alle Besätze auf einen Blick"></div>
         </div>
         <div class="ach-list" id="samListe"></div>
       </div>
       <nav class="bottombar">
+        <!-- Filter-Knopf: öffnet das Sheet mit allen Filtern (statt der früheren drei Pillen) -->
+        <button class="bb-item" id="samFilterBtn" aria-haspopup="dialog">
+          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/></svg></span>
+          <span class="lab" id="samFilterLab">Filter</span>
+        </button>
         <div class="bb-placeholder" id="samFuss">Gilt für die ganze Welt · alle können abhaken</div>
       </nav>
     </section>
@@ -1975,7 +2003,10 @@ function portalHtml(x, z, dim, klasse){
 function renderKopf(){
   const seed = st.welt ? `<span class="mono">${esc(kurzSeed(st.welt.seed))}</span>` : "…";
   if(aktivesModul === "sammelobjekte"){
-    $sub.innerHTML = `Welt ${seed} · <b>${samGefundenAnzahl()} / ${SAM_ZAEHLT.length} gefunden</b>`;
+    const reiter = samReiterAktiv();
+    $sub.innerHTML = reiter.bald
+      ? `${esc(reiter.titel)} · <b>bald verfügbar</b>`
+      : `Welt ${seed} · <b>${samGefundenAnzahl()} / ${SAM_ZAEHLT.length} gefunden</b>`;
     return;
   }
   if(aktivesModul === "portale"){
@@ -2799,7 +2830,7 @@ function sidebarBauen(aktiv){
 /* ============================================================================
    9c · SAMMELOBJEKTE  ·  Rüstungs-Modifikationen abhaken, Fundorte aus der Karte
    ========================================================================== */
-const sam = { status:{}, filter:"alle", zu:new Set(), weltId:null };
+const sam = { status:{}, filter:"alle", reiter:"besaetze", zu:new Set(), weltId:null };
 const $samListe = document.getElementById("samListe");
 const HAKEN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const themaStil = (dim) => Object.entries(THEMES[dim].ui).map(([k, v]) => `${k}:${v}`).join(";");
@@ -2838,7 +2869,39 @@ document.getElementById("samFuss").addEventListener("click", (e) => {
   k.dataset.aktion === "board-wegnehmen" ? boardWegnehmen() : boardZeigen(k.dataset.boardQuelle);
 });
 
+/* ---- Reiter: Rüstungsbesätze + weitere Arten (Wunsch von Max, 05.10.2026) --------------------
+   Die neuen Arten sind erreichbar, haben aber noch keinen Inhalt („Bald verfügbar“). */
+const SAM_REITER = [
+  { key:"besaetze", kurz:"Besätze",  titel:"Rüstungsbesätze" },
+  { key:"scherben", kurz:"Scherben", titel:"Töpferscherben", en:"Pottery Sherds", bald:true },
+  { key:"platten",  kurz:"Platten",  titel:"Musikplatten",   en:"Music Discs",    bald:true },
+  { key:"vorlagen", kurz:"Vorlagen", titel:"Bannervorlagen", en:"Banner Patterns", bald:true },
+];
+const samReiterAktiv = () => SAM_REITER.find((r) => r.key === sam.reiter) || SAM_REITER[0];
+const UHR = '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+function samReiterRendern(){
+  document.getElementById("samReiter").innerHTML = SAM_REITER.map((r) =>
+    `<button class="tab ${r.key === sam.reiter ? "active" : ""}" role="tab" aria-selected="${r.key === sam.reiter}" data-sam-reiter="${r.key}" aria-label="${esc(r.titel)}${r.bald ? " · bald verfügbar" : ""}" title="${esc(r.titel)}">${esc(r.kurz)}</button>`).join("");
+}
+document.getElementById("samReiter").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-sam-reiter]"); if(!t || t.dataset.samReiter === sam.reiter) return;
+  sam.reiter = t.dataset.samReiter;
+  render();
+  document.getElementById("samStage").scrollTo(0, 0);
+});
+
 function renderSammel(){
+  samReiterRendern();
+  const reiter = samReiterAktiv();
+  for(const id of ["samKopf", "samListe", "samFilterBtn"]) document.getElementById(id).hidden = Boolean(reiter.bald);
+  const $bald = document.getElementById("samBald");
+  $bald.hidden = !reiter.bald;
+  if(reiter.bald){
+    $bald.innerHTML = `<div class="me-ico">${UHR}</div>
+      <div class="me-title">Bald verfügbar</div>
+      <div class="me-sub">${esc(reiter.titel)} <span class="en">${esc(reiter.en)}</span> kommen hier hin. Der Bereich ist schon angelegt, der Inhalt folgt.</div>`;
+    return;
+  }
   const gefunden = samGefundenAnzahl(), gesamt = SAM_ZAEHLT.length;
   const bekannt = FUNDORTE.filter((f) => bekannteFundorte(f.kategorie, f.dim).length).length;
   document.getElementById("samGefunden").textContent = gefunden;
@@ -2847,7 +2910,8 @@ function renderSammel(){
   document.getElementById("samFundorteGesamt").textContent = FUNDORTE.length;
   document.getElementById("samProzent").textContent = Math.round(gefunden / gesamt * 100);
   document.getElementById("samBalken").style.width = `${gefunden / gesamt * 100}%`;
-  document.querySelectorAll("#samFilter .seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.filter === sam.filter));
+  samFilterKnopfRendern();
+  samUebersichtRendern();
 
   const passt = (o) => sam.filter === "alle" || (sam.filter === "gefunden") === Boolean(sam.status[o.id]);
   $samListe.innerHTML = FUNDORTE.map((f) => {
@@ -2884,6 +2948,22 @@ function renderSammel(){
     </div>`;
   }).join("") || `<div class="empty-list">${sam.filter === "gefunden" ? "Noch nichts abgehakt." : "Alles gefunden – stark!"}</div>`;
 }
+
+/** Zier-Übersicht im Kopf: alle Besätze (ohne Aufwertung) in der Reihenfolge der Liste, ungefiltert.
+ *  Je 2 untereinander (Raster mit 2 Zeilen, spaltenweise gefüllt), Haken über dem Symbol, Tippen → Detail. */
+function samUebersichtRendern(){
+  const reihe = FUNDORTE.flatMap((f) => SAM_ZAEHLT.filter((o) => o.kategorie === f.kategorie && o.dim === f.dim));
+  document.getElementById("samUebersicht").innerHTML = reihe.map((o) => {
+    const s = sam.status[o.id];
+    return `<button class="sam-zier ${s ? "gefunden" : ""}" data-sam-zier="${o.id}" style="${themaStil(o.dim)}"
+      aria-label="${esc(o.name)}: ${s ? "gefunden" : "offen"}" title="${esc(o.name)}">
+      ${itemBild(vorlageDatei(o), o.name)}${s ? `<span class="sam-zier-haken">${HAKEN}</span>` : ""}
+    </button>`;
+  }).join("");
+}
+document.getElementById("samUebersicht").addEventListener("click", (e) => {
+  const k = e.target.closest("[data-sam-zier]"); if(k) samDetailOeffnen(k.dataset.samZier);
+});
 
 async function samUmschalten(id){
   const vorher = sam.status[id];
@@ -2943,10 +3023,33 @@ function aufKarteZeigen(instanzId){
   detailOeffnen(i.id);
 }
 
-document.getElementById("samFilter").addEventListener("click", (e) => {
-  const b = e.target.closest(".seg-btn"); if(!b) return;
-  sam.filter = b.dataset.filter; render();
-});
+/* ---- Filter: Knopf in der Bottom-Bar → Sheet mit allen Filtern ---------------------------
+   Zahlen wie im Kopf: nur Besätze (ohne Netheritaufwertung); die Aufwertung folgt in der Liste trotzdem dem Filter. */
+const SAM_FILTER = [
+  { key:"alle",     titel:"Alle",         text:"Alle Besätze und die Netheritaufwertung",  zahl:() => `${SAM_ZAEHLT.length}` },
+  { key:"offen",    titel:"Noch offene",  text:"Nur, was in dieser Welt noch fehlt",        zahl:() => `${SAM_ZAEHLT.length - samGefundenAnzahl()} von ${SAM_ZAEHLT.length}` },
+  { key:"gefunden", titel:"Gefunden",     text:"Nur, was schon abgehakt ist",               zahl:() => `${samGefundenAnzahl()} von ${SAM_ZAEHLT.length}` },
+];
+function samFilterKnopfRendern(){
+  const f = SAM_FILTER.find((x) => x.key === sam.filter) || SAM_FILTER[0];
+  const aktiv = f.key !== "alle";
+  document.getElementById("samFilterLab").textContent = aktiv ? f.titel : "Filter";
+  const k = document.getElementById("samFilterBtn");
+  k.classList.toggle("active", aktiv);
+  k.setAttribute("aria-label", `Filter: ${f.titel}`);
+}
+function samFilterOeffnen(){
+  const html = kopfHtml("Filter", "Was die Liste zeigt · die Übersicht oben zeigt immer alle") + `<div class="orte-inhalt">
+    <div class="list-stack">${SAM_FILTER.map((f) => `
+      <button class="card welt-zeile sam-filter-zeile ${f.key === sam.filter ? "aktiv" : ""}" data-aktion="sam-filter" data-filter="${f.key}" aria-pressed="${f.key === sam.filter}" style="flex-direction:row">
+        <span style="flex:1;min-width:0"><span class="card-title">${f.titel}</span><span class="card-meta" style="display:block">${f.text}</span></span>
+        <span class="card-meta mono">${f.zahl()}</span>
+        ${f.key === sam.filter ? '<span class="pill">Aktiv</span>' : ""}
+      </button>`).join("")}</div>
+  </div>`;
+  sheetOeffnen("sam-filter", html, "overworld");
+}
+document.getElementById("samFilterBtn").addEventListener("click", samFilterOeffnen);
 $samListe.addEventListener("click", (e) => {
   const haken = e.target.closest("[data-sam-haken]");
   if(haken) return samUmschalten(haken.dataset.samHaken);
@@ -5034,6 +5137,9 @@ $sheet.addEventListener("click", async (e) => {
     case "welt-waehlen":
       if(id !== st.weltId){ await weltLaden(id); toast("Welt gewechselt"); }
       alleSchliessen(); break;
+    case "sam-filter":
+      sam.filter = a.dataset.filter; alleSchliessen(); render();
+      document.getElementById("samStage").scrollTo(0, 0); break;
     case "welt-anlegen": {
       const seed = document.getElementById("weltSeed").value.trim();
       const r = await api("/orte/welten", { method:"POST", body:JSON.stringify({ seed }) });
