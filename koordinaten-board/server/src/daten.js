@@ -32,7 +32,7 @@ const leer = () => ({
   geraete: [],       // { id, freigeschaltet, typ:"persoenlich"|"geteilt", profilId }
   welten: [],        // { id, seed }
   typen: [],         // { id, kategorie, variante|null }   – welt-übergreifend
-  instanzen: [],     // { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, von, am, geaendert? }
+  instanzen: [],     // { id, dimensionId, featureTypeId, x, y|null, z, quelle, angeheftet, erledigt?:{ von, am }|null, von, am, geaendert? }
   sammel: {},        // { [weltId]: { [objektId]: { von, am } } }
   banner: [],        // { id, name, basis, ebenen, von, am }
   ruestung: [],      // { id, name, teile:{ helmet|chestplate|leggings|boots: { ruestung, muster, material, farbe }|null }, von, am }
@@ -219,6 +219,14 @@ export class Daten {
     const i = this.instanz(id);
     if (!ganz(body?.x) || !ganz(body?.z) || (body.y != null && !ganz(body.y))) fehler(400, 'Ungültige Koordinaten');
     Object.assign(i, { x: body.x, y: body.y ?? null, z: body.z, geaendert: new Date().toISOString() });
+    this.speichernVerzoegert();
+    return { instanz: kopie(i), weltId: this.dimension(i.dimensionId)?.worldId };
+  }
+
+  /** Ort als erledigt markieren (Max, 05.10.2026): wer und wann; false nimmt es zurück */
+  instanzErledigt(id, body, von) {
+    const i = this.instanz(id);
+    Object.assign(i, { erledigt: body?.erledigt ? { ...urheber(von), am: tag() } : null, geaendert: new Date().toISOString() });
     this.speichernVerzoegert();
     return { instanz: kopie(i), weltId: this.dimension(i.dimensionId)?.worldId };
   }

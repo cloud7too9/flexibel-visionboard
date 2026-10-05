@@ -18,7 +18,7 @@ Arbeitsweise, Zusammenspiel mit dem Koordinaten-Board und projektübergreifende 
   - 3 Portal-Verbindungen: **Hauptbasis** passt, **Eisenfarm** ist einseitig, beim **Dorf** entsteht ein neues Portal.
   - Angemeldet ist `MOCK.ich = "Max"`.
 - **`localStorage`** speichert nur Bequemlichkeiten pro Gerät:
-  - `orte.welt`, `orte.dim`, `orte.ansicht`, `orte.standort`, `orte.biome` (Biom-Ebene ein/aus)
+  - `orte.welt`, `orte.dim`, `orte.standort`, `orte.biome` (Biom-Ebene ein/aus)
   - `banner.schritte.<id>`, `ruestung.buehne` (Dimension + Träger der Figur)
   - `portale.info`, `portale.rechner`
   - `board.verbindung` (live zugleich die Anmeldung), `board.name`
@@ -47,14 +47,14 @@ Die Bereiche **Zugänge, Backups, Erfolge, Orte und Toolbox** sind entfernt, daf
 ### Karte ✅
 
 Koordinaten-Sammlung nach dem Datenmodell (`../referenz/minecraft_tool_datenmodell.md`). Dazu gehören:
-- Dimensions-Reiter und ein Umschalter Karte | Liste
-- Liste als Akkordion: Kategorie → Variante → Orte
-- Canvas-Karte
-- Screenshot-Import mit Prüfliste
-- Eintragen von Hand
-- Welt per Seed anlegen
+- Dimensions-Reiter; **Karte oben, Liste darunter** (eine Zeile je Ort)
+- Canvas-Karte, jeder Ort mit Namensschild
+- Eintragen: Screenshot-Import mit Prüfliste oder von Hand
+- Welt per Seed anlegen – über den Eintrag **Welt** in der Sidebar, dort auch der Welt-Import
 - Eigener Standort (nur lokal) mit Entfernung und Richtung
-- Umrechnung Nether ↔ Oberwelt und `/execute in … run tp`-Befehl
+- Umrechnung Nether ↔ Oberwelt
+- Detail: Koordinaten, Umrechnung, **als erledigt markieren**, Löschen nur mit Bestätigung
+- **Überarbeitung mit Max (05.10.2026, Branch `bereich/karte`)**: Umschalter Karte | Liste weg (Liste unter der Karte, vereinfacht); Namensschilder für alle Orte; **deutsche Namen** für Strukturen und Biome (`kategorieName`, `biomName` in `board-karten.js`, IDs bleiben englisch); Bottom-Bar nur Status + Eintragen (Screenshot steckt in Eintragen); Welt + Welt-Import in die Sidebar; im Detail statt Kopieren, `/tp`, Bearbeiten nur noch „Als erledigt markieren“ und Löschen mit Bestätigung. Neues Feld `erledigt:{ von, am }|null` je Ort (Board + Mock). Offen: Varianten aus der Seed Map („Stairway“) bleiben englisch; Bedrock nennt die Antike Stätte „Uralte Stadt“ und die Bastionsruine „Überreste der Bastion“ – Namen in `STRUKTUREN` bisher wie im Manifest
 - Kennblöcke (PNG) statt Symbol bei Strukturen mit Bild: Listen-Gruppe, Canvas-Marker, Detail-Kopf, Screenshot-Prüfliste. Siehe Sammelobjekte → Kennblöcke.
 - **Welt-Import** (Biom-Plan `PLAN-welt-import-biome.md` Phasen 1–6 und Strang C in `../planung/PLAN.md`, Branch `bereich/karte-welt-upload`): Weltordner als `.zip` aus der Dateien-App (oder `.mcworld`) hochladen, Anleitung nur fürs iPhone, Aufbauprüfung, Bestätigung mit Weltname und Seed, Lesen im Web Worker, Prüfliste, Übernehmen; Biome als Kacheln auf der Karte. Einzelheiten in `README.md` → Welt-Import.
   - **Entscheidungen von Max (01.10.2026)**: ZIP mit zusätzlichem Ordner wird ohne Hinweis angenommen (E12). Anleitung nur iPhone, besuchte Gebiete reichen (E14). Strang C umfasst den ganzen Biom-Import, nicht nur das Upload-Feld.
@@ -150,7 +150,7 @@ Wunsch von Max: einen Scanner einbauen, mit dem man sich mit dem Board verbindet
 
 Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 
-- **Handbuch: Verzauberungen kommen hinein** (Entscheidung von Max, 05.10.2026). Ausgangspunkt ist `entwuerfe/handbuch-verzauberung.js` (Amboss-Pläne je Rüstungsteil mit XP). Offen: Bedrock-XP-Werte prüfen, deutsche Bedrock-Namen der Verzauberungen („Huschen“ …) gegen `de_DE.lang` prüfen, wie die Pläne ohne Set im Handbuch aussehen.
+- **Handbuch bekommt die Bereiche Verzaubern, Brauen, Handel und Farmen** (Max, 05.10.2026). **Verzauberungen kommen hinein** (Entscheidung von Max, 05.10.2026). Ausgangspunkt ist `entwuerfe/handbuch-verzauberung.js` (Amboss-Pläne je Rüstungsteil mit XP). Offen: Bedrock-XP-Werte prüfen, deutsche Bedrock-Namen der Verzauberungen („Huschen“ …) gegen `de_DE.lang` prüfen, wie die Pläne ohne Set im Handbuch aussehen.
 
 ---
 
@@ -208,7 +208,7 @@ Noch nichts festgelegt. Zuerst mit Max klären, was hinein soll.
 | Banner | `{ id, name, basis, ebenen:[{ muster, farbe }], von, am }` | `GET/POST /banner`, `PUT/DELETE /banner/:id` |
 | Rüstung | `{ id, name, teile:{ helmet…boots: { ruestung, muster, material, farbe } \| null }, von, am }` für alle Welten | `GET/POST /ruestung`, `PUT/DELETE /ruestung/:id` |
 | Portale | `{ id, name, oberwelt:{x,y,z}, nether:{x,y,z}, von, am }` je Welt | `GET/POST /portale/welten/:id`, `PUT/DELETE /portale/:id` |
-| Karte (Board) | Instanz zusätzlich `quelle`, `von`, `am`, `angeheftet` | `PUT /orte/instanzen/:id/angeheftet` |
+| Karte (Board) | Instanz zusätzlich `quelle`, `von`, `am`, `angeheftet`, `erledigt:{ von, am }\|null` | `PUT /orte/instanzen/:id/angeheftet` |
 | Karte · Welt-Import | `WeltImport { id, weltId, dateiname, weltname, seed, spielversion, chunks, unbekannt, von, importiertAm }` + Kacheln `{ dim, kx, kz, daten }` je Welt | `GET/PUT/DELETE /welten/:id/biome` |
 | Anzeige (Board) | Einstellungen `{ titel, qrZeigen, aktiveWelt }` | `GET/PUT /board/einstellungen` |
 
@@ -255,7 +255,7 @@ Der Bereich Rüstung liegt auf `bereich/ruestung` (zweigt von `bereich/banner-sc
 cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist (three.js für die 3D-Tests kommt mit npm install)
-npm test                          # biom-dekoder (18, node --test) + banner (44) + portale (29) + sammelobjekte (108) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (64) + karte-mcworld (52) + anzeige-link (15) = 476 Prüfungen + 18 Tests
+npm test                          # biom-dekoder (18, node --test) + banner (44) + portale (29) + sammelobjekte (108) + kennbloecke (14) + karte (29) + board (57) + live (65) + anzeigeschema (28) + ruestung (64) + karte-mcworld (52) + anzeige-link (15) = 505 Prüfungen + 18 Tests
 ```
 
 - `board.test.mjs`, `live.test.mjs` und `anzeigeschema.test.mjs` starten je ein **echtes Koordinaten-Board** (Ports 3198, 3195, 3194, eigener Datenordner); Anzeigeschema und Rüstung liefern die Companion zusätzlich selbst über http aus (3193, 3192). Board-Test: Companion über einen eigenen `http://localhost`-Server (DEMO) mit Kamera, Foto, Hand-Eingabe und „Aufs Board“. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).

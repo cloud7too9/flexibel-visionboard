@@ -34,6 +34,10 @@ test('Welten, Orte, Typen – wie der DEMO-Mock der Companion', () => {
   wirft(() => d.instanzAnlegen({ dimensionId: 'd_w_1_nether', kategorie: 'Biomes', variante: 'Soul Sand Valley', x: 0, y: null, z: 0, quelle: 'screenshot' }, 'Max'),
     422, 'Biome kommen nur aus dem Welt-Import');
   assert.equal(d.instanzAnheften(instanz.id, { angeheftet: true }).instanz.angeheftet, true);
+  const erledigt = d.instanzErledigt(instanz.id, { erledigt: true }, 'Lena').instanz.erledigt;
+  assert.equal(erledigt.von, 'Lena');
+  assert.match(erledigt.am, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(d.instanzErledigt(instanz.id, { erledigt: false }, 'Lena').instanz.erledigt, null);
   d.instanzLoeschen(instanz.id);
   wirft(() => d.instanzLoeschen(instanz.id), 404);
 });

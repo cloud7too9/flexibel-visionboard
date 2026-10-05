@@ -77,6 +77,10 @@ test('Companion-Vertrag: Welten, Orte, Sammelobjekte, Portale, Banner, Rüstung'
   r = await anfrage('POST', '/api/orte/instanzen', max, { dimensionId: `d_${welt.id}_overworld`, kategorie: 'Bastion', x: 1, y: null, z: 1, quelle: 'manuell' });
   assert.deepEqual([r.status, r.daten.message], [422, '„Bastion“ gibt es in der Oberwelt nicht']);
   assert.equal((await anfrage('PATCH', `/api/orte/instanzen/${id}`, max, { x: 1, y: null, z: 2 })).daten.instanz.z, 2);
+  const erl = await anfrage('PUT', `/api/orte/instanzen/${id}/erledigt`, max, { erledigt: true });
+  assert.equal(erl.status, 200);
+  assert.equal(erl.daten.instanz.erledigt.von, 'Max');
+  assert.equal((await anfrage('PUT', `/api/orte/instanzen/${id}/erledigt`, max, { erledigt: false })).daten.instanz.erledigt, null);
   assert.equal((await anfrage('GET', `/api/orte/welten/${welt.id}`, max)).daten.instanzen.length, 1);
   // DELETE mit Content-Type, aber ohne Rumpf – so schickt es die Companion
   assert.deepEqual((await anfrage('DELETE', `/api/orte/instanzen/${id}`, max)).daten, { ok: true });
@@ -200,7 +204,7 @@ test('Widgets: Karte je Widget-Typ aus der aktiven Welt, Quellen, leerer Zustand
 
   let r = await widget('karte.einzelkoordinate', festung.id);
   assert.equal(r.status, 200);
-  assert.equal(r.daten.karte.titel, 'Nether Fortress');
+  assert.equal(r.daten.karte.titel, 'Netherfestung');   // deutsche Namen (05.10.2026), typ bleibt die Seed-Map-Kategorie
   assert.deepEqual(r.daten.karte.bloecke.map((b) => [b.art, b.x, b.z]), [['koordinaten', -200, 96], ['koordinaten', -1600, 768]]);
   assert.equal((await widget('sammelobjekte.status')).daten.karte.bloecke[0].zeilen[0].wert, '1 von 18');
   assert.equal((await widget('sammelobjekte.einzelobjekt', 'rib')).daten.karte.bloecke[0].zeilen[1].wert.startsWith('gefunden von Max'), true);

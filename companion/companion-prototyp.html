@@ -518,9 +518,6 @@ body {
    ========================================================================== */
 
 /* ---- Umschalter Liste | Karte (unter den Dimensions-Reitern) ------------ */
-.ansicht-wrap { flex:0 0 auto; padding:0 16px 12px; display:flex; gap:8px; align-items:center; }
-.ansicht-wrap .tool-segment { flex:1; }
-.ansicht-wrap .seg-btn { padding:8px 4px; display:flex; align-items:center; justify-content:center; gap:6px; }
 
 /* ---- Bühne: Liste ---------------------------------------------------------- */
 .orte-stage { flex:1 1 auto; min-height:0; overflow-y:auto; padding:0 16px 22px;
@@ -554,10 +551,31 @@ select.orte-eingabe { padding-right:34px;
 .tab .zahl { font-family:ui-monospace,monospace; font-size:12px; opacity:.7; margin-left:6px; }
 
 /* ---- Kategorie-Akkordion (Muster wie .ach-cat im Erfolge-Modul) ---------- */
-.orte-liste { display:flex; flex-direction:column; gap:10px; }
-.ort-kat { background:var(--surface-2); border:1px solid var(--border-soft); border-radius:14px; overflow:hidden;
-  transition:background .45s ease, border-color .45s ease; }
-.ort-kat-head { display:flex; align-items:center; gap:10px; padding:12px 14px; cursor:pointer; user-select:none; }
+/* Liste unter der Karte: eine Zeile je Ort (vereinfacht, Max 05.10.2026) */
+.orte-stage { padding-top:12px; }
+.ort-reihe { display:flex; align-items:center; gap:11px; width:100%; padding:9px 12px; text-align:left; cursor:pointer;
+  background:var(--surface-2); border:1px solid var(--border-soft); border-radius:12px; color:var(--text); font:inherit; }
+.ort-reihe:active { background:var(--surface-3); }
+.ort-reihe .ort-kat-icon { width:32px; height:32px; }
+.ort-reihe-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.ort-reihe-text b { font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ort-reihe-text b small { font-weight:600; color:var(--text-faint); font-size:11.5px; margin-left:6px; }
+.ort-reihe-text .coord { font-size:12.5px; }
+.ort-reihe-text .ort-portal { font-size:11px; color:var(--text-faint); }
+.ort-reihe-text .ort-portal .pico { color:var(--accent); }
+.ort-reihe .ort-weg { flex:0 0 auto; }
+.ort-reihe.erledigt .ort-reihe-text, .ort-reihe.erledigt .ort-kat-icon { opacity:.5; }
+.ort-erledigt { flex:0 0 auto; width:24px; height:24px; border-radius:50%; display:grid; place-items:center;
+  background:var(--accent); color:var(--accent-ink); }
+.ort-erledigt svg { width:14px; height:14px; }
+/* Eintragen: Screenshot oder von Hand */
+.eintragen-wahl { display:flex; align-items:center; gap:14px; width:100%; padding:14px; text-align:left; cursor:pointer; flex-direction:row; font:inherit; color:var(--text); }
+.eintragen-wahl .ico { width:44px; height:44px; border-radius:12px; display:grid; place-items:center; flex:0 0 auto;
+  background:var(--accent-soft); color:var(--accent); }
+.eintragen-wahl .text { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.eintragen-wahl b { font-size:15px; }
+.eintragen-wahl small { font-size:12.5px; color:var(--text-faint); line-height:1.35; }
+.orte-liste { display:flex; flex-direction:column; gap:6px; }
 .ort-kat-icon { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; flex:0 0 auto;
   background:var(--accent-soft); color:var(--accent); font-family:ui-monospace,monospace; font-weight:700; font-size:15px;
   transition:background .45s ease, color .45s ease; }
@@ -565,37 +583,24 @@ select.orte-eingabe { padding-right:34px;
 .kennblock { width:30px; height:30px; object-fit:contain; display:block;
   filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.45)); }
 .ort-kat-icon .kennblock { width:24px; height:24px; }
-.ort-kat-name { flex:1; font-size:14.5px; font-weight:700; }
-.ort-kat-count { font-size:12px; color:var(--text-dim); font-weight:700; font-variant-numeric:tabular-nums; margin-right:6px; }
-.ort-kat-chevron { color:var(--text-faint); transition:transform .25s; display:flex; }
-.ort-kat.open .ort-kat-chevron { transform:rotate(180deg); }
-.ort-kat-items { display:none; border-top:1px solid var(--border-soft); }
-.ort-kat.open .ort-kat-items { display:block; }
-.ort-typ { padding:10px 14px 2px; font-size:10.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--text-faint); }
-.ort-typ ~ .ort-typ { border-top:1px solid var(--border-soft); margin-top:4px; }
-.ort-zeile { display:grid; grid-template-columns:1fr auto; gap:3px 10px; width:100%; text-align:left;
-  padding:10px 14px; background:transparent; border:none; color:var(--text); cursor:pointer; font:inherit; }
-.ort-zeile + .ort-zeile { border-top:1px solid var(--border-soft); }
-.ort-zeile:active { background:var(--surface-3); }
-.ort-zeile .coord { font-size:13px; }
-.ort-zeile .ort-portal { font-size:11px; color:var(--text-faint); }
-.ort-zeile .ort-portal .pico { color:var(--accent); }
-.ort-weg { grid-row:1 / 3; grid-column:2; text-align:right; align-self:center; }
+.ort-weg { text-align:right; align-self:center; }
 .ort-weg b { display:block; color:var(--accent); font-size:14px; font-family:ui-monospace,monospace; transition:color .45s ease; }
 .ort-weg span { font-size:11px; color:var(--text-faint); font-weight:700; }
 
 /* ---- Karte ----------------------------------------------------------------- */
-.karte-stage { position:relative; flex:1 1 auto; min-height:0; overflow:hidden; }
+.karte-stage { position:relative; flex:0 0 auto; height:clamp(220px, 38vh, 360px); overflow:hidden; border-bottom:1px solid var(--border-soft); }
 #ortKarte { display:block; width:100%; height:100%; touch-action:none; }
 .karte-knoepfe { position:absolute; right:14px; bottom:14px; display:flex; flex-direction:column; gap:8px; }
 .karte-knoepfe button { width:44px; height:44px; border-radius:14px; border:1px solid var(--border);
   background:var(--surface); color:var(--text); font-size:20px; font-weight:700; display:grid; place-items:center;
   box-shadow:0 6px 18px rgba(0,0,0,.35); cursor:pointer; }
-.karte-legende { position:absolute; left:14px; bottom:14px; right:74px; display:flex; flex-wrap:wrap; gap:6px; pointer-events:none; }
+.karte-legende { position:absolute; left:14px; bottom:14px; right:74px; display:flex; flex-wrap:wrap; gap:6px; pointer-events:none;
+  max-height:30px; overflow:hidden; }   /* eine Zeile – die Karte ist kleiner, seit die Liste darunter steht */
 .karte-legende .chip { padding:6px 9px; font-size:11px; font-weight:600; gap:6px; box-shadow:none; }
 .karte-legende i { width:10px; height:10px; border-radius:3px; display:inline-block; }
 .karte-hinweis { position:absolute; left:14px; top:14px; right:14px; pointer-events:none; }
 .karte-hinweis .chip { font-size:12px; color:var(--text-dim); box-shadow:none; }
+.karte-legende:has(.tipp) { max-height:66px; }
 .karte-legende .chip.tipp { flex-basis:100%; width:max-content; max-width:100%; color:var(--text); border-color:var(--accent); }
 .karte-knoepfe button[hidden] { display:none; }
 .karte-knoepfe button[aria-pressed="false"] { color:var(--text-faint); }
@@ -986,7 +991,8 @@ button.switch { padding:0; }
 
 /* ---- Board-Verbindung ---- */
 .anzeige-qr svg { display:block; width:100%; max-width:220px; margin:8px auto 2px; background:#fff; border-radius:10px; padding:6px; }
-.sb-fuss { margin-top:auto; padding:12px 12px max(14px, env(safe-area-inset-bottom)); border-top:1px solid var(--border-soft); }
+.sb-fuss { margin-top:auto; padding:12px 12px max(14px, env(safe-area-inset-bottom)); border-top:1px solid var(--border-soft);
+  display:flex; flex-direction:column; gap:8px; }
 .board-knopf { width:100%; display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:14px;
   background:var(--surface-2); border:1px solid var(--border-soft); color:var(--text); cursor:pointer; text-align:left; font:inherit; }
 .board-knopf:active { background:var(--surface-3); }
@@ -1065,29 +1071,9 @@ button.switch { padding:0; }
         </div>
       </div>
 
-      <!-- Ansicht: Liste | Karte -->
-      <div class="ansicht-wrap">
-        <div class="tool-segment" id="orteAnsicht">
-          <button class="seg-btn active" data-ansicht="karte">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Karte</button>
-          <button class="seg-btn" data-ansicht="liste">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Liste</button>
-        </div>
-      </div>
-
-      <!-- Bühne: Liste -->
-      <div class="orte-stage" id="orteStage">
-        <div class="orte-hud" id="orteHud"></div>
-        <div class="orte-suche">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-          <input class="orte-eingabe" id="orteSuche" type="search" placeholder="Suchen …" autocomplete="off">
-        </div>
-        <div class="ach-filter orte-filter" id="orteFilter"></div>
-        <div class="orte-liste" id="orteListe"></div>
-      </div>
-
-      <!-- Bühne: Karte – Biome aus dem Welt-Import als Fläche, unerkundet bleibt leer -->
-      <div class="karte-stage" id="karteStage" hidden>
+      <!-- Karte oben, Liste darunter (Entscheidung von Max, 05.10.2026: kein Umschalter Karte | Liste mehr).
+           Biome aus dem Welt-Import als Fläche, unerkundet bleibt leer -->
+      <div class="karte-stage" id="karteStage">
         <canvas id="ortKarte"></canvas>
         <div class="vignette"></div>
         <div class="karte-hinweis" id="karteHinweis"></div>
@@ -1104,27 +1090,26 @@ button.switch { padding:0; }
         </div>
       </div>
 
-      <!-- EBENE 3 · Bottom Bar -->
+      <!-- Liste unter der Karte: eine Zeile je Ort -->
+      <div class="orte-stage" id="orteStage">
+        <div class="orte-hud" id="orteHud"></div>
+        <div class="orte-suche">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input class="orte-eingabe" id="orteSuche" type="search" placeholder="Suchen …" autocomplete="off">
+        </div>
+        <div class="ach-filter orte-filter" id="orteFilter"></div>
+        <div class="orte-liste" id="orteListe"></div>
+      </div>
+
+      <!-- EBENE 3 · Bottom Bar: Screenshot steckt in „Eintragen“, Welt und Welt-Import in der Sidebar -->
       <nav class="bottombar">
         <button class="bb-item" id="orteStatusBtn">
           <span class="ico"><span class="status-dot" id="orteStatusDot"></span></span>
           <span class="lab" id="orteStatusLab">Verbunden</span>
         </button>
-        <button class="bb-item active" id="orteScreenshotBtn">
-          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
-          <span class="lab">Screenshot</span>
-        </button>
-        <button class="bb-item" id="orteEintragenBtn">
+        <button class="bb-item active" id="orteEintragenBtn">
           <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
           <span class="lab">Eintragen</span>
-        </button>
-        <button class="bb-item" id="orteImportBtn">
-          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7 10l5 5 5-5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg></span>
-          <span class="lab">Welt-Import</span>
-        </button>
-        <button class="bb-item" id="orteWeltBtn">
-          <span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
-          <span class="lab">Welt</span>
         </button>
       </nav>
       <input type="file" id="orteDatei" accept="image/*" multiple hidden>
@@ -1236,7 +1221,11 @@ button.switch { padding:0; }
     </div>
     <nav class="sb-nav" id="sbNav"></nav>
     <!-- Verbindung zum Koordinaten-Board im Zimmer (kein Bereich, gilt fürs Gerät) -->
-    <div class="sb-fuss"><button class="board-knopf" id="boardBtn"></button></div>
+    <div class="sb-fuss">
+      <!-- Welt: wählen, anlegen, Seed, Welt-Import – gilt für alle Bereiche -->
+      <button class="board-knopf" id="weltKnopf"></button>
+      <button class="board-knopf" id="boardBtn"></button>
+    </div>
   </aside>
 
   <!-- Ein Sheet für alle Ansichten des Moduls – Inhalt wird je nach Aufgabe gerendert -->
@@ -1384,7 +1373,7 @@ function kennblockBild(kategorie){
   let img = kennblockBilder.get(datei);
   if(!img){
     img = new Image();
-    img.onload = () => { if(aktivesModul === "karte" && st.ansicht === "karte") karte.zeichnen(); };
+    img.onload = () => { if(aktivesModul === "karte") karte.zeichnen(); };
     img.src = datei;
     kennblockBilder.set(datei, img);
   }
@@ -1461,6 +1450,7 @@ function koordinatenErkennen(text){
                                       → { instanz, typ }   (Typ wird gefunden oder angelegt)
    PATCH  /orte/instanzen/:id  { x, y, z }   → { instanz }
    PUT    /orte/instanzen/:id/angeheftet { angeheftet } → { instanz }  (groß auf der Anzeige)
+   PUT    /orte/instanzen/:id/erledigt { erledigt } → { instanz }  (instanz.erledigt = { von, am } | null)
    DELETE /orte/instanzen/:id                → { ok:true }
    POST   /orte/auslesen  (multipart „datei“) → { erkannt:{ titel, kategorie, variante, dimension,
                                                   x, y|null, z } | null,
@@ -1699,6 +1689,12 @@ function mockApi(path, opts){
     return ok({ instanz:{ ...instanz }, typ }, 201);
   }
 
+  if(method === "PUT" && (m = path.match(/^\/orte\/instanzen\/([\w-]+)\/erledigt$/))){
+    const i = MOCK.instanzen.find((x) => x.id === m[1]);
+    if(!i) return fehler(404, "Ort nicht gefunden");
+    i.erledigt = body?.erledigt ? { von:MOCK.ich, am:new Date().toISOString().slice(0, 10) } : null;
+    return ok({ instanz:{ ...i } });
+  }
   if(method === "PUT" && (m = path.match(/^\/orte\/instanzen\/([\w-]+)\/angeheftet$/))){
     const i = MOCK.instanzen.find((x) => x.id === m[1]);
     if(!i) return fehler(404, "Ort nicht gefunden");
@@ -1883,10 +1879,8 @@ const st = {
   typen: [],
   instanzen: [],
   dim: lsLesen("orte.dim") || "overworld",
-  ansicht: lsLesen("orte.ansicht") || "karte",
   filter: null,          // Kategorie oder null
   suche: "",
-  zu: new Set(),         // zugeklappte Kategorien (Schlüssel dim:kategorie)
   standort: lsLesen("orte.standort"),  // { x, y, z, dim } – nur auf diesem Gerät
   importe: [],           // Screenshot-Prüfliste
   sheet: null,           // welches Sheet offen ist
@@ -1895,7 +1889,7 @@ const st = {
 const typVon = (i) => st.typen.find((t) => t.id === i.featureTypeId);
 const dimTypeVon = (dimensionId) => st.dimensionen.find((d) => d.id === dimensionId)?.type;
 const dimIdVon = (type) => st.dimensionen.find((d) => d.type === type)?.id;
-const typLabel = (t) => t.variante ? `${t.kategorie} · ${t.variante}` : t.kategorie;
+const typLabel = (t) => t.variante ? `${kategorieName(t.kategorie)} · ${t.variante}` : kategorieName(t.kategorie);
 const anzahlIn = (dim) => st.instanzen.filter((i) => i.dimensionId === dimIdVon(dim)).length;
 
 /** Instanzen der aktuellen Dimension mit Typ – gefiltert nach Kategorie + Suche */
@@ -1906,7 +1900,7 @@ function sichtbareInstanzen(){
     .filter((i) => i.dimensionId === dimId)
     .map((i) => ({ i, t:typVon(i) }))
     .filter(({ i, t }) => t && (!st.filter || t.kategorie === st.filter)
-      && (!q || `${t.kategorie} ${t.variante || ""} ${i.x} ${i.z}`.toLowerCase().includes(q)));
+      && (!q || `${t.kategorie} ${kategorieName(t.kategorie)} ${t.variante || ""} ${i.x} ${i.z}`.toLowerCase().includes(q)));
 }
 
 /** Gleicher Typ auf fast gleicher Stelle? */
@@ -2006,6 +2000,7 @@ function portalHtml(x, z, dim, klasse){
 }
 
 function renderKopf(){
+  weltKnopfRendern();
   const seed = st.welt ? `<span class="mono">${esc(kurzSeed(st.welt.seed))}</span>` : "…";
   if(aktivesModul === "sammelobjekte"){
     const reiter = samReiterAktiv();
@@ -2055,7 +2050,7 @@ function renderFilter(){
   const reihenfolge = [EIGENE_ORTE, ...FEATURE_KATEGORIEN[st.dim]].filter((k) => zaehler.has(k));
   $filter.hidden = reihenfolge.length < 2;
   $filter.innerHTML = `<button class="seg-btn ${st.filter ? "" : "active"}" data-filter="">Alle</button>`
-    + reihenfolge.map((k) => `<button class="seg-btn ${st.filter === k ? "active" : ""}" data-filter="${esc(k)}">${esc(k)}<span class="zahl">${zaehler.get(k)}</span></button>`).join("");
+    + reihenfolge.map((k) => `<button class="seg-btn ${st.filter === k ? "active" : ""}" data-filter="${esc(k)}">${esc(kategorieName(k))}<span class="zahl">${zaehler.get(k)}</span></button>`).join("");
 }
 
 function renderListe(){
@@ -2065,52 +2060,29 @@ function renderListe(){
     $liste.innerHTML = `<div class="module-empty" style="padding:40px 12px">
       <div class="me-ico">${ZIEL}</div>
       <div class="me-title">${leer ? `${inDim(st.dim).replace(/^i/, "I")} ist noch nichts erfasst` : "Nichts gefunden"}</div>
-      <div class="me-sub">${leer ? "Screenshot vom Seed-Map-Popup machen und unten auf „Screenshot“ tippen." : "Suche oder Filter anpassen."}</div>
+      <div class="me-sub">${leer ? "Unten auf „Eintragen“ tippen – per Screenshot aus der Seed Map oder von Hand." : "Suche oder Filter anpassen."}</div>
     </div>`;
     return;
   }
-  // Gruppieren: Kategorie → Variante → Instanzen (Datenmodell-Hierarchie)
-  const gruppen = new Map();
-  for(const e of eintraege){
-    if(!gruppen.has(e.t.kategorie)) gruppen.set(e.t.kategorie, new Map());
-    const g = gruppen.get(e.t.kategorie);
-    const v = e.t.variante || "";
-    if(!g.has(v)) g.set(v, []);
-    g.get(v).push(e);
-  }
-  const reihenfolge = [EIGENE_ORTE, ...FEATURE_KATEGORIEN[st.dim]].filter((k) => gruppen.has(k));
+  // Eine Zeile je Ort, in der Reihenfolge der Kategorien; innerhalb nach Entfernung (sonst neueste zuerst)
+  const reihenfolge = [EIGENE_ORTE, ...FEATURE_KATEGORIEN[st.dim]];
   const weg = (i) => entfernung(st.standort, i.x, i.z, st.dim);
-  const sortieren = (a, b) => {
+  const rang = (t) => { const n = reihenfolge.indexOf(t.kategorie); return n < 0 ? 999 : n; };
+  eintraege.sort((a, b) => {
+    if(rang(a.t) !== rang(b.t)) return rang(a.t) - rang(b.t);
     const wa = weg(a.i), wb = weg(b.i);
     if(wa && wb) return wa.meter - wb.meter;
-    return st.instanzen.indexOf(b.i) - st.instanzen.indexOf(a.i);   // neueste zuerst
-  };
-
-  $liste.innerHTML = reihenfolge.map((kat) => {
-    const g = gruppen.get(kat);
-    const summe = [...g.values()].reduce((n, l) => n + l.length, 0);
-    const offen = !st.zu.has(`${st.dim}:${kat}`);
-    const varianten = [...g.keys()].sort((a, b) => (a === "" ? -1 : b === "" ? 1 : a.localeCompare(b, "de")));
-    const items = varianten.map((v) => {
-      const zeilen = g.get(v).sort(sortieren).map(({ i }) => {
-        const w = weg(i);
-        return `<button class="ort-zeile" data-id="${i.id}">
-          ${coordHtml(i.x, i.y, i.z)}
-          ${portalHtml(i.x, i.z, st.dim, "ort-portal mono")}
-          <span class="ort-weg">${w ? `<b>${entfernungText(w.meter)}</b><span>${w.richtung}${w.umgerechnet ? " ⟷" : ""}</span>` : ""}</span>
-        </button>`;
-      }).join("");
-      return (v ? `<div class="ort-typ">${esc(v)}</div>` : "") + zeilen;
-    }).join("");
-    return `<div class="ort-kat ${offen ? "open" : ""}" data-kat="${esc(kat)}">
-      <div class="ort-kat-head">
-        <span class="ort-kat-icon">${kennblockHtml(kat)}</span>
-        <span class="ort-kat-name">${esc(kat)}</span>
-        <span class="ort-kat-count">${summe}</span>
-        <span class="ort-kat-chevron">${CHEVRON}</span>
-      </div>
-      <div class="ort-kat-items">${items}</div>
-    </div>`;
+    return st.instanzen.indexOf(b.i) - st.instanzen.indexOf(a.i);
+  });
+  $liste.innerHTML = eintraege.map(({ i, t }) => {
+    const w = weg(i), eigen = t.kategorie === EIGENE_ORTE;
+    const name = eigen ? esc(t.variante || EIGENE_ORTE) : `${esc(kategorieName(t.kategorie))}${t.variante ? `<small>${esc(t.variante)}</small>` : ""}`;
+    return `<button class="ort-reihe ${i.erledigt ? "erledigt" : ""}" data-id="${i.id}" data-kat="${esc(t.kategorie)}">
+      <span class="ort-kat-icon">${kennblockHtml(t.kategorie)}</span>
+      <span class="ort-reihe-text"><b>${name}</b>${coordHtml(i.x, i.y, i.z)}${portalHtml(i.x, i.z, st.dim, "ort-portal mono")}</span>
+      ${w ? `<span class="ort-weg"><b>${entfernungText(w.meter)}</b><span>${w.richtung}${w.umgerechnet ? " ⟷" : ""}</span></span>` : ""}
+      ${i.erledigt ? `<span class="ort-erledigt" title="Erledigt · ${esc(i.erledigt.von || "")}">${HAKEN}</span>` : ""}
+    </button>`;
   }).join("");
 }
 
@@ -2120,8 +2092,8 @@ function render(){
   if(aktivesModul === "banner"){ renderBanner(); return; }
   if(aktivesModul === "ruestung"){ renderRuestung(); return; }
   if(aktivesModul === "portale"){ renderPortale(); return; }
-  if(st.ansicht === "liste"){ renderHud(); renderFilter(); renderListe(); }
-  else karte.zeichnen();
+  renderHud(); renderFilter(); renderListe();
+  karte.zeichnen();
   renderStatus();
 }
 
@@ -2175,7 +2147,7 @@ const karte = (() => {
   }
 
   function zeichnen(){
-    if(st.ansicht !== "karte") return;
+    if(!canvas.clientWidth) return;   // Bereich nicht sichtbar
     if(angepasst !== `${st.welt?.id}:${st.dim}`){ groesse(); alles(); angepasst = `${st.welt?.id}:${st.dim}`; }
     const w = canvas.width / dpr, h = canvas.height / dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -2227,11 +2199,13 @@ const karte = (() => {
     const akzent = var_("--accent");
     const punkte = eintraege.slice()
       .sort((a, b) => (a.t.kategorie === EIGENE_ORTE) - (b.t.kategorie === EIGENE_ORTE));
+    const schilder = [];
     for(const { i, t } of punkte){
       const [px, py] = zuBild(i.x, i.z);
       if(px < -20 || py < -20 || px > w + 20 || py > h + 20) continue;
       const eigen = t.kategorie === EIGENE_ORTE;
       const bild = kennblockBild(t.kategorie), r = bild ? 14 : 11;
+      ctx.globalAlpha = i.erledigt ? .5 : 1;   // erledigte Orte blass
       ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
       // heller Grund unter dem Kennblock, sonst gehen dunkle Blöcke (Netherziegel, Sculk) unter
       ctx.fillStyle = eigen ? akzent : bild ? "rgba(214,222,230,.34)" : "rgba(0,0,0,.6)"; ctx.fill();
@@ -2248,17 +2222,21 @@ const karte = (() => {
         ctx.font = "700 12px ui-monospace, monospace";
         ctx.fillText(symbol(t.kategorie), px, py + 1);
       }
-      if(sicht.zoom >= 0.12 || eigen){
-        const text = t.variante || t.kategorie;
-        ctx.font = "600 11px -apple-system, system-ui, sans-serif";
-        const tw = ctx.measureText(text).width, ty = py + r + 3;
-        if(frei(px - tw / 2 - 5, ty, tw + 10, 17)){
-          ctx.fillStyle = "rgba(0,0,0,.55)";
-          ctx.fillRect(px - tw / 2 - 5, ty, tw + 10, 17);
-          ctx.fillStyle = "#fff"; ctx.fillText(text, px, ty + 9);
-        }
-      }
+      ctx.globalAlpha = 1;
+      // Namensschild für jeden Ort (Max, 05.10.2026) – eigene Orte mit ihrem Namen, sonst der deutsche Strukturname
+      schilder.push({ text:`${i.erledigt ? "✓ " : ""}${eigen ? (t.variante || EIGENE_ORTE) : kategorieName(t.kategorie)}`, px, ty:py + r + 3, eigen, blass:Boolean(i.erledigt) });
       marker.push({ id:i.id, px, py, r:16 });
+    }
+    // Schilder nach den Markern; eigene Orte zuerst, damit sie bei Platzmangel gewinnen
+    ctx.font = "600 10.5px -apple-system, system-ui, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    for(const sch of schilder.sort((a, b) => b.eigen - a.eigen)){
+      const tw = ctx.measureText(sch.text).width;
+      const mx = Math.max(tw / 2 + 6, Math.min(w - tw / 2 - 6, sch.px));   // am Rand nicht abschneiden
+      if(!frei(mx - tw / 2 - 4, sch.ty, tw + 8, 15)) continue;
+      ctx.fillStyle = "rgba(0,0,0,.58)";
+      ctx.fillRect(mx - tw / 2 - 4, sch.ty, tw + 8, 15);
+      ctx.fillStyle = sch.blass ? "rgba(255,255,255,.6)" : "#fff"; ctx.fillText(sch.text, mx, sch.ty + 8);
     }
 
     // 3) Eigener Standort
@@ -2281,8 +2259,8 @@ const karte = (() => {
     biomKnopfZeigen();
     const farbe = (name) => [...BIOM_INFO.values()].find((b) => b.name === name)?.farbe;
     $legende.innerHTML = (tipp ? `<span class="chip tipp mono">${esc(tipp)}</span>` : "")
-      + [...legende].sort((a, b) => b[1] - a[1]).slice(0, 4)
-        .map(([n]) => `<span class="chip"><i style="background:${farbe(n)}"></i>${esc(n)}</span>`).join("");
+      + [...legende].sort((a, b) => b[1] - a[1]).slice(0, 3)
+        .map(([n]) => `<span class="chip"><i style="background:${farbe(n)}"></i>${esc(biomName(n))}</span>`).join("");
   }
   let tipp = null;   // „X · Z · Biom“ der zuletzt angetippten Stelle, bis die Karte bewegt wird
 
@@ -2341,7 +2319,7 @@ const karte = (() => {
         else if(bm.an && bm.weltId === st.weltId && bm.import){
           const [x, z] = zuWelt(px, py).map(Math.floor);
           const b = biomAnStelle(st.dim, x, z);
-          tipp = `X ${zahl(x)} · Z ${zahl(z)} · ${b ? b.name || `Biom-ID ${b.unbekannt} (unbekannt)` : "unerkundet"}`;
+          tipp = `X ${zahl(x)} · Z ${zahl(z)} · ${b ? biomName(b.name) || `Biom-ID ${b.unbekannt} (unbekannt)` : "unerkundet"}`;
           zeichnen();
         }
       }
@@ -2358,7 +2336,7 @@ const karte = (() => {
     bm.an = !bm.an; lsSchreiben("orte.biome", bm.an); tipp = null;
     biomKnopfZeigen(); zeichnen();
   });
-  window.addEventListener("resize", () => { if(st.ansicht === "karte"){ groesse(); zeichnen(); } });
+  window.addEventListener("resize", () => { if(canvas.clientWidth){ groesse(); zeichnen(); } });
 
   /** Auf einen Punkt springen (z. B. aus den Sammelobjekten) */
   function zentrieren(x, z){
@@ -2419,13 +2397,15 @@ function koordLesen(prefix){
 const koordGueltig = (k) => Number.isInteger(k.x) && Number.isInteger(k.z) && (k.y === null || Number.isInteger(k.y));
 
 // --- Detail ------------------------------------------------------------------
+/* Detail (Max, 05.10.2026): Koordinaten mit Umrechnung, „Als erledigt markieren“ statt Bearbeiten,
+   Löschen nur mit Bestätigung. Kopieren, /tp-Befehl und Koordinaten ändern entfallen. */
 function detailOeffnen(id, loeschenFragen){
   const i = st.instanzen.find((x) => x.id === id); if(!i) return;
   const t = typVon(i), dim = dimTypeVon(i.dimensionId);
   const w = entfernung(st.standort, i.x, i.z, dim);
   const biom = bm.weltId === st.weltId ? biomAnStelle(dim, i.x, i.z) : null;   // aus dem Welt-Import
-  const titel = esc(t.variante || t.kategorie);
-  const sub = `${t.variante ? `${esc(t.kategorie)} · ` : ""}${dimLabel(dim)}${biom?.name ? ` · ${esc(biom.name)}` : ""}`;
+  const titel = esc(t.variante || kategorieName(t.kategorie));
+  const sub = `${t.variante ? `${esc(kategorieName(t.kategorie))} · ` : ""}${dimLabel(dim)}${biom?.name ? ` · ${esc(biomName(biom.name))}` : ""}`;
   const html = kopfHtml(titel, sub, kennblockHtml(t.kategorie)) + `<div class="orte-inhalt">
     <div class="result-card">
       <div class="result-label">Koordinaten</div>
@@ -2437,34 +2417,34 @@ function detailOeffnen(id, loeschenFragen){
       ${umrechnen(i.x, i.z, dim) ? `<div class="result-row"><span class="rname">${portalHtml(i.x, i.z, dim, "mono")}</span></div>` : ""}
       ${w ? `<div class="result-row"><span class="rname">Von deinem Standort</span><span><b class="rval mono">${entfernungText(w.meter)}</b><span class="runit">${w.richtung}</span></span></div>` : ""}
     </div>
+    ${i.erledigt
+      ? `<div class="banner ok">Erledigt${i.erledigt.von ? ` von ${esc(i.erledigt.von)}` : ""}${i.erledigt.am ? ` am ${datumKurz(i.erledigt.am)}` : ""}</div>
+         <button class="btn-secondary" data-aktion="erledigt" data-id="${i.id}">Nicht mehr erledigt</button>`
+      : `<button class="btn-primary" data-aktion="erledigt" data-id="${i.id}">Als erledigt markieren</button>`}
     ${boardZeigenKnopf(`ort:${i.id}`)}
     ${DEMO.enabled ? "" : `<button class="btn-secondary anheften ${i.angeheftet ? "aktiv" : ""}" data-aktion="anheften" data-id="${i.id}">
       ${i.angeheftet ? "Groß auf der Anzeige · Lösen" : "Auf der Anzeige anheften"}</button>`}
-    <div class="knopf-raster">
-      <button class="btn-secondary" data-aktion="kopieren" data-text="${i.x} ${i.y ?? "~"} ${i.z}">Koordinaten</button>
-      <button class="btn-secondary" data-aktion="kopieren" data-text="${esc(tpBefehl(i.x, i.y, i.z, dim))}">/tp-Befehl</button>
-    </div>
     ${loeschenFragen
       ? `<div class="knopf-raster"><button class="btn-secondary" data-aktion="detail" data-id="${i.id}">Abbrechen</button><button class="btn-danger" data-aktion="loeschen" data-id="${i.id}">Wirklich löschen</button></div>`
-      : `<div class="knopf-raster">
-          <button class="btn-primary" data-aktion="bearbeiten" data-id="${i.id}">Bearbeiten</button>
-          <button class="btn-danger" data-aktion="loeschen-fragen" data-id="${i.id}">Löschen</button>
-        </div>`}
+      : `<button class="btn-danger" data-aktion="loeschen-fragen" data-id="${i.id}">Löschen</button>`}
   </div>`;
   sheetOeffnen("detail", html, dim);
   boardZeigenKnoepfe();
 }
 
-function bearbeitenOeffnen(id){
-  const i = st.instanzen.find((x) => x.id === id); if(!i) return;
-  const t = typVon(i), dim = dimTypeVon(i.dimensionId);
-  const html = kopfHtml("Koordinaten ändern", `${esc(typLabel(t))} · ${dimLabel(dim)}`) + `<div class="orte-inhalt">
-    <div class="field-group"><div class="field-group-label">Position</div>${koordFelder("b", i.x, i.y, i.z)}</div>
-    <div class="banner" id="bearbeitenBanner" hidden></div>
-    <div class="sheet-fuss"><button class="btn-secondary" data-aktion="detail" data-id="${i.id}">Zurück</button>
-      <button class="btn-primary" data-aktion="bearbeiten-speichern" data-id="${i.id}">Speichern</button></div>
+/* Eintragen (Max, 05.10.2026): der Screenshot steckt jetzt hier drin */
+function eintragenOeffnen(){
+  const html = kopfHtml("Ort eintragen", `${dimLabel(st.dim)} · Welt ${esc(st.welt ? kurzSeed(st.welt.seed) : "…")}`) + `<div class="orte-inhalt">
+    <button class="card eintragen-wahl" data-aktion="eintragen-screenshot">
+      <span class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span>
+      <span class="text"><b>Screenshot</b><small>Popup aus der Seed Map – das Board liest Struktur, Variante und Koordinaten aus. Mehrere auf einmal gehen.</small></span>
+    </button>
+    <button class="card eintragen-wahl" data-aktion="eintragen-hand">
+      <span class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 20h4l10-10-4-4L4 16zM14 6l4 4"/></svg></span>
+      <span class="text"><b>Von Hand</b><small>Eigener Ort oder Struktur mit Koordinaten.</small></span>
+    </button>
   </div>`;
-  sheetOeffnen("bearbeiten", html, dim);
+  sheetOeffnen("eintragen", html);
 }
 
 // --- Eintragen (manuell) ---------------------------------------------------
@@ -2497,7 +2477,7 @@ function formularRendern(behalten){
     <div class="field-group"><div class="field-group-label">Dimension</div>
       <div class="tool-segment">${DIM_ORDER.map((d) => `<button class="seg-btn ${form.dim === d ? "active" : ""}" data-form-dim="${d}">${dimLabel(d)}</button>`).join("")}</div></div>
     <div class="field-group"><div class="field-group-label">Kategorie</div>
-      <select class="orte-eingabe" id="formKategorie">${kats.map((k) => `<option ${form.kategorie === k ? "selected" : ""}>${esc(k)}</option>`).join("")}</select></div>
+      <select class="orte-eingabe" id="formKategorie">${kats.map((k) => `<option value="${esc(k)}" ${form.kategorie === k ? "selected" : ""}>${esc(kategorieName(k))}</option>`).join("")}</select></div>
     <div class="field-group"><div class="field-group-label">${eigen ? "Ort" : "Variante"}</div>${typFeld}</div>
     <div class="field-group"><div class="field-group-label">Koordinaten</div>
       <input class="orte-eingabe mono" id="formEinfuegen" placeholder="Einfügen: „X: -1,884 Z: -524“ oder /tp …" autocomplete="off">
@@ -2529,7 +2509,7 @@ async function formularSpeichern(){
   uebernehmen(r.data);
   alleSchliessen();
   if(st.dim !== form.dim) dimWechseln(form.dim);
-  toast(`„${variante || form.kategorie}“ gespeichert`);
+  toast(`„${variante || kategorieName(form.kategorie)}“ gespeichert`);
   render();
 }
 
@@ -2619,7 +2599,7 @@ function importRendern(){
     const titel = e.status === "wartet" ? "Wartet …"
       : e.status === "lese" ? '<span class="dreher"></span>Lese Text …'
       : e.status === "gespeichert" ? `${esc(k.titel)} ✓`
-      : k ? `<span class="imp-kennblock">${kennblockHtml(k.kategorie)}</span>${esc(k.variante ? `${k.kategorie} · ${k.variante}` : k.kategorie)}`
+      : k ? `<span class="imp-kennblock">${kennblockHtml(k.kategorie)}</span>${esc(k.variante ? `${kategorieName(k.kategorie)} · ${k.variante}` : kategorieName(k.kategorie))}`
       : "Nicht erkannt";
     const meta = k ? `<span class="pill">${dimLabel(e.dim)}</span>${biom ? '<span class="pill">Biom</span>' : ""}` : "";
     const bearbeitbar = e.status === "fertig";
@@ -2728,6 +2708,9 @@ function weltOeffnen(meldung){
       </div></div></div>
     <div class="banner ${meldung ? meldung[0] : ""}" id="weltBanner" ${meldung ? "" : "hidden"}>${meldung ? esc(meldung[1]) : ""}</div>
     ${st.welt ? `<button class="btn-secondary" data-aktion="kopieren" data-text="${esc(st.welt.seed)}">Seed kopieren</button>` : ""}
+    ${st.welt ? `<div class="field-group"><div class="field-group-label">Biome dieser Welt</div>
+      <div class="card-meta">${bm.weltId === st.weltId && bm.import ? `Importiert am ${datumKurz(bm.import.importiertAm)} · ${zahl(chunkSumme(bm.import.chunks))} Chunks` : "Noch kein Welt-Import"}</div>
+      <button class="btn-secondary" data-aktion="welt-import">Welt-Import …</button></div>` : ""}
   </div>`;
   sheetOeffnen("welt", html);
 }
@@ -2822,6 +2805,13 @@ function modulWechseln(key){
   bereich.mount();
 }
 
+/** Sidebar-Eintrag „Welt“ (Max, 05.10.2026): Welt wählen/anlegen, Seed, Welt-Import – für alle Bereiche */
+function weltKnopfRendern(){
+  const $k = document.getElementById("weltKnopf"); if(!$k) return;
+  const biome = st.welt && bm.weltId === st.weltId && bm.import;
+  $k.innerHTML = `<span class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></span>
+    <span class="text"><span class="titel">Welt</span><span class="card-meta">${st.welt ? `Seed ${esc(kurzSeed(st.welt.seed))} · ${biome ? "Biome importiert" : "ohne Biome"}` : "Noch keine Welt"}</span></span>`;
+}
 function sidebarBauen(aktiv){
   document.getElementById("sbNav").innerHTML = BEREICHE.map((b) => {
     const da = typeof b.mount === "function";
@@ -3023,7 +3013,6 @@ function aufKarteZeigen(instanzId){
   const dim = dimTypeVon(i.dimensionId);
   modulWechseln("karte");
   if(st.dim !== dim) dimWechseln(dim);
-  if(st.ansicht !== "karte") ansichtWechseln("karte");
   karte.zentrieren(i.x, i.z);
   detailOeffnen(i.id);
 }
@@ -4901,7 +4890,7 @@ function weltImportRendern(oeffnen){
         ${a ? `<img class="wi-vorschau" src="${a.bild}" alt="Vorschau ${dimLabel(wi.dim)}">
         <div class="result-hint mono">${a.ausschnitt}</div>
         <div class="wi-biome">${a.zaehler.slice(0, 5).map(([name, n]) => `<div><i style="background:${
-          [...BIOM_INFO.values()].find((b) => b.name === name)?.farbe || "#e0413c"}"></i>${esc(name)}<b>${Math.round(n / gesamt * 100) || "< 1"} %</b></div>`).join("")}</div>` : ""}`
+          [...BIOM_INFO.values()].find((b) => b.name === name)?.farbe || "#e0413c"}"></i>${esc(biomName(name))}<b>${Math.round(n / gesamt * 100) || "< 1"} %</b></div>`).join("")}</div>` : ""}`
       : `<div class="banner warn">In dieser Welt ist noch nichts erkundet – es gibt keine Biome zu übernehmen.</div>`}
       ${meta.unbekannt.length ? `<div class="banner warn">Unbekannte Biom-IDs (bleiben leer, bis die Biom-Liste sie kennt): ${meta.unbekannt.slice(0, 6).map((u) =>
         `${u.bedrockId} · ${zahl(u.chunks)} Chunks, z. B. ${dimLabel(u.beispiel.dim)} X ${zahl(u.beispiel.x)} Z ${zahl(u.beispiel.z)}`).map(esc).join(" · ")}</div>` : ""}
@@ -4961,7 +4950,7 @@ async function weltImportUebernehmen(){
   biomeSetzen(weltId, r.data.import, kacheln);
   weltImportZuruecksetzen();
   alleSchliessen();
-  if(aktivesModul === "karte"){ if(st.ansicht !== "karte") ansichtWechseln("karte"); karte.neuAnpassen(); render(); }
+  if(aktivesModul === "karte"){ karte.neuAnpassen(); render(); }
   toast(`Biome übernommen · ${zahl(chunkSumme(meta.chunks))} Chunks`);
 }
 async function weltImportLoeschen(){
@@ -5027,45 +5016,25 @@ function dimWechseln(dim){
   karte.neuAnpassen();
   render();
 }
-function ansichtWechseln(a){
-  st.ansicht = a; lsSchreiben("orte.ansicht", a);
-  document.querySelectorAll("#orteAnsicht .seg-btn").forEach((b) => b.classList.toggle("active", b.dataset.ansicht === a));
-  document.getElementById("orteStage").hidden = a !== "liste";
-  document.getElementById("karteStage").hidden = a !== "karte";
-  karte.neuAnpassen();
-  render();
-}
 function renderStatus(){
   document.getElementById("orteStatusLab").textContent = DEMO.enabled ? "Demo" : "Verbunden";
 }
 
 // Reiter, Ansicht, Liste
 $tabs.addEventListener("click", (e) => { const b = e.target.closest(".tab"); if(b && b.dataset.dim !== st.dim) dimWechseln(b.dataset.dim); });
-document.getElementById("orteAnsicht").addEventListener("click", (e) => { const b = e.target.closest(".seg-btn"); if(b) ansichtWechseln(b.dataset.ansicht); });
 $suche.addEventListener("input", () => { st.suche = $suche.value; renderListe(); });
 $filter.addEventListener("click", (e) => { const b = e.target.closest(".seg-btn"); if(!b) return; st.filter = b.dataset.filter || null; renderFilter(); renderListe(); });
 $hud.addEventListener("click", (e) => { if(e.target.closest("[data-aktion=standort]")) standortOeffnen(); });
-$liste.addEventListener("click", (e) => {
-  const zeile = e.target.closest(".ort-zeile");
-  if(zeile) return detailOeffnen(zeile.dataset.id);
-  const kopf = e.target.closest(".ort-kat-head");
-  if(kopf){
-    const kat = kopf.parentElement.dataset.kat, key = `${st.dim}:${kat}`;
-    st.zu.has(key) ? st.zu.delete(key) : st.zu.add(key);
-    kopf.parentElement.classList.toggle("open");
-  }
-});
+$liste.addEventListener("click", (e) => { const z = e.target.closest(".ort-reihe"); if(z) detailOeffnen(z.dataset.id); });
 
 // Bottom Bar
 const $datei = document.getElementById("orteDatei");
-document.getElementById("orteScreenshotBtn").addEventListener("click", () => $datei.click());
 // Banner-Anleitungen landen über dieselbe Prüfliste (das Board erkennt, was es ist)
 document.getElementById("bannerScreenshotBtn").addEventListener("click", () => $datei.click());
 $datei.addEventListener("change", () => { const d = [...$datei.files]; $datei.value = ""; if(d.length) importStarten(d); });
-document.getElementById("orteEintragenBtn").addEventListener("click", formularOeffnen);
-document.getElementById("orteImportBtn").addEventListener("click", weltImportOeffnen);
+document.getElementById("orteEintragenBtn").addEventListener("click", eintragenOeffnen);
 $weltDatei.addEventListener("change", () => { const d = $weltDatei.files[0]; $weltDatei.value = ""; if(d) weltImportDatei(d); });
-document.getElementById("orteWeltBtn").addEventListener("click", () => weltOeffnen());
+document.getElementById("weltKnopf").addEventListener("click", () => { alleSchliessen(); weltOeffnen(); });
 document.getElementById("orteStatusBtn").addEventListener("click", () =>
   toast(DEMO.enabled ? "Demo-Modus – Daten nur in diesem Tab" : "Live – Daten liegen auf dem Board"));
 
@@ -5127,15 +5096,18 @@ $sheet.addEventListener("click", async (e) => {
       alleSchliessen(); toast("Gelöscht"); render();
       break;
     }
-    case "bearbeiten": bearbeitenOeffnen(id); break;
-    case "bearbeiten-speichern": {
-      const k = koordLesen("b"), $b = document.getElementById("bearbeitenBanner");
-      if(!koordGueltig(k)) return banner($b, "bad", "Bitte X und Z als ganze Zahlen eintragen.");
-      const r = await api(`/orte/instanzen/${id}`, { method:"PATCH", body:JSON.stringify(k) });
-      if(!r.ok) return banner($b, "bad", meldungAus(r));
-      uebernehmen(r.data); render(); detailOeffnen(id); toast("Gespeichert");
+    case "erledigt": {
+      const i = st.instanzen.find((x) => x.id === id); if(!i) break;
+      const r = await api(`/orte/instanzen/${id}/erledigt`, { method:"PUT", body:JSON.stringify({ erledigt:!i.erledigt }) });
+      if(!r.ok){ toast(meldungAus(r), true); break; }
+      uebernehmen({ instanz:r.data.instanz });
+      render(); detailOeffnen(id);
+      toast(r.data.instanz.erledigt ? "Als erledigt markiert" : "Nicht mehr erledigt");
       break;
     }
+    case "eintragen-screenshot": alleSchliessen(); $datei.click(); break;
+    case "eintragen-hand": formularOeffnen(); break;
+    case "welt-import": weltImportOeffnen(); break;
     case "formular-speichern": formularSpeichern(); break;
     case "import-an": {
       importFelderLesen();
@@ -5189,7 +5161,6 @@ $sheet.addEventListener("click", async (e) => {
     case "sam-zur-karte":
       modulWechseln("karte");
       if(st.dim !== a.dataset.dim) dimWechseln(a.dataset.dim);
-      if(st.ansicht !== "karte") ansichtWechseln("karte");
       break;
     case "standort-weg":
       st.standort = null; lsSchreiben("orte.standort", null); alleSchliessen(); render(); break;
@@ -5354,7 +5325,6 @@ async function init(){
   sidebarBauen("karte");
   document.getElementById("kopfIcon").innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON.karte}</svg>`;
   applyTheme(st.dim);
-  ansichtWechseln(st.ansicht);
   uhr(); setInterval(uhr, 30000);
   DEMO.enabled = !(await betriebErkennen());
   if(!DEMO.enabled){
