@@ -76,6 +76,45 @@ const STRUKTUREN = Object.freeze({
 });
 const strukturName = (kat) => STRUKTUREN[kat]?.name || kat;
 
+/* ---- Deutsche Namen für die Anzeige (Entscheidung von Max, 05.10.2026: „wir einigen uns auf Deutsch“) ----
+   Gespeichert bleiben die Namen der Seed Map (Chunkbase) und von minecraft-data – das sind die IDs.
+   Strukturen: zuerst STRUKTUREN (wie in den Sammelobjekten), sonst die Bedrock-Namen aus
+   texts/de_DE.lang (feature.*); wo Bedrock keinen hat, der Name aus dem deutschen Minecraft-Wiki.
+   Biome: Bedrock zeigt keine Biom-Namen im Spiel – die Namen stammen aus dem deutschen Minecraft-Wiki.
+   Mit * markiert: kein offizieller Name gefunden, eigene Übersetzung. */
+const KATEGORIE_NAMEN = Object.freeze({
+  "Eigene Orte":"Eigene Orte", "Biomes":"Biome", "Slime Chunk":"Schleimchunk", "Spawn Point":"Weltspawn",
+  "Village":"Dorf", "Dungeon":"Verlies", "Mineshaft":"Mine", "Ruined Portal":"Zerstörtes Portal",
+  "Witch Hut":"Hexenhütte", "Ocean Ruins":"Ozeanruinen", "Cave":"Höhle", "Lava Pool":"Lavasee",
+  "Treasure":"Vergrabener Schatz", "Igloo":"Iglu", "Fossil":"Fossil", "Ravine":"Schlucht", "Geode":"Amethystgeode",
+  "Apple":"Apfel*", "Ore Veins":"Erzadern", "Desert Well":"Wüstenbrunnen", "Camp":"Lager*",
+  "Nether Fossil":"Netherfossil", "End Gateway":"Endtransitportal",
+});
+const kategorieName = (kat) => STRUKTUREN[kat]?.name || (KATEGORIE_NAMEN[kat] || kat).replace(/\*$/, "");
+const BIOM_NAMEN = Object.freeze({
+  "Plains":"Ebene", "Snowy Plains":"Verschneite Ebene", "Mushroom Fields":"Pilzland", "Savanna":"Savanne",
+  "Sunflower Plains":"Sonnenblumenebene", "Ice Spikes":"Eiszapfentundra", "Forest":"Wald", "Taiga":"Taiga",
+  "Jungle":"Dschungel", "Sparse Jungle":"Lichter Dschungel", "Birch Forest":"Birkenwald", "Dark Forest":"Dichter Wald",
+  "Snowy Taiga":"Verschneite Taiga", "Old Growth Pine Taiga":"Urkiefertaiga", "Flower Forest":"Blumenwald",
+  "Old Growth Birch Forest":"Urbirkenwald", "Old Growth Spruce Taiga":"Urfichtentaiga", "Bamboo Jungle":"Bambusdschungel",
+  "Grove":"Hain", "Cherry Grove":"Kirschblütenhain", "Pale Garden":"Blasser Garten", "Dappled Forest":"Gefleckter Wald*",
+  "Dripstone Caves":"Tropfsteinhöhlen", "Lush Caves":"Üppige Höhlen", "Deep Dark":"Tiefes Dunkel", "Sulfur Caves":"Schwefelhöhlen*",
+  "Windswept Hills":"Windgepeitschte Hügel", "Windswept Forest":"Windgepeitschter Wald", "Stony Shore":"Steinküste",
+  "Savanna Plateau":"Savannenhochebene", "Windswept Gravelly Hills":"Windgepeitschte Geröllhügel",
+  "Windswept Savanna":"Windgepeitschte Savanne", "Meadow":"Wiese", "Snowy Slopes":"Verschneite Hänge",
+  "Frozen Peaks":"Vereiste Gipfel", "Jagged Peaks":"Zerklüftete Gipfel", "Stony Peaks":"Steinige Gipfel",
+  "Swamp":"Sumpf", "Mangrove Swamp":"Mangrovensumpf", "Desert":"Wüste", "Beach":"Strand", "Snowy Beach":"Verschneiter Strand",
+  "Badlands":"Tafelberge", "Wooded Badlands":"Bewaldete Tafelberge", "Eroded Badlands":"Abgetragene Tafelberge",
+  "Ocean":"Ozean", "River":"Fluss", "Frozen Ocean":"Vereister Ozean", "Frozen River":"Vereister Fluss", "Deep Ocean":"Tiefsee",
+  "Warm Ocean":"Warmer Ozean", "Lukewarm Ocean":"Lauwarmer Ozean", "Cold Ocean":"Kalter Ozean",
+  "Deep Lukewarm Ocean":"Lauwarme Tiefsee", "Deep Cold Ocean":"Kalte Tiefsee", "Deep Frozen Ocean":"Vereiste Tiefsee",
+  "Nether Wastes":"Netherödnis", "Soul Sand Valley":"Seelensandtal", "Crimson Forest":"Karmesinwald",
+  "Warped Forest":"Wirrwald", "Basalt Deltas":"Basaltdeltas",
+  "The End":"Das Ende", "Small End Islands":"Kleine Endinseln", "End Midlands":"Endmittelland",
+  "End Highlands":"Endhochland", "End Barrens":"Endkargland",
+});
+const biomName = (name) => name ? (BIOM_NAMEN[name] || name).replace(/\*$/, "") : name;
+
 /* ---- Portale: Prüfung wie im Spiel ---------------------------------------- */
 /*   1. Position umrechnen: Oberwelt → Nether ÷ 8 (abgerundet), zurück × 8, Y bleibt
      2. Im Suchbereich (Quadrat) um diesen Zielpunkt nach Portalen suchen:
@@ -207,15 +246,15 @@ function ortKarte(ctx, id){
   const i = ctx.instanzen.find((x) => x.id === id); if(!i) return null;
   const t = typVonIn(ctx, i), dim = dimensionVon(ctx, i.dimensionId);
   if(!t || !dim) return null;
-  const biom = ctx.biomName?.(dim, i.x, i.z) || null;   // aus dem Welt-Import
+  const biom = biomName(ctx.biomName?.(dim, i.x, i.z) || null);   // aus dem Welt-Import, deutsch
   const bloecke = [{ art:"koordinaten", x:i.x, y:i.y ?? null, z:i.z }];
   const u = umrechnen(i.x, i.z, dim);
   if(u) bloecke.push({ art:"koordinaten", label:u.dim === "nether" ? "Im Nether" : "In der Oberwelt",
                        x:u.x, y:null, z:u.z, dimension:KARTEN_DIM[u.dim] });
-  const unter = [t.variante ? t.kategorie : null, biom].filter(Boolean).join(" · ");
+  const unter = [t.variante ? kategorieName(t.kategorie) : null, biom].filter(Boolean).join(" · ");
   // typ = Feature-Typ der Seed Map → die Anzeige zeigt dazu den Kennblock (eigene Orte: keiner)
   const typ = t.kategorie === EIGENE_ORTE ? undefined : t.kategorie;
-  return { titel:t.variante || t.kategorie, unter:unter || undefined, bereich:"Karte",
+  return { titel:t.variante || kategorieName(t.kategorie), unter:unter || undefined, bereich:"Karte",
            quelle:`ort:${i.id}`, typ, dimension:KARTEN_DIM[dim], bloecke };
 }
 
@@ -332,7 +371,7 @@ function weltKarte(ctx){
   const bloecke = [{ art:"zeilen", zeilen }];
   const angeheftet = ctx.instanzen.filter((i) => i.angeheftet).slice(0, 8).map((i) => {
     const t = typVonIn(ctx, i), d = dimensionVon(ctx, i.dimensionId);
-    return { label:(t?.variante || t?.kategorie || "Ort").slice(0, 40), wert:`${dimLabel(d)} · ${zahl(i.x)} / ${zahl(i.z)}` };
+    return { label:(t?.variante || (t ? kategorieName(t.kategorie) : "Ort")).slice(0, 40), wert:`${dimLabel(d)} · ${zahl(i.x)} / ${zahl(i.z)}` };
   });
   if(angeheftet.length) bloecke.push({ art:"zeilen", zeilen:angeheftet });
   return { titel:"Gesamtkarte", unter:`Welt ${kurzSeed(ctx.welt.seed)}`, bereich:"Karte", quelle:"welt", dimension:"oberwelt", bloecke };

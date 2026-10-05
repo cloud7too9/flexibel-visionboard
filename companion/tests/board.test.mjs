@@ -265,8 +265,7 @@ try {
 
 
     await p.click('[data-aktion="schliessen"]'); await p.waitForTimeout(250);
-    await p.click('#orteAnsicht [data-ansicht="liste"]'); await p.waitForTimeout(300);
-    await p.click(".ort-zeile"); await p.waitForTimeout(350);
+    await p.click(".ort-reihe"); await p.waitForTimeout(350);
     const ortTitel = await text(p, ".sheet-kopf h2");
     const ortX = await p.$eval(".result-coords b", (e) => e.textContent);
     pruefe(await text(p, ".board-zeigen") === "Aufs Board", `Detail „${ortTitel}“: Knopf „Aufs Board“`);

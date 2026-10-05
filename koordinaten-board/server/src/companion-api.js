@@ -47,6 +47,11 @@ export async function companionApi(app, { daten, nutzer, geaendert, anzeigeLink 
     geaendert('orte', weltId);
     return { instanz };
   });
+  app.put('/orte/instanzen/:id/erledigt', async (req) => {
+    const { instanz, weltId } = daten.instanzErledigt(req.params.id, req.body, req.nutzer);
+    geaendert('orte', weltId);
+    return { instanz };
+  });
   app.put('/orte/instanzen/:id/angeheftet', async (req) => {
     const { instanz, weltId } = daten.instanzAnheften(req.params.id, req.body);
     geaendert('orte', weltId);

@@ -16,6 +16,12 @@ const DIR = path.join(HIER, "bilder");
 mkdirSync(DIR, { recursive: true });
 const pruefe = (ok, text) => { console.log((ok ? "OK   " : "FEHL ") + text); if (!ok) process.exitCode = 1; };
 const schlafen = (ms) => new Promise((r) => setTimeout(r, ms));
+/** Welt-Import öffnen wie am Handy: Sidebar → Welt → „Welt-Import …“ (seit 05.10.2026 nicht mehr in der Bottom-Bar) */
+const importOeffnen = async (seite) => {
+  await seite.click("#burgerBtn"); await schlafen(150);
+  await seite.click("#weltKnopf"); await schlafen(200);
+  await seite.click('#orteSheetInhalt [data-aktion="welt-import"]'); await schlafen(200);
+};
 
 // Test-ZIPs je Fall (planung/PLAN.md, Strang C): korrekt, mit Unterordner, ohne db/, keine ZIP
 const ZIP = { mimeType: "application/zip" };
@@ -60,7 +66,7 @@ try {
   const p = await handy();
   await p.goto(`${server.adresse}/companion-prototyp.html?demo=1&modul=karte`);
   await warteAuf(p, () => st.welt && bm.weltId === st.weltId && bm.import);
-  await p.evaluate(() => { ansichtWechseln("karte"); dimWechseln("overworld"); });
+  await p.evaluate(() => dimWechseln("overworld"));
   await schlafen(400);
 
   // ---- Demo-Biome auf der Karte ----
@@ -68,8 +74,8 @@ try {
     hinweis: document.getElementById("karteHinweis").textContent.replace(/\s+/g, " "), legende: document.getElementById("karteLegende").textContent,
     knopf: !document.getElementById("karteBiome").hidden }));
   pruefe(demo.kacheln > 4 && demo.chunks.overworld > 1000 && demo.chunks.nether > 0, `Demo-Welt hat Biome: ${demo.kacheln} Kacheln, ${JSON.stringify(demo.chunks)}`);
-  pruefe(/^512 Blöcke · Biome 28\.9\. · [\d ]+ Chunks$/.test(demo.hinweis), `Hinweis: ${demo.hinweis}`);
-  pruefe(/Plains|Forest|Ocean/.test(demo.legende) && demo.knopf, `Legende mit Biomen, Knopf sichtbar: ${demo.legende}`);
+  pruefe(/^\d+ Blöcke · Biome 28\.9\. · [\d ]+ Chunks$/.test(demo.hinweis), `Hinweis: ${demo.hinweis}`);   // Rasterweite hängt von der Kartengröße ab
+  pruefe(/Ebene|Wald|Ozean/.test(demo.legende) && demo.knopf, `Legende mit Biomen, Knopf sichtbar: ${demo.legende}`);
   // Kacheln werden wirklich gezeichnet (32 × 32-Bilder)
   const gezeichnet = () => p.evaluate(() => {
     let n = 0; const orig = CanvasRenderingContext2D.prototype.drawImage;
@@ -85,7 +91,7 @@ try {
   await p.mouse.click(px, py); await schlafen(250);
   const tippSpawn = await text(p, ".karte-legende .tipp");
   const [, tx, tz, tname] = tippSpawn.match(/^X ([−\d ]+) · Z ([−\d ]+) · (.+)$/) || [];
-  const sollSpawn = tx && await p.evaluate(([x, z]) => biomAnStelle("overworld", x, z)?.name, [zahlLesen(tx), zahlLesen(tz)]);
+  const sollSpawn = tx && await p.evaluate(([x, z]) => biomName(biomAnStelle("overworld", x, z)?.name), [zahlLesen(tx), zahlLesen(tz)]);
   pruefe(Boolean(sollSpawn) && tname === sollSpawn && Math.abs(zahlLesen(tx) - 8) <= 2 && Math.abs(zahlLesen(tz) - 8) <= 2,
     `Tippen am Spawn: „${tippSpawn}“`);
   await p.screenshot({ path: `${DIR}/m2-karte-tippen.png` });
@@ -102,12 +108,12 @@ try {
   pruefe((await gezeichnet()) > 0, "Biome wieder eingeblendet");
   // Nether: eigene Kacheln
   await p.evaluate(() => dimWechseln("nether")); await schlafen(300);
-  pruefe(/Nether Wastes|Soul Sand|Crimson|Warped|Basalt/.test(await text(p, "#karteLegende")), "Nether zeigt Nether-Biome");
+  pruefe(/Netherödnis|Seelensandtal|Karmesinwald|Wirrwald|Basaltdeltas/.test(await text(p, "#karteLegende")), "Nether zeigt Nether-Biome (deutsch)");
   await p.screenshot({ path: `${DIR}/m3-karte-nether.png` });
   await p.evaluate(() => dimWechseln("overworld")); await schlafen(200);
 
   // ---- Import-Sheet: Anleitung, Stand ----
-  await p.click("#orteImportBtn"); await schlafen(300);
+  await importOeffnen(p);
   let s = await sheet(p);
   pruefe(s.includes("Weltordner aus der Dateien-App hochladen") && s.includes("iPhone") && s.includes("minecraftWorlds")
     && (await p.$$eval(".wi-anleitung li", (l) => l.length)) === 3, "Anleitung: drei Schritte, nur iPhone");
@@ -142,18 +148,18 @@ try {
   pruefe(s.includes("Ersetzt den Import vom 28.9.2026"), "Hinweis: ersetzt den alten Import");
   const vorschau = await p.$eval(".wi-vorschau", (i) => [i.naturalWidth, i.naturalHeight]);
   pruefe(vorschau[0] === 80 && vorschau[1] === 16, `Vorschau 1 Pixel je erkundetem Chunk (${vorschau.join(" × ")}: cx −40…39, cz −8…7)`);
-  pruefe(/Forest\d+ %/.test(s) && /Desert\d+ %/.test(s), "Häufigste Biome mit Anteil");
+  pruefe(/Wald\d+ %/.test(s) && /Wüste\d+ %/.test(s), "Häufigste Biome mit Anteil (deutsch)");
   await p.screenshot({ path: `${DIR}/m7-pruefliste.png`, fullPage: true });
   await p.click('[data-wi-dim="nether"]'); await schlafen(200);
-  pruefe((await text(p, ".wi-biome")).startsWith("Nether Wastes100 %"), "Prüfliste Nether: Netherödnis (feste Höhe 64)");
+  pruefe((await text(p, ".wi-biome")).startsWith("Netherödnis100 %"), "Prüfliste Nether: Netherödnis (feste Höhe 64)");
 
   // ---- Übernehmen ----
   await p.click('[data-aktion="wi-uebernehmen"]');
   pruefe(await warteAuf(p, () => st.sheet === null && bm.import?.dateiname === "Archiv.zip"), "Übernommen, Sheet zu");
-  const nachher = await p.evaluate(() => ({ toast: document.getElementById("orteToast").textContent.replace(/\s+/g, " "), ansicht: st.ansicht,
+  const nachher = await p.evaluate(() => ({ toast: document.getElementById("orteToast").textContent.replace(/\s+/g, " "),
     pilz: biomAnStelle("overworld", 24, 24)?.name, fluss: biomAnStelle("overworld", 40, 40)?.name, alt: biomAnStelle("overworld", 2000, 2000),
     unbekannt: biomAnStelle("overworld", 488, 8), weltname: bm.import.weltname, von: bm.import.von, mock: MOCK.biome.w_1.kacheln.length }));
-  pruefe(nachher.toast === "Biome übernommen · 1 305 Chunks" && nachher.ansicht === "karte", `Toast: ${nachher.toast}`);
+  pruefe(nachher.toast === "Biome übernommen · 1 305 Chunks", `Toast: ${nachher.toast}`);
   pruefe(nachher.pilz === "Mushroom Fields" && nachher.fluss === "River" && nachher.alt === null && nachher.unbekannt?.unbekannt === 192,
     "Neue Biome auf der Karte, alte ersetzt, unbekannte ID bleibt unbekannt");
   pruefe(nachher.weltname === "Unsere Welt" && nachher.von === "Max" && nachher.mock === 13, `Import im Mock gespeichert (${nachher.mock} Kacheln: 8 Oberwelt, 4 Nether, 1 End)`);
@@ -162,7 +168,7 @@ try {
 
   // ---- Seed passt nicht: andere Welt gewählt ----
   await p.evaluate(() => weltLaden("w_2")); await schlafen(400);
-  await p.click("#orteImportBtn"); await schlafen(200);
+  await importOeffnen(p);
   pruefe(!(await sheet(p)).includes("Import löschen"), "Welt 2 hat keinen Import");
   await hochladen(p, DATEIEN.korrekt);
   await warteAuf(p, () => wi.schritt === "bestaetigen");
@@ -186,7 +192,7 @@ try {
 
   // ---- .mcworld geht genauso, Verwerfen, leere Welt ----
   await p.evaluate(() => weltLaden("w_1")); await schlafen(300);
-  await p.click("#orteImportBtn"); await schlafen(200);
+  await importOeffnen(p);
   await hochladen(p, DATEIEN.mcworld);
   pruefe(await warteAuf(p, () => wi.schritt === "bestaetigen" && wi.welt.weltname === "Realm"), ".mcworld wird angenommen");
   await p.click('[data-aktion="wi-lesen"]'); await warteAuf(p, () => wi.schritt === "pruefliste");
@@ -229,7 +235,7 @@ try {
   await d.goto(new URL("../companion-prototyp.html?modul=karte", import.meta.url).href);
   await warteAuf(d, () => st.welt && bm.import);
   pruefe(await d.evaluate(() => bm.kacheln.size > 0), "Als Datei: Demo-Biome aus dem Mock");
-  await d.click("#orteImportBtn"); await schlafen(200);
+  await importOeffnen(d);
   await d.setInputFiles("#weltDatei", DATEIEN.korrekt);
   pruefe(await warteAuf(d, () => document.querySelector("#orteSheetInhalt .banner.bad")?.textContent.includes("vom Board kommt (http)")),
     "Als Datei: Hinweis, dass der Import http braucht");
@@ -258,8 +264,7 @@ try {
   const max = await handy(), lena = await handy();
   pruefe(await beitreten(max, "Max") && await beitreten(lena, "Lena"), "Max und Lena treten bei");
   pruefe(await lena.evaluate(() => bm.import === null), "Live: noch keine Biome");
-  await max.evaluate(() => ansichtWechseln("karte"));
-  await max.click("#orteImportBtn"); await schlafen(200);
+  await importOeffnen(max);
   await hochladen(max, DATEIEN.korrekt);
   await warteAuf(max, () => wi.schritt === "bestaetigen");
   await max.click('[data-aktion="wi-lesen"]');
@@ -269,10 +274,10 @@ try {
   pruefe(await warteAuf(lena, () => bm.import?.weltname === "Unsere Welt" && bm.kacheln.size === 13), "Live: Lena bekommt die Biome sofort");
   const gespeichert = await (await fetch(`${BOARD}/api/welten/${welt.id}/biome`, { headers: { authorization: `Bearer ${token}` } })).json();
   pruefe(gespeichert.kacheln.length === 13 && gespeichert.import.chunks.overworld === 1279, "Live: Board liefert die Kacheln aus");
-  await lena.evaluate(() => { ansichtWechseln("karte"); karte.zentrieren(0, 0); }); await schlafen(300);
+  await lena.evaluate(() => karte.zentrieren(0, 0)); await schlafen(300);
   await lena.screenshot({ path: `${DIR}/m11-live-lena.png` });
   // Lena löscht, Max sieht es
-  await lena.click("#orteImportBtn"); await schlafen(200);
+  await importOeffnen(lena);
   await lena.click('[data-aktion="wi-loeschen"]'); await lena.click('[data-aktion="wi-loeschen"]');
   pruefe(await warteAuf(max, () => bm.import === null && bm.kacheln.size === 0), "Live: Löschen kommt bei Max an");
 } catch (f) {

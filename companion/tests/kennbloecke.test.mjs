@@ -27,7 +27,7 @@ await p.addInitScript(() => {
 });
 await p.goto(DATEI + "?modul=karte");
 await warte(900);
-await p.evaluate(() => { ansichtWechseln("karte"); dimWechseln("overworld"); });
+await p.evaluate(() => dimWechseln("overworld"));
 await warte(600);
 
 // Welche sichtbaren Marker haben laut Stammdaten einen Kennblock?
@@ -55,8 +55,8 @@ const symbole = await p.evaluate(() => {
 pruefe(symbole.includes("■") && symbole.includes("♜") && !symbole.includes("★"), "Canvas: Dorf ■ und eigene Orte ♜ als Symbol, Festung ★ als Bild");
 
 // ---- Liste --------------------------------------------------------------------------------
-await p.evaluate(() => ansichtWechseln("liste")); await warte(400);
-const koepfe = () => p.$$eval(".ort-kat", (l) => l.map((k) => ({
+// Seit 05.10.2026 steht die Liste unter der Karte: eine Zeile je Ort
+const koepfe = () => p.$$eval(".ort-reihe", (l) => l.map((k) => ({
   kat: k.dataset.kat,
   bild: Boolean(k.querySelector(".ort-kat-icon img.kennblock")?.naturalWidth),
   symbol: k.querySelector(".ort-kat-icon img") ? null : k.querySelector(".ort-kat-icon").textContent,
@@ -70,7 +70,7 @@ const pruefeKoepfe = async (dim) => {
 };
 await pruefeKoepfe("overworld");
 await p.evaluate(() => {
-  const stage = document.getElementById("orteStage"), s = document.querySelector('.ort-kat[data-kat="Stronghold"]');
+  const stage = document.getElementById("orteStage"), s = document.querySelector('.ort-reihe[data-kat="Stronghold"]');
   stage.scrollBy(0, s.getBoundingClientRect().top - stage.getBoundingClientRect().top - 12);
 });
 await warte(200);

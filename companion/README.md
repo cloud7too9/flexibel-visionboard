@@ -13,14 +13,17 @@ Neben der Seite gehören `regeln.js` (Stammdaten und Regeln, die auch der Board-
 ## Was drin ist
 
 - **Dimensions-Reiter** Oberwelt / Nether / End – färben die ganze Oberfläche (THEMES aus Modul A)
-- **Liste** als Akkordion: Kategorie → Variante (FeatureType) → Instanzen, mit Suche und Kategorie-Filter
-- **Karte**: Features und eigene Orte als Marker; **Biome aus dem Welt-Import** als Fläche (ein Wert je Chunk), unerkundete Fläche bleibt leer. Antippen zeigt „X · Z · Biom“, ein Knopf blendet die Biome aus
-- **Screenshot** (Bottom-Bar): mehrere Seed-Map-Screenshots → Prüfliste → speichern; Duplikat-Hinweis, Dimensionsprüfung. Ein Biom-Popup bleibt ausgegraut stehen („Biome kommen aus dem Welt-Import“)
-- **Welt-Import** (Bottom-Bar): Weltordner als `.zip` aus der Dateien-App (oder `.mcworld`) hochladen → Biome der Welt, siehe unten
-- **Eintragen** von Hand: alle Kategorien außer Biome; neue Typen nur bei „Eigene Orte“
-- **Welt**: Welten per Seed anlegen und wechseln
+- **Karte oben, Liste darunter** (Max, 05.10.2026; vorher ein Umschalter Karte | Liste): Die Liste hat eine Zeile je Ort (Kennblock, Name, Koordinaten, Umrechnung, Entfernung, ✓ wenn erledigt), sortiert nach Kategorie und Entfernung, mit Suche und Kategorie-Filter
+- **Deutsche Namen** überall, wo etwas angezeigt wird (Max, 05.10.2026): Strukturen über `kategorieName()`, Biome über `biomName()` (beide in `board-karten.js`, auch für die Board-Karten). Gespeichert bleiben die Seed-Map-/minecraft-data-Namen als IDs. Strukturen: `STRUKTUREN`, sonst Bedrock-`de_DE.lang` (`feature.*`), sonst deutsches Wiki; Biome: deutsches Wiki (Bedrock zeigt keine Biom-Namen). Mit * markiert: eigene Übersetzung (Apfel, Lager, Gefleckter Wald, Schwefelhöhlen)
+- **Karte**: Features und eigene Orte als Marker, **jeder mit Namensschild** (eigene Orte mit ihrem Namen, sonst der deutsche Strukturname; bei Platzmangel gewinnen eigene Orte, erledigte mit ✓ und blass); **Biome aus dem Welt-Import** als Fläche (ein Wert je Chunk), unerkundete Fläche bleibt leer. Antippen zeigt „X · Z · Biom“, ein Knopf blendet die Biome aus
+- **Eintragen** (Bottom-Bar, Max 05.10.2026): wählt zwischen **Screenshot** und **Von Hand**. Bottom-Bar sonst nur der Status
+- **Screenshot** (in Eintragen): mehrere Seed-Map-Screenshots → Prüfliste → speichern; Duplikat-Hinweis, Dimensionsprüfung. Ein Biom-Popup bleibt ausgegraut stehen („Biome kommen aus dem Welt-Import“)
+- **Welt-Import** (Sidebar → Welt → „Welt-Import …“): Weltordner als `.zip` aus der Dateien-App (oder `.mcworld`) hochladen → Biome der Welt, siehe unten
+- **Von Hand** (in Eintragen): alle Kategorien außer Biome; neue Typen nur bei „Eigene Orte“
+- **Welt** (eigener Eintrag unten in der Sidebar, über „Board“; Max 05.10.2026): Welten per Seed anlegen und wechseln, Seed kopieren, Stand der Biome und „Welt-Import …“ (`weltKnopfRendern`, `weltOeffnen`)
+- **Detail** (Max, 05.10.2026): Koordinaten, Umrechnung, Entfernung; **„Als erledigt markieren“** (für alle in der Welt, mit wer/wann; `PUT /orte/instanzen/:id/erledigt`) statt Bearbeiten; **Löschen nur mit Bestätigung**. Kopieren, `/tp`-Befehl und Koordinaten ändern sind entfallen. Live bleiben „Aufs Board“ und „Auf der Anzeige anheften“
 - **Standort** (nur lokal): Entfernung + Himmelsrichtung, Nether/Oberwelt umgerechnet
-- Nether↔Oberwelt-Umrechnung, `/execute in … run tp`-Befehl zum Kopieren
+- Nether↔Oberwelt-Umrechnung
 - **Kennblöcke**: Strukturen mit Bild (`icons/struktur_kennbloecke/`, Zuordnung `STRUKTUREN`) zeigen ihren typischen Block statt des Symbols – im Kopf der Listen-Gruppe, als Marker auf der Canvas-Karte, im Kopf des Detail-Sheets und in der Screenshot-Prüfliste. Alle anderen Kategorien (Dorf, eigene Orte, Biome …) behalten ihr Symbol aus `SYMBOL`
 - **Sidebar** aus einer Bereichs-Registry (`BEREICHE`) – Vorbereitung für Dashboard-Widgets:
   Karte · Sammelobjekte · Portal-Verwaltung · Handbuch · Baupläne · Banner · Rüstung
@@ -225,6 +228,7 @@ karte = { titel, unter?, bereich?, quelle?, typ?, dimension: "oberwelt"|"nether"
 | POST | `/orte/instanzen` | `{ id?, dimensionId, kategorie, variante, x, y, z, quelle }` | `{ instanz, typ }` – Typ wird gefunden oder angelegt |
 | PATCH | `/orte/instanzen/:id` | `{ x, y, z }` | `{ instanz }` |
 | PUT | `/orte/instanzen/:id/angeheftet` | `{ angeheftet }` | `{ instanz }` – groß auf der Anzeige |
+| PUT | `/orte/instanzen/:id/erledigt` | `{ erledigt }` | `{ instanz }` – `instanz.erledigt = { von, am } \| null`, gilt für alle |
 | DELETE | `/orte/instanzen/:id` | – | `{ ok:true }` |
 | POST | `/orte/auslesen` | multipart `datei` | `{ erkannt:{ titel, kategorie, variante, dimension, x, y, z } \| null, banner:{ basis, ebenen, unklar } \| null }` – erst Seed-Map-Popup, sonst Banner-Anleitung |
 | GET | `/welten/:id/biome` | – | `{ import:WeltImport \| null, kacheln:[{ dim, kx, kz, daten }] }` |
@@ -264,7 +268,7 @@ Live gelten alle Pfade mit Präfix `/api` und Bearer-Token. Die Texterkennung (`
 ## Einbau ins Modul Karte (modul-a-live-karte.html)
 
 - CSS-Abschnitt „KARTE · KOORDINATEN-SAMMLUNG“ übernehmen (Basis ist identisch)
-- Die Liste wird ein zweiter Bereich neben dem Karten-Canvas (Umschalter Karte | Liste)
+- Die Liste steht unter dem Karten-Canvas (seit 05.10.2026 kein Umschalter mehr)
 - Marker und Biom-Kacheln werden in den bestehenden Renderer der Live-Karte gezeichnet,
   statt im eigenen Canvas – Spieler-Positionen und Sammlung auf einer Karte. Biome: je sichtbarer Kachel `kachelBild(k)` (32 × 32-Canvas) mit `imageSmoothingEnabled = false` unter Raster und Markern
 - **Welt-Import**: `biom-ids.js` vor dem Haupt-Script einbinden; `biom-import.worker.js`, `biom-welt.js`, `biom-dekoder.js` und `vendor/` neben die Hauptdatei legen (der Worker lädt sie als ES-Module, nur über http). Der Service Worker der PWA muss sie im Precache haben. Abschnitt 9h und `<input id="weltDatei">` übernehmen, auf dem Board liefern sie die Routen in `server.js` aus

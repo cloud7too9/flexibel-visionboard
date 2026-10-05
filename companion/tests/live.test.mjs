@@ -102,14 +102,13 @@ try {
   pruefe((await text(max, "#boardBtn")).includes("Verbunden"), "Sidebar: mit dem Board verbunden");
 
   // Ort von Hand eintragen
-  await max.click("#orteEintragenBtn"); await max.waitForSelector("#formNeu");
+  await max.click("#orteEintragenBtn"); await max.click('[data-aktion="eintragen-hand"]'); await max.waitForSelector("#formNeu");
   await max.fill("#formNeu", "Hauptbasis");
   for (const [a, v] of [["X", 212], ["Y", 71], ["Z", -388]]) await max.fill(`[data-koord="f${a}"]`, String(v));
   await max.click('[data-aktion="formular-speichern"]');
   pruefe(await warteAuf(max, () => st.instanzen.length === 1), "Ort „Hauptbasis“ gespeichert");
   const ortId = await max.evaluate(() => st.instanzen[0].id);
   pruefe(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(ortId), `Ort-ID vom Handy (UUID ${ortId.slice(0, 8)}…)`);
-  await max.evaluate(() => ansichtWechseln("liste"));
 
   // Screenshot aus der Seed Map: echte Texterkennung des Boards
   await max.setInputFiles("#orteDatei", path.join(HIER, "../../referenz/seedmap/stronghold-popup.png"));
@@ -126,10 +125,9 @@ try {
   const lena = await handy();
   pruefe(await beitreten(lena, "Lena"), "Lena tritt bei");
   pruefe(await warteAuf(lena, () => st.instanzen.length === 2 && st.welten.length === 1), "Lena sieht Welt und Orte von Max");
-  await lena.evaluate(() => ansichtWechseln("liste"));
   await max.evaluate(() => api("/orte/instanzen", { method: "POST", body: JSON.stringify({
     dimensionId: `d_${st.weltId}_overworld`, kategorie: "Village", variante: null, x: 1040, y: 64, z: 310, quelle: "manuell" }) }));
-  pruefe(await warteAuf(lena, () => st.instanzen.length === 3 && document.querySelector('.ort-kat[data-kat="Village"]')), "Neuer Ort von Max erscheint bei Lena ohne Neuladen");
+  pruefe(await warteAuf(lena, () => st.instanzen.length === 3 && document.querySelector('.ort-reihe[data-kat="Village"]')), "Neuer Ort von Max erscheint bei Lena ohne Neuladen");
   await lena.waitForTimeout(500);   // Sheet-Animation abwarten
   await lena.screenshot({ path: `${DIR}/l3-lena-live.png` });
 
