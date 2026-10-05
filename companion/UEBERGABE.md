@@ -120,7 +120,7 @@ Max hat einen **Rüstungs-Baukasten** geschickt (Zip „ruestung“, jetzt `rues
 - Ein **eigenes Anzeigeschema** fürs Board.
 
 **Gebaut:**
-- Liste (vier Icons, nötige Vorlagen, „2/3 gefunden“), Detail (Figur, Schmiedetisch je Teil, „Du brauchst“, Verzaubern am Amboss, Aufs Board), Editor als **Schmiedetisch** mit den Slots Vorlage + Rüstung + Material wie in den Vorlagen von Max (`referenz/ruestung/`).
+- Liste (Set auf dem Ständer, je Teil Rüstungsteil · Ziervorlage · Rohstoff, „2/3 gefunden“ – Überarbeitung mit Max am 05.10.2026, Branch `bereich/ruestung`), Detail (Figur, Schmiedetisch je Teil, „Du brauchst“, Verzaubern am Amboss, Aufs Board), Editor als **Schmiedetisch** mit den Slots Vorlage + Rüstung + Material wie in den Vorlagen von Max (`referenz/ruestung/`).
 - **Figur**: 3D über http mit three.js r128 vom CDN (drehbar, Ständer oder Steve, Sockel und Hintergrund je Dimension); ohne three.js 2D; als Datei nur die Icons, weil `file://` Canvas-Pixel und ES-Module sperrt. Icons immer aus `fertig/items/` (gehen auch als Datei).
 - **Anpassung am Baukasten**: `figur3d.js` hat eine Option `abstand` (Kamera-Abstand, Standard wie vorher 104), damit der Helm nicht am Rand klebt. Sonst ist der Baukasten unverändert.
 - **Amboss-Pläne** aus dem alten Entwurf (Helm 27, Harnisch 13, Beinschutz 28, Stiefel 49 XP-Level) – **in Bedrock noch nicht geprüft**, in der Seite als Richtwerte gekennzeichnet.
@@ -250,7 +250,7 @@ Der Bereich Rüstung liegt auf `bereich/ruestung` (zweigt von `bereich/banner-sc
 cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist (three.js für die 3D-Tests kommt mit npm install)
-npm test                          # biom-dekoder (18, node --test) + banner (23) + portale (29) + sammelobjekte (108) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (52) + karte-mcworld (52) + anzeige-link (15) = 443 Prüfungen + 18 Tests
+npm test                          # biom-dekoder (18, node --test) + banner (23) + portale (29) + sammelobjekte (108) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (63) + karte-mcworld (52) + anzeige-link (15) = 454 Prüfungen + 18 Tests
 ```
 
 - `board.test.mjs`, `live.test.mjs` und `anzeigeschema.test.mjs` starten je ein **echtes Koordinaten-Board** (Ports 3198, 3195, 3194, eigener Datenordner); Anzeigeschema und Rüstung liefern die Companion zusätzlich selbst über http aus (3193, 3192). Board-Test: Companion über einen eigenen `http://localhost`-Server (DEMO) mit Kamera, Foto, Hand-Eingabe und „Aufs Board“. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).

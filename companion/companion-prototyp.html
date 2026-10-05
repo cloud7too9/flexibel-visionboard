@@ -801,20 +801,27 @@ button.switch { padding:0; }
 @media (prefers-reduced-motion: reduce) { .glanz-schicht { animation:none; background-position:50% 50%; } }
 .item-rahmen.glanz:not(:has(.glanz-schicht)) .item-bild { filter:drop-shadow(0 0 2px rgba(186,120,255,.95)); }
 
-.ruestung-karte { flex-direction:row; align-items:center; gap:14px; text-align:left; cursor:pointer; font:inherit; color:var(--text); width:100%; }
+.ruestung-karte { flex-direction:row; align-items:stretch; gap:12px; text-align:left; cursor:pointer; font:inherit; color:var(--text); width:100%; }
 .ruestung-karte:active { background:var(--surface-3); }
-.ruestung-icons { display:grid; grid-template-columns:repeat(2, 30px); gap:4px; padding:7px; border-radius:12px;
-  background:var(--surface-3); border:1px solid var(--border-soft); flex:0 0 auto; }
-.ruestung-icons .item-bild { width:30px; height:30px; }
-.ruestung-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+/* Set auf dem Ständer: Figur vor dem Block der Dimension, wie die Bühne im Detail */
+.ruestung-staender { flex:0 0 88px; min-height:128px; border-radius:12px; overflow:hidden; border:1px solid var(--border-soft);
+  background:linear-gradient(rgba(10,12,16,.35), rgba(10,12,16,.72)), var(--hintergrund) 0 0 / 32px 32px;
+  image-rendering:pixelated; display:grid; place-items:center; }
+.ruestung-staender .dreher { width:18px; height:18px; margin:0; }
+.staender-bild { width:100%; height:100%; object-fit:contain; object-position:center bottom; image-rendering:auto; }
+.staender-icons { display:grid; grid-template-columns:repeat(2, 30px); gap:4px; }
+.staender-icons .item-bild { width:30px; height:30px; }
+.ruestung-text { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; align-items:flex-start; justify-content:center; }
 .ruestung-text .card-meta { margin-top:0; }
-.besatz-reihe { display:flex; align-items:center; gap:4px; flex-wrap:wrap; margin-top:3px; }
-.besatz-reihe .pill { margin-left:4px; }
-.vorlage-mini { position:relative; width:24px; height:24px; border-radius:6px; display:grid; place-items:center;
-  background:var(--surface-3); border:1px solid var(--border-soft); }
-.vorlage-mini .item-bild { width:18px; height:18px; opacity:.45; filter:grayscale(.8); }
-.vorlage-mini.gefunden { border-color:var(--accent); background:var(--accent-soft); }
-.vorlage-mini.gefunden .item-bild { opacity:1; filter:none; }
+/* Je Teil: Rüstungsteil · Ziervorlage · Rohstoff (wie am Schmiedetisch, klein) */
+.teil-chips { display:grid; grid-template-columns:repeat(2, max-content); gap:5px 6px; margin:3px 0 2px; }
+.teil-chip { display:flex; gap:2px; padding:2px; border-radius:8px; background:var(--surface-3); border:1px solid var(--border-soft); }
+.chip-slot { width:24px; height:24px; border-radius:5px; display:grid; place-items:center; background:rgba(0,0,0,.18); }
+.chip-slot .item-bild { width:20px; height:20px; }
+.chip-slot.frei { background:transparent; border:1px dashed var(--border-soft); }
+.chip-vorlage.gefunden { box-shadow:inset 0 0 0 1.5px var(--accent); background:var(--accent-soft); }
+.chip-vorlage.fehlt .item-bild { opacity:.45; filter:grayscale(.8); }
+.teil-chip.leer .chip-ruestung .item-bild { opacity:.35; }
 
 /* Bühne: Figur vor dem Block der Dimension */
 .buehne { position:relative; border-radius:16px; overflow:hidden; border:1px solid var(--border-soft);
@@ -4244,10 +4251,6 @@ function teilIcon(teilId, t){
   return `<span class="item-rahmen ${t ? "" : "leer"} ${t?.verzaubert ? "glanz" : ""}">${itemBild(datei, t ? itemName(teilId, t) : teilName(teilId))}${t?.verzaubert && MASKE_GEHT
     ? `<span class="glanz-schicht" style="--maske:url('${datei}')"></span>` : ""}</span>`;
 }
-const vorlageMini = (id) => {
-  const o = besatzMuster(id);
-  return `<span class="vorlage-mini ${sam.status[id] ? "gefunden" : ""}" title="${esc(o.name)}${sam.status[id] ? " – gefunden" : ""}">${itemBild(vorlageDatei(o), o.name)}</span>`;
-};
 
 /** Welche Rüstungsbesätze braucht das Set, welche sind in dieser Welt schon gefunden? */
 const besatzStand = (s) => besatzStandVon(s, sam.status);   // board-karten.js
@@ -4264,22 +4267,78 @@ async function ruestungLaden(){
 
 function renderRuestung(){
   if(!rs.geladen){ $ruestungListe.innerHTML = '<div class="empty-list"><span class="dreher"></span>Sets werden geladen …</div>'; return; }
+  const hintergrund = (BUEHNE_DIMS.find((x) => x.id === fig.dim) || BUEHNE_DIMS[0]).hintergrund;
   $ruestungListe.innerHTML = rs.sets.map((s) => {
     const b = besatzStand(s);
     const teile = RUESTUNGS_TEILE.filter(({ id }) => s.teile[id]);
     const arten = [...new Set(teile.map(({ id }) => ruestungsArt(s.teile[id].ruestung).name))].join(", ");
     return `<button class="card ruestung-karte" data-set="${s.id}">
-      <span class="ruestung-icons">${RUESTUNGS_TEILE.map(({ id }) => teilIcon(id, s.teile[id])).join("")}</span>
+      <span class="ruestung-staender" data-staender="${s.id}" style="--hintergrund:url('${BAUKASTEN}${hintergrund}')">${staenderInhalt(s)}</span>
       <span class="ruestung-text">
         <span class="card-title">${esc(s.name)}</span>
         <span class="card-meta">${esc(arten)} · ${teile.length} ${teile.length === 1 ? "Teil" : "Teile"}${s.von ? ` · von ${esc(s.von)}` : ""}</span>
+        <span class="teil-chips">${RUESTUNGS_TEILE.map(({ id }) => teilChipHtml(id, s.teile[id])).join("")}</span>
         ${b.verschieden.length
-          ? `<span class="besatz-reihe">${b.verschieden.map(vorlageMini).join("")}
-              <span class="pill ${b.gefunden.length === b.verschieden.length ? "ok" : "warn"}">${b.gefunden.length}/${b.verschieden.length} gefunden</span></span>`
+          ? `<span class="pill ${b.gefunden.length === b.verschieden.length ? "ok" : "warn"}">${b.gefunden.length}/${b.verschieden.length} gefunden</span>`
           : '<span class="card-meta">Ohne Besatz</span>'}
       </span>
     </button>`;
   }).join("") || '<div class="empty-list">Noch keine Rüstungs-Sets. Unten „Neues Set“ antippen.</div>';
+  staenderFotosLaden();
+}
+
+/* ---------- Liste: Set auf dem Ständer + je Teil Rüstung, Vorlage, Rohstoff (Wunsch von Max, 05.10.2026) ----------
+   Die Figur wird je Set einmal als Bild aufgenommen (3D auf dem Ständer, ohne three.js die 2D-Figur)
+   und nach Teilen + Dimension zwischengespeichert. Als Datei gibt es keine Figur → die vier Icons. */
+const staenderFotos = new Map();
+const staenderSchluessel = (s) => JSON.stringify([fig.dim, s.teile]);
+const staenderIcons = (s) => `<span class="staender-icons">${RUESTUNGS_TEILE.map(({ id }) => teilIcon(id, s.teile[id])).join("")}</span>`;
+function staenderInhalt(s){
+  const foto = staenderFotos.get(staenderSchluessel(s));
+  if(foto) return `<img class="staender-bild" src="${foto}" alt="${esc(s.name)} auf dem Rüstungsständer" draggable="false">`;
+  return fig.art === "icons" ? staenderIcons(s) : '<span class="dreher"></span>';
+}
+async function staenderFoto(s){
+  const modus = await figurModus();
+  if(modus === "icons") return null;
+  if(modus === "3d"){
+    fig.staender3d ??= fig.erstelle3D(document.createElement("canvas"), 180, 260, 96);   // näher dran: Figur füllt die Kachel
+    const lauf = fig.kette.then(async () => {
+      await fig.staender3d.setzen({ ausruestung:ausruestungVon(s.teile), traeger:"staender", sockel:sockelVon(fig.dim) });
+      fig.staender3d.drehen(-0.55, 0.16);   // wie die Bühne im Detail
+      return fig.staender3d.canvas.toDataURL("image/png");
+    });
+    fig.kette = lauf.catch(() => {});   // die Kette darf nie abgelehnt bleiben
+    return lauf;
+  }
+  const c = await fig.bk.figur({ ausruestung:ausruestungVon(s.teile), ansicht:"vorn", massstab:4, skin:false });
+  return c.toDataURL("image/png");
+}
+/** Fehlende Ständer-Bilder nacheinander aufnehmen und an Ort und Stelle einsetzen */
+async function staenderFotosLaden(){
+  const lauf = (fig.staenderLauf = (fig.staenderLauf || 0) + 1);
+  for(const s of rs.sets){
+    const schluessel = staenderSchluessel(s);
+    if(!staenderFotos.has(schluessel)){
+      try {
+        const foto = await staenderFoto(s);
+        if(foto) staenderFotos.set(schluessel, foto);
+      } catch(f){ console.warn("Ständer-Bild:", f); }
+    }
+    if(lauf !== fig.staenderLauf) return;   // Liste wurde inzwischen neu gezeichnet
+    const el = $ruestungListe.querySelector(`[data-staender="${s.id}"]`);
+    if(el && staenderSchluessel(s) === schluessel) el.innerHTML = staenderInhalt(s);
+  }
+}
+/** Ein Teil wie am Schmiedetisch, klein: Rüstungsteil (fertig) · Ziervorlage · Rohstoff */
+function teilChipHtml(teilId, t){
+  const o = t?.muster ? besatzMuster(t.muster) : null, m = o ? besatzMaterial(t.material) : null;
+  const gefunden = o && sam.status[o.id];
+  return `<span class="teil-chip ${t ? "" : "leer"}" title="${esc(t ? itemName(teilId, t) : teilName(teilId))}">
+    <span class="chip-slot chip-ruestung">${teilIcon(teilId, t)}</span>
+    <span class="chip-slot chip-vorlage ${o ? (gefunden ? "gefunden" : "fehlt") : "frei"}" title="${o ? `${esc(o.name)}${gefunden ? " – gefunden" : " – fehlt noch"}` : "Keine Vorlage"}">${o ? itemBild(vorlageDatei(o), o.name) : ""}</span>
+    <span class="chip-slot chip-rohstoff ${m ? "" : "frei"}" title="${m ? esc(m.zutat) : "Kein Rohstoff"}">${m ? itemBild(zutatDatei(m), m.zutat) : ""}</span>
+  </span>`;
 }
 
 // ---------- Detail ----------
@@ -4584,7 +4643,7 @@ function figurModus(){
       const THREE = await threeLaden();
       if(!THREE) return "2d";
       const { erstelleFigur3D } = await import(`./${BAUKASTEN}figur3d.js`);
-      fig.erstelle3D = (canvas, breite, hoehe) => erstelleFigur3D({ THREE, baukasten:fig.bk, canvas, breite, hoehe, abstand:118 });
+      fig.erstelle3D = (canvas, breite, hoehe, abstand = 118) => erstelleFigur3D({ THREE, baukasten:fig.bk, canvas, breite, hoehe, abstand });
       fig.canvas3d = document.createElement("canvas");
       fig.canvas3d.className = "figur-3d";
       fig.f3d = fig.erstelle3D(fig.canvas3d, 320, 320);
