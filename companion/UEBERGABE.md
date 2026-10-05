@@ -102,8 +102,8 @@ Die Wünsche von Max waren: Koordinaten umrechnen, Verbindungen mit den Koordina
 
 - Baupläne gelten **für alle Welten**.
 - **Liste** mit Vorschau und Suche.
-- **Detail** mit Material, nötigen Bannervorlagen samt Herkunft und einer **Anleitung Schritt für Schritt**. Jeder Schritt zeigt den Zwischenstand und lässt sich abhaken.
-- **Editor**: Grundfarbe, bis zu 6 Ebenen, Muster-Raster mit Vorschaubildern wie am Webstuhl.
+- **Detail** im Layout der Vorlage von Max (05.10.2026): links das Banner, rechts die Schritte mit Muster, Name und Rezept-Kasten (Werkbank 3 × 3, dann Webstuhl), abhakbar; darunter Material und Bannervorlagen.
+- **Editor in 7 Schritten** (Max, 05.10.2026): Schritt 1 Banner (Grundfarbe), Schritte 2–7 Muster; freie Schritte nur am Ende.
 - **Banner aus Screenshots** (Wunsch von Max): Anleitungen, die die Schritte als „<Farbe> <Muster>“ mit englischen Namen listen (`../referenz/banner/rezept-beispiel.jpg`: „Black Base“, „Cyan Bordure“, „Light Blue Lozenge“ …), liest das Board aus. Sie landen in derselben Screenshot-Prüfliste wie Orte: Vorschau, Schritte auf Deutsch, vorgeschlagener Name („Banner vom 29.9.“), dann speichern.
   - Einstieg über „Screenshot“ in der Bottom-Bar von Banner **oder** Karte – das Board erkennt, ob es ein Seed-Map-Popup oder eine Banner-Anleitung ist.
   - Schritt 1 „<Farbe> Base“ ist die Grundfarbe; fehlt er, lässt sich nichts speichern. Nicht zugeordnete Zeilen werden gemeldet, derselbe Banner zweimal als „Schon gespeichert“.
@@ -255,7 +255,7 @@ Der Bereich Rüstung liegt auf `bereich/ruestung` (zweigt von `bereich/banner-sc
 cd companion/tests
 npm install                       # Playwright
 npx playwright install chromium   # einmalig, falls kein Chromium da ist (three.js für die 3D-Tests kommt mit npm install)
-npm test                          # biom-dekoder (18, node --test) + banner (37) + portale (29) + sammelobjekte (108) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (64) + karte-mcworld (52) + anzeige-link (15) = 469 Prüfungen + 18 Tests
+npm test                          # biom-dekoder (18, node --test) + banner (44) + portale (29) + sammelobjekte (108) + kennbloecke (14) + board (57) + live (65) + anzeigeschema (28) + ruestung (64) + karte-mcworld (52) + anzeige-link (15) = 476 Prüfungen + 18 Tests
 ```
 
 - `board.test.mjs`, `live.test.mjs` und `anzeigeschema.test.mjs` starten je ein **echtes Koordinaten-Board** (Ports 3198, 3195, 3194, eigener Datenordner); Anzeigeschema und Rüstung liefern die Companion zusätzlich selbst über http aus (3193, 3192). Board-Test: Companion über einen eigenen `http://localhost`-Server (DEMO) mit Kamera, Foto, Hand-Eingabe und „Aufs Board“. Vorher einmal `npm --prefix ../../koordinaten-board run installieren && npm --prefix ../../koordinaten-board run build` (die Anzeige braucht den gebauten Client).
@@ -313,7 +313,8 @@ companion/
 │   └── fertig/items/         1116 fertige Rüstungs-Icons
 ├── icons/
 │   ├── manifest.json         Fundort-Strukturen: ID, deutscher Name, Kennblock, Besätze
-│   └── struktur_kennbloecke/ Kennblock-PNGs der Fundorte (Pfadruinen fehlt noch)
+│   ├── struktur_kennbloecke/ Kennblock-PNGs der Fundorte (Pfadruinen fehlt noch)
+│   └── banner/               Bedrock-Icons für die Banner-Anleitung (Wolle, Stock, Farbstoffe, Bannervorlage)
 ├── referenz/
 │   ├── sammelobjekte/  Trails-&-Tales-Übersicht der Fundorte
 │   ├── banner/         Beispiel aus einem Banner-Editor

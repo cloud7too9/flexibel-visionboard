@@ -34,10 +34,28 @@ await p.click('[data-banner="b_4"]');
 await warte();
 const detail = await p.$eval("#orteSheetInhalt", (e) => e.innerText);
 pruefe(detail.includes("Türkise Wolle") && detail.includes("Fluss-Bannervorlage") && detail.includes("Mauerung-Bannervorlage"), "Detail: Material + Vorlagen");
-pruefe(await p.$$eval(".schritt", (l) => l.length) === 4, "Detail: 4 Schritte (Banner + 3 Ebenen)");
+pruefe(await p.$$eval(".bstufe", (l) => l.length) === 4, "Detail: 4 Schritte (Banner + 3 Muster)");
+// Layout wie die Vorlage von Max: links das Banner, rechts die Schritte mit Rezept
+const lage = await p.evaluate(() => {
+  const r = (s) => document.querySelector(s).getBoundingClientRect();
+  return { bild: r(".banner-anleitung-bild"), stufen: r(".banner-stufen") };
+});
+pruefe(lage.bild.right <= lage.stufen.left && Math.abs(lage.bild.top - lage.stufen.top) < 12, "Banner links, Schritte rechts daneben");
+const stufen = await p.$$eval(".bstufe", (l) => l.map((z) => ({
+  nr: z.querySelector(".bstufe-nr").textContent, titel: z.querySelector(".bstufe-text b").textContent,
+  werkbank: [...z.querySelectorAll(".rezept-werkbank .rslot")].map((x) => x.querySelector("img")?.src.split("/").pop() || ""),
+  webstuhl: [...z.querySelectorAll(".rezept-webstuhl .rslot")].map((x) => { const q = x.querySelector("img")?.getAttribute("src") || ""; return q.startsWith("data:") ? "banner" : q.split("/").pop(); }),
+})));
+console.log("     Schritte:", stufen.map((x) => `${x.nr} ${x.titel}`).join(" | "));
+pruefe(stufen[0].werkbank.join() === "wolle_cyan.png,wolle_cyan.png,wolle_cyan.png,wolle_cyan.png,wolle_cyan.png,wolle_cyan.png,,stock.png,", "Schritt 1: Werkbank 3 × 3 mit 6 Türkiser Wolle + Stock");
+pruefe(stufen[1].webstuhl[0] === "banner" && stufen[1].webstuhl[1] === "farbstoff_gray.png" && stufen[1].webstuhl[2] === "bannervorlage.png", "Schritt 2: Webstuhl Banner + Grauer Farbstoff + Bannervorlage");
+pruefe(stufen[3].webstuhl[1] === "farbstoff_black.png" && stufen[3].webstuhl[2] === "", "Schritt 4 (Bord): ohne Vorlage");
+pruefe(await p.$$eval("#orteSheetInhalt img.item-bild", (l) => l.length > 10 && l.every((i) => i.naturalWidth === 16)), "Bedrock-Icons (Wolle, Stock, Farbstoffe, Vorlage) geladen");
+pruefe(await p.$eval("#orteSheet", (e) => e.scrollWidth <= e.clientWidth), "Detail ohne seitliches Scrollen bei 390 px");
 await p.screenshot({ path: `${DIR}/b2-detail.png` });
-await p.click('.schritt[data-n="0"]'); await warte(150);
-await p.click('.schritt[data-n="1"]'); await warte(150);
+await p.click('.bstufe[data-n="0"]'); await warte(150);
+await p.click('.bstufe[data-n="1"]'); await warte(150);
+pruefe(await p.$eval('.bstufe[data-n="1"] .bstufe-nr', (e) => e.textContent) === "✓", "abgehakter Schritt zeigt ✓");
 console.log("     Stand:", await p.$eval("#orteSheetInhalt .field-group-label", (e) => e.textContent), await p.evaluate(() => localStorage.getItem("banner.schritte.b_4")));
 pruefe((await p.$eval("#orteSheetInhalt", (e) => e.textContent)).includes("2/4 erledigt"), "Schritte abhaken → 2/4");
 await p.evaluate(() => document.getElementById("orteSheet").scrollTo(0, 9999)); await warte(150);

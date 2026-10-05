@@ -139,11 +139,11 @@ Rüstungs-Sets wie in den Vorlagen (`referenz/ruestung/`): je Teil **Vorlage + R
 - **Baupläne gelten für alle Welten** (ein Banner hängt nicht am Seed), alle im Raum sehen und bearbeiten dieselben
 - **Screenshot** (Bottom-Bar, live): Anleitungen mit Schritten wie „Black Base“, „Cyan Bordure“, „Light Blue Lozenge“ liest das Board aus. Die Prüfliste zeigt Vorschau und Schritte auf Deutsch und schlägt einen Namen vor; „Banner speichern“ legt den Bauplan an. Schritt 1 („<Farbe> Base“) ist die Grundfarbe; derselbe Banner wird kein zweites Mal gespeichert. Geht auch über „Screenshot“ in der Karte
 - **Liste** als Raster mit Vorschau; Suche nach Name oder Musternamen
-- **Detail**: Material (Wolle, Stock, Farbstoffe gezählt), nötige Bannervorlagen mit Herkunft, **Anleitung Schritt für Schritt** – jeder Schritt zeigt, wie das Banner danach aussieht; abhaken (nur auf diesem Gerät, wird zurückgesetzt, wenn sich das Muster ändert)
+- **Detail im Layout der Vorlage von Max** (05.10.2026): links das Banner groß (bleibt beim Scrollen stehen), rechts die Schritte – Nummer (antippen hakt ab, nur auf diesem Gerät, wird zurückgesetzt, wenn sich das Muster ändert), das Muster für sich, Name mit Farbe und englischem Namen, rechts der Rezept-Kasten: Schritt 1 die Werkbank 3 × 3 (6 Wolle + Stock), danach der Webstuhl (Banner + Farbstoff + Bannervorlage). Darunter Material (Wolle, Stock, Farbstoffe gezählt) und nötige Bannervorlagen mit Herkunft. Icons aus Bedrock in `icons/banner/` (Quelle in `QUELLE.md`). In Bedrock gehen viele Muster auch an der Werkbank; die App zeigt den Webstuhl, weil er weniger Farbstoff braucht
 - **Editor in 7 Schritten** (Wunsch von Max, 05.10.2026): Schritt 1 = Banner (Grundfarbe, 16), Schritte 2–7 = die Muster im Webstuhl, je Farbe + Muster aus einem Raster mit Vorschaubildern. Eine Leiste oben zeigt alle 7 Schritte mit ihrem Zwischenstand. Freie Schritte gibt es nur am Ende: Ein Schritt ist erst wählbar, wenn der davor belegt ist; „Schritt leeren“ nimmt ein Muster heraus, die späteren rücken nach. Vorschau, Name und Leiste bleiben oben stehen. Verschieben von Ebenen gibt es nicht mehr (`bannerEditorRendern`, `bannerEditorKlick`, Aktionen `bschritt`, `bschritt-weiter`, `bschritt-leeren`)
 - Alle 42 Muster mit **deutschen Spielnamen**, englischer Name klein daneben; 10 davon brauchen eine Bannervorlage
 - Löschen mit zweitem Tippen („Wirklich löschen?“), weil ein Bauplan für alle weg ist
-- Vorschau ist vereinfacht (Pixel-Masken, keine Original-Texturen)
+- Vorschau der Banner selbst ist vereinfacht (Pixel-Masken, keine Original-Texturen); Wolle, Stock, Farbstoffe und Bannervorlage sind Bedrock-Icons
 
 ## Live-Betrieb am Koordinaten-Board
 
