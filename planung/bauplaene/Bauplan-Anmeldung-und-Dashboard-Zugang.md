@@ -41,7 +41,7 @@ Die **Anmeldeseite wird der Einstieg** unter `/`. Sie ist das, was man über die
 | L4 | Passwort | Nur für die **erste Anmeldung auf einem Gerät** und zum **Zurücksetzen der PIN** |
 | L5 | PIN | Wird nach jeder **Offline-Phase von über 30 Minuten** verlangt. Gemeint ist die Zeit ohne Kontakt zum Server; solange das Gerät verbunden ist, läuft kein Timer. Nach einem PIN-Wechsel fragen **alle** Geräte des Kontos nach der neuen PIN |
 | L6 | Registrieren | Kleiner Knopf „Registrieren“ unter den Feldern Anzeigename und Passwort |
-| L7 | Zugangs-Code | 5 Zeichen aus `0-9`, `A-Z`, `a-z`, zufällig, **Groß- und Kleinschreibung zählt** |
+| L7 | Zugangs-Code | 5 Zeichen, zufällig, **Groß- und Kleinschreibung zählt**. Ziffern, Groß- und Kleinbuchstaben **ohne die verwechselbaren `0 O 1 l I`** → 57 Zeichen (`CODE_ZEICHEN`) |
 | L8 | Code erzeugen | In der Companion im **Dashboard-Bereich**, Knopf „Code generieren“. Jeder angemeldete Nutzer darf das |
 | L9 | Gültigkeit | **Einstellbar** beim Erzeugen: zeitbasiert (Standard 20 Minuten) oder dauerhaft |
 | L10 | Dashboard-PIN | **Eigene PIN je Zugang**, festgelegt beim Erzeugen des Codes. Hat nichts mit dem Benutzerkonto zu tun |
@@ -106,7 +106,9 @@ anzeigeGeraete: [{     // per Dashboard-Login angemeldete Anzeigen (TV, Tablet �
 
 - `passwortPruefen`: mindestens 8 Zeichen
 - `KONTO_PIN` bleibt `^\d{4,8}$` und gilt auch für die Dashboard-PIN
-- `ZUGANGS_CODE = /^[0-9A-Za-z]{5}$/`
+- `CODE_ZEICHEN = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"` (57 Zeichen, ohne `0 O 1 l I`)
+- `ZUGANGS_CODE = /^[0-9A-Za-z]{5}$/` – das Eingabefeld bleibt bewusst großzügig; ein vertipptes `0` oder `l` ist einfach ein falscher Code
+- Erzeugen mit `crypto.randomInt(CODE_ZEICHEN.length)` (gleichverteilt, so wie `neuerCode()` im Prototyp ohne Modulo-Verzerrung)
 - `GUELTIGKEITEN = [20, 5, 60, 1440, null]` (Minuten, `null` = dauerhaft; Standard ist der erste Eintrag)
 - `OFFLINE_MINUTEN = { konto: 30, anzeige: 15 }`
 
@@ -213,7 +215,7 @@ Branch: **`board/anmeldung`** für alles. Nach jeder Phase pushen.
 
 - Kapitel 5.2.
 - Tests:
-  - Code erzeugen → Format, eindeutig
+  - Code erzeugen → Format, eindeutig, enthält nie `0 O 1 l I` (1 000 Codes erzeugen und prüfen)
   - abgelaufener Code → 410
   - dauerhafter Code geht nach Tagen noch
   - falsche Dashboard-PIN → 401, nach 5 Versuchen 429
@@ -241,7 +243,7 @@ Branch: **`board/anmeldung`** für alles. Nach jeder Phase pushen.
 - Passwort, PIN und Dashboard-PIN nur als scrypt-Hash. Der Zugangs-Code liegt im Klartext, weil die Companion ihn anzeigt. Er allein reicht nicht, die Dashboard-PIN gehört dazu.
 - Ist die Seite über eine Domain von außen erreichbar, **nur über HTTPS** (Zertifikat siehe N5 aus `PLAN.md` bzw. N8 hier). Passwort und Codes gehen sonst im Klartext über das Netz.
 - Fehlertexte verraten nicht, ob ein Anzeigename existiert.
-- 5 Zeichen aus 62 ergeben rund 916 Millionen Codes. Zusammen mit der Sperre und der Dashboard-PIN reicht das.
+- 5 Zeichen aus 57 ergeben rund 600 Millionen Codes. Zusammen mit der Sperre und der Dashboard-PIN reicht das.
 
 ---
 
@@ -257,5 +259,5 @@ Branch: **`board/anmeldung`** für alles. Nach jeder Phase pushen.
 | N6 | 15 oder 30 Minuten für Anzeige-Geräte? | 15 (`OFFLINE_MINUTEN.anzeige`) | – |
 | N7 | ⚠ Wo genau liegt der **Dashboard-Bereich** in der Companion: im Board-Sheet unter „Anzeigen“ oder als eigener Eintrag in der Sidebar? | Board-Sheet unter „Anzeigen“ | – |
 | N8 | **Domain**: Heimnetz mit eigener Domain (DynDNS) oder Hetzner (offene Entscheidung 5 in `UEBERGABE.md`)? Davon hängt das HTTPS-Zertifikat ab. | Heimnetz, eigenes Zertifikat (N5 aus `PLAN.md`) | Freigabe nach außen |
-| N9 | Die Zeichen `0 O`, `1 l I` sind beim Abtippen leicht zu verwechseln. Beim Erzeugen weglassen (57 statt 62 Zeichen)? | alle 62 Zeichen | – |
+| ~~N9~~ | **Entschieden (Max, 13.10.2026):** Die verwechselbaren Zeichen `0 O 1 l I` werden beim Erzeugen weggelassen, siehe L7. | – | – |
 | N10 | Wer sieht den **echten Namen** – nur der Nutzer selbst oder alle Konten des Boards? | nur der Nutzer selbst | L3 |

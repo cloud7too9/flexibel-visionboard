@@ -494,13 +494,16 @@ const zugangOeffentlich = (z) => ({
   anzeigen:mock.anzeigeGeraete.filter((a) => a.zugangId === z.id).length,
 });
 
-/** Zufälliger Zugangs-Code: 5 Zeichen aus 0-9, A-Z, a-z (ohne Verzerrung durch Modulo) */
+/** Zeichen für Zugangs-Codes: Ziffern, Groß- und Kleinbuchstaben OHNE die verwechselbaren
+    0 (Null), O, 1 (Eins), l (kleines L) und I (großes i) → 57 Zeichen */
+const CODE_ZEICHEN = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+/** Zufälliger Zugangs-Code: 5 Zeichen aus CODE_ZEICHEN (ohne Verzerrung durch Modulo) */
 function neuerCode(){
-  const zeichen = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const grenze = 256 - (256 % CODE_ZEICHEN.length);   // 228 = 4 × 57
   let code = "";
   while(code.length < 5){
     const [b] = crypto.getRandomValues(new Uint8Array(1));
-    if(b < 248) code += zeichen[b % 62];   // 248 = 4 × 62
+    if(b < grenze) code += CODE_ZEICHEN[b % CODE_ZEICHEN.length];
   }
   return code;
 }
