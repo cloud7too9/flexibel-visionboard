@@ -2,12 +2,13 @@
   "name": "companion-werkzeuge",
   "private": true,
   "type": "module",
-  "description": "Werkzeuge für den Welt-Import: Bundle bauen, Biom-IDs erzeugen, .mcworld prüfen",
+  "description": "Werkzeuge für den Welt-Import: Bundle bauen, Biom-IDs erzeugen, .mcworld prüfen, Welt-Inhalte fürs Schema auslesen",
   "scripts": {
     "vendor": "node vendor-bauen.mjs",
     "biom-ids": "node biom-ids-bauen.mjs",
     "pruefen": "node welt-pruefen.mjs",
-    "test": "node --test gegenprobe.test.mjs"
+    "test": "node --test gegenprobe.test.mjs",
+    "inhalte": "node welt-inhalte.mjs"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

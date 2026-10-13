@@ -186,12 +186,14 @@ CREATE TABLE dorfarten (
   sortierung INTEGER NOT NULL UNIQUE
 );
 
--- Stammdaten: feste Strukturbereiche (Chunk-Tag 0x39). kategorie = FeatureCategory der Karte
+-- Stammdaten: feste Strukturbereiche. kategorie = FeatureCategory der Karte.
+-- Quelle ist Chunk-Tag 0x77 (AABBVolumes): je Chunk die Struktur-ID und die Bereiche ihrer Teile.
+-- 0x39 (HardcodedSpawners) schreibt Bedrock 1.26 nicht mehr (geprüft an Max' Welt, 13.10.2026).
 CREATE TABLE strukturarten (
-  kategorie   TEXT PRIMARY KEY,
-  name_de     TEXT NOT NULL UNIQUE,
-  dimension   TEXT NOT NULL CHECK (dimension IN ('overworld','nether','end')),
-  bedrock_typ INTEGER NOT NULL UNIQUE      -- Typnummer in 0x39 (an der Fixture-Welt bestätigen)
+  kategorie  TEXT PRIMARY KEY,
+  name_de    TEXT NOT NULL UNIQUE,
+  dimension  TEXT NOT NULL CHECK (dimension IN ('overworld','nether','end')),
+  bedrock_id TEXT NOT NULL UNIQUE CHECK (bedrock_id GLOB 'minecraft:?*')   -- Name in 0x77
 );
 
 -- ---------- Welt ----------
@@ -207,7 +209,8 @@ CREATE TABLE welten (
   chunks_oberwelt INTEGER NOT NULL DEFAULT 0 CHECK (chunks_oberwelt >= 0),
   chunks_nether   INTEGER NOT NULL DEFAULT 0 CHECK (chunks_nether >= 0),
   chunks_end      INTEGER NOT NULL DEFAULT 0 CHECK (chunks_end >= 0),
-  CHECK ((spawn_x IS NULL) = (spawn_y IS NULL) AND (spawn_y IS NULL) = (spawn_z IS NULL))
+  -- X und Z nur zusammen. Y darf fehlen: SpawnY = 32767 in level.dat heißt „keine feste Höhe“
+  CHECK ((spawn_x IS NULL) = (spawn_z IS NULL) AND (spawn_y IS NULL OR spawn_x IS NOT NULL))
 );
 
 -- Bekannte Dörfer: werden bei jedem Import ERGÄNZT. Ein Dorf hat eine oder mehrere Glocken,
@@ -285,11 +288,11 @@ INSERT INTO dorfarten (id, name_de, sortierung) VALUES
   ('taiga', 'Taiga', 4),
   ('snowy', 'Verschneit', 5);
 
-INSERT INTO strukturarten (kategorie, name_de, dimension, bedrock_typ) VALUES
-  ('Nether Fortress', 'Netherfestung',          'nether',    1),
-  ('Witch Hut',       'Hexenhütte',             'overworld', 2),
-  ('Monument',        'Ozeanmonument',          'overworld', 3),
-  ('Outpost',         'Plünderer-Außenposten',  'overworld', 5);
+INSERT INTO strukturarten (kategorie, name_de, dimension, bedrock_id) VALUES
+  ('Nether Fortress', 'Netherfestung',          'nether',    'minecraft:fortress'),
+  ('Witch Hut',       'Hexenhütte',             'overworld', 'minecraft:swamp_hut'),        -- unbestätigt, kam in der Welt nicht vor
+  ('Monument',        'Ozeanmonument',          'overworld', 'minecraft:monument'),
+  ('Outpost',         'Plünderer-Außenposten',  'overworld', 'minecraft:pillager_outpost');
 
 
 -- =====================================================================

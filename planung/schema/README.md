@@ -45,13 +45,14 @@ node --test planung/schema/schema.test.mjs        # Tests (Node 22.5+, node:sqli
 - **Keine Lederfarbe** (Max). Die App speichert sie noch, siehe Offen.
 
 ### Welt
-- Welt: Weltname, Seed (Text, nur Ziffern und Minus), Spawnpunkt (ganz oder gar nicht), bekannte Chunks je Dimension. Name, Spawn und Chunks kommen mit dem `.mcworld`-Import.
+- Welt: Weltname, Seed (Text, nur Ziffern und Minus – Bedrock-Seeds sind größer als 2^53), Spawnpunkt (X und Z zusammen, Y darf fehlen: `SpawnY = 32767` heißt „keine feste Höhe“), bekannte Chunks je Dimension. Name, Spawn und Chunks kommen mit dem `.mcworld`-Import.
 - Ein neuer Import **ersetzt die Biom-Kacheln**, **ergänzt Dörfer und Strukturen**.
-- **Dörfer** beziehen sich auf die Glocke. Mehrere Glocken in einem Dorf ergeben ein großes Dorf; die **Mitte ist der Durchschnitt der Glocken** (Sicht `doerfer_mitte`). Wachsen Dörfer zusammen, werden die Glocken umgehängt; das leere Dorf löscht ein Trigger. Die Dorfart kommt später aus dem Biom an der Mitte.
-- **Feste Strukturbereiche** (Netherfestung, Hexenhütte, Ozeanmonument, Plünderer-Außenposten): gespeichert wird der zusammengefasste Bereich, die **eine Koordinate** (Mitte) rechnet SQLite selbst. Ein neuer Bereich derselben Art, der einen bestehenden berührt, erweitert ihn.
+- **Dörfer** beziehen sich auf die Glocke. Die Glocken sind Block-Entities `Bell` (Chunk-Tag 0x31); ein Dorf ist ein `VILLAGE_…_INFO`-Eintrag, seine Glocken sind die im Bereich `X0…X1`, `Z0…Z1`. Mehrere Glocken in einem Dorf ergeben ein großes Dorf; die **Mitte ist der Durchschnitt der Glocken** (Sicht `doerfer_mitte`). Wachsen Dörfer zusammen, werden die Glocken umgehängt; das leere Dorf löscht ein Trigger. Die Dorfart kommt später aus dem Biom an der Mitte.
+- **Feste Strukturbereiche** (Netherfestung, Hexenhütte, Ozeanmonument, Plünderer-Außenposten) kommen aus **Chunk-Tag 0x77** (AABBVolumes) mit ihrer ID (`minecraft:fortress` …), Spalte `strukturarten.bedrock_id`. Gespeichert wird der zusammengefasste Bereich, die **eine Koordinate** (Mitte) rechnet SQLite selbst. Ein neuer Bereich derselben Art, der einen bestehenden berührt, erweitert ihn.
 - Biom-Kacheln als BLOB (32 × 32 Chunks, 2048 Byte), Base64 nur für den Transport.
 
 ### Portale
+- Aus der Welt kommen die Portale über den Schlüssel `portals` (`data.PortalRecords`: `DimId` 0/1, `TpX/TpY/TpZ`, `Span`, `Xa/Za`).
 - **Portal und Verbindung getrennt**: `portale` (Oberwelt oder Nether, Quelle `manuell` oder `welt-import`) und `portal_verbindungen` (Name + ein Oberwelt- + ein Nether-Portal derselben Welt).
 - **Wird eines der beiden Portale gelöscht, wird die Verbindung gelöscht.** Wird die Verbindung gelöscht, bleiben die Portale stehen.
 - Grenzen wie `verbindungRegelPruefen` (Weltgrenze, Nether ÷ 8, Bauhöhe).
@@ -65,12 +66,29 @@ node --test planung/schema/schema.test.mjs        # Tests (Node 22.5+, node:sqli
 - Zugangs-Code (5 Zeichen, **ohne `0 O 1 l I`**) + eigene Dashboard-PIN, Gültigkeit Minuten oder dauerhaft (Sicht `zugaenge_status`).
 - Anzeige-Geräte merken sich ihr Layout; Dashboard-PIN nach **über 15 Minuten** ohne Kontakt (Sicht `anzeige_geraete_status`). Widerrufen meldet alle Anzeigen des Zugangs ab.
 
+## Geprüft an einer echten Welt
+
+Welt „letztes mal – Kopie“ von Max (Bedrock 1.26.52, Archiv.zip aus der Dateien-App, 13.10.2026), ausgelesen mit [`companion/tools/welt-inhalte.mjs`](../../companion/tools/welt-inhalte.mjs):
+
+| Prüfpunkt | Ergebnis |
+|---|---|
+| Seed | `6889192652397090698` – größer als 2^53, als Text speichern ✔ |
+| Spawn | X 0, Z 0, **Y 32767** = keine feste Höhe → Y darf fehlen |
+| Chunks | Oberwelt 13 833, Nether 5 669, End 830 (Data3D) |
+| Dörfer | 9 `VILLAGE`-Einträge, 13 Glocken: 7 Dörfer mit 1, **2 Dörfer mit 2 Glocken** ✔, 2 Glocken ohne Dorf-Eintrag. In `…_POI` stehen keine Glocken, nur Betten und Arbeitsplätze |
+| Strukturen | **0x39 gibt es nicht mehr**, dafür 0x77: 4 Netherfestungen, 7 Ozeanmonumente, 4 Außenposten, dazu 52 Prüfkammern, 4 Wüsten-, 4 Dschungeltempel, 3 Pfadruinen, 1 Iglu, 8 Lager. Teile derselben Struktur liegen bis zu ~100 Blöcke auseinander → beim Zusammenfassen Abstand bis 96 Blöcke zulassen |
+| Portale | 20 Einträge in `portals` (12 Oberwelt, 8 Nether) ✔ |
+| Handel | 84 Dorfbewohner, 33 mit `Offers`, 294 Angebote |
+
 ## Offen
 
 - **Noch nicht im Schema:** Orte (Typen und Instanzen), Sammel-Status je Welt, Profile, Anzeigen mit ihren Layouts (`anzeige_geraete.anzeige_id` verweist noch auf nichts).
 - **Biom-Stammdaten** aus `companion/biom-ids.js` erzeugen (Tabelle `biome` ist leer).
 - **Import-Infos**: Spielversion, Importzeitpunkt und unbekannte Biom-IDs (Regel 8 im Biom-Plan) sind im Schema weggefallen. Zurück an die Welt oder bewusst weglassen?
-- **An der Fixture-Welt bestätigen:** Inhalt des Schlüssels `portals`, Typnummern in Chunk-Tag 0x39 (`strukturarten.bedrock_typ`: 1, 2, 3, 5), Glocken in den `VILLAGE_…_POI`-Einträgen.
+- **Weitere Strukturarten?** Die Welt enthält in 0x77 auch Prüfkammern (`trial_chambers`), Wüsten- und Dschungeltempel, Pfadruinen, Iglus und Lager. Mehrere davon sind Fundorte von Rüstungsbesätzen (Blitz/Fluss, Dünen, Wilde, Wegfinder …). Aufnehmen?
+- **Hexenhütte**: Die ID `minecraft:swamp_hut` ist angenommen, die Welt hatte keine.
+- **Portale**: Ausrichtung (`Xa/Za`) und Breite (`Span`) stehen in der Welt, das Schema speichert sie noch nicht.
+- **Handelsangebote** haben nur Dorfbewohner, mit denen schon gehandelt wurde (33 von 84 in der Welt). Für die Seed-Listen im Handbuch heißt das: Die Welt liefert nur das, was man im Spiel schon angeschaut hat.
 - **App angleichen** (`companion/regeln.js`):
   - `bannerPruefen` lässt heute **0 Ebenen** durch; es fehlt „mindestens ein Muster“.
   - `ruestungPruefen`/`ruestungSauber` speichern noch eine **Lederfarbe**, die es laut Max nicht braucht.

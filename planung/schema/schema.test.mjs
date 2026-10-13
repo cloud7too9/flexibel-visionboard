@@ -30,6 +30,7 @@ test('Stammdaten aus regeln.js', () => {
   assert.equal(anzahl(db, "SELECT count(*) n FROM besaetze WHERE id = 'netherite'"), 0);
   assert.equal(anzahl(db, 'SELECT count(*) n FROM besatz_materialien'), 11);
   assert.equal(anzahl(db, "SELECT count(*) n FROM ruestungs_varianten WHERE art_id = 'turtle'"), 1);
+  assert.equal(db.prepare("SELECT bedrock_id FROM strukturarten WHERE kategorie = 'Nether Fortress'").get().bedrock_id, 'minecraft:fortress');
 });
 
 test('Banner: Basisfarbe Pflicht, Ebenen 1–6 lückenlos, Löschen nimmt Ebenen mit', () => {
@@ -55,11 +56,14 @@ test('Rüstung: Schildkröte nur als Helm, Besatz nur mit Material', () => {
   abgelehnt(() => db.exec(`INSERT INTO ruestungs_set_teile (set_id, teil_id, art_id) VALUES ('s1', 'helmet', 'iron')`), /UNIQUE/);
 });
 
-test('Welt: Seed nur Ziffern, Spawn ganz oder gar nicht', () => {
+test('Welt: Seed nur Ziffern, Spawn X/Z nur zusammen, Y darf fehlen', () => {
   const db = neueDb();
-  db.exec(`INSERT INTO welten (id, seed) VALUES ('w1', '-4172144997902289642')`);
+  db.exec(`INSERT INTO welten (id, seed) VALUES ('w1', '6889192652397090698')`);   // größer als 2^53 → Text
+  assert.equal(db.prepare(`SELECT seed FROM welten`).get().seed, '6889192652397090698');
   abgelehnt(() => db.exec(`INSERT INTO welten (id, seed) VALUES ('w2', '1abc')`), /CHECK/);
   abgelehnt(() => db.exec(`UPDATE welten SET spawn_x = 0 WHERE id = 'w1'`), /CHECK/);
+  abgelehnt(() => db.exec(`UPDATE welten SET spawn_y = 70 WHERE id = 'w1'`), /CHECK/);
+  db.exec(`UPDATE welten SET spawn_x = 0, spawn_z = 0 WHERE id = 'w1'`);           // SpawnY 32767 → ohne Y
 });
 
 test('Dörfer: Mitte = Durchschnitt der Glocken, leeres Dorf verschwindet', () => {
