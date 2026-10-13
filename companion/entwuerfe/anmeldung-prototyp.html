@@ -111,7 +111,7 @@ select.eingabe { appearance:none; background-image:linear-gradient(45deg, transp
 .navigation button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 
 .klein-knopf {
-  align-self:flex-end; font:inherit; font-size:13px; font-weight:600; padding:7px 14px; margin-top:-4px;
+  align-self:center; font:inherit; font-size:13px; font-weight:600; padding:7px 14px;
   border-radius:999px; cursor:pointer; color:var(--text); background:transparent; border:1px solid var(--border);
 }
 .klein-knopf:active { background:var(--surface-2); }
@@ -745,8 +745,8 @@ function zeigeAnmelden(meldung){
       <input class="eingabe" id="anmName" type="text" autocomplete="username" maxlength="${CONFIG.anzeigenameMax}" required>
     </div>
     ${passwortFeld("anmPasswort", "Passwort", "current-password")}
-    <button class="klein-knopf" type="button" data-weiter="anlegen">Registrieren</button>
     <div id="anmMeldung"></div>
+    <button class="klein-knopf" type="button" data-weiter="anlegen">Registrieren</button>
     <button class="knopf" type="submit">Gerät freischalten</button>
   </form>`;
   const $name = document.getElementById("anmName");
