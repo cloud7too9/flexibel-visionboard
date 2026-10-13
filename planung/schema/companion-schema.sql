@@ -1,0 +1,477 @@
+-- Referenzschema der Companion (SQLite) · Stand 13.10.2026
+-- Entstanden im Chat mit Max als Zielbild für eine spätere Umstellung von daten.json auf SQLite.
+-- Heute speichert der Board-Server weiter in daten.json; die Feldnamen dort folgen diesem Schema.
+-- Seed-Daten (Farben, Muster, Rüstung, Besätze) sind aus companion/regeln.js erzeugt.
+
+-- Companion-Schema: Banner + Rüstungs-Sets (SQLite)
+-- Alle Stammdaten werden aus companion/regeln.js erzeugt – nicht von Hand pflegen.
+PRAGMA foreign_keys = ON;
+
+-- =====================================================================
+-- Benutzer
+-- =====================================================================
+-- Passwort: erste Anmeldung auf einem Gerät und Zurücksetzen der PIN.
+-- PIN: nach jeder Offline-Phase von über 30 Minuten und nach einem PIN-Wechsel.
+-- Passwort und PIN nur als scrypt-Hash ('scrypt:<salz>:<hash>', wie pinHashen in identitaet.js).
+-- PIN-Format (4–8 Ziffern) und Passwortregeln prüft die App vor dem Hashen.
+CREATE TABLE benutzer (
+  id            TEXT PRIMARY KEY,              -- Nutzer-ID, UUID v4
+  echter_name   TEXT NOT NULL CHECK (length(trim(echter_name)) BETWEEN 1 AND 60),
+  anzeigename   TEXT NOT NULL COLLATE NOCASE UNIQUE
+                CHECK (length(trim(anzeigename)) BETWEEN 1 AND 24),
+  passwort_hash TEXT NOT NULL CHECK (passwort_hash GLOB 'scrypt:?*:?*'),
+  pin_hash      TEXT NOT NULL CHECK (pin_hash GLOB 'scrypt:?*:?*'),
+  pin_geaendert_am TEXT NOT NULL,               -- setzt das Zurücksetzen; ältere Freigaben verfallen
+  am            TEXT NOT NULL                   -- angelegt (ISO-Zeit)
+);
+
+-- Geräte: entstehen bei der ersten Anmeldung mit Passwort. Zeiten als ISO-Zeit in UTC.
+CREATE TABLE geraete (
+  id                TEXT PRIMARY KEY,           -- UUID, steckt im Token des Geräts
+  benutzer_id       TEXT NOT NULL REFERENCES benutzer(id) ON DELETE CASCADE,
+  freigeschaltet_am TEXT NOT NULL,              -- erste Anmeldung mit Passwort
+  letzter_kontakt   TEXT NOT NULL,              -- letzte Anfrage beim Server
+  pin_bestaetigt_am TEXT NOT NULL               -- letzte richtige PIN (bzw. Passwort)
+);
+CREATE INDEX idx_geraete_benutzer ON geraete(benutzer_id);
+
+-- PIN nötig, wenn das Gerät über 30 Minuten keinen Kontakt hatte oder die PIN seitdem
+-- zurückgesetzt wurde. Der Server fragt das VOR dem Aktualisieren von letzter_kontakt ab.
+CREATE VIEW geraete_status AS
+SELECT g.id, g.benutzer_id, g.letzter_kontakt,
+       (julianday('now') - julianday(g.letzter_kontakt)) * 1440 > 30
+         OR g.pin_bestaetigt_am < b.pin_geaendert_am AS pin_noetig
+FROM geraete g JOIN benutzer b ON b.id = g.benutzer_id;
+
+
+-- ---------- Stammdaten ----------
+CREATE TABLE farben (
+  id      TEXT PRIMARY KEY,           -- Spiel-ID, z. B. 'light_blue'
+  name_de TEXT NOT NULL UNIQUE,       -- 'Hellblau'
+  hex     TEXT NOT NULL CHECK (hex GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]'),
+  sortierung INTEGER NOT NULL UNIQUE
+);
+
+CREATE TABLE muster (
+  id      TEXT PRIMARY KEY,           -- Spiel-ID, z. B. 'stripe_bottom'
+  name_de TEXT NOT NULL UNIQUE,       -- 'Gefärbter Bannerfuß'
+  name_en TEXT NOT NULL,
+  sortierung INTEGER NOT NULL UNIQUE
+);
+
+-- ---------- Banner-Einträge ----------
+CREATE TABLE banner (
+  id           TEXT PRIMARY KEY,      -- UUID v4 vom Handy
+  name         TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 60),
+  basis_farbe  TEXT NOT NULL REFERENCES farben(id),            -- Pflicht
+  ersteller_id TEXT REFERENCES benutzer(id) ON DELETE SET NULL,  -- NULL = unbekannt
+  von          TEXT NOT NULL DEFAULT '',
+  am           TEXT NOT NULL CHECK (am GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')
+);
+
+-- Muster-Ebenen 1–6: Ebene 1 Pflicht (prüft die App), 2–6 optional
+CREATE TABLE banner_ebenen (
+  banner_id TEXT    NOT NULL REFERENCES banner(id) ON DELETE CASCADE,
+  position  INTEGER NOT NULL CHECK (position BETWEEN 1 AND 6),
+  muster_id TEXT    NOT NULL REFERENCES muster(id),
+  farbe_id  TEXT    NOT NULL REFERENCES farben(id),
+  PRIMARY KEY (banner_id, position)
+) WITHOUT ROWID;
+
+CREATE INDEX idx_banner_ebenen_muster ON banner_ebenen(muster_id);
+
+-- Keine Lücken: Ebene n nur, wenn Ebene n-1 existiert
+CREATE TRIGGER banner_ebenen_keine_luecke
+BEFORE INSERT ON banner_ebenen
+WHEN NEW.position > 1 AND NOT EXISTS (
+  SELECT 1 FROM banner_ebenen WHERE banner_id = NEW.banner_id AND position = NEW.position - 1)
+BEGIN
+  SELECT RAISE(ABORT, 'Muster-Ebenen müssen lückenlos ab 1 belegt sein');
+END;
+
+-- ---------- Seed-Daten ----------
+INSERT INTO farben (id, name_de, hex, sortierung) VALUES
+  ('white', 'Weiß', '#f9fffe', 1),
+  ('light_gray', 'Hellgrau', '#9d9d97', 2),
+  ('gray', 'Grau', '#474f52', 3),
+  ('black', 'Schwarz', '#1d1d21', 4),
+  ('brown', 'Braun', '#835432', 5),
+  ('red', 'Rot', '#b02e26', 6),
+  ('orange', 'Orange', '#f9801d', 7),
+  ('yellow', 'Gelb', '#fed83d', 8),
+  ('lime', 'Hellgrün', '#80c71f', 9),
+  ('green', 'Grün', '#5e7c16', 10),
+  ('cyan', 'Türkis', '#169c9c', 11),
+  ('light_blue', 'Hellblau', '#3ab3da', 12),
+  ('blue', 'Blau', '#3c44aa', 13),
+  ('purple', 'Violett', '#8932b8', 14),
+  ('magenta', 'Magenta', '#c74ebd', 15),
+  ('pink', 'Rosa', '#f38baa', 16);
+
+INSERT INTO muster (id, name_de, name_en, sortierung) VALUES
+  ('stripe_bottom', 'Gefärbter Bannerfuß', 'Base', 1),
+  ('stripe_top', 'Gefärbtes Bannerhaupt', 'Chief', 2),
+  ('stripe_left', 'Linke Flanke', 'Pale Dexter', 3),
+  ('stripe_right', 'Rechte Flanke', 'Pale Sinister', 4),
+  ('stripe_center', 'Pfahl', 'Pale', 5),
+  ('stripe_middle', 'Balken', 'Fess', 6),
+  ('stripe_downright', 'Schrägbalken', 'Bend', 7),
+  ('stripe_downleft', 'Schräglinksbalken', 'Bend Sinister', 8),
+  ('small_stripes', 'Vier Pfähle', 'Paly', 9),
+  ('cross', 'Andreaskreuz', 'Saltire', 10),
+  ('straight_cross', 'Kreuz', 'Cross', 11),
+  ('diagonal_left', 'Schräglinks geteilt', 'Per Bend Sinister', 12),
+  ('diagonal_right', 'Schrägrechts geteilt', 'Per Bend', 13),
+  ('diagonal_up_left', 'Schrägrechts geteilt (invertiert)', 'Per Bend Inverted', 14),
+  ('diagonal_up_right', 'Schräglinks geteilt (invertiert)', 'Per Bend Sinister Inverted', 15),
+  ('half_vertical', 'Rechts gespalten', 'Per Pale', 16),
+  ('half_vertical_right', 'Links gespalten', 'Per Pale Inverted', 17),
+  ('half_horizontal', 'Oben geteilt', 'Per Fess', 18),
+  ('half_horizontal_bottom', 'Unten geteilt', 'Per Fess Inverted', 19),
+  ('square_bottom_left', 'Gefärbtes rechtes Untereck', 'Base Dexter Canton', 20),
+  ('square_bottom_right', 'Gefärbtes linkes Untereck', 'Base Sinister Canton', 21),
+  ('square_top_left', 'Gefärbtes rechtes Obereck', 'Chief Dexter Canton', 22),
+  ('square_top_right', 'Gefärbtes linkes Obereck', 'Chief Sinister Canton', 23),
+  ('triangle_bottom', 'Halbe Spitze', 'Chevron', 24),
+  ('triangle_top', 'Gestürzte halbe Spitze', 'Inverted Chevron', 25),
+  ('triangles_bottom', 'Gespickelter Bannerfuß', 'Base Indented', 26),
+  ('triangles_top', 'Gespickeltes Bannerhaupt', 'Chief Indented', 27),
+  ('circle', 'Kugel', 'Roundel', 28),
+  ('rhombus', 'Raute', 'Lozenge', 29),
+  ('border', 'Bord', 'Bordure', 30),
+  ('gradient', 'Farbverlauf', 'Gradient', 31),
+  ('gradient_up', 'Farbverlauf (invertiert)', 'Base Gradient', 32),
+  ('curly_border', 'Spickelbord', 'Bordure Indented', 33),
+  ('bricks', 'Feld gemauert', 'Field Masoned', 34),
+  ('creeper', 'Creeper', 'Creeper Charge', 35),
+  ('skull', 'Schädel', 'Skull Charge', 36),
+  ('flower', 'Blume', 'Flower Charge', 37),
+  ('mojang', 'Mojang-Logo', 'Thing', 38),
+  ('globe', 'Globus', 'Globe', 39),
+  ('piglin', 'Schnauze', 'Snout', 40),
+  ('flow', 'Fluss', 'Flow', 41),
+  ('guster', 'Windstoßer', 'Guster', 42);
+
+
+-- =====================================================================
+-- Rüstungs-Sets
+-- =====================================================================
+
+-- ---------- Stammdaten ----------
+CREATE TABLE ruestungs_teile (            -- Helm, Harnisch, Beinschutz, Stiefel
+  id         TEXT PRIMARY KEY,           -- 'helmet' …
+  name_de    TEXT NOT NULL UNIQUE,
+  sortierung INTEGER NOT NULL UNIQUE
+);
+
+CREATE TABLE ruestungs_arten (            -- Leder … Schildkröte
+  id         TEXT PRIMARY KEY,           -- 'leather' …
+  name_de    TEXT NOT NULL UNIQUE,
+  sortierung INTEGER NOT NULL UNIQUE
+);
+
+-- Welche Art gibt es als welches Teil (Schildkröte nur als Helm) + Item-Name im Spiel
+CREATE TABLE ruestungs_varianten (
+  art_id   TEXT NOT NULL REFERENCES ruestungs_arten(id),
+  teil_id  TEXT NOT NULL REFERENCES ruestungs_teile(id),
+  item_de  TEXT NOT NULL UNIQUE,         -- 'Kettenhemd-Helm'
+  PRIMARY KEY (art_id, teil_id)
+) WITHOUT ROWID;
+
+CREATE TABLE besaetze (                   -- Rüstungsbesätze (Schmiedevorlagen)
+  id         TEXT PRIMARY KEY,           -- 'sentry' … – gleiche IDs wie Sammelobjekte
+  name_de    TEXT NOT NULL UNIQUE,
+  name_en    TEXT NOT NULL,
+  sortierung INTEGER NOT NULL UNIQUE
+);
+
+CREATE TABLE besatz_materialien (
+  id         TEXT PRIMARY KEY,           -- 'amethyst' …
+  name_de    TEXT NOT NULL UNIQUE,
+  zutat_de   TEXT NOT NULL,              -- Item am Schmiedetisch
+  hex        TEXT NOT NULL,
+  sortierung INTEGER NOT NULL UNIQUE
+);
+
+-- ---------- Einträge ----------
+CREATE TABLE ruestungs_sets (
+  id           TEXT PRIMARY KEY,         -- UUID v4 vom Handy
+  name         TEXT NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 60),
+  ersteller_id TEXT REFERENCES benutzer(id) ON DELETE SET NULL,  -- NULL = unbekannt
+  von          TEXT NOT NULL DEFAULT '',
+  am           TEXT NOT NULL CHECK (am GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')
+);
+
+-- Ein Teil je Slot, alle Slots optional (mind. 1 Teil prüft die App)
+CREATE TABLE ruestungs_set_teile (
+  set_id      TEXT NOT NULL REFERENCES ruestungs_sets(id) ON DELETE CASCADE,
+  teil_id     TEXT NOT NULL REFERENCES ruestungs_teile(id),
+  art_id      TEXT NOT NULL,
+  besatz_id   TEXT REFERENCES besaetze(id),
+  material_id TEXT REFERENCES besatz_materialien(id),
+  PRIMARY KEY (set_id, teil_id),
+  FOREIGN KEY (art_id, teil_id) REFERENCES ruestungs_varianten(art_id, teil_id),
+  CHECK ((besatz_id IS NULL) = (material_id IS NULL))  -- Besatz und Material nur zusammen
+) WITHOUT ROWID;
+
+CREATE INDEX idx_set_teile_besatz ON ruestungs_set_teile(besatz_id);
+
+-- ---------- Seed-Daten ----------
+INSERT INTO ruestungs_teile (id, name_de, sortierung) VALUES
+  ('helmet', 'Helm', 1),
+  ('chestplate', 'Harnisch', 2),
+  ('leggings', 'Beinschutz', 3),
+  ('boots', 'Stiefel', 4);
+
+INSERT INTO ruestungs_arten (id, name_de, sortierung) VALUES
+  ('leather', 'Leder', 1),
+  ('chainmail', 'Kette', 2),
+  ('copper', 'Kupfer', 3),
+  ('iron', 'Eisen', 4),
+  ('gold', 'Gold', 5),
+  ('diamond', 'Diamant', 6),
+  ('netherite', 'Netherit', 7),
+  ('turtle', 'Schildkröte', 8);
+
+INSERT INTO ruestungs_varianten (art_id, teil_id, item_de) VALUES
+  ('leather', 'helmet', 'Lederkappe'),
+  ('leather', 'chestplate', 'Lederjacke'),
+  ('leather', 'leggings', 'Lederhose'),
+  ('leather', 'boots', 'Lederstiefel'),
+  ('chainmail', 'helmet', 'Kettenhemd-Helm'),
+  ('chainmail', 'chestplate', 'Kettenhemd-Harnisch'),
+  ('chainmail', 'leggings', 'Kettenhemd-Beinschutz'),
+  ('chainmail', 'boots', 'Kettenhemd-Stiefel'),
+  ('copper', 'helmet', 'Kupferhelm'),
+  ('copper', 'chestplate', 'Kupferharnisch'),
+  ('copper', 'leggings', 'Kupferbeinschutz'),
+  ('copper', 'boots', 'Kupferstiefel'),
+  ('iron', 'helmet', 'Eisenhelm'),
+  ('iron', 'chestplate', 'Eisenharnisch'),
+  ('iron', 'leggings', 'Eisenbeinschutz'),
+  ('iron', 'boots', 'Eisenstiefel'),
+  ('gold', 'helmet', 'Goldhelm'),
+  ('gold', 'chestplate', 'Goldharnisch'),
+  ('gold', 'leggings', 'Goldbeinschutz'),
+  ('gold', 'boots', 'Goldstiefel'),
+  ('diamond', 'helmet', 'Diamanthelm'),
+  ('diamond', 'chestplate', 'Diamantharnisch'),
+  ('diamond', 'leggings', 'Diamantbeinschutz'),
+  ('diamond', 'boots', 'Diamantstiefel'),
+  ('netherite', 'helmet', 'Netherithelm'),
+  ('netherite', 'chestplate', 'Netheritharnisch'),
+  ('netherite', 'leggings', 'Netheritbeinschutz'),
+  ('netherite', 'boots', 'Netheritstiefel'),
+  ('turtle', 'helmet', 'Schildkrötenpanzer');
+
+INSERT INTO besaetze (id, name_de, name_en, sortierung) VALUES
+  ('sentry', 'Wächterzier', 'Sentry', 1),
+  ('dune', 'Dünenzier', 'Dune', 2),
+  ('wild', 'Wilde Zier', 'Wild', 3),
+  ('coast', 'Küstenzier', 'Coast', 4),
+  ('wayfinder', 'Wegfinderzier', 'Wayfinder', 5),
+  ('raiser', 'Erheberzier', 'Raiser', 6),
+  ('shaper', 'Formerzier', 'Shaper', 7),
+  ('host', 'Hüterzier', 'Host', 8),
+  ('vex', 'Plagegeistzier', 'Vex', 9),
+  ('tide', 'Gezeitenzier', 'Tide', 10),
+  ('ward', 'Mündelzier', 'Ward', 11),
+  ('silence', 'Stillezier', 'Silence', 12),
+  ('bolt', 'Blitzzier', 'Bolt', 13),
+  ('flow', 'Flusszier', 'Flow', 14),
+  ('eye', 'Augenzier', 'Eye', 15),
+  ('rib', 'Rippenzier', 'Rib', 16),
+  ('snout', 'Schnauzezier', 'Snout', 17),
+  ('spire', 'Turmzier', 'Spire', 18);
+
+INSERT INTO besatz_materialien (id, name_de, zutat_de, hex, sortierung) VALUES
+  ('amethyst', 'Amethyst', 'Amethystscherbe', '#9a5cc6', 1),
+  ('copper', 'Kupfer', 'Kupferbarren', '#b4684d', 2),
+  ('diamond', 'Diamant', 'Diamant', '#6eecd2', 3),
+  ('emerald', 'Smaragd', 'Smaragd', '#11a036', 4),
+  ('gold', 'Gold', 'Goldbarren', '#deb12d', 5),
+  ('iron', 'Eisen', 'Eisenbarren', '#bfc9c8', 6),
+  ('lapis', 'Lapis', 'Lapislazuli', '#21497b', 7),
+  ('netherite', 'Netherit', 'Netheritbarren', '#443a3b', 8),
+  ('quartz', 'Quarz', 'Netherquarz', '#e3dbc4', 9),
+  ('redstone', 'Redstone', 'Redstone-Staub', '#971607', 10),
+  ('resin', 'Harz', 'Harzziegel', '#f0852a', 11);
+
+
+-- =====================================================================
+-- Welten und Welt-Import (.mcworld)
+-- =====================================================================
+
+-- Stammdaten: Biom-IDs wie in Bedrock gespeichert (Seed-Daten aus companion/biom-ids.js folgen)
+CREATE TABLE biome (
+  bedrock_id INTEGER PRIMARY KEY,
+  name_de    TEXT NOT NULL,
+  name_en    TEXT NOT NULL,
+  farbe      TEXT NOT NULL
+);
+
+-- Stammdaten: Dorfarten (später aus dem Biom an der Glocke abgeleitet)
+CREATE TABLE dorfarten (
+  id         TEXT PRIMARY KEY,
+  name_de    TEXT NOT NULL UNIQUE,
+  sortierung INTEGER NOT NULL UNIQUE
+);
+
+-- Stammdaten: feste Strukturbereiche (Chunk-Tag 0x39). kategorie = FeatureCategory der Karte
+CREATE TABLE strukturarten (
+  kategorie   TEXT PRIMARY KEY,
+  name_de     TEXT NOT NULL UNIQUE,
+  dimension   TEXT NOT NULL CHECK (dimension IN ('overworld','nether','end')),
+  bedrock_typ INTEGER NOT NULL UNIQUE      -- Typnummer in 0x39 (an der Fixture-Welt bestätigen)
+);
+
+-- ---------- Welt ----------
+-- Angelegt per Seed; Name, Spawn und Chunk-Zahlen kommen mit dem .mcworld-Import.
+-- Ein neuer Import ersetzt die Biom-Kacheln; Dörfer und Strukturen werden ergänzt.
+CREATE TABLE welten (
+  id              TEXT PRIMARY KEY,
+  weltname        TEXT,
+  seed            TEXT NOT NULL CHECK (seed <> '' AND seed NOT GLOB '*[^0-9-]*'),
+  spawn_x         INTEGER,
+  spawn_y         INTEGER,
+  spawn_z         INTEGER,
+  chunks_oberwelt INTEGER NOT NULL DEFAULT 0 CHECK (chunks_oberwelt >= 0),
+  chunks_nether   INTEGER NOT NULL DEFAULT 0 CHECK (chunks_nether >= 0),
+  chunks_end      INTEGER NOT NULL DEFAULT 0 CHECK (chunks_end >= 0),
+  CHECK ((spawn_x IS NULL) = (spawn_y IS NULL) AND (spawn_y IS NULL) = (spawn_z IS NULL))
+);
+
+-- Bekannte Dörfer: werden bei jedem Import ERGÄNZT. Ein Dorf hat eine oder mehrere Glocken,
+-- seine Mitte ist der Durchschnitt der Glocken (Sicht doerfer_mitte).
+CREATE TABLE doerfer (
+  id          INTEGER PRIMARY KEY,
+  welt_id     TEXT NOT NULL REFERENCES welten(id) ON DELETE CASCADE,
+  dorfart     TEXT REFERENCES dorfarten(id),  -- erst später befüllt (Biom an der Mitte)
+  erstmals_am TEXT NOT NULL,                  -- Import, der das Dorf zuerst gefunden hat
+  UNIQUE (id, welt_id)
+);
+
+CREATE TABLE dorf_glocken (
+  dorf_id INTEGER NOT NULL,
+  welt_id TEXT    NOT NULL,
+  x INTEGER NOT NULL, y INTEGER NOT NULL, z INTEGER NOT NULL,
+  PRIMARY KEY (welt_id, x, y, z),             -- jede Glocke gehört zu genau einem Dorf
+  FOREIGN KEY (dorf_id, welt_id) REFERENCES doerfer(id, welt_id) ON DELETE CASCADE
+) WITHOUT ROWID;
+CREATE INDEX idx_dorf_glocken_dorf ON dorf_glocken(dorf_id);
+
+-- Ein Dorf ohne Glocke verschwindet (z. B. nach dem Zusammenlegen zweier Dörfer)
+CREATE TRIGGER dorf_ohne_glocke_loeschen_d AFTER DELETE ON dorf_glocken
+BEGIN
+  DELETE FROM doerfer WHERE id = OLD.dorf_id
+    AND NOT EXISTS (SELECT 1 FROM dorf_glocken WHERE dorf_id = OLD.dorf_id);
+END;
+CREATE TRIGGER dorf_ohne_glocke_loeschen_u AFTER UPDATE OF dorf_id ON dorf_glocken
+BEGIN
+  DELETE FROM doerfer WHERE id = OLD.dorf_id
+    AND NOT EXISTS (SELECT 1 FROM dorf_glocken WHERE dorf_id = OLD.dorf_id);
+END;
+
+CREATE VIEW doerfer_mitte AS
+SELECT d.id, d.welt_id, d.dorfart, d.erstmals_am,
+       count(*)                     AS glocken,
+       CAST(round(avg(g.x)) AS INTEGER) AS x,
+       CAST(round(avg(g.y)) AS INTEGER) AS y,
+       CAST(round(avg(g.z)) AS INTEGER) AS z
+FROM doerfer d JOIN dorf_glocken g ON g.dorf_id = d.id
+GROUP BY d.id;
+
+-- Feste Strukturbereiche: werden bei jedem Import ERGÄNZT, nie ersetzt.
+-- Gespeichert wird der zusammengefasste Bereich; die eine Koordinate (Mitte) rechnet SQLite selbst.
+-- Ein neuer Bereich derselben Art, der einen bestehenden berührt oder überlappt, erweitert diesen.
+CREATE TABLE strukturen (
+  id        INTEGER PRIMARY KEY,
+  welt_id   TEXT    NOT NULL REFERENCES welten(id) ON DELETE CASCADE,
+  kategorie TEXT    NOT NULL REFERENCES strukturarten(kategorie),
+  min_x INTEGER NOT NULL, min_y INTEGER NOT NULL, min_z INTEGER NOT NULL,
+  max_x INTEGER NOT NULL, max_y INTEGER NOT NULL, max_z INTEGER NOT NULL,
+  x INTEGER GENERATED ALWAYS AS ((min_x + max_x) / 2) STORED,
+  y INTEGER GENERATED ALWAYS AS ((min_y + max_y) / 2) STORED,
+  z INTEGER GENERATED ALWAYS AS ((min_z + max_z) / 2) STORED,
+  erstmals_am TEXT NOT NULL,            -- Import, der die Struktur zuerst gefunden hat
+  CHECK (min_x <= max_x AND min_y <= max_y AND min_z <= max_z)
+);
+CREATE INDEX idx_strukturen_welt ON strukturen(welt_id, kategorie);
+
+-- Biome: 32×32 Chunks je Kachel, Wert = bedrockId + 1 (0 = unerkundet), Uint16 LE als BLOB
+CREATE TABLE biom_kacheln (
+  welt_id   TEXT    NOT NULL REFERENCES welten(id) ON DELETE CASCADE,
+  dimension TEXT    NOT NULL CHECK (dimension IN ('overworld','nether','end')),
+  kx        INTEGER NOT NULL,
+  kz        INTEGER NOT NULL,
+  daten     BLOB    NOT NULL CHECK (length(daten) = 2048),
+  PRIMARY KEY (welt_id, dimension, kx, kz)
+) WITHOUT ROWID;
+
+-- ---------- Seed-Daten ----------
+INSERT INTO dorfarten (id, name_de, sortierung) VALUES
+  ('plains', 'Ebene', 1),
+  ('desert', 'Wüste', 2),
+  ('savanna', 'Savanne', 3),
+  ('taiga', 'Taiga', 4),
+  ('snowy', 'Verschneit', 5);
+
+INSERT INTO strukturarten (kategorie, name_de, dimension, bedrock_typ) VALUES
+  ('Nether Fortress', 'Netherfestung',          'nether',    1),
+  ('Witch Hut',       'Hexenhütte',             'overworld', 2),
+  ('Monument',        'Ozeanmonument',          'overworld', 3),
+  ('Outpost',         'Plünderer-Außenposten',  'overworld', 5);
+
+
+-- =====================================================================
+-- Portale und Portal-Verbindungen
+-- =====================================================================
+
+-- Einzelne Portale je Dimension. Quelle: von Hand (Portal-Verwaltung) oder aus dem .mcworld-Import
+-- (Schlüssel `portals`, wird ergänzt). Die Prüf-Logik (±128, nächstes in 3D) bleibt in der App.
+CREATE TABLE portale (
+  id           INTEGER PRIMARY KEY,
+  welt_id      TEXT    NOT NULL REFERENCES welten(id) ON DELETE CASCADE,
+  dimension    TEXT    NOT NULL CHECK (dimension IN ('overworld', 'nether')),
+  x            INTEGER NOT NULL,
+  y            INTEGER,                         -- ohne Y prüft die App nur grob
+  z            INTEGER NOT NULL,
+  quelle       TEXT    NOT NULL CHECK (quelle IN ('manuell', 'welt-import')),
+  ersteller_id TEXT    REFERENCES benutzer(id) ON DELETE SET NULL,  -- NULL = unbekannt
+  von          TEXT    NOT NULL DEFAULT '',
+  am           TEXT    NOT NULL,
+  UNIQUE (welt_id, dimension, x, y, z),
+  -- Weltgrenze ±30 Mio. (Nether ÷ 8) und Bauhöhe wie in verbindungRegelPruefen
+  CHECK (CASE dimension
+    WHEN 'overworld' THEN abs(x) <= 30000000 AND abs(z) <= 30000000 AND (y IS NULL OR y BETWEEN -64 AND 320)
+    ELSE                  abs(x) <= 3750000  AND abs(z) <= 3750000  AND (y IS NULL OR y BETWEEN 0 AND 256)
+  END)
+);
+CREATE INDEX idx_portale_suche ON portale(welt_id, dimension, x, z);   -- Suchbereich ±128
+
+-- Verbindung = ein Oberwelt-Portal + ein Nether-Portal mit Namen
+CREATE TABLE portal_verbindungen (
+  id                 INTEGER PRIMARY KEY,
+  welt_id            TEXT    NOT NULL REFERENCES welten(id) ON DELETE CASCADE,
+  name               TEXT    NOT NULL CHECK (length(trim(name)) BETWEEN 1 AND 60),
+  oberwelt_portal_id INTEGER NOT NULL REFERENCES portale(id) ON DELETE CASCADE,
+  nether_portal_id   INTEGER NOT NULL REFERENCES portale(id) ON DELETE CASCADE,
+  ersteller_id       TEXT    REFERENCES benutzer(id) ON DELETE SET NULL,  -- NULL = unbekannt
+  von                TEXT    NOT NULL DEFAULT '',
+  am                 TEXT    NOT NULL,
+  UNIQUE (oberwelt_portal_id, nether_portal_id)
+);
+
+-- Beide Portale müssen zur Welt der Verbindung und zur richtigen Dimension gehören
+CREATE TRIGGER portal_verbindung_pruefen_i BEFORE INSERT ON portal_verbindungen
+WHEN NOT EXISTS (SELECT 1 FROM portale WHERE id = NEW.oberwelt_portal_id AND welt_id = NEW.welt_id AND dimension = 'overworld')
+  OR NOT EXISTS (SELECT 1 FROM portale WHERE id = NEW.nether_portal_id   AND welt_id = NEW.welt_id AND dimension = 'nether')
+BEGIN
+  SELECT RAISE(ABORT, 'Verbindung braucht ein Oberwelt- und ein Nether-Portal derselben Welt');
+END;
+CREATE TRIGGER portal_verbindung_pruefen_u BEFORE UPDATE OF welt_id, oberwelt_portal_id, nether_portal_id ON portal_verbindungen
+WHEN NOT EXISTS (SELECT 1 FROM portale WHERE id = NEW.oberwelt_portal_id AND welt_id = NEW.welt_id AND dimension = 'overworld')
+  OR NOT EXISTS (SELECT 1 FROM portale WHERE id = NEW.nether_portal_id   AND welt_id = NEW.welt_id AND dimension = 'nether')
+BEGIN
+  SELECT RAISE(ABORT, 'Verbindung braucht ein Oberwelt- und ein Nether-Portal derselben Welt');
+END;

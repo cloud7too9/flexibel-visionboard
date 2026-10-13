@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0d0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Companion Anmeldung</title>
+<style>
+/* ============================================================================
+   PROTOTYP · Minecraft Companion PWA · Anmeldung
+   ----------------------------------------------------------------------------
+   Regeln wie im Schema (benutzer, geraete, geraete_status):
+     · Passwort: erste Anmeldung auf einem Gerät + PIN zurücksetzen
+     · PIN: nach über 30 Minuten ohne Kontakt und nach einem PIN-Wechsel
+   Aufbau:  CSS Tokens (Oberwelt-Theme der Companion) → Shell → Komponenten
+            JS 0 Konfig · 1 Mock-API · 2 Gerät · 3 Ansichten · 4 PIN-Feld · 5 Simulation
+   Bewusst eine Datei, keine Build-Tools. Alles läuft im Mock, nichts geht an einen Server.
+   ========================================================================== */
+
+/* Tokens: 1:1 THEMES.overworld aus companion-prototyp.html (die Companion ist nur dunkel) */
+:root {
+  --bg:#0d0f13; --surface:#161a21; --surface-2:#1d222b; --surface-3:#252b36;
+  --border:#2b313d; --border-soft:#20252f;
+  --text:#eef1f6; --text-dim:#828b9b; --text-faint:#565e6c;
+  --accent:#2ed47e; --accent-ink:#04160b; --accent-soft:rgba(46,212,126,.16);
+  --ok-bg:rgba(58,209,122,.14); --ok:#5fe09a;
+  --warn-bg:rgba(232,180,68,.14); --warn:#f0c468;
+  --bad-bg:rgba(232,68,60,.14); --bad:#ff8278;
+  --rahmen:#16181d; --rahmen-2:#2a2d34; --aussen:#000;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+[hidden] { display:none !important; }
+html, body { height:100%; }
+body {
+  margin:0; font-family:var(--font); background:var(--aussen); color:var(--text);
+  display:flex; align-items:center; justify-content:center; overscroll-behavior:none;
+}
+.mono { font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:.02em; }
+
+/* ---- Geräte-Rahmen (nur Vorschau am Desktop; am Handy Vollbild) ----------- */
+.device {
+  position:relative; width:100%; max-width:430px; height:100%; max-height:932px;
+  background:var(--bg); overflow:hidden; display:flex; flex-direction:column;
+}
+@media (min-width:520px) {
+  .device { border-radius:42px; box-shadow:0 0 0 10px var(--rahmen), 0 0 0 12px var(--rahmen-2), 0 40px 90px rgba(0,0,0,.7); }
+}
+
+/* ---- Kopf ----------------------------------------------------------------- */
+.kopf { flex:0 0 auto; padding:64px 16px 22px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.marke { display:flex; align-items:center; gap:10px; }
+.marke svg { color:var(--accent); flex:0 0 auto; }
+.kopf h1 { margin:0; font-size:36px; font-weight:800; letter-spacing:-.3px; line-height:1.05; }
+.kopf-unter { margin:0; font-size:16px; font-weight:600; color:var(--text-dim); }
+
+/* Dashboard-Login: Code-Feld und Layout-Auswahl */
+.eingabe.code { font-size:24px; letter-spacing:.5em; text-align:center; padding-left:calc(12px + .5em); }
+.layout-liste { border:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; min-width:0; }
+.layout-liste legend { padding:0; margin:0 0 6px; }
+.layout-karte {
+  display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px; cursor:pointer;
+  padding:13px 14px; border-radius:14px; background:var(--surface); border:1px solid var(--border-soft);
+}
+.layout-karte:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }
+.layout-karte input { accent-color:var(--accent); width:18px; height:18px; margin:0; }
+.layout-text { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.layout-text b { font-size:15px; }
+.layout-text span { font-size:12.5px; color:var(--text-dim); line-height:1.35; }
+.layout-meta { font-size:11.5px; color:var(--text-faint); white-space:nowrap; }
+
+/* Companion › Dashboard: Code erzeugen */
+.code-karte {
+  display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;
+  padding:18px 14px; border-radius:16px; background:var(--accent-soft); border:1px solid var(--accent);
+}
+.code-label { font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--text-dim); }
+.code-gross { font-size:40px; font-weight:700; letter-spacing:.18em; color:var(--text); }
+.code-info { font-size:12.5px; color:var(--text-dim); line-height:1.4; }
+.karte-form { display:flex; flex-direction:column; gap:14px; padding:16px; border-radius:16px; background:var(--surface); border:1px solid var(--border-soft); }
+.karte-form h3, .zugaenge h3 { margin:0; font-size:15px; font-weight:800; }
+select.eingabe { appearance:none; background-image:linear-gradient(45deg, transparent 50%, var(--text-dim) 50%), linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position:calc(100% - 18px) 50%, calc(100% - 13px) 50%; background-size:5px 5px; background-repeat:no-repeat; padding-right:36px; }
+.zugaenge { display:flex; flex-direction:column; gap:8px; }
+.zugang { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:12px; padding:11px 12px;
+  border-radius:14px; background:var(--surface); border:1px solid var(--border-soft); }
+.zugang-code { font-size:17px; font-weight:700; letter-spacing:.12em; }
+.zugang-text { font-size:12px; color:var(--text-dim); line-height:1.4; min-width:0; }
+.zugang .klein-knopf { align-self:center; margin:0; }
+.klein-knopf.gefahr { color:var(--bad); border-color:var(--bad); background:var(--bad-bg); }
+
+/* Navigation: Segment-Umschalter zwischen Überschrift und „Anmeldung“ */
+.navigation {
+  display:grid; grid-template-columns:1fr 1fr; gap:4px; width:100%; max-width:360px; margin:14px 0 8px;
+  padding:4px; border-radius:14px; background:var(--surface); border:1px solid var(--border-soft);
+}
+.navigation button {
+  font:inherit; font-size:14px; font-weight:600; padding:10px 8px; border-radius:10px; cursor:pointer;
+  color:var(--text-dim); background:transparent; border:none;
+}
+.navigation button[aria-selected="true"] { background:var(--surface-3); color:var(--text); box-shadow:inset 0 0 0 1px var(--border); }
+.navigation button[aria-selected="true"]::before {
+  content:""; display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--accent);
+  margin-right:8px; vertical-align:1px;
+}
+.navigation button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+.klein-knopf {
+  align-self:flex-end; font:inherit; font-size:13px; font-weight:600; padding:7px 14px; margin-top:-4px;
+  border-radius:999px; cursor:pointer; color:var(--text); background:transparent; border:1px solid var(--border);
+}
+.klein-knopf:active { background:var(--surface-2); }
+.klein-knopf:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* ---- Bühne: eine Ansicht zur Zeit ------------------------------------------ */
+.buehne { flex:1 1 auto; min-height:0; overflow-y:auto; padding:8px 20px 24px; }
+.ansicht { display:flex; flex-direction:column; gap:14px; max-width:360px; margin:0 auto; }
+.ansicht h2 { margin:8px 0 0; font-size:22px; font-weight:800; text-wrap:balance; }
+.ansicht .sub { margin:-8px 0 0; font-size:13.5px; line-height:1.45; color:var(--text-dim); }
+
+/* ---- Formular -------------------------------------------------------------- */
+.feld { display:flex; flex-direction:column; gap:6px; }
+.feld label { font-size:12px; font-weight:600; color:var(--text-dim); letter-spacing:.04em; text-transform:uppercase; }
+.feld .hilfe { font-size:12px; color:var(--text-faint); line-height:1.4; }
+.eingabe-wrap { position:relative; }
+.eingabe {
+  width:100%; font:inherit; font-size:16px; padding:12px; border-radius:12px;
+  background:var(--surface); color:var(--text); border:1px solid var(--border); outline:none;
+}
+.eingabe:focus { border-color:var(--accent); }
+.eingabe::placeholder { color:var(--text-faint); }
+.eingabe.mono { font-family:var(--mono); letter-spacing:.2em; }
+.eingabe-wrap .eingabe { padding-right:64px; }
+.zeigen {
+  position:absolute; right:6px; top:50%; transform:translateY(-50%);
+  font:inherit; font-size:12.5px; font-weight:600; color:var(--text-dim);
+  background:transparent; border:none; padding:8px 10px; border-radius:8px; cursor:pointer;
+}
+.zeigen:focus-visible, .knopf:focus-visible, .link:focus-visible, .chip:focus-visible, .taste:focus-visible {
+  outline:2px solid var(--accent); outline-offset:2px;
+}
+
+.knopf {
+  font:inherit; font-size:15.5px; font-weight:700; padding:14px; border-radius:14px; border:none;
+  background:var(--accent); color:var(--accent-ink); cursor:pointer; width:100%;
+}
+.knopf:disabled { opacity:.45; cursor:default; }
+.knopf.zweit { background:var(--surface-2); color:var(--text); border:1px solid var(--border-soft); }
+.link {
+  font:inherit; font-size:13.5px; font-weight:600; color:var(--accent); background:none; border:none;
+  padding:6px; cursor:pointer; align-self:center; border-radius:8px;
+}
+.link.leise { color:var(--text-dim); }
+.links { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+
+.banner { padding:10px 13px; border-radius:12px; font-size:12.5px; line-height:1.45; }
+.banner.ok   { background:var(--ok-bg);   color:var(--ok); }
+.banner.warn { background:var(--warn-bg); color:var(--warn); }
+.banner.bad  { background:var(--bad-bg);  color:var(--bad); }
+.banner.info { background:var(--surface-2); color:var(--text-dim); border:1px solid var(--border-soft); }
+
+.konto-liste { display:flex; flex-wrap:wrap; gap:6px; }
+.chip {
+  display:inline-flex; align-items:center; gap:8px; font:inherit; font-size:13.5px; font-weight:600;
+  padding:7px 12px 7px 7px; border-radius:999px; cursor:pointer;
+  background:var(--surface-2); color:var(--text); border:1px solid var(--border-soft);
+}
+.chip[aria-pressed="true"] { border-color:var(--accent); background:var(--accent-soft); }
+.initiale {
+  width:24px; height:24px; border-radius:50%; display:grid; place-items:center;
+  font-size:12px; font-weight:800; color:var(--accent-ink); background:var(--accent);
+}
+
+/* ---- PIN-Sperre ------------------------------------------------------------ */
+.pin-kopf { display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; margin-top:6px; }
+.pin-kopf .initiale { width:64px; height:64px; font-size:28px; }
+.pin-kopf h2 { margin:4px 0 0; }
+.grund { font-size:13px; color:var(--text-dim); line-height:1.45; max-width:30ch; }
+.punkte { display:flex; justify-content:center; gap:12px; min-height:16px; margin:6px 0 2px; }
+.punkte span { width:13px; height:13px; border-radius:50%; border:2px solid var(--border); }
+.punkte span.voll { background:var(--accent); border-color:var(--accent); }
+.punkte.wackeln { animation:wackeln .35s; }
+@keyframes wackeln { 20%,60% { transform:translateX(-8px); } 40%,80% { transform:translateX(8px); } }
+.tastatur { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; max-width:300px; width:100%; margin:0 auto; }
+.taste {
+  font:inherit; font-size:24px; font-weight:500; height:62px; border-radius:18px; cursor:pointer;
+  background:var(--surface); color:var(--text); border:1px solid var(--border-soft);
+  font-variant-numeric:tabular-nums;
+}
+.taste:active { background:var(--surface-3); }
+.taste.neben { font-size:15px; font-weight:700; color:var(--text-dim); }
+.taste.ok { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-size:15px; font-weight:800; }
+.taste:disabled { opacity:.35; cursor:default; }
+
+/* ---- Angemeldet ------------------------------------------------------------ */
+.geraet { background:var(--surface); border:1px solid var(--border-soft); border-radius:16px; padding:4px 14px; }
+.zeile { display:flex; justify-content:space-between; gap:12px; padding:11px 0; font-size:13.5px; border-bottom:1px solid var(--border-soft); }
+.zeile:last-child { border-bottom:none; }
+.zeile span:first-child { color:var(--text-dim); }
+.zeile span:last-child { text-align:right; }
+
+/* ---- Simulation (nur Prototyp) --------------------------------------------- */
+.sim-knopf {
+  position:absolute; right:14px; top:14px; z-index:5; font:inherit; font-size:11.5px; font-weight:700;
+  letter-spacing:.06em; text-transform:uppercase; padding:6px 10px; border-radius:999px; cursor:pointer;
+  color:var(--warn); background:var(--warn-bg); border:1px dashed var(--warn);
+}
+.sheet {
+  position:absolute; left:0; right:0; bottom:0; z-index:10; background:var(--surface);
+  border-top:1px solid var(--border); border-radius:22px 22px 0 0;
+  padding:8px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  transform:translateY(105%); transition:transform .28s ease; display:flex; flex-direction:column; gap:12px;
+}
+.sheet.offen { transform:translateY(0); box-shadow:0 -20px 60px rgba(0,0,0,.5); }
+.sheet .griff { width:38px; height:4px; border-radius:3px; background:var(--border); margin:0 auto 4px; }
+.sheet h3 { margin:0; font-size:16px; font-weight:800; }
+.sim-raster { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.sim-raster .knopf { font-size:13px; padding:11px 8px; }
+.status { font-size:12.5px; color:var(--text-dim); line-height:1.5; }
+.status b { color:var(--text); font-weight:600; }
+.schleier { position:absolute; inset:0; z-index:9; background:rgba(0,0,0,.45); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet { transition:none; }
+  .punkte.wackeln { animation:none; }
+}
+</style>
+</head>
+<body>
+
+<div class="device">
+  <header class="kopf">
+    <div class="marke">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 13 13l-4.5 2.5L11 11z" fill="currentColor"/></svg>
+      <h1>Companion</h1>
+    </div>
+    <nav class="navigation" id="navigation" role="tablist" aria-label="Bereich">
+      <button type="button" role="tab" data-nav="app" aria-selected="true">Companion-App</button>
+      <button type="button" role="tab" data-nav="dashboard" aria-selected="false" tabindex="-1">Dashboard-Login</button>
+    </nav>
+    <p class="kopf-unter" id="kopfUnter">Anmeldung</p>
+  </header>
+
+  <main class="buehne" id="buehne"></main>
+
+  <button class="sim-knopf" id="simKnopf" type="button" aria-controls="simSheet" aria-expanded="false">Simulation</button>
+  <div class="schleier" id="schleier" hidden></div>
+  <section class="sheet" id="simSheet" aria-label="Simulation">
+    <div class="griff"></div>
+    <h3>Prototyp-Simulation</h3>
+    <div class="status" id="simStatus"></div>
+    <div class="sim-raster">
+      <button class="knopf zweit" type="button" data-sim="offline">45 Min. offline</button>
+      <button class="knopf zweit" type="button" data-sim="kurz">10 Min. offline</button>
+      <button class="knopf zweit" type="button" data-sim="pinwechsel">PIN auf anderem Gerät geändert</button>
+      <button class="knopf zweit" type="button" data-sim="vergessen">Gerät vergessen</button>
+      <button class="knopf zweit" type="button" data-sim="anzeige">Als Anzeige-Gerät öffnen</button>
+      <button class="knopf zweit" type="button" data-sim="anzeigeOffline">Anzeige 20 Min. offline</button>
+      <button class="knopf zweit" type="button" data-sim="codesAlt">Codes 20 Min. älter</button>
+      <button class="knopf zweit" type="button" data-sim="companion">Zurück zur Companion</button>
+    </div>
+    <div class="status" id="simAnzeige"></div>
+    <p class="status">Demo-Konten: <b>Max</b>, <b>Lena</b>, <b>Jonas</b> · Passwort <b class="mono">creeper123</b> · PIN <b class="mono">2468</b></p>
+    <button class="knopf" type="button" id="simZu">Fertig</button>
+  </section>
+</div>
+
+<script>
+/* ============================================================================
+   0 · KONFIG
+   ========================================================================== */
+const CONFIG = Object.freeze({
+  offlineMinuten: 30,       // PIN nach über 30 Minuten ohne Kontakt (geraete_status)
+  pinMuster: /^\d{4,8}$/,   // KONTO_PIN in identitaet.js
+  codeMuster: /^[0-9A-Za-z]{5}$/,  // Zugangs-Code fürs Dashboard
+  anzeigeOfflineMinuten: 15, // Anzeige-Gerät: Dashboard-PIN nach über 15 Minuten ohne Kontakt
+  gueltigkeiten: [           // Auswahl beim Code generieren; null = dauerhaft
+    { minuten:20,   name:"20 Minuten" },
+    { minuten:5,    name:"5 Minuten" },
+    { minuten:60,   name:"1 Stunde" },
+    { minuten:1440, name:"24 Stunden" },
+    { minuten:null, name:"Dauerhaft" },
+  ],
+  passwortMin: 8,
+  anzeigenameMax: 24,
+  echterNameMax: 60,
+  fehlversucheMax: 5,       // wie sperre.js: danach warten
+  sperreSekunden: 30,
+});
+
+/* ============================================================================
+   1 · MOCK-API  ·  steht für den Board-Server (Tabellen benutzer + geraete)
+   Im Mock liegen Passwort und PIN im Klartext; der Server speichert nur scrypt-Hashes.
+   ========================================================================== */
+const minutenVor = (m) => new Date(Date.now() - m * 60000).toISOString();
+const mock = {
+  benutzer: [
+    { id:"u-max",   echterName:"Max (Demo)",   anzeigename:"Max",   passwort:"creeper123", pin:"2468", pinGeaendertAm:minutenVor(60*24*30) },
+    { id:"u-lena",  echterName:"Lena (Demo)",  anzeigename:"Lena",  passwort:"creeper123", pin:"2468", pinGeaendertAm:minutenVor(60*24*30) },
+    { id:"u-jonas", echterName:"Jonas (Demo)", anzeigename:"Jonas", passwort:"creeper123", pin:"2468", pinGeaendertAm:minutenVor(60*24*30) },
+  ],
+  geraete: [],     // { id, benutzerId, freigeschaltetAm, letzterKontakt, pinBestaetigtAm }
+  zugaenge: [],      // Dashboard-Zugänge: { id, code, pin, erstelltVon, erstelltAm, gueltigBis|null }
+  anzeigeGeraete: [],// { id, zugangId, layoutId|null, letzterKontakt }
+  layouts: [       // gespeicherte Anzeige-Layouts (layout.js: Ebenen mit Widget-Instanzen)
+    { id:"a-board",  name:"Board",         inhalt:"Karte, angeheftete Orte, zuletzt eingetragen", widgets:6 },
+    { id:"a-karte",  name:"Karte groß",    inhalt:"Karte über die ganze Fläche mit Biomen",       widgets:2 },
+    { id:"a-sammel", name:"Sammelobjekte", inhalt:"Rüstungsbesätze mit Fundorten",               widgets:4 },
+    { id:"a-portal", name:"Portale",       inhalt:"Verbindungen und ihr Status",                 widgets:3 },
+  ],
+  fehlversuche: {}, // { [geraetId|anzeigename]: { anzahl, bis } }
+};
+
+class ApiFehler extends Error { constructor(status, text){ super(text); this.status = status; } }
+const fehler = (status, text) => { throw new ApiFehler(status, text); };
+const jetzt = () => new Date().toISOString();
+const benutzerVon = (id) => mock.benutzer.find((b) => b.id === id);
+const benutzerMitName = (name) => {
+  const gesucht = String(name).trim().toLocaleLowerCase("de");
+  return mock.benutzer.find((b) => b.anzeigename.toLocaleLowerCase("de") === gesucht) || null;
+};
+
+/** Sperre gegen Durchprobieren (wie sperre.js) */
+function sperrePruefen(schluessel){
+  const f = mock.fehlversuche[schluessel];
+  if(f?.bis && f.bis > Date.now()) fehler(429, `Zu viele Fehlversuche – bitte ${Math.ceil((f.bis - Date.now()) / 1000)} s warten`);
+}
+function fehlversuch(schluessel){
+  const f = mock.fehlversuche[schluessel] ||= { anzahl:0, bis:0 };
+  f.anzahl += 1;
+  if(f.anzahl >= CONFIG.fehlversucheMax){ f.anzahl = 0; f.bis = Date.now() + CONFIG.sperreSekunden * 1000; }
+}
+const fehlversucheLoeschen = (schluessel) => { delete mock.fehlversuche[schluessel]; };
+
+/** geraete_status: PIN nötig? Wird VOR dem Aktualisieren von letzterKontakt gefragt. */
+function pinGrund(g){
+  const b = benutzerVon(g.benutzerId);
+  if(g.pinBestaetigtAm < b.pinGeaendertAm) return "pinwechsel";
+  const offline = (Date.now() - Date.parse(g.letzterKontakt)) / 60000;
+  if(offline > CONFIG.offlineMinuten) return `offline:${Math.round(offline)}`;
+  return null;
+}
+
+const api = {
+  konten(){ return mock.benutzer.map((b) => ({ id:b.id, anzeigename:b.anzeigename })); },
+
+  /** Jede Anfrage eines bekannten Geräts: erst prüfen, dann Kontakt vermerken */
+  sitzung(geraetId){
+    const g = mock.geraete.find((x) => x.id === geraetId);
+    if(!g) fehler(401, "Gerät unbekannt");
+    const grund = pinGrund(g);
+    if(grund) return { pinNoetig:true, grund, benutzer:oeffentlich(benutzerVon(g.benutzerId)), geraet:{ ...g } };
+    g.letzterKontakt = jetzt();
+    return { pinNoetig:false, benutzer:oeffentlich(benutzerVon(g.benutzerId)), geraet:{ ...g } };
+  },
+
+  /** Erste Anmeldung auf einem Gerät: Anzeigename + Passwort → neues Gerät */
+  geraetFreischalten(anzeigename, passwort){
+    const schluessel = `name:${String(anzeigename).toLocaleLowerCase("de")}`;
+    sperrePruefen(schluessel);
+    const b = benutzerMitName(anzeigename);
+    if(!b || b.passwort !== passwort){ fehlversuch(schluessel); fehler(401, "Anzeigename oder Passwort stimmt nicht"); }
+    fehlversucheLoeschen(schluessel);
+    const t = jetzt();
+    const g = { id:crypto.randomUUID(), benutzerId:b.id, freigeschaltetAm:t, letzterKontakt:t, pinBestaetigtAm:t };
+    mock.geraete.push(g);
+    return { geraetId:g.id };
+  },
+
+  kontoAnlegen({ echterName, anzeigename, passwort, pin }){
+    const echt = String(echterName).trim(), name = String(anzeigename).trim().replace(/\s+/g, " ");
+    if(!echt) fehler(400, "Bitte deinen echten Namen eingeben");
+    if(echt.length > CONFIG.echterNameMax) fehler(400, `Echter Name ist zu lang (max. ${CONFIG.echterNameMax} Zeichen)`);
+    if(!name) fehler(400, "Bitte einen Anzeigenamen eingeben");
+    if(name.length > CONFIG.anzeigenameMax) fehler(400, `Anzeigename ist zu lang (max. ${CONFIG.anzeigenameMax} Zeichen)`);
+    if(benutzerMitName(name)) fehler(409, `Den Namen „${name}“ gibt es schon`);
+    if(String(passwort).length < CONFIG.passwortMin) fehler(400, `Das Passwort braucht mindestens ${CONFIG.passwortMin} Zeichen`);
+    if(!CONFIG.pinMuster.test(pin)) fehler(400, "Deine PIN hat 4 bis 8 Ziffern");
+    const t = jetzt();
+    const b = { id:crypto.randomUUID(), echterName:echt, anzeigename:name, passwort, pin, pinGeaendertAm:t };
+    mock.benutzer.push(b);
+    const g = { id:crypto.randomUUID(), benutzerId:b.id, freigeschaltetAm:t, letzterKontakt:t, pinBestaetigtAm:t };
+    mock.geraete.push(g);
+    return { geraetId:g.id };
+  },
+
+  pinPruefen(geraetId, pin){
+    const g = mock.geraete.find((x) => x.id === geraetId) || fehler(401, "Gerät unbekannt");
+    const b = benutzerVon(g.benutzerId);
+    sperrePruefen(geraetId);
+    if(b.pin !== pin){ fehlversuch(geraetId); fehler(401, `Falsche PIN für ${b.anzeigename}`); }
+    fehlversucheLoeschen(geraetId);
+    g.pinBestaetigtAm = g.letzterKontakt = jetzt();
+    return { ok:true };
+  },
+
+  /** PIN zurücksetzen mit Passwort. Alle anderen Geräte brauchen danach die neue PIN. */
+  pinZuruecksetzen(geraetId, passwort, neuePin){
+    const g = mock.geraete.find((x) => x.id === geraetId) || fehler(401, "Gerät unbekannt");
+    const b = benutzerVon(g.benutzerId);
+    const schluessel = `reset:${b.id}`;
+    sperrePruefen(schluessel);
+    if(b.passwort !== passwort){ fehlversuch(schluessel); fehler(401, "Das Passwort stimmt nicht"); }
+    if(!CONFIG.pinMuster.test(neuePin)) fehler(400, "Deine PIN hat 4 bis 8 Ziffern");
+    fehlversucheLoeschen(schluessel);
+    const t = jetzt();
+    b.pin = neuePin; b.pinGeaendertAm = t;
+    g.pinBestaetigtAm = g.letzterKontakt = t;   // dieses Gerät ist gleich wieder bestätigt
+    return { ok:true };
+  },
+
+  geraetVergessen(geraetId){ mock.geraete = mock.geraete.filter((g) => g.id !== geraetId); },
+
+  /* ---- Dashboard-Zugänge (Companion → Bereich Dashboard) ---------------- */
+
+  /** Code generieren: Gültigkeit in Minuten oder null (dauerhaft) + eigene Dashboard-PIN */
+  zugangErstellen(geraetId, { minuten, pin }){
+    const g = mock.geraete.find((x) => x.id === geraetId) || fehler(401, "Bitte zuerst anmelden");
+    if(!CONFIG.pinMuster.test(pin)) fehler(400, "Die Dashboard-PIN hat 4 bis 8 Ziffern");
+    if(minuten !== null && !(Number.isInteger(minuten) && minuten > 0)) fehler(400, "Ungültige Gültigkeit");
+    let code;
+    do { code = neuerCode(); } while(mock.zugaenge.some((z) => z.code === code));
+    const t = Date.now();
+    const z = { id:crypto.randomUUID(), code, pin, erstelltVon:g.benutzerId, erstelltAm:new Date(t).toISOString(),
+                gueltigBis:minuten === null ? null : new Date(t + minuten * 60000).toISOString() };
+    mock.zugaenge.unshift(z);
+    return zugangOeffentlich(z);
+  },
+  zugaengeListe(){ return mock.zugaenge.map(zugangOeffentlich); },
+  /** Widerrufen: Code ungültig, alle damit angemeldeten Anzeigen fliegen raus */
+  zugangWiderrufen(id){
+    mock.zugaenge = mock.zugaenge.filter((z) => z.id !== id);
+    mock.anzeigeGeraete = mock.anzeigeGeraete.filter((a) => a.zugangId !== id);
+  },
+
+  /* ---- Anzeige-Gerät (Dashboard-Login) ----------------------------------- */
+
+  /** Schritt 1: Code prüfen. Ein abgelaufener Code schaltet kein neues Gerät mehr frei. */
+  dashboardCode(code){
+    sperrePruefen("dashboard");
+    if(!CONFIG.codeMuster.test(code)) fehler(400, "Der Zugangs-Code hat genau 5 Zeichen");
+    const z = mock.zugaenge.find((x) => x.code === code);
+    if(!z){ fehlversuch("dashboard"); fehler(401, "Der Zugangs-Code stimmt nicht. Achte auf Groß- und Kleinschreibung."); }
+    if(!zugangGueltig(z)) fehler(410, "Dieser Code ist abgelaufen. Erzeug in der Companion unter Dashboard einen neuen.");
+    fehlversucheLoeschen("dashboard");
+    return { zugangId:z.id };
+  },
+  /** Schritt 2: Dashboard-PIN → Anzeige-Gerät angelegt, PIN gilt auf diesem Gerät */
+  dashboardFreischalten(zugangId, pin){
+    const z = mock.zugaenge.find((x) => x.id === zugangId) || fehler(410, "Der Zugang wurde widerrufen");
+    if(!zugangGueltig(z)) fehler(410, "Dieser Code ist inzwischen abgelaufen");
+    sperrePruefen(`zugang:${z.id}`);
+    if(z.pin !== pin){ fehlversuch(`zugang:${z.id}`); fehler(401, "Falsche Dashboard-PIN"); }
+    fehlversucheLoeschen(`zugang:${z.id}`);
+    const a = { id:crypto.randomUUID(), zugangId:z.id, layoutId:null, letzterKontakt:jetzt() };
+    mock.anzeigeGeraete.push(a);
+    return { anzeigeId:a.id };
+  },
+  /** Jede Anfrage der Anzeige: erst Offline-Zeit prüfen, dann Kontakt vermerken */
+  anzeigeSitzung(anzeigeId){
+    const a = mock.anzeigeGeraete.find((x) => x.id === anzeigeId) || fehler(401, "Diese Anzeige ist nicht mehr angemeldet");
+    const offline = (Date.now() - Date.parse(a.letzterKontakt)) / 60000;
+    if(offline > CONFIG.anzeigeOfflineMinuten) return { pinNoetig:true, offline:Math.round(offline) };
+    a.letzterKontakt = jetzt();
+    return { pinNoetig:false, layoutId:a.layoutId, layouts:mock.layouts.map((l) => ({ ...l })) };
+  },
+  anzeigePin(anzeigeId, pin){
+    const a = mock.anzeigeGeraete.find((x) => x.id === anzeigeId) || fehler(401, "Diese Anzeige ist nicht mehr angemeldet");
+    const z = mock.zugaenge.find((x) => x.id === a.zugangId);
+    sperrePruefen(`anzeige:${a.id}`);
+    if(z.pin !== pin){ fehlversuch(`anzeige:${a.id}`); fehler(401, "Falsche Dashboard-PIN"); }
+    fehlversucheLoeschen(`anzeige:${a.id}`);
+    a.letzterKontakt = jetzt();
+    return { ok:true };
+  },
+  layoutWaehlen(anzeigeId, layoutId){
+    const a = mock.anzeigeGeraete.find((x) => x.id === anzeigeId) || fehler(401, "Diese Anzeige ist nicht mehr angemeldet");
+    if(!mock.layouts.some((l) => l.id === layoutId)) fehler(400, "Unbekanntes Layout");
+    a.layoutId = layoutId; a.letzterKontakt = jetzt();
+    return { ok:true };
+  },
+  anzeigeAbmelden(anzeigeId){ mock.anzeigeGeraete = mock.anzeigeGeraete.filter((a) => a.id !== anzeigeId); },
+};
+
+const zugangGueltig = (z) => z.gueltigBis === null || Date.parse(z.gueltigBis) > Date.now();
+const zugangOeffentlich = (z) => ({
+  id:z.id, code:z.code, erstelltAm:z.erstelltAm, gueltigBis:z.gueltigBis, gueltig:zugangGueltig(z),
+  von:benutzerVon(z.erstelltVon)?.anzeigename ?? "unbekannt",
+  anzeigen:mock.anzeigeGeraete.filter((a) => a.zugangId === z.id).length,
+});
+
+/** Zufälliger Zugangs-Code: 5 Zeichen aus 0-9, A-Z, a-z (ohne Verzerrung durch Modulo) */
+function neuerCode(){
+  const zeichen = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  let code = "";
+  while(code.length < 5){
+    const [b] = crypto.getRandomValues(new Uint8Array(1));
+    if(b < 248) code += zeichen[b % 62];   // 248 = 4 × 62
+  }
+  return code;
+}
+const oeffentlich = (b) => ({ id:b.id, anzeigename:b.anzeigename, echterName:b.echterName });
+
+/* ============================================================================
+   2 · GERÄT  ·  Geräte-ID dieses Geräts. Später im localStorage bzw. Token;
+       im Prototyp nur im Speicher, weil auch der Mock-Server nur im Speicher lebt.
+   ========================================================================== */
+const geraet = {
+  id: null,
+  setzen(id){ this.id = id; },
+};
+/** Anzeige-Gerät: gespeicherte Anmeldung am Dashboard (später localStorage) */
+const anzeige = { id:null };
+
+/* ============================================================================
+   3 · ANSICHTEN
+   ========================================================================== */
+const $buehne = document.getElementById("buehne");
+/** Zeile unter der Navigation („Anmeldung“, „Registrierung“ …) */
+function unterzeile(text){
+  const $u = document.getElementById("kopfUnter");
+  $u.textContent = text; $u.hidden = !text;
+}
+
+/** Navigation Companion-App | Dashboard-Login. null = ausblenden (PIN, angemeldet …) */
+const $nav = document.getElementById("navigation");
+function navSetzen(aktiv){
+  $nav.hidden = !aktiv;
+  $nav.querySelectorAll("[data-nav]").forEach((t) => {
+    const an = t.dataset.nav === aktiv;
+    t.setAttribute("aria-selected", String(an)); t.tabIndex = an ? 0 : -1;
+  });
+}
+$nav.addEventListener("click", (e) => {
+  const ziel = e.target.closest("[data-nav]")?.dataset.nav;
+  if(ziel === "app") start();
+  else if(ziel === "dashboard") dashboardStart();
+});
+$nav.addEventListener("keydown", (e) => {
+  if(e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  const tabs = [...$nav.querySelectorAll("[data-nav]")];
+  const neu = tabs[(tabs.indexOf(document.activeElement) + 1) % tabs.length];
+  neu.focus(); neu.click();
+});
+
+/** Dashboard-Login: angemeldete Anzeige → direkt Layout wählen, sonst Code */
+function dashboardStart(meldung){
+  if(!anzeige.id) return zeigeDashboardLogin(meldung);
+  let s;
+  try { s = api.anzeigeSitzung(anzeige.id); }
+  catch(err){ anzeige.id = null; return zeigeDashboardLogin({ art:"info", text:`${err.message}. Bitte mit einem neuen Code anmelden.` }); }
+  geraetSimStatus();
+  return s.pinNoetig ? zeigeAnzeigePin({ offline:s.offline }) : zeigeLayoutWahl(s, meldung);
+}
+
+/** Schritt 1: nur der Zugangs-Code (5 Zeichen, Groß-/Kleinschreibung zählt) */
+function zeigeDashboardLogin(meldung){
+  navSetzen("dashboard");
+  unterzeile("");
+  $buehne.innerHTML = `<form class="ansicht" id="formDashboard" role="tabpanel" aria-label="Dashboard-Login" novalidate>
+    ${bannerHtml(meldung?.art, meldung?.text)}
+    <div class="feld">
+      <label for="dashCode">Zugangs-Code</label>
+      <input class="eingabe mono code" id="dashCode" type="text" maxlength="5" autocomplete="off"
+        autocapitalize="off" autocorrect="off" spellcheck="false" required>
+      <span class="hilfe">Den Code erzeugst du in der Companion unter Dashboard.</span>
+    </div>
+    <div id="dashMeldung" aria-live="polite"></div>
+    <button class="knopf" type="submit">Weiter</button>
+  </form>`;
+  const $code = document.getElementById("dashCode");
+  $code.addEventListener("input", () => { $code.value = $code.value.replace(/[^0-9A-Za-z]/g, ""); });
+  document.getElementById("formDashboard").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const $m = document.getElementById("dashMeldung");
+    try { zeigeAnzeigePin({ zugangId:api.dashboardCode($code.value).zugangId }); }
+    catch(err){ $m.innerHTML = bannerHtml(err.status === 429 || err.status === 410 ? "warn" : "bad", err.message); $code.select(); }
+  });
+}
+
+/** Schritt 2: Dashboard-PIN – beim ersten Mal nach dem Code, später nach über 15 Min. offline */
+function zeigeAnzeigePin(k){
+  navSetzen("dashboard");
+  unterzeile("");
+  const grund = k.zugangId
+    ? "Gib die Dashboard-PIN ein, die beim Erzeugen des Codes festgelegt wurde."
+    : `Diese Anzeige war ${dauer(k.offline)} offline. Bitte bestätige mit der Dashboard-PIN.`;
+  $buehne.innerHTML = `<div class="ansicht">
+    <div class="pin-kopf">
+      <h2>Dashboard-PIN</h2>
+      <p class="grund">${esc(grund)}</p>
+    </div>
+    ${pinPadHtml()}
+    <div id="pinMeldung" aria-live="polite"></div>
+    <button class="link leise" type="button" id="anderCode">Anderer Code</button>
+  </div>`;
+  document.getElementById("anderCode").addEventListener("click", () => {
+    if(anzeige.id){ api.anzeigeAbmelden(anzeige.id); anzeige.id = null; }
+    zeigeDashboardLogin();
+  });
+  pinPadVerbinden((pin, wackeln) => {
+    const $m = document.getElementById("pinMeldung");
+    try {
+      if(k.zugangId) anzeige.id = api.dashboardFreischalten(k.zugangId, pin).anzeigeId;
+      else api.anzeigePin(anzeige.id, pin);
+      dashboardStart();
+    } catch(err){ wackeln(); $m.innerHTML = bannerHtml(err.status === 429 || err.status === 410 ? "warn" : "bad", err.message); }
+  });
+}
+
+/** Schritt 3: Anzeige-Layout wählen (das zuletzt gewählte ist vorausgewählt) */
+function zeigeLayoutWahl(r, meldung){
+  navSetzen("dashboard");
+  unterzeile("Anzeige-Layout wählen");
+  const vorwahl = r.layoutId ?? r.layouts[0].id;
+  $buehne.innerHTML = `<form class="ansicht" id="formLayout" novalidate>
+    ${bannerHtml(meldung?.art, meldung?.text)}
+    <fieldset class="layout-liste">
+      <legend class="sub">Welches Layout soll dieses Gerät zeigen?</legend>
+      ${r.layouts.map((l) => `<label class="layout-karte">
+        <input type="radio" name="layout" value="${esc(l.id)}" ${l.id === vorwahl ? "checked" : ""}>
+        <span class="layout-text"><b>${esc(l.name)}</b><span>${esc(l.inhalt)}</span></span>
+        <span class="layout-meta mono">${l.widgets} Widgets</span>
+      </label>`).join("")}
+    </fieldset>
+    <button class="knopf" type="submit">Anzeige starten</button>
+    <button class="link leise" type="button" id="anzeigeAbmelden">Anzeige abmelden</button>
+  </form>`;
+  document.getElementById("anzeigeAbmelden").addEventListener("click", () => {
+    api.anzeigeAbmelden(anzeige.id); anzeige.id = null;
+    zeigeDashboardLogin({ art:"info", text:"Anzeige abgemeldet. Für eine neue Anmeldung brauchst du wieder einen Code." });
+  });
+  document.getElementById("formLayout").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = new FormData(e.target).get("layout");
+    const l = r.layouts.find((x) => x.id === id);
+    api.layoutWaehlen(anzeige.id, id);
+    navSetzen(null);
+    unterzeile("");
+    $buehne.innerHTML = `<div class="ansicht">
+      <div class="pin-kopf">
+        <h2>Anzeige läuft</h2>
+        <p class="grund">Layout „${esc(l.name)}“. Prototyp: Hier öffnet sich das Dashboard im Vollbild.</p>
+      </div>
+      <button class="knopf zweit" type="button" id="dashZurueck">Layout wechseln</button>
+    </div>`;
+    document.getElementById("dashZurueck").addEventListener("click", () => dashboardStart());
+  });
+}
+
+/** Companion › Dashboard: Codes für Anzeige-Geräte erzeugen und widerrufen */
+function zeigeCompanionDashboard(meldung, neu){
+  navSetzen(null);
+  unterzeile("Dashboard");
+  const zugaenge = api.zugaengeListe();
+  $buehne.innerHTML = `<div class="ansicht">
+    ${bannerHtml(meldung?.art, meldung?.text)}
+    ${neu ? `<div class="code-karte" role="status">
+      <span class="code-label">Zugangs-Code</span>
+      <span class="code-gross mono">${esc(neu.code)}</span>
+      <span class="code-info">${gueltigText(neu)} · am Anzeige-Gerät unter „Dashboard-Login“ eingeben</span>
+    </div>` : ""}
+    <form class="karte-form" id="formZugang" novalidate>
+      <h3>Anzeige-Gerät anmelden</h3>
+      <div class="feld">
+        <label for="zugGueltig">Code gültig</label>
+        <select class="eingabe" id="zugGueltig">
+          ${CONFIG.gueltigkeiten.map((g, i) => `<option value="${g.minuten ?? "dauerhaft"}" ${i === 0 ? "selected" : ""}>${g.name}</option>`).join("")}
+        </select>
+        <span class="hilfe">Nach Ablauf schaltet der Code keine neuen Geräte mehr frei. Bereits angemeldete Anzeigen laufen weiter.</span>
+      </div>
+      ${pinFeld("zugPin", "Dashboard-PIN", `Fragt die Anzeige beim Anmelden und nach über ${CONFIG.anzeigeOfflineMinuten} Minuten offline ab. Hat nichts mit deiner eigenen PIN zu tun.`)}
+      ${pinFeld("zugPin2", "Dashboard-PIN wiederholen")}
+      <div id="zugMeldung"></div>
+      <button class="knopf" type="submit">Code generieren</button>
+    </form>
+    ${zugaenge.length ? `<section class="zugaenge" aria-label="Erzeugte Codes">
+      <h3>Erzeugte Codes</h3>
+      ${zugaenge.map((z) => `<div class="zugang">
+        <span class="mono zugang-code">${esc(z.code)}</span>
+        <span class="zugang-text">${gueltigText(z)}<br>${z.anzeigen} ${z.anzeigen === 1 ? "Anzeige" : "Anzeigen"} · von ${esc(z.von)}</span>
+        <button class="klein-knopf" type="button" data-widerrufen="${esc(z.id)}">Widerrufen</button>
+      </div>`).join("")}
+    </section>` : ""}
+    <button class="link leise" type="button" data-weiter="start">Zurück</button>
+  </div>`;
+  document.getElementById("formZugang").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const $m = document.getElementById("zugMeldung");
+    const wert = (id) => document.getElementById(id).value;
+    if(wert("zugPin") !== wert("zugPin2")){ $m.innerHTML = bannerHtml("bad", "Die beiden PINs sind verschieden"); return; }
+    const g = wert("zugGueltig");
+    try { zeigeCompanionDashboard(null, api.zugangErstellen(geraet.id, { minuten:g === "dauerhaft" ? null : Number(g), pin:wert("zugPin") })); }
+    catch(err){ $m.innerHTML = bannerHtml("bad", err.message); }
+  });
+  // Widerrufen mit zweitem Tippen
+  $buehne.querySelectorAll("[data-widerrufen]").forEach((k) => k.addEventListener("click", () => {
+    if(k.dataset.sicher){ api.zugangWiderrufen(k.dataset.widerrufen); zeigeCompanionDashboard({ art:"info", text:"Code widerrufen. Anzeigen, die damit angemeldet waren, sind abgemeldet." }); return; }
+    k.dataset.sicher = "1"; k.textContent = "Wirklich?"; k.classList.add("gefahr");
+  }));
+}
+const uhrzeit = (iso) => new Date(iso).toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit" });
+function gueltigText(z){
+  if(z.gueltigBis === null) return "Dauerhaft gültig";
+  const rest = Math.round((Date.parse(z.gueltigBis) - Date.now()) / 60000);
+  return rest > 0 ? `Gültig bis ${uhrzeit(z.gueltigBis)} (noch ${dauer(rest)})` : `Abgelaufen um ${uhrzeit(z.gueltigBis)}`;
+}
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const initiale = (name) => esc(String(name).trim().charAt(0).toLocaleUpperCase("de") || "?");
+const zeit = (iso) => new Date(iso).toLocaleString("de-DE", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" });
+const bannerHtml = (art, text) => text ? `<div class="banner ${art}" role="${art === "bad" ? "alert" : "status"}">${esc(text)}</div>` : "";
+
+function passwortFeld(id, label, auto, hilfe){
+  return `<div class="feld">
+    <label for="${id}">${label}</label>
+    <div class="eingabe-wrap">
+      <input class="eingabe" id="${id}" type="password" autocomplete="${auto}" required>
+      <button class="zeigen" type="button" data-zeigen="${id}" aria-label="${label} anzeigen">Zeigen</button>
+    </div>
+    ${hilfe ? `<span class="hilfe">${hilfe}</span>` : ""}
+  </div>`;
+}
+const pinFeld = (id, label, hilfe) => `<div class="feld">
+    <label for="${id}">${label}</label>
+    <input class="eingabe mono" id="${id}" type="password" inputmode="numeric" pattern="\\d*" maxlength="8" autocomplete="off" placeholder="4 bis 8 Ziffern" required>
+    ${hilfe ? `<span class="hilfe">${hilfe}</span>` : ""}
+  </div>`;
+
+/** Neues Gerät: einmal mit Passwort */
+function zeigeAnmelden(meldung){
+  navSetzen("app");
+  unterzeile("Anmeldung");
+  $buehne.innerHTML = `<form class="ansicht" id="formAnmelden" novalidate>
+    ${bannerHtml(meldung?.art, meldung?.text)}
+    <div class="feld">
+      <label for="anmName">Anzeigename</label>
+      <input class="eingabe" id="anmName" type="text" autocomplete="username" maxlength="${CONFIG.anzeigenameMax}" required>
+    </div>
+    ${passwortFeld("anmPasswort", "Passwort", "current-password")}
+    <button class="klein-knopf" type="button" data-weiter="anlegen">Registrieren</button>
+    <div id="anmMeldung"></div>
+    <button class="knopf" type="submit">Gerät freischalten</button>
+  </form>`;
+  const $name = document.getElementById("anmName");
+  document.getElementById("formAnmelden").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const $m = document.getElementById("anmMeldung");
+    const name = $name.value.trim(), passwort = document.getElementById("anmPasswort").value;
+    if(!name || !passwort){ $m.innerHTML = bannerHtml("bad", "Bitte Anzeigename und Passwort eingeben"); return; }
+    try {
+      const r = api.geraetFreischalten(name, passwort);
+      geraet.setzen(r.geraetId);
+      start({ art:"ok", text:"Gerät freigeschaltet. Ab jetzt reicht hier deine PIN." });
+    } catch(err){ $m.innerHTML = bannerHtml("bad", err.message); }
+  });
+}
+
+/** Neues Konto: alle Felder aus der Tabelle benutzer */
+function zeigeAnlegen(){
+  navSetzen("app");
+  unterzeile("Registrierung");
+  $buehne.innerHTML = `<form class="ansicht" id="formAnlegen" novalidate>
+    <p class="sub">Das Konto gilt für alle Welten auf diesem Board.</p>
+    <div class="feld">
+      <label for="neuEcht">Echter Name</label>
+      <input class="eingabe" id="neuEcht" type="text" autocomplete="name" maxlength="${CONFIG.echterNameMax}" required>
+    </div>
+    <div class="feld">
+      <label for="neuName">Anzeigename</label>
+      <input class="eingabe" id="neuName" type="text" autocomplete="username" maxlength="${CONFIG.anzeigenameMax}" required>
+      <span class="hilfe">So sehen dich die anderen auf der Karte und bei deinen Einträgen.</span>
+    </div>
+    ${passwortFeld("neuPasswort", "Passwort", "new-password", `Mindestens ${CONFIG.passwortMin} Zeichen. Brauchst du für neue Geräte und wenn du die PIN vergisst.`)}
+    ${pinFeld("neuPin", "PIN", "Für den Alltag: nach über 30 Minuten offline fragt die App danach.")}
+    ${pinFeld("neuPin2", "PIN wiederholen")}
+    <div id="neuMeldung"></div>
+    <button class="knopf" type="submit">Registrieren</button>
+    <button class="link leise" type="button" data-weiter="anmelden">Zurück zur Anmeldung</button>
+  </form>`;
+  document.getElementById("formAnlegen").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const $m = document.getElementById("neuMeldung");
+    const wert = (id) => document.getElementById(id).value;
+    if(wert("neuPin") !== wert("neuPin2")){ $m.innerHTML = bannerHtml("bad", "Die beiden PINs sind verschieden"); return; }
+    try {
+      const r = api.kontoAnlegen({ echterName:wert("neuEcht"), anzeigename:wert("neuName"), passwort:wert("neuPasswort"), pin:wert("neuPin") });
+      geraet.setzen(r.geraetId);
+      start({ art:"ok", text:"Registriert. Dieses Gerät ist freigeschaltet." });
+    } catch(err){ $m.innerHTML = bannerHtml("bad", err.message); }
+  });
+}
+
+/** PIN-Sperre: Gerät bekannt, aber offline > 30 Min. oder PIN gewechselt */
+function zeigePin(s){
+  const grund = s.grund === "pinwechsel"
+    ? "Deine PIN wurde geändert. Bitte gib die neue PIN ein."
+    : `Dieses Gerät war ${dauer(Number(s.grund.split(":")[1]))} offline. Bitte bestätige mit deiner PIN.`;
+  navSetzen(null);
+  unterzeile("Anmeldung");
+  $buehne.innerHTML = `<div class="ansicht">
+    <div class="pin-kopf">
+      <span class="initiale" aria-hidden="true">${initiale(s.benutzer.anzeigename)}</span>
+      <h2>Hallo, ${esc(s.benutzer.anzeigename)}</h2>
+      <p class="grund">${esc(grund)}</p>
+    </div>
+    ${pinPadHtml()}
+    <div id="pinMeldung" aria-live="polite"></div>
+    <div class="links">
+      <button class="link" type="button" data-weiter="reset">PIN vergessen?</button>
+      <button class="link leise" type="button" data-weiter="anderes">Anderes Konto</button>
+    </div>
+  </div>`;
+  pinPadVerbinden((pin, wackeln) => {
+    const $m = document.getElementById("pinMeldung");
+    try { api.pinPruefen(geraet.id, pin); start(); }
+    catch(err){ wackeln(); $m.innerHTML = bannerHtml(err.status === 429 ? "warn" : "bad", err.message); }
+  });
+}
+
+/** PIN zurücksetzen: Passwort + neue PIN */
+function zeigeReset(){
+  navSetzen(null);
+  unterzeile("PIN zurücksetzen");
+  $buehne.innerHTML = `<form class="ansicht" id="formReset" novalidate>
+    <p class="sub">Mit deinem Passwort legst du eine neue PIN fest. Deine anderen Geräte fragen danach nach der neuen PIN.</p>
+    ${passwortFeld("resPasswort", "Passwort", "current-password")}
+    ${pinFeld("resPin", "Neue PIN")}
+    ${pinFeld("resPin2", "Neue PIN wiederholen")}
+    <div id="resMeldung"></div>
+    <button class="knopf" type="submit">PIN speichern</button>
+    <button class="link leise" type="button" data-weiter="start">Abbrechen</button>
+  </form>`;
+  document.getElementById("formReset").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const $m = document.getElementById("resMeldung");
+    const wert = (id) => document.getElementById(id).value;
+    if(wert("resPin") !== wert("resPin2")){ $m.innerHTML = bannerHtml("bad", "Die beiden PINs sind verschieden"); return; }
+    try {
+      api.pinZuruecksetzen(geraet.id, wert("resPasswort"), wert("resPin"));
+      start({ art:"ok", text:"Neue PIN gespeichert." });
+    } catch(err){ $m.innerHTML = bannerHtml(err.status === 429 ? "warn" : "bad", err.message); }
+  });
+}
+
+/** Angemeldet: hier ginge es in die Companion */
+function zeigeAngemeldet(s, meldung){
+  const g = s.geraet;
+  navSetzen(null);
+  unterzeile("");
+  $buehne.innerHTML = `<div class="ansicht">
+    <div class="pin-kopf">
+      <span class="initiale" aria-hidden="true">${initiale(s.benutzer.anzeigename)}</span>
+      <h2>Angemeldet als ${esc(s.benutzer.anzeigename)}</h2>
+      <p class="grund">${esc(s.benutzer.echterName)}</p>
+    </div>
+    ${bannerHtml(meldung?.art, meldung?.text)}
+    <div class="geraet" aria-label="Dieses Gerät">
+      <div class="zeile"><span>Freigeschaltet</span><span class="mono">${zeit(g.freigeschaltetAm)}</span></div>
+      <div class="zeile"><span>Letzter Kontakt</span><span class="mono">${zeit(g.letzterKontakt)}</span></div>
+      <div class="zeile"><span>PIN bestätigt</span><span class="mono">${zeit(g.pinBestaetigtAm)}</span></div>
+      <div class="zeile"><span>PIN wieder nötig</span><span>nach über ${CONFIG.offlineMinuten} Min. offline</span></div>
+    </div>
+    <button class="knopf" type="button" data-weiter="weiter">Zum Dashboard-Bereich</button>
+    <button class="link leise" type="button" data-weiter="abmelden">Auf diesem Gerät abmelden</button>
+  </div>`;
+}
+
+const dauer = (min) => min < 60 ? `${min} ${min === 1 ? "Minute" : "Minuten"}`
+  : min < 60 * 48 ? `${Math.round(min / 60)} Stunden` : `${Math.round(min / 1440)} Tage`;
+
+/** Einstieg: Gerät bekannt? PIN nötig? */
+function start(meldung){
+  geraetSimStatus();
+  if(!geraet.id) return zeigeAnmelden(meldung);
+  let s;
+  try { s = api.sitzung(geraet.id); }
+  catch { geraet.setzen(null); return zeigeAnmelden({ art:"info", text:"Dieses Gerät ist nicht mehr freigeschaltet. Bitte melde dich mit deinem Passwort an." }); }
+  geraetSimStatus();
+  return s.pinNoetig ? zeigePin(s) : zeigeAngemeldet(s, meldung);
+}
+
+/* Navigation und „Zeigen“-Knöpfe per Delegation */
+$buehne.addEventListener("click", (e) => {
+  const zeigen = e.target.closest("[data-zeigen]");
+  if(zeigen){
+    const $i = document.getElementById(zeigen.dataset.zeigen), sichtbar = $i.type === "text";
+    $i.type = sichtbar ? "password" : "text";
+    zeigen.textContent = sichtbar ? "Zeigen" : "Verbergen";
+    return;
+  }
+  const ziel = e.target.closest("[data-weiter]")?.dataset.weiter;
+  if(!ziel) return;
+  if(ziel === "anlegen") zeigeAnlegen();
+  else if(ziel === "anmelden" || ziel === "start") start();
+  else if(ziel === "reset") zeigeReset();
+  else if(ziel === "anderes" || ziel === "abmelden"){ api.geraetVergessen(geraet.id); geraet.setzen(null); start({ art:"info", text:"Abgemeldet. Dieses Gerät braucht jetzt wieder ein Passwort." }); }
+  else if(ziel === "weiter") zeigeCompanionDashboard();
+});
+
+/* ============================================================================
+   4 · PIN-FELD  ·  4–8 Ziffern, darum mit OK-Taste statt automatischem Absenden
+   ========================================================================== */
+function pinPadHtml(){
+  const tasten = ["1","2","3","4","5","6","7","8","9"].map((z) => `<button class="taste" type="button" data-ziffer="${z}">${z}</button>`).join("");
+  return `<div class="punkte" id="pinPunkte" aria-label="PIN-Eingabe, 0 Ziffern"></div>
+    <div class="tastatur" role="group" aria-label="Ziffernblock">
+      ${tasten}
+      <button class="taste neben" type="button" data-pin="loeschen" aria-label="Letzte Ziffer löschen">⌫</button>
+      <button class="taste" type="button" data-ziffer="0">0</button>
+      <button class="taste ok" type="button" data-pin="ok" disabled>OK</button>
+    </div>`;
+}
+function pinPadVerbinden(absenden){
+  let pin = "";
+  const $p = document.getElementById("pinPunkte"), $ok = $buehne.querySelector('[data-pin="ok"]');
+  const zeichnen = () => {
+    const stellen = Math.max(4, pin.length);
+    $p.innerHTML = Array.from({ length:stellen }, (_, i) => `<span class="${i < pin.length ? "voll" : ""}"></span>`).join("");
+    $p.setAttribute("aria-label", `PIN-Eingabe, ${pin.length} Ziffern`);
+    $ok.disabled = !CONFIG.pinMuster.test(pin);
+  };
+  const wackeln = () => { pin = ""; zeichnen(); $p.classList.remove("wackeln"); void $p.offsetWidth; $p.classList.add("wackeln"); };
+  const eingabe = (z) => { if(pin.length < 8){ pin += z; zeichnen(); } };
+  const loeschen = () => { pin = pin.slice(0, -1); zeichnen(); };
+  const ok = () => { if(CONFIG.pinMuster.test(pin)) absenden(pin, wackeln); };
+  $buehne.querySelector(".tastatur").addEventListener("click", (e) => {
+    const t = e.target.closest("button"); if(!t) return;
+    if(t.dataset.ziffer) eingabe(t.dataset.ziffer);
+    else if(t.dataset.pin === "loeschen") loeschen();
+    else if(t.dataset.pin === "ok") ok();
+  });
+  // Tastatur am Desktop
+  const taste = (e) => {
+    if(!document.getElementById("pinPunkte")) return document.removeEventListener("keydown", taste);
+    if(document.getElementById("simSheet").classList.contains("offen")) return;
+    // preventDefault: sonst löst Enter zusätzlich den gerade fokussierten Knopf aus
+    if(/^\d$/.test(e.key)){ e.preventDefault(); eingabe(e.key); }
+    else if(e.key === "Backspace"){ e.preventDefault(); loeschen(); }
+    else if(e.key === "Enter"){ e.preventDefault(); ok(); }
+  };
+  document.addEventListener("keydown", taste);
+  zeichnen();
+}
+
+/* ============================================================================
+   5 · SIMULATION  ·  nur Prototyp: Zeit und andere Geräte nachstellen
+   ========================================================================== */
+const $sheet = document.getElementById("simSheet"), $schleier = document.getElementById("schleier"), $simKnopf = document.getElementById("simKnopf");
+function simOeffnen(offen){
+  $sheet.classList.toggle("offen", offen); $schleier.hidden = !offen;
+  $simKnopf.setAttribute("aria-expanded", String(offen));
+  if(offen) geraetSimStatus();
+}
+$simKnopf.addEventListener("click", () => simOeffnen(true));
+$schleier.addEventListener("click", () => simOeffnen(false));
+document.getElementById("simZu").addEventListener("click", () => simOeffnen(false));
+
+function geraetSimStatus(){
+  const a = mock.anzeigeGeraete.find((x) => x.id === anzeige.id);
+  const codes = mock.zugaenge.filter(zugangGueltig).map((z) => z.code);
+  document.getElementById("simAnzeige").innerHTML = (a
+    ? `Anzeige-Gerät angemeldet · letzter Kontakt vor <b>${Math.round((Date.now() - Date.parse(a.letzterKontakt)) / 60000)} Min.</b>`
+    : "Anzeige-Gerät <b>nicht angemeldet</b>")
+    + ` · gültige Codes: <b class="mono">${codes.length ? codes.map(esc).join(", ") : "keine"}</b>`;
+  const g = mock.geraete.find((x) => x.id === geraet.id);
+  const $s = document.getElementById("simStatus");
+  if(!g){ $s.innerHTML = "Dieses Gerät ist <b>nicht freigeschaltet</b>."; return; }
+  const b = benutzerVon(g.benutzerId), grund = pinGrund(g);
+  const offline = Math.round((Date.now() - Date.parse(g.letzterKontakt)) / 60000);
+  $s.innerHTML = `Gerät von <b>${esc(b.anzeigename)}</b> · letzter Kontakt vor <b>${offline} Min.</b> · PIN nötig: <b>${grund ? "ja" : "nein"}</b>`;
+}
+
+$sheet.addEventListener("click", (e) => {
+  const art = e.target.closest("[data-sim]")?.dataset.sim; if(!art) return;
+  const g = mock.geraete.find((x) => x.id === geraet.id);
+  if(art === "anzeige"){ simOeffnen(false); return dashboardStart(); }
+  if(art === "companion"){ simOeffnen(false); return start(); }
+  if(art === "anzeigeOffline"){
+    const a = mock.anzeigeGeraete.find((x) => x.id === anzeige.id);
+    if(!a){ document.getElementById("simAnzeige").innerHTML = "Erst ein Anzeige-Gerät anmelden (Code + Dashboard-PIN)."; return; }
+    a.letzterKontakt = minutenVor(20); simOeffnen(false); return dashboardStart();
+  }
+  if(art === "codesAlt"){
+    mock.zugaenge.forEach((z) => {
+      z.erstelltAm = new Date(Date.parse(z.erstelltAm) - 20 * 60000).toISOString();
+      if(z.gueltigBis) z.gueltigBis = new Date(Date.parse(z.gueltigBis) - 20 * 60000).toISOString();
+    });
+    geraetSimStatus(); return;
+  }
+  if(art === "vergessen"){ if(g) api.geraetVergessen(g.id); geraet.setzen(null); }
+  else if(!g){ document.getElementById("simStatus").innerHTML = "Erst auf diesem Gerät anmelden, dann lässt sich das nachstellen."; return; }
+  else if(art === "offline") g.letzterKontakt = minutenVor(45);
+  else if(art === "kurz") g.letzterKontakt = minutenVor(10);
+  else if(art === "pinwechsel") benutzerVon(g.benutzerId).pinGeaendertAm = jetzt();
+  simOeffnen(false);
+  start();
+});
+
+/* ============================================================================
+   START  ·  Prototyp beginnt mit einem neuen Gerät (Passwort-Anmeldung)
+   ========================================================================== */
+start();
+</script>
+</body>
+</html>
