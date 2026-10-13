@@ -23,7 +23,8 @@ Die **Anmeldeseite wird der Einstieg** unter `/`. Sie ist das, was man über die
 
 ```
 /  Anmeldeseite
-├─ Companion-App    Anzeigename + Passwort → Companion (/app)
+├─ Companion-App    Anzeigename + Passwort → Startbereich der Companion (/app)
+│                   nach dem Registrieren erst die Willkommenskarte
 │                   danach reicht die PIN, nach über 30 Min. offline wieder nötig
 └─ Dashboard-Login  Zugangs-Code → Dashboard-PIN → Layout wählen → /dashboard
                     danach direkt „Layout wählen“, nach über 15 Min. offline Dashboard-PIN
@@ -46,6 +47,8 @@ Die **Anmeldeseite wird der Einstieg** unter `/`. Sie ist das, was man über die
 | L9 | Gültigkeit | **Einstellbar** beim Erzeugen: zeitbasiert (Standard 20 Minuten) oder dauerhaft |
 | L10 | Dashboard-PIN | **Eigene PIN je Zugang**, festgelegt beim Erzeugen des Codes. Hat nichts mit dem Benutzerkonto zu tun |
 | L11 | Anzeige-Gerät | Code → Dashboard-PIN → Layout wählen. Das Gerät **merkt sich die Anmeldung**: beim nächsten Öffnen direkt „Layout wählen“ |
+| L13 | Nach der Anmeldung | **Direkt in den Startbereich der Companion** (`/app`). Keine Zwischenseite |
+| L14 | Nach dem Registrieren | Zuerst eine **Willkommenskarte**, danach weiter in die Companion. Den Inhalt der Karte fügt Max später hinzu (N11) |
 | L12 | PIN am Anzeige-Gerät | Nach über **15 Minuten** ohne Kontakt (eine Konstante, siehe N6). Während die Anzeige verbunden ist, läuft kein Timer |
 
 ---
@@ -163,9 +166,12 @@ anzeigeGeraete: [{     // per Dashboard-Login angemeldete Anzeigen (TV, Tablet �
 
 - Aus dem Prototyp übernehmen: Aufbau, Texte, Styles (Oberwelt-Theme wie die Companion). **Mock und Simulation entfernen**, stattdessen die API aus Kapitel 5.
 - Eine Datei, Vanilla JS, kein Build, wie die Companion. Ausgeliefert unter `/` ohne Cache (`OHNE_CACHE`).
-- Ansichten (wie im Prototyp): Anmeldung · Registrierung · PIN-Sperre (Ziffernblock, 4–8 Ziffern, OK-Taste) · PIN zurücksetzen · Dashboard-Login (nur Feld „Zugangs-Code“) · Dashboard-PIN · Layout wählen.
+- Ansichten (wie im Prototyp): Anmeldung · Registrierung · Willkommenskarte · PIN-Sperre (Ziffernblock, 4–8 Ziffern, OK-Taste) · PIN zurücksetzen · Dashboard-Login (nur Feld „Zugangs-Code“) · Dashboard-PIN · Layout wählen.
+- Die Platzhalter „Companion · Startbereich“ und die Gerätedaten aus dem Prototyp werden **nicht** übernommen; sie stehen dort nur stellvertretend für `/app`.
 - Der Konto-Token liegt im `localStorage` wie heute; der Anzeige-Token getrennt davon (eigener Schlüssel).
-- Nach erfolgreicher Anmeldung → `/app`. Nach „Anzeige starten“ → `/dashboard`.
+- Nach erfolgreicher Anmeldung bzw. richtiger PIN → **direkt `/app`** (Startbereich der Companion).
+- Nach dem Registrieren → **Willkommenskarte** (eigene Ansicht der Anmeldeseite, Knopf „Weiter zur Companion“) → `/app`. Bis Max den Inhalt liefert, steht dort ein Platzhalter.
+- Nach „Anzeige starten“ → `/dashboard`.
 - Ein Gerät mit gültigem Token und ohne PIN-Pflicht springt direkt weiter: Konto → `/app`, Anzeige → „Layout wählen“.
 
 ### 6.2 Companion (`companion-prototyp.html`)
@@ -207,7 +213,7 @@ Branch: **`board/anmeldung`** für alles. Nach jeder Phase pushen.
 ### Phase L3 · Anmeldeseite unter `/`
 
 - Kapitel 6.1 (nur Reiter Companion-App) und 6.2 (Umzug nach `/app`, Weiterleitungen, 423).
-- Playwright: Anmelden, Registrieren, PIN-Sperre nach simulierter Offline-Zeit (Zeit am Server per Test-Schalter vorstellen), PIN zurücksetzen. Screenshots nach `companion/tests/bilder/`.
+- Playwright: Anmelden → landet auf `/app`, Registrieren → Willkommenskarte → `/app`, PIN-Sperre nach simulierter Offline-Zeit (Zeit am Server per Test-Schalter vorstellen), PIN zurücksetzen. Screenshots nach `companion/tests/bilder/`.
 - Commit: „Anmeldeseite als Einstieg, Companion unter /app“
 - ⏸ **Haltepunkt:** Max die Screenshots zeigen (Anmeldung, Registrierung, PIN-Sperre, PIN zurücksetzen) und am Handy anmelden lassen.
 
@@ -261,3 +267,4 @@ Branch: **`board/anmeldung`** für alles. Nach jeder Phase pushen.
 | N8 | **Domain**: Heimnetz mit eigener Domain (DynDNS) oder Hetzner (offene Entscheidung 5 in `UEBERGABE.md`)? Davon hängt das HTTPS-Zertifikat ab. | Heimnetz, eigenes Zertifikat (N5 aus `PLAN.md`) | Freigabe nach außen |
 | ~~N9~~ | **Entschieden (Max, 13.10.2026):** Die verwechselbaren Zeichen `0 O 1 l I` werden beim Erzeugen weggelassen, siehe L7. | – | – |
 | N10 | Wer sieht den **echten Namen** – nur der Nutzer selbst oder alle Konten des Boards? | nur der Nutzer selbst | L3 |
+| N11 | **Inhalt der Willkommenskarte** nach dem Registrieren | Platzhalter mit „Willkommen, <Anzeigename>“ und „Weiter zur Companion“ | – |

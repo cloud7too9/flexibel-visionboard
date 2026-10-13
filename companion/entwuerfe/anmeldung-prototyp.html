@@ -74,6 +74,14 @@ body {
 .layout-text span { font-size:12.5px; color:var(--text-dim); line-height:1.35; }
 .layout-meta { font-size:11.5px; color:var(--text-faint); white-space:nowrap; }
 
+/* Platzhalter: Startbereich der Companion, Willkommenskarte */
+.platzhalter {
+  display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;
+  padding:28px 18px; border-radius:18px; border:1.5px dashed var(--border); background:var(--surface);
+}
+.platzhalter h2 { margin:2px 0 0; }
+.platzhalter.willkommen { border-color:var(--accent); background:var(--accent-soft); }
+
 /* Companion › Dashboard: Code erzeugen */
 .code-karte {
   display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center;
@@ -758,7 +766,7 @@ function zeigeAnmelden(meldung){
     try {
       const r = api.geraetFreischalten(name, passwort);
       geraet.setzen(r.geraetId);
-      start({ art:"ok", text:"Gerät freigeschaltet. Ab jetzt reicht hier deine PIN." });
+      start();   // direkt in den Startbereich der Companion
     } catch(err){ $m.innerHTML = bannerHtml("bad", err.message); }
   });
 }
@@ -793,7 +801,7 @@ function zeigeAnlegen(){
     try {
       const r = api.kontoAnlegen({ echterName:wert("neuEcht"), anzeigename:wert("neuName"), passwort:wert("neuPasswort"), pin:wert("neuPin") });
       geraet.setzen(r.geraetId);
-      start({ art:"ok", text:"Registriert. Dieses Gerät ist freigeschaltet." });
+      zeigeWillkommen(wert("neuName").trim());
     } catch(err){ $m.innerHTML = bannerHtml("bad", err.message); }
   });
 }
@@ -850,26 +858,33 @@ function zeigeReset(){
   });
 }
 
-/** Angemeldet: hier ginge es in die Companion */
-function zeigeAngemeldet(s, meldung){
-  const g = s.geraet;
+/** Nach der Anmeldung: direkt in den Startbereich der Companion (/app) – im Prototyp ein Platzhalter */
+function zeigeCompanionStart(s, meldung){
   navSetzen(null);
   unterzeile("");
   $buehne.innerHTML = `<div class="ansicht">
-    <div class="pin-kopf">
-      <span class="initiale" aria-hidden="true">${initiale(s.benutzer.anzeigename)}</span>
-      <h2>Angemeldet als ${esc(s.benutzer.anzeigename)}</h2>
-      <p class="grund">${esc(s.benutzer.echterName)}</p>
-    </div>
     ${bannerHtml(meldung?.art, meldung?.text)}
-    <div class="geraet" aria-label="Dieses Gerät">
-      <div class="zeile"><span>Freigeschaltet</span><span class="mono">${zeit(g.freigeschaltetAm)}</span></div>
-      <div class="zeile"><span>Letzter Kontakt</span><span class="mono">${zeit(g.letzterKontakt)}</span></div>
-      <div class="zeile"><span>PIN bestätigt</span><span class="mono">${zeit(g.pinBestaetigtAm)}</span></div>
-      <div class="zeile"><span>PIN wieder nötig</span><span>nach über ${CONFIG.offlineMinuten} Min. offline</span></div>
+    <div class="platzhalter">
+      <span class="code-label">Prototyp</span>
+      <h2>Companion · Startbereich</h2>
+      <p class="grund">Angemeldet als ${esc(s.benutzer.anzeigename)}. Hier öffnet sich die Companion unter /app mit ihrem Startbereich.</p>
     </div>
-    <button class="knopf" type="button" data-weiter="weiter">Zum Dashboard-Bereich</button>
+    <button class="knopf zweit" type="button" data-weiter="weiter">Dashboard-Bereich: Code generieren</button>
     <button class="link leise" type="button" data-weiter="abmelden">Auf diesem Gerät abmelden</button>
+  </div>`;
+}
+
+/** Nach dem Registrieren: Willkommenskarte (Inhalt fügt Max später hinzu), dann Companion */
+function zeigeWillkommen(anzeigename){
+  navSetzen(null);
+  unterzeile("");
+  $buehne.innerHTML = `<div class="ansicht">
+    <div class="platzhalter willkommen">
+      <span class="code-label">Willkommenskarte</span>
+      <h2>Willkommen, ${esc(anzeigename)}</h2>
+      <p class="grund">Platzhalter: Den Inhalt der Willkommenskarte fügt Max später hinzu.</p>
+    </div>
+    <button class="knopf" type="button" data-weiter="start">Weiter zur Companion</button>
   </div>`;
 }
 
@@ -884,7 +899,7 @@ function start(meldung){
   try { s = api.sitzung(geraet.id); }
   catch { geraet.setzen(null); return zeigeAnmelden({ art:"info", text:"Dieses Gerät ist nicht mehr freigeschaltet. Bitte melde dich mit deinem Passwort an." }); }
   geraetSimStatus();
-  return s.pinNoetig ? zeigePin(s) : zeigeAngemeldet(s, meldung);
+  return s.pinNoetig ? zeigePin(s) : zeigeCompanionStart(s, meldung);
 }
 
 /* Navigation und „Zeigen“-Knöpfe per Delegation */
