@@ -1,10 +1,8 @@
--- Referenzschema der Companion (SQLite) · Stand 13.10.2026
--- Entstanden im Chat mit Max als Zielbild für eine spätere Umstellung von daten.json auf SQLite.
+-- Referenzschema der Companion (SQLite)
+-- ERZEUGT von planung/schema/schema-bauen.mjs aus schema-vorlage.sql und companion/regeln.js.
+-- Nicht von Hand ändern: Vorlage anpassen und neu bauen. Entscheidungen: planung/schema/README.md
 -- Heute speichert der Board-Server weiter in daten.json; die Feldnamen dort folgen diesem Schema.
--- Seed-Daten (Farben, Muster, Rüstung, Besätze) sind aus companion/regeln.js erzeugt.
 
--- Companion-Schema: Banner + Rüstungs-Sets (SQLite)
--- Alle Stammdaten werden aus companion/regeln.js erzeugt – nicht von Hand pflegen.
 PRAGMA foreign_keys = ON;
 
 -- =====================================================================
@@ -43,6 +41,10 @@ SELECT g.id, g.benutzer_id, g.letzter_kontakt,
          OR g.pin_bestaetigt_am < b.pin_geaendert_am AS pin_noetig
 FROM geraete g JOIN benutzer b ON b.id = g.benutzer_id;
 
+
+-- =====================================================================
+-- Banner
+-- =====================================================================
 
 -- ---------- Stammdaten ----------
 CREATE TABLE farben (
@@ -475,3 +477,43 @@ WHEN NOT EXISTS (SELECT 1 FROM portale WHERE id = NEW.oberwelt_portal_id AND wel
 BEGIN
   SELECT RAISE(ABORT, 'Verbindung braucht ein Oberwelt- und ein Nether-Portal derselben Welt');
 END;
+
+
+-- =====================================================================
+-- Dashboard-Zugänge und Anzeige-Geräte (Bauplan Anmeldung und Dashboard-Zugang)
+-- =====================================================================
+
+-- Zugang = Zugangs-Code + eigene Dashboard-PIN, erzeugt in der Companion (Dashboard-Bereich).
+-- Code: 5 Zeichen ohne die verwechselbaren 0 O 1 l I. Im Klartext, weil die Companion ihn anzeigt.
+-- Ein abgelaufener Code schaltet keine neuen Geräte frei; angemeldete Anzeigen laufen weiter.
+CREATE TABLE zugaenge (
+  id           TEXT PRIMARY KEY,
+  code         TEXT NOT NULL UNIQUE
+               CHECK (length(code) = 5 AND code NOT GLOB '*[^2-9A-HJ-NP-Za-km-z]*'),
+  pin_hash     TEXT NOT NULL CHECK (pin_hash GLOB 'scrypt:?*:?*'),
+  erstellt_von TEXT REFERENCES benutzer(id) ON DELETE SET NULL,
+  erstellt_am  TEXT NOT NULL,
+  gueltig_bis  TEXT,                    -- NULL = dauerhaft
+  CHECK (gueltig_bis IS NULL OR gueltig_bis > erstellt_am)
+);
+
+-- Anzeige-Geräte (TV, Tablet …): angemeldet mit Code + Dashboard-PIN, merken sich das Layout.
+-- Widerrufen des Zugangs meldet alle seine Anzeigen ab.
+CREATE TABLE anzeige_geraete (
+  id              TEXT PRIMARY KEY,
+  zugang_id       TEXT NOT NULL REFERENCES zugaenge(id) ON DELETE CASCADE,
+  anzeige_id      TEXT,                 -- gewähltes Layout (Anzeigen/Layouts folgen im Schema)
+  letzter_kontakt TEXT NOT NULL
+);
+CREATE INDEX idx_anzeige_geraete_zugang ON anzeige_geraete(zugang_id);
+
+-- Code noch gültig?
+CREATE VIEW zugaenge_status AS
+SELECT z.*, (z.gueltig_bis IS NULL OR julianday(z.gueltig_bis) > julianday('now')) AS gueltig
+FROM zugaenge z;
+
+-- Dashboard-PIN nötig nach über 15 Minuten ohne Kontakt (vor dem Aktualisieren fragen)
+CREATE VIEW anzeige_geraete_status AS
+SELECT a.id, a.zugang_id, a.letzter_kontakt,
+       (julianday('now') - julianday(a.letzter_kontakt)) * 1440 > 15 AS pin_noetig
+FROM anzeige_geraete a;

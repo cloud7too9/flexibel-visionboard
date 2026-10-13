@@ -1,7 +1,7 @@
 # Bauplan: Anmeldung und Dashboard-Zugang
 
 > Für Claude Code · Repo `flexibel-visionboard` · Stand 13.10.2026 · Entscheidungen von Max (Chat vom 13.10.2026)
-> Grundlage: Klick-Prototyp [`companion/entwuerfe/anmeldung-prototyp.html`](../../companion/entwuerfe/anmeldung-prototyp.html) (Mock, im Browser öffnen) und das SQL-Referenzschema [`planung/schema/companion-schema.sql`](../schema/companion-schema.sql) (Tabellen `benutzer`, `geraete`, Sicht `geraete_status`)
+> Grundlage: Klick-Prototyp [`companion/entwuerfe/anmeldung-prototyp.html`](../../companion/entwuerfe/anmeldung-prototyp.html) (Mock, im Browser öffnen) und das SQL-Referenzschema [`planung/schema/`](../schema/README.md) (Tabellen `benutzer`, `geraete`, `zugaenge`, `anzeige_geraete` mit ihren Sichten)
 >
 > Anders als die übrigen Baupläne in diesem Ordner ist dieser **projektbezogen**: Er nennt Dateien, Routen und Branches. Er setzt Strang B aus [`PLAN.md`](../PLAN.md) fort (B1/B2 sind gebaut).
 
