@@ -319,14 +319,20 @@ CREATE TABLE dorfarten (
   sortierung INTEGER NOT NULL UNIQUE
 );
 
--- Stammdaten: feste Strukturbereiche. kategorie = FeatureCategory der Karte.
--- Quelle ist Chunk-Tag 0x77 (AABBVolumes): je Chunk die Struktur-ID und die Bereiche ihrer Teile.
--- 0x39 (HardcodedSpawners) schreibt Bedrock 1.26 nicht mehr (geprüft an Max' Welt, 13.10.2026).
+-- Stammdaten: Strukturarten. kategorie = FeatureCategory der Karte (wie in regeln.js / board-karten.js).
 CREATE TABLE strukturarten (
-  kategorie  TEXT PRIMARY KEY,
-  name_de    TEXT NOT NULL UNIQUE,
-  dimension  TEXT NOT NULL CHECK (dimension IN ('overworld','nether','end')),
-  bedrock_id TEXT NOT NULL UNIQUE CHECK (bedrock_id GLOB 'minecraft:?*')   -- Name in 0x77
+  kategorie TEXT PRIMARY KEY,
+  name_de   TEXT NOT NULL UNIQUE,
+  dimension TEXT NOT NULL CHECK (dimension IN ('overworld','nether','end'))
+);
+
+-- Bedrock-IDs der Strukturen → Strukturart. Quelle ist Chunk-Tag 0x77 (AABBVolumes): je Chunk die
+-- ID und die Bereiche ihrer Teile. 0x39 (HardcodedSpawners) schreibt Bedrock 1.26 nicht mehr
+-- (geprüft an Max' Welt, 13.10.2026). Mehrere IDs können zu einer Art gehören (Lager).
+CREATE TABLE struktur_ids (
+  bedrock_id TEXT PRIMARY KEY CHECK (bedrock_id GLOB 'minecraft:?*'),
+  kategorie  TEXT NOT NULL REFERENCES strukturarten(kategorie),
+  bestaetigt INTEGER NOT NULL DEFAULT 1 CHECK (bestaetigt IN (0, 1))   -- 0 = in keiner Welt gesehen
 );
 
 -- ---------- Welt ----------
@@ -392,7 +398,7 @@ GROUP BY d.id;
 CREATE TABLE strukturen (
   id        INTEGER PRIMARY KEY,
   welt_id   TEXT    NOT NULL REFERENCES welten(id) ON DELETE CASCADE,
-  kategorie TEXT    NOT NULL REFERENCES strukturarten(kategorie),
+  bedrock_id TEXT   NOT NULL REFERENCES struktur_ids(bedrock_id),
   min_x INTEGER NOT NULL, min_y INTEGER NOT NULL, min_z INTEGER NOT NULL,
   max_x INTEGER NOT NULL, max_y INTEGER NOT NULL, max_z INTEGER NOT NULL,
   x INTEGER GENERATED ALWAYS AS ((min_x + max_x) / 2) STORED,
@@ -401,7 +407,14 @@ CREATE TABLE strukturen (
   erstmals_am TEXT NOT NULL,            -- Import, der die Struktur zuerst gefunden hat
   CHECK (min_x <= max_x AND min_y <= max_y AND min_z <= max_z)
 );
-CREATE INDEX idx_strukturen_welt ON strukturen(welt_id, kategorie);
+CREATE INDEX idx_strukturen_welt ON strukturen(welt_id, bedrock_id);
+
+-- Strukturen mit Art, deutschem Namen und Dimension (für Karte und Sammelobjekte)
+CREATE VIEW strukturen_mit_art AS
+SELECT s.id, s.welt_id, s.bedrock_id, i.kategorie, a.name_de, a.dimension, s.x, s.y, s.z, s.erstmals_am
+FROM strukturen s
+JOIN struktur_ids i ON i.bedrock_id = s.bedrock_id
+JOIN strukturarten a ON a.kategorie = i.kategorie;
 
 -- Biome: 32×32 Chunks je Kachel, Wert = bedrockId + 1 (0 = unerkundet), Uint16 LE als BLOB
 CREATE TABLE biom_kacheln (
@@ -421,11 +434,33 @@ INSERT INTO dorfarten (id, name_de, sortierung) VALUES
   ('taiga', 'Taiga', 4),
   ('snowy', 'Verschneit', 5);
 
-INSERT INTO strukturarten (kategorie, name_de, dimension, bedrock_id) VALUES
-  ('Nether Fortress', 'Netherfestung',          'nether',    'minecraft:fortress'),
-  ('Witch Hut',       'Hexenhütte',             'overworld', 'minecraft:swamp_hut'),        -- unbestätigt, kam in der Welt nicht vor
-  ('Monument',        'Ozeanmonument',          'overworld', 'minecraft:monument'),
-  ('Outpost',         'Plünderer-Außenposten',  'overworld', 'minecraft:pillager_outpost');
+INSERT INTO strukturarten (kategorie, name_de, dimension) VALUES
+  ('Nether Fortress', 'Netherfestung',         'nether'),
+  ('Witch Hut',       'Hexenhütte',            'overworld'),
+  ('Monument',        'Ozeanmonument',         'overworld'),
+  ('Outpost',         'Plünderer-Außenposten', 'overworld'),
+  ('Trial Chamber',   'Prüfungskammern',       'overworld'),
+  ('Desert Temple',   'Wüstentempel',          'overworld'),
+  ('Jungle Temple',   'Dschungeltempel',       'overworld'),
+  ('Trail Ruins',     'Pfadruinen',            'overworld'),
+  ('Igloo',           'Iglu',                  'overworld'),
+  ('Camp',            'Lager',                 'overworld');
+
+INSERT INTO struktur_ids (bedrock_id, kategorie, bestaetigt) VALUES
+  ('minecraft:fortress',                     'Nether Fortress', 1),
+  ('minecraft:swamp_hut',                    'Witch Hut',       0),
+  ('minecraft:monument',                     'Monument',        1),
+  ('minecraft:pillager_outpost',             'Outpost',         1),
+  ('minecraft:trial_chambers',               'Trial Chamber',   1),
+  ('minecraft:desert_pyramid',               'Desert Temple',   1),
+  ('minecraft:jungle_pyramid',               'Jungle Temple',   1),
+  ('minecraft:trail_ruins',                  'Trail Ruins',     1),
+  ('minecraft:igloo',                        'Igloo',           1),
+  ('minecraft:abandoned_camp_bamboo_jungle', 'Camp',            1),
+  ('minecraft:abandoned_camp_birch_forest',  'Camp',            1),
+  ('minecraft:abandoned_camp_forest',        'Camp',            1),
+  ('minecraft:abandoned_camp_jungle_edge',   'Camp',            1),
+  ('minecraft:abandoned_camp_taiga',         'Camp',            1);
 
 
 -- =====================================================================

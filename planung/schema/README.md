@@ -48,7 +48,9 @@ node --test planung/schema/schema.test.mjs        # Tests (Node 22.5+, node:sqli
 - Welt: Weltname, Seed (Text, nur Ziffern und Minus – Bedrock-Seeds sind größer als 2^53), Spawnpunkt (X und Z zusammen, Y darf fehlen: `SpawnY = 32767` heißt „keine feste Höhe“), bekannte Chunks je Dimension. Name, Spawn und Chunks kommen mit dem `.mcworld`-Import.
 - Ein neuer Import **ersetzt die Biom-Kacheln**, **ergänzt Dörfer und Strukturen**.
 - **Dörfer** beziehen sich auf die Glocke. Die Glocken sind Block-Entities `Bell` (Chunk-Tag 0x31); ein Dorf ist ein `VILLAGE_…_INFO`-Eintrag, seine Glocken sind die im Bereich `X0…X1`, `Z0…Z1`. Mehrere Glocken in einem Dorf ergeben ein großes Dorf; die **Mitte ist der Durchschnitt der Glocken** (Sicht `doerfer_mitte`). Wachsen Dörfer zusammen, werden die Glocken umgehängt; das leere Dorf löscht ein Trigger. Die Dorfart kommt später aus dem Biom an der Mitte.
-- **Feste Strukturbereiche** (Netherfestung, Hexenhütte, Ozeanmonument, Plünderer-Außenposten) kommen aus **Chunk-Tag 0x77** (AABBVolumes) mit ihrer ID (`minecraft:fortress` …), Spalte `strukturarten.bedrock_id`. Gespeichert wird der zusammengefasste Bereich, die **eine Koordinate** (Mitte) rechnet SQLite selbst. Ein neuer Bereich derselben Art, der einen bestehenden berührt, erweitert ihn.
+- **Feste Strukturbereiche** kommen aus **Chunk-Tag 0x77** (AABBVolumes) mit ihrer Bedrock-ID. 10 Arten (Max, 13.10.2026): Netherfestung, Hexenhütte, Ozeanmonument, Plünderer-Außenposten und dazu **Prüfungskammern, Wüstentempel, Dschungeltempel, Pfadruinen, Iglu, Lager** – mehrere davon sind Fundorte von Rüstungsbesätzen.
+- `struktur_ids` ordnet jede Bedrock-ID einer Art zu (`minecraft:abandoned_camp_taiga` → Lager); `strukturen` speichert die ID, die Sicht `strukturen_mit_art` liefert Art, deutschen Namen und Dimension.
+- Gespeichert wird der zusammengefasste Bereich, die **eine Koordinate** (Mitte) rechnet SQLite selbst. Teile derselben ID, die höchstens 96 Blöcke auseinanderliegen, gehören zu einer Struktur; ein neuer Bereich erweitert eine bestehende Struktur.
 - Biom-Kacheln als BLOB (32 × 32 Chunks, 2048 Byte), Base64 nur für den Transport.
 
 ### Portale
@@ -85,8 +87,8 @@ Welt „letztes mal – Kopie“ von Max (Bedrock 1.26.52, Archiv.zip aus der Da
 - **Noch nicht im Schema:** Orte (Typen und Instanzen), Sammel-Status je Welt, Profile, Anzeigen mit ihren Layouts (`anzeige_geraete.anzeige_id` verweist noch auf nichts).
 - **Biom-Stammdaten** aus `companion/biom-ids.js` erzeugen (Tabelle `biome` ist leer).
 - **Import-Infos**: Spielversion, Importzeitpunkt und unbekannte Biom-IDs (Regel 8 im Biom-Plan) sind im Schema weggefallen. Zurück an die Welt oder bewusst weglassen?
-- **Weitere Strukturarten?** Die Welt enthält in 0x77 auch Prüfkammern (`trial_chambers`), Wüsten- und Dschungeltempel, Pfadruinen, Iglus und Lager. Mehrere davon sind Fundorte von Rüstungsbesätzen (Blitz/Fluss, Dünen, Wilde, Wegfinder …). Aufnehmen?
-- **Hexenhütte**: Die ID `minecraft:swamp_hut` ist angenommen, die Welt hatte keine.
+- **Hexenhütte**: Die ID `minecraft:swamp_hut` ist angenommen (`bestaetigt = 0`), Max hat noch keine Welt mit Hexenhütte. Bestätigen, sobald eine da ist.
+- **Weitere Lager-Varianten** (z. B. Savanne, Kirschhain) und Strukturen, die in der Welt nicht vorkamen (Festung, Waldanwesen, Antike Stätte, Bastion, Endsiedlung …): IDs ergänzen, wenn eine Welt sie enthält. `welt-inhalte.mjs` listet jede gefundene ID.
 - **Portale**: Ausrichtung (`Xa/Za`) und Breite (`Span`) stehen in der Welt, das Schema speichert sie noch nicht.
 - **Handelsangebote** haben nur Dorfbewohner, mit denen schon gehandelt wurde (33 von 84 in der Welt). Für die Seed-Listen im Handbuch heißt das: Die Welt liefert nur das, was man im Spiel schon angeschaut hat.
 - **App angleichen** (`companion/regeln.js`):

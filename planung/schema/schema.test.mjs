@@ -30,7 +30,10 @@ test('Stammdaten aus regeln.js', () => {
   assert.equal(anzahl(db, "SELECT count(*) n FROM besaetze WHERE id = 'netherite'"), 0);
   assert.equal(anzahl(db, 'SELECT count(*) n FROM besatz_materialien'), 11);
   assert.equal(anzahl(db, "SELECT count(*) n FROM ruestungs_varianten WHERE art_id = 'turtle'"), 1);
-  assert.equal(db.prepare("SELECT bedrock_id FROM strukturarten WHERE kategorie = 'Nether Fortress'").get().bedrock_id, 'minecraft:fortress');
+  assert.equal(db.prepare("SELECT kategorie FROM struktur_ids WHERE bedrock_id = 'minecraft:fortress'").get().kategorie, 'Nether Fortress');
+  assert.equal(anzahl(db, 'SELECT count(*) n FROM strukturarten'), 10);
+  assert.equal(anzahl(db, "SELECT count(*) n FROM struktur_ids WHERE kategorie = 'Camp'"), 5);
+  assert.equal(anzahl(db, 'SELECT count(*) n FROM struktur_ids WHERE bestaetigt = 0'), 1);   // nur die Hexenhütte
 });
 
 test('Banner: Basisfarbe Pflicht, Ebenen 1–6 lückenlos, Löschen nimmt Ebenen mit', () => {
@@ -77,14 +80,17 @@ test('Dörfer: Mitte = Durchschnitt der Glocken, leeres Dorf verschwindet', () =
   abgelehnt(() => db.exec(`INSERT INTO dorf_glocken VALUES (1, 'w1', 100, 70, 100)`), /UNIQUE/);
 });
 
-test('Strukturen: Mitte wird aus dem Bereich berechnet', () => {
+test('Strukturen: Mitte aus dem Bereich, Art über die Bedrock-ID', () => {
   const db = neueDb();
   db.exec(`INSERT INTO welten (id, seed) VALUES ('w1', '1')`);
-  db.exec(`INSERT INTO strukturen (welt_id, kategorie, min_x, min_y, min_z, max_x, max_y, max_z, erstmals_am)
-           VALUES ('w1', 'Nether Fortress', 100, 48, 100, 220, 75, 200, '2026-10-01')`);
-  assert.deepEqual({ ...db.prepare('SELECT x, y, z FROM strukturen').get() }, { x: 160, y: 61, z: 150 });
-  abgelehnt(() => db.exec(`INSERT INTO strukturen (welt_id, kategorie, min_x, min_y, min_z, max_x, max_y, max_z, erstmals_am)
-           VALUES ('w1', 'Mansion', 0, 0, 0, 1, 1, 1, 'x')`), /FOREIGN KEY/);
+  db.exec(`INSERT INTO strukturen (welt_id, bedrock_id, min_x, min_y, min_z, max_x, max_y, max_z, erstmals_am)
+           VALUES ('w1', 'minecraft:fortress', 100, 48, 100, 220, 75, 200, '2026-10-01'),
+                  ('w1', 'minecraft:abandoned_camp_taiga', 805, 70, 900, 817, 75, 912, '2026-10-01')`);
+  assert.deepEqual({ ...db.prepare('SELECT x, y, z FROM strukturen WHERE id = 1').get() }, { x: 160, y: 61, z: 150 });
+  assert.deepEqual(db.prepare('SELECT name_de, dimension FROM strukturen_mit_art ORDER BY id').all().map((r) => `${r.name_de}/${r.dimension}`),
+    ['Netherfestung/nether', 'Lager/overworld']);
+  abgelehnt(() => db.exec(`INSERT INTO strukturen (welt_id, bedrock_id, min_x, min_y, min_z, max_x, max_y, max_z, erstmals_am)
+           VALUES ('w1', 'minecraft:mansion', 0, 0, 0, 1, 1, 1, 'x')`), /FOREIGN KEY/);
 });
 
 test('Portale: Verbindung braucht Oberwelt + Nether derselben Welt, fällt mit dem Portal', () => {
